@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "308332286849",
+    "project_id": "pwsmt-fd851",
+    "storage_bucket": "pwsmt-fd851.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:308332286849:android:b397d421e60494c2744e80",
+        "android_client_info": {
+          "package_name": "com.example.pws"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDexuAkaG7uXbyf-YaBOvNNiVuxwP2hewE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
