@@ -3,8 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'views/login_register_view.dart';
 
-/// Minimal entrypoint that initializes Firebase using the generated
-/// `FirebaseOptions` in `lib/firebase_options.dart`.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -23,3 +21,5 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(useMaterial3: true),
       home: const LoginRegisterView(),
     );
+  }
+}
