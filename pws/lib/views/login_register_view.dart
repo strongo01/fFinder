@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginRegisterView extends StatefulWidget {
   const LoginRegisterView({super.key});
@@ -15,6 +16,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   final _passwordController = TextEditingController();
   bool _isLogin = true;
   bool _loading = false;
+  bool _obscurePassword = true;
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -24,9 +26,38 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
 
     try {
       if (_isLogin) {
-        await _auth.signInWithEmailAndPassword(email: email, password: password);
+        final cred = await _auth.signInWithEmailAndPassword(email: email, password: password);
+        final user = cred.user;
+        if (user != null) {
+          final usersRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+          final doc = await usersRef.get();
+          final now = FieldValue.serverTimestamp();
+          if (!doc.exists) {
+            await usersRef.set({
+              'uid': user.uid,
+              'email': user.email,
+              'createdAt': now,
+            });
+          } else {
+            final data = doc.data() ?? {};
+            final updates = <String, Object?>{};
+            if (!data.containsKey('uid')) updates['uid'] = user.uid;
+            if (!data.containsKey('email')) updates['email'] = user.email;
+            if (!data.containsKey('createdAt')) updates['createdAt'] = now;
+            if (updates.isNotEmpty) await usersRef.update(updates);
+          }
+        }
       } else {
-        await _auth.createUserWithEmailAndPassword(email: email, password: password);
+        final cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+        final user = cred.user;
+        if (user != null) {
+          final usersRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+          await usersRef.set({
+            'uid': user.uid,
+            'email': user.email,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
       }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const _HomeScreen()));
@@ -75,8 +106,16 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Password'),
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            ),
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
+                        ),
                         validator: (v) => (v == null || v.length < 6) ? 'Min 6 chars' : null,
                       ),
                       const SizedBox(height: 20),
