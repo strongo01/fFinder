@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 
 class LoginRegisterView extends StatefulWidget {
@@ -23,73 +22,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   bool _loading = false;
   bool _obscurePassword = true;
 
-  Future<void> _signInWithFacebookHandler() async {
-    setState(() => _loading = true);
-    try {
-      UserCredential userCredential;
 
-      if (kIsWeb) {
-        FacebookAuthProvider facebookProvider = FacebookAuthProvider();
-        facebookProvider.addScope('email');
-        facebookProvider.setCustomParameters({'display': 'popup'});
-
-        userCredential = await FirebaseAuth.instance.signInWithPopup(
-          facebookProvider,
-        );
-      } else {
-        final LoginResult loginResult = await FacebookAuth.instance.login();
-
-        if (loginResult.status != LoginStatus.success) {
-          throw FirebaseAuthException(
-            code: 'facebook_login_failed',
-            message: loginResult.message ?? 'Facebook login mislukt',
-          );
-        }
-
-        final OAuthCredential facebookCredential =
-            FacebookAuthProvider.credential(
-              loginResult.accessToken!.tokenString,
-            );
-
-        userCredential = await FirebaseAuth.instance.signInWithCredential(
-          facebookCredential,
-        );
-      }
-
-      final user = userCredential.user;
-      if (user != null) {
-        final usersRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid);
-        final doc = await usersRef.get();
-        if (!doc.exists) {
-          await usersRef.set({
-            'uid': user.uid,
-            'email': user.email,
-            'name': user.displayName,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-      }
-
-      if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const _HomeScreen()));
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Auth error')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Unknown error')));
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
 
   Future<UserCredential> signInWithGoogle() async {
     if (kIsWeb) {
@@ -128,16 +61,14 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   }
 
   Future<UserCredential> signInWithGitHub() async {
-    if (kIsWeb) {
-      GithubAuthProvider githubProvider = GithubAuthProvider();
-      githubProvider.addScope('read:user');
-      githubProvider.addScope('user:email');
+    GithubAuthProvider githubProvider = GithubAuthProvider();
+    githubProvider.addScope('read:user');
+    githubProvider.addScope('user:email');
 
+    if (kIsWeb) {
       return await FirebaseAuth.instance.signInWithPopup(githubProvider);
     } else {
-      throw UnimplementedError(
-        'GitHub login op Android/iOS moet via OAuth flow',
-      );
+      return await FirebaseAuth.instance.signInWithProvider(githubProvider);
     }
   }
 
@@ -363,13 +294,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                             Buttons.GitHub,
                             onPressed: _signInWithGitHubHandler,
                           ),
-                          if (!kIsWeb) ...[
-                            const SizedBox(height: 12),
-                            SignInButton(
-                              Buttons.Facebook,
-                              onPressed: _signInWithFacebookHandler,
-                            ),
-                          ],
+                      
                         ],
                       ),
                       const SizedBox(height: 12),
