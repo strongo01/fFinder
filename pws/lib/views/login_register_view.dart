@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
+import 'home_screen.dart';
 
 class LoginRegisterView extends StatefulWidget {
   const LoginRegisterView({super.key});
@@ -175,7 +176,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (!mounted) return;
       Navigator.of(
         context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const _HomeScreen()));
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -228,7 +229,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (!mounted) return;
       Navigator.of(
         context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const _HomeScreen()));
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -268,7 +269,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (!mounted) return;
       Navigator.of(
         context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const _HomeScreen()));
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -338,7 +339,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (!mounted) return;
       Navigator.of(
         context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const _HomeScreen()));
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
       final message = e.message ?? 'Authentication error';
       if (!mounted) return;
@@ -453,37 +454,6 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HomeScreen extends StatelessWidget {
-  const _HomeScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Home')),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Logged in as ${user?.email ?? 'unknown'}'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                if (!context.mounted) return;
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginRegisterView()),
-                );
-              },
-              child: const Text('Sign out'),
-            ),
-          ],
         ),
       ),
     );
