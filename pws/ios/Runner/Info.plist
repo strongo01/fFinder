@@ -54,7 +54,8 @@
             <array>
                 <string>app-1-308332286849-ios-25e47790c0cc43e5744e80</string>
 				<string>app-1-308332286849-ios-6b93ac48bd272bc7744e80</string>
-            </array>
+				<string>com.googleusercontent.apps.308332286849-mk554sbg5ers5edvo1bkr155v2kffjd5</string>
+			</array>
         </dict>
     </array>
     <key>FlutterDeepLinkingEnabled</key>
