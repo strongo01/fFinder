@@ -29,13 +29,34 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
 
   Future<UserCredential> signInWithGoogle() async {
     if (kIsWeb) {
-      GoogleAuthProvider googleProvider = GoogleAuthProvider();
+      final googleProvider = GoogleAuthProvider();
       googleProvider.addScope('email');
       googleProvider.setCustomParameters({'prompt': 'select_account'});
-      return await FirebaseAuth.instance.signInWithPopup(googleProvider);
-    } else {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn.instance
-          .authenticate();
+
+      try {
+        final result = await FirebaseAuth.instance.signInWithPopup(
+          googleProvider,
+        );
+        return result;
+      } catch (e) {
+        rethrow;
+      }
+    }
+
+    try {
+      final signIn = GoogleSignIn.instance;
+
+      GoogleSignInAccount? googleUser;
+
+      googleUser = await signIn.attemptLightweightAuthentication();
+
+      if (googleUser == null) {
+        if (signIn.supportsAuthenticate()) {
+          googleUser = await signIn.authenticate();
+        } else {
+          googleUser = await signIn.attemptLightweightAuthentication();
+        }
+      }
 
       if (googleUser == null) {
         throw FirebaseAuthException(
@@ -44,22 +65,26 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
         );
       }
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final idToken = googleAuth.idToken;
-      if (idToken == null) {
+      final googleAuth = await googleUser.authentication;
+
+      if (googleAuth.idToken == null) {
         throw FirebaseAuthException(
           code: 'missing_id_token',
           message: 'Kon geen idToken ophalen van Google.',
         );
       }
 
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        idToken: idToken,
-        accessToken: idToken,
+      final credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
       );
 
-      return await FirebaseAuth.instance.signInWithCredential(credential);
+      final result = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
+
+      return result;
+    } catch (e) {
+      rethrow;
     }
   }
 
@@ -79,43 +104,52 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
     return digest.toString();
   }
 
-  Future<UserCredential> signInWithApple() async {
-  final rawNonce = generateNonce();
-  final nonce = sha256ofString(rawNonce);
+  String translateAppleError(Object error) {
+    final message = error.toString();
 
-  debugPrint('Generated rawNonce: $rawNonce');
-  debugPrint('SHA256 nonce: $nonce');
+    if (message.contains('AuthorizationErrorCode.canceled')) {
+      return 'Je hebt de Apple-inlog geannuleerd.';
+    }
+    if (message.contains('AuthorizationErrorCode.failed')) {
+      return 'Apple inloggen is mislukt. Probeer het later opnieuw.';
+    }
+    if (message.contains('AuthorizationErrorCode.invalidResponse')) {
+      return 'Ongeldig antwoord ontvangen van Apple.';
+    }
+    if (message.contains('AuthorizationErrorCode.notHandled')) {
+      return 'Apple kon de aanvraag niet verwerken.';
+    }
+    if (message.contains('AuthorizationErrorCode.unknown')) {
+      return 'Er is een onbekende fout opgetreden bij Apple.';
+    }
 
-  final appleCredential = await SignInWithApple.getAppleIDCredential(
-    scopes: [AppleIDAuthorizationScopes.email],
-    nonce: nonce,
-  );
-
-  debugPrint('Apple returned identityToken: ${appleCredential.identityToken}');
-  debugPrint('Apple returned authorizationCode: ${appleCredential.authorizationCode}');
-  debugPrint('Apple returned userIdentifier: ${appleCredential.userIdentifier}');
-  debugPrint('Apple returned email: ${appleCredential.email}');
-  debugPrint('Apple returned givenName: ${appleCredential.givenName}');
-  debugPrint('Apple returned familyName: ${appleCredential.familyName}');
-
-  if (appleCredential.identityToken == null) {
-    throw FirebaseAuthException(
-      code: 'null_identity_token',
-      message: 'Apple returned a null identityToken',
-    );
+    return 'Er is een fout opgetreden tijdens het inloggen met Apple.';
   }
 
-  final oauthCredential = OAuthProvider("apple.com").credential(
-    idToken: appleCredential.identityToken!,
-    rawNonce: rawNonce,
-    accessToken: appleCredential.authorizationCode, // belangrijk
-  );
+  Future<UserCredential> signInWithApple() async {
+    final rawNonce = generateNonce();
+    final nonce = sha256ofString(rawNonce);
 
-  debugPrint('OAuthCredential prepared for Firebase: $oauthCredential');
+    final appleCredential = await SignInWithApple.getAppleIDCredential(
+      scopes: [AppleIDAuthorizationScopes.email],
+      nonce: nonce,
+    );
 
-  return await FirebaseAuth.instance.signInWithCredential(oauthCredential);
-}
+    if (appleCredential.identityToken == null) {
+      throw FirebaseAuthException(
+        code: 'null_identity_token',
+        message: 'Apple returned a null identityToken',
+      );
+    }
 
+    final oauthCredential = OAuthProvider("apple.com").credential(
+      idToken: appleCredential.identityToken!,
+      rawNonce: rawNonce,
+      accessToken: appleCredential.authorizationCode,
+    );
+
+    return await FirebaseAuth.instance.signInWithCredential(oauthCredential);
+  }
 
   Future<void> _signInWithAppleHandler() async {
     setState(() => _loading = true);
@@ -144,16 +178,15 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       ).pushReplacement(MaterialPageRoute(builder: (_) => const _HomeScreen()));
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      debugPrint('FirebaseAuthException (Apple): ${e.code} - ${e.message}');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.message ?? 'Auth error')));
-    } catch (e, st) {
+    } catch (e) {
       if (!mounted) return;
-      debugPrint('Apple sign-in error: $e\n$st');
+      final translated = translateAppleError(e);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ).showSnackBar(SnackBar(content: Text(translated)));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
