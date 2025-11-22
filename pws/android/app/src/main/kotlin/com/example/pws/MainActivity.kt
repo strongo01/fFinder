@@ -1,4 +1,4 @@
-package com.example.pws
+package com.MaxTristan.pws
 
 import io.flutter.embedding.android.FlutterActivity
 
