@@ -11,6 +11,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
 import 'home_screen.dart';
 
+//dit scherm is voor inloggen en registreren en verandert ook weer dus statefulwidget
 class LoginRegisterView extends StatefulWidget {
   const LoginRegisterView({super.key});
 
@@ -19,23 +20,25 @@ class LoginRegisterView extends StatefulWidget {
 }
 
 class _LoginRegisterViewState extends State<LoginRegisterView> {
+  //firebase en de controllers voor de invoervelden
   final _auth = FirebaseAuth.instance;
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  bool _isLogin = true;
-  bool _loading = false;
-  bool _obscurePassword = true;
-
+//variabelen voor de status van het scherm
+  bool _isLogin = true; //wisselt tussen inloggen en registereren
+  bool _loading = false;//laad icoon
+  bool _obscurePassword = true;//wachtwoord met bolletjes
+//functie voor inloggen met google
   Future<UserCredential> signInWithGoogle() async {
+    //als het platform web is
     if (kIsWeb) {
-      final googleProvider = GoogleAuthProvider();
-      googleProvider.addScope('email');
-      googleProvider.setCustomParameters({'prompt': 'select_account'});
+      final googleProvider = GoogleAuthProvider();//google provider aanmaken
+      googleProvider.addScope('email'); //scopes toevoegen
+      googleProvider.setCustomParameters({'prompt': 'select_account'}); //aanpassen van parameters
 
       try {
-        final result = await FirebaseAuth.instance.signInWithPopup(
+        final result = await FirebaseAuth.instance.signInWithPopup( //inloggen met popup
           googleProvider,
         );
         return result;
@@ -43,29 +46,29 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
         rethrow;
       }
     }
-
+//logica voor ios en android (dus geen web)
     try {
       final signIn = GoogleSignIn.instance;
 
       GoogleSignInAccount? googleUser;
-
+// hij probeert inteloggen als de gebruiker al een keertje is ingelogd
       googleUser = await signIn.attemptLightweightAuthentication();
-
+//als dat niet zo is laat hij het inlogscherm zien als popup
       if (googleUser == null) {
-        if (signIn.supportsAuthenticate()) {
+        if (signIn.supportsAuthenticate()) { //kijken of het platform popup ondersteunt
           googleUser = await signIn.authenticate();
         } else {
           googleUser = await signIn.attemptLightweightAuthentication();
         }
       }
-
+//als je het scherm wegklikt
       if (googleUser == null) {
         throw FirebaseAuthException(
           code: 'sign_in_cancelled',
           message: 'Google Sign-In is geannuleerd door de gebruiker.',
         );
       }
-
+//haalt de autehtnicatie tokens op
       final googleAuth = await googleUser.authentication;
 
       if (googleAuth.idToken == null) {
@@ -74,11 +77,11 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
           message: 'Kon geen idToken ophalen van Google.',
         );
       }
-
+//maakt een credential aan voor firebase
       final credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
       );
-
+//logt in met firebase
       final result = await FirebaseAuth.instance.signInWithCredential(
         credential,
       );
@@ -88,25 +91,25 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       rethrow;
     }
   }
-
+//hulpfunctie voor apple sign in wat een willekeurig string maakt
   String generateNonce([int length = 32]) {
     const charset =
         '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
-    final rand = Random.secure();
+    final rand = Random.secure(); 
     return List.generate(
       length,
       (_) => charset[rand.nextInt(charset.length)],
     ).join();
   }
-
+// hulpfunctie voor apple sign in wat een sha256 maakt van de string
   String sha256ofString(String input) {
     final bytes = utf8.encode(input);
     final digest = sha256.convert(bytes);
     return digest.toString();
   }
-
+// functie die apple fouten vertaalt naar normale meldingen
   String translateAppleError(Object error) {
-    final message = error.toString();
+    final message = error.toString(); //converteer error naar string
 
     if (message.contains('AuthorizationErrorCode.canceled')) {
       return 'Je hebt de Apple-inlog geannuleerd.';
@@ -126,37 +129,37 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
 
     return 'Er is een fout opgetreden tijdens het inloggen met Apple.';
   }
-
+// functie voor inloggen met apple
   Future<UserCredential> signInWithApple() async {
     final rawNonce = generateNonce();
     final nonce = sha256ofString(rawNonce);
-
+// vraag om apple id credential
     final appleCredential = await SignInWithApple.getAppleIDCredential(
       scopes: [AppleIDAuthorizationScopes.email],
       nonce: nonce,
     );
 
-    if (appleCredential.identityToken == null) {
+    if (appleCredential.identityToken == null) { //als er geen identity token is
       throw FirebaseAuthException(
         code: 'null_identity_token',
         message: 'Apple returned a null identityToken',
       );
     }
-
+//maakt een oauth credential aan voor firebase
     final oauthCredential = OAuthProvider("apple.com").credential(
       idToken: appleCredential.identityToken!,
       rawNonce: rawNonce,
       accessToken: appleCredential.authorizationCode,
     );
-
+//logt in met firebase
     return await FirebaseAuth.instance.signInWithCredential(oauthCredential);
   }
-
+//de handler voor apple sign in
   Future<void> _signInWithAppleHandler() async {
-    setState(() => _loading = true);
+    setState(() => _loading = true); //start met laden
     try {
       final userCredential = await signInWithApple();
-
+//sla de gebruiker op in de firestore als die nog niet bestaat
       final user = userCredential.user;
       if (user != null) {
         final usersRef = FirebaseFirestore.instance
@@ -173,7 +176,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
         }
       }
 
-      if (!mounted) return;
+      if (!mounted) return; //check of de widget nog bestaat
+      //ga naar home scherm
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
@@ -181,18 +185,18 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Auth error')));
+      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Auth error'))); //snackbar is bar onderaan scherm. toon firebase foutmelding
     } catch (e) {
       if (!mounted) return;
       final translated = translateAppleError(e);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(translated)));
+      ).showSnackBar(SnackBar(content: Text(translated))); //toon vertaalde foutmelding
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false); //stop met laden
     }
   }
-
+//functie voor inloggen met github
   Future<UserCredential> signInWithGitHub() async {
     GithubAuthProvider githubProvider = GithubAuthProvider();
     githubProvider.addScope('read:user');
@@ -204,7 +208,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       return await FirebaseAuth.instance.signInWithProvider(githubProvider);
     }
   }
-
+//handler voor inloggen met github
   Future<void> _signInWithGitHubHandler() async {
     setState(() => _loading = true);
     try {
@@ -244,7 +248,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (mounted) setState(() => _loading = false);
     }
   }
-
+//handler voor inloggen met google
   Future<void> _signInWithGoogleHandler() async {
     setState(() => _loading = true);
     try {
@@ -284,20 +288,23 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (mounted) setState(() => _loading = false);
     }
   }
-
+//de submit functie voor het formulier als je op inloggen of registeren klikt met email en wachtwoord
   Future<void> _submit() async {
+    //kijkt of de velden goed zijn ingevuld
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    final email = _emailController.text.trim();
+    final email = _emailController.text.trim(); //trim() betekent zonder spaties
     final password = _passwordController.text.trim();
 
     try {
       if (_isLogin) {
+        //inloggen
         final cred = await _auth.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
-        final user = cred.user;
+        final user = cred.user; //haal de gebruiker op
+        //update eventueel ontbrekende gegevens in de database
         if (user != null) {
           final usersRef = FirebaseFirestore.instance
               .collection('users')
@@ -320,11 +327,13 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
           }
         }
       } else {
-        final cred = await _auth.createUserWithEmailAndPassword(
+        //registreren
+        final cred = await _auth.createUserWithEmailAndPassword( //maak nieuwe gebruiker aan in firebase auth
           email: email,
           password: password,
         );
         final user = cred.user;
+        //sla de gebruiker op in firestore
         if (user != null) {
           final usersRef = FirebaseFirestore.instance
               .collection('users')
@@ -337,10 +346,12 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
         }
       }
       if (!mounted) return;
+      //ga naar hoofdscherm
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
+      //toon foutmelding van firebase
       final message = e.message ?? 'Authentication error';
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -358,19 +369,20 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
 
   @override
   void dispose() {
+    //ruimt de controllers o pals het scherm sluit
     _emailController.dispose();
     _passwordController.dispose();
-    super.dispose();
+    super.dispose(); 
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(_isLogin ? 'Login' : 'Register')),
+  Widget build(BuildContext context) { //bouw het scherm
+    return Scaffold( //scaffold is de basis van het scherm
+      appBar: AppBar(title: Text(_isLogin ? 'Login' : 'Register')), //appbar met de titel die verandert als het login of register is
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
-          child: ConstrainedBox(
+          child: ConstrainedBox( //zorgt dat het formulier niet te breed wordt op grote schermen
             constraints: const BoxConstraints(maxWidth: 400),
             child: Card(
               child: Padding(
@@ -380,17 +392,20 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      //email veld
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(labelText: 'Email'),
-                        validator: (v) =>
+                        //validator voor email
+                        validator: (v) => 
                             (v == null || v.isEmpty) ? 'Enter email' : null,
                       ),
                       const SizedBox(height: 12),
+                      //wachtwoord invoerveld met oogje om wachtwoord te tonen
                       TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
+                        controller: _passwordController, //wachtwoord controller
+                        obscureText: _obscurePassword, //of het wachtwoord verborgen is
                         decoration: InputDecoration(
                           labelText: 'Password',
                           suffixIcon: IconButton(
@@ -400,14 +415,15 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                                   : Icons.visibility,
                             ),
                             onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
+                              () => _obscurePassword = !_obscurePassword, //wissel tussen tonen en verbergen
                             ),
                           ),
                         ),
                         validator: (v) =>
-                            (v == null || v.length < 6) ? 'Min 6 chars' : null,
+                            (v == null || v.length < 6) ? 'Min 6 chars' : null, //validator voor wachtwoord
                       ),
                       const SizedBox(height: 20),
+                      //laadicoon
                       _loading
                           ? const CircularProgressIndicator()
                           : ElevatedButton(
@@ -416,17 +432,18 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                             ),
                       const SizedBox(height: 20),
                       Column(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisSize: MainAxisSize.min, //zorgt dat de kolom niet te veel ruimte inneemt
                         children: [
                           SignInButton(
-                            Buttons.Google,
+                            Buttons.Google, //Buttons.Google is een standaard google knop van de package
                             onPressed: _signInWithGoogleHandler,
                           ),
                           const SizedBox(height: 12),
-                          SignInButton(
-                            Buttons.GitHub,
+                          SignInButton( 
+                            Buttons.GitHub, //Buttons.GitHub is een standaard github knop van de package
                             onPressed: _signInWithGitHubHandler,
                           ),
+                          //knop is alleen zichtbaar voor ios en macos, niet op web
                           if (!kIsWeb &&
                               (defaultTargetPlatform == TargetPlatform.iOS ||
                                   defaultTargetPlatform ==
@@ -440,7 +457,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      TextButton(
+                      TextButton( //tekst knop om te wisselen tussen inloggen en registeren
                         onPressed: () => setState(() => _isLogin = !_isLogin),
                         child: Text(
                           _isLogin

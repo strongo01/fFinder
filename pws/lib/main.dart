@@ -7,30 +7,41 @@ import 'firebase_options.dart';
 import 'views/login_register_view.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 
+//start van de app
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await GoogleSignIn.instance.initialize();
+  WidgetsFlutterBinding.ensureInitialized(); // flutter engine inisializeren
 
-  OpenFoodAPIConfiguration.userAgent = UserAgent(name: 'PWS');
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  ); // initialiseerd firebase voor het platform
+  await GoogleSignIn.instance
+      .initialize(); // de sign in voor google wordt geinitialiseerd
 
+  OpenFoodAPIConfiguration.userAgent = UserAgent(
+    name: 'PWS',
+  ); // de configuratie van de openfoodfacts api ingesteld
+
+  // standaard taal voor openfoodfacts
   OpenFoodAPIConfiguration.globalLanguages = <OpenFoodFactsLanguage>[
-    OpenFoodFactsLanguage.DUTCH
+    OpenFoodFactsLanguage.DUTCH,
   ];
-
+  //standaard land voor openfoodfacts
   OpenFoodAPIConfiguration.globalCountry = OpenFoodFactsCountry.NETHERLANDS;
-
+  //start de app
   runApp(const MyApp());
 }
 
+//de hoofdklasse van de app
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.system,
+      debugShowCheckedModeBanner: false, //verbergt de debug banner
+      themeMode: ThemeMode.system, // systeem instelling voor light of darkmode
+
+      //thema voor lightmode
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: const ColorScheme(
@@ -45,6 +56,7 @@ class MyApp extends StatelessWidget {
           onSurface: Colors.black,
         ),
       ),
+      //thema voor darkmode
       darkTheme: ThemeData(
         useMaterial3: true,
         colorScheme: const ColorScheme(
@@ -59,6 +71,7 @@ class MyApp extends StatelessWidget {
           onSurface: Colors.white,
         ),
       ),
+      //controleert of de gebruiker al is ingelogd, ja: dan homescreen, nee: dan loginregisterscherm
       home: FirebaseAuth.instance.currentUser != null
           ? const HomeScreen()
           : const LoginRegisterView(),
