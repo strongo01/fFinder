@@ -45,6 +45,24 @@ dependencies:
   openfoodfacts: ^3.27.0
   simple_barcode_scanner: ^0.4.0
 
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icons/appicon.png"
+  adaptive_icon_background: "#FEFCFB"
+  adaptive_icon_foreground: "assets/icons/appicon.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/icons/appicon.png"
+  windows:
+    generate: true
+    image_path: "assets/icons/appicon.png"
+  macos:
+    generate: true
+    image_path: "assets/icons/appicon.png"
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -55,6 +73,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
