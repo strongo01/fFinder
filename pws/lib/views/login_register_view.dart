@@ -25,20 +25,23 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-//variabelen voor de status van het scherm
+  //variabelen voor de status van het scherm
   bool _isLogin = true; //wisselt tussen inloggen en registereren
-  bool _loading = false;//laad icoon
-  bool _obscurePassword = true;//wachtwoord met bolletjes
-//functie voor inloggen met google
+  bool _loading = false; //laad icoon
+  bool _obscurePassword = true; //wachtwoord met bolletjes
+  //functie voor inloggen met google
   Future<UserCredential> signInWithGoogle() async {
     //als het platform web is
     if (kIsWeb) {
-      final googleProvider = GoogleAuthProvider();//google provider aanmaken
+      final googleProvider = GoogleAuthProvider(); //google provider aanmaken
       googleProvider.addScope('email'); //scopes toevoegen
-      googleProvider.setCustomParameters({'prompt': 'select_account'}); //aanpassen van parameters
+      googleProvider.setCustomParameters({
+        'prompt': 'select_account',
+      }); //aanpassen van parameters
 
       try {
-        final result = await FirebaseAuth.instance.signInWithPopup( //inloggen met popup
+        final result = await FirebaseAuth.instance.signInWithPopup(
+          //inloggen met popup
           googleProvider,
         );
         return result;
@@ -46,29 +49,30 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
         rethrow;
       }
     }
-//logica voor ios en android (dus geen web)
+    //logica voor ios en android (dus geen web)
     try {
       final signIn = GoogleSignIn.instance;
 
       GoogleSignInAccount? googleUser;
-// hij probeert inteloggen als de gebruiker al een keertje is ingelogd
+      // hij probeert inteloggen als de gebruiker al een keertje is ingelogd
       googleUser = await signIn.attemptLightweightAuthentication();
-//als dat niet zo is laat hij het inlogscherm zien als popup
+      //als dat niet zo is laat hij het inlogscherm zien als popup
       if (googleUser == null) {
-        if (signIn.supportsAuthenticate()) { //kijken of het platform popup ondersteunt
+        if (signIn.supportsAuthenticate()) {
+          //kijken of het platform popup ondersteunt
           googleUser = await signIn.authenticate();
         } else {
           googleUser = await signIn.attemptLightweightAuthentication();
         }
       }
-//als je het scherm wegklikt
+      //als je het scherm wegklikt
       if (googleUser == null) {
         throw FirebaseAuthException(
           code: 'sign_in_cancelled',
           message: 'Google Sign-In is geannuleerd door de gebruiker.',
         );
       }
-//haalt de autehtnicatie tokens op
+      //haalt de autehtnicatie tokens op
       final googleAuth = await googleUser.authentication;
 
       if (googleAuth.idToken == null) {
@@ -77,11 +81,11 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
           message: 'Kon geen idToken ophalen van Google.',
         );
       }
-//maakt een credential aan voor firebase
+      //maakt een credential aan voor firebase
       final credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
       );
-//logt in met firebase
+      //logt in met firebase
       final result = await FirebaseAuth.instance.signInWithCredential(
         credential,
       );
@@ -91,23 +95,26 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       rethrow;
     }
   }
-//hulpfunctie voor apple sign in wat een willekeurig string maakt
+
+  //hulpfunctie voor apple sign in wat een willekeurig string maakt
   String generateNonce([int length = 32]) {
     const charset =
         '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
-    final rand = Random.secure(); 
+    final rand = Random.secure();
     return List.generate(
       length,
       (_) => charset[rand.nextInt(charset.length)],
     ).join();
   }
-// hulpfunctie voor apple sign in wat een sha256 maakt van de string
+
+  // hulpfunctie voor apple sign in wat een sha256 maakt van de string
   String sha256ofString(String input) {
     final bytes = utf8.encode(input);
     final digest = sha256.convert(bytes);
     return digest.toString();
   }
-// functie die apple fouten vertaalt naar normale meldingen
+
+  // functie die apple fouten vertaalt naar normale meldingen
   String translateAppleError(Object error) {
     final message = error.toString(); //converteer error naar string
 
@@ -129,37 +136,40 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
 
     return 'Er is een fout opgetreden tijdens het inloggen met Apple.';
   }
-// functie voor inloggen met apple
+
+  // functie voor inloggen met apple
   Future<UserCredential> signInWithApple() async {
     final rawNonce = generateNonce();
     final nonce = sha256ofString(rawNonce);
-// vraag om apple id credential
+    // vraag om apple id credential
     final appleCredential = await SignInWithApple.getAppleIDCredential(
       scopes: [AppleIDAuthorizationScopes.email],
       nonce: nonce,
     );
 
-    if (appleCredential.identityToken == null) { //als er geen identity token is
+    if (appleCredential.identityToken == null) {
+      //als er geen identity token is
       throw FirebaseAuthException(
         code: 'null_identity_token',
         message: 'Apple returned a null identityToken',
       );
     }
-//maakt een oauth credential aan voor firebase
+    //maakt een oauth credential aan voor firebase
     final oauthCredential = OAuthProvider("apple.com").credential(
       idToken: appleCredential.identityToken!,
       rawNonce: rawNonce,
       accessToken: appleCredential.authorizationCode,
     );
-//logt in met firebase
+    //logt in met firebase
     return await FirebaseAuth.instance.signInWithCredential(oauthCredential);
   }
-//de handler voor apple sign in
+
+  //de handler voor apple sign in
   Future<void> _signInWithAppleHandler() async {
     setState(() => _loading = true); //start met laden
     try {
       final userCredential = await signInWithApple();
-//sla de gebruiker op in de firestore als die nog niet bestaat
+      //sla de gebruiker op in de firestore als die nog niet bestaat
       final user = userCredential.user;
       if (user != null) {
         final usersRef = FirebaseFirestore.instance
@@ -183,20 +193,21 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Auth error'))); //snackbar is bar onderaan scherm. toon firebase foutmelding
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message ?? 'Auth error')),
+      ); //snackbar is bar onderaan scherm. toon firebase foutmelding
     } catch (e) {
       if (!mounted) return;
       final translated = translateAppleError(e);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(translated))); //toon vertaalde foutmelding
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(translated)),
+      ); //toon vertaalde foutmelding
     } finally {
       if (mounted) setState(() => _loading = false); //stop met laden
     }
   }
-//functie voor inloggen met github
+
+  //functie voor inloggen met github
   Future<UserCredential> signInWithGitHub() async {
     GithubAuthProvider githubProvider = GithubAuthProvider();
     githubProvider.addScope('read:user');
@@ -208,7 +219,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       return await FirebaseAuth.instance.signInWithProvider(githubProvider);
     }
   }
-//handler voor inloggen met github
+
+  //handler voor inloggen met github
   Future<void> _signInWithGitHubHandler() async {
     setState(() => _loading = true);
     try {
@@ -248,7 +260,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (mounted) setState(() => _loading = false);
     }
   }
-//handler voor inloggen met google
+
+  //handler voor inloggen met google
   Future<void> _signInWithGoogleHandler() async {
     setState(() => _loading = true);
     try {
@@ -288,7 +301,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (mounted) setState(() => _loading = false);
     }
   }
-//de submit functie voor het formulier als je op inloggen of registeren klikt met email en wachtwoord
+
+  //de submit functie voor het formulier als je op inloggen of registeren klikt met email en wachtwoord
   Future<void> _submit() async {
     //kijkt of de velden goed zijn ingevuld
     if (!_formKey.currentState!.validate()) return;
@@ -328,7 +342,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
         }
       } else {
         //registreren
-        final cred = await _auth.createUserWithEmailAndPassword( //maak nieuwe gebruiker aan in firebase auth
+        final cred = await _auth.createUserWithEmailAndPassword(
+          //maak nieuwe gebruiker aan in firebase auth
           email: email,
           password: password,
         );
@@ -372,42 +387,91 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
     //ruimt de controllers o pals het scherm sluit
     _emailController.dispose();
     _passwordController.dispose();
-    super.dispose(); 
+    super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) { //bouw het scherm
-    return Scaffold( //scaffold is de basis van het scherm
-      appBar: AppBar(title: Text(_isLogin ? 'Login' : 'Register')), //appbar met de titel die verandert als het login of register is
+@override
+  Widget build(BuildContext context) {
+    // Een moderne border stijl voor de invulvelden
+    final inputBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey.shade300),
+    );
+
+    //bouw het scherm
+    return Scaffold(
+      backgroundColor: Colors.grey[50], // Iets zachtere achtergrondkleur
+      //scaffold is de basis van het scherm
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: ConstrainedBox( //zorgt dat het formulier niet te breed wordt op grote schermen
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            //zorgt dat het formulier niet te breed wordt op grote schermen
             constraints: const BoxConstraints(maxWidth: 400),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Form(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Logo en Titel
+                const Icon(
+                  Icons.lock_person_rounded,
+                  size: 80,
+                  color: Colors.blueAccent,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  _isLogin ? 'Welkom terug!' : 'Maak een account',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _isLogin
+                      ? 'Log in om verder te gaan'
+                      : 'Registreer om te beginnen',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                ),
+                const SizedBox(height: 40),
+
+                Form(
                   key: _formKey,
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       //email veld
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(labelText: 'Email'),
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          hintText: 'naam@voorbeeld.com',
+                          prefixIcon: const Icon(Icons.email_outlined),
+                          border: inputBorder,
+                          enabledBorder: inputBorder,
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
                         //validator voor email
-                        validator: (v) => 
+                        validator: (v) =>
                             (v == null || v.isEmpty) ? 'Enter email' : null,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       //wachtwoord invoerveld met oogje om wachtwoord te tonen
                       TextFormField(
                         controller: _passwordController, //wachtwoord controller
-                        obscureText: _obscurePassword, //of het wachtwoord verborgen is
+                        obscureText:
+                            _obscurePassword, //of het wachtwoord verborgen is
                         decoration: InputDecoration(
                           labelText: 'Password',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          border: inputBorder,
+                          enabledBorder: inputBorder,
+                          filled: true,
+                          fillColor: Colors.white,
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword
@@ -415,60 +479,116 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                                   : Icons.visibility,
                             ),
                             onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword, //wissel tussen tonen en verbergen
+                              () => _obscurePassword =
+                                  !_obscurePassword, //wissel tussen tonen en verbergen
                             ),
                           ),
                         ),
-                        validator: (v) =>
-                            (v == null || v.length < 6) ? 'Min 6 chars' : null, //validator voor wachtwoord
-                      ),
-                      const SizedBox(height: 20),
-                      //laadicoon
-                      _loading
-                          ? const CircularProgressIndicator()
-                          : ElevatedButton(
-                              onPressed: _submit,
-                              child: Text(_isLogin ? 'Login' : 'Register'),
-                            ),
-                      const SizedBox(height: 20),
-                      Column(
-                        mainAxisSize: MainAxisSize.min, //zorgt dat de kolom niet te veel ruimte inneemt
-                        children: [
-                          SignInButton(
-                            Buttons.Google, //Buttons.Google is een standaard google knop van de package
-                            onPressed: _signInWithGoogleHandler,
-                          ),
-                          const SizedBox(height: 12),
-                          SignInButton( 
-                            Buttons.GitHub, //Buttons.GitHub is een standaard github knop van de package
-                            onPressed: _signInWithGitHubHandler,
-                          ),
-                          //knop is alleen zichtbaar voor ios en macos, niet op web
-                          if (!kIsWeb &&
-                              (defaultTargetPlatform == TargetPlatform.iOS ||
-                                  defaultTargetPlatform ==
-                                      TargetPlatform.macOS)) ...[
-                            const SizedBox(height: 12),
-                            SignInButton(
-                              Buttons.Apple,
-                              onPressed: _signInWithAppleHandler,
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton( //tekst knop om te wisselen tussen inloggen en registeren
-                        onPressed: () => setState(() => _isLogin = !_isLogin),
-                        child: Text(
-                          _isLogin
-                              ? 'Create an account'
-                              : 'Have an account? Login',
-                        ),
+                        validator: (v) => (v == null || v.length < 6)
+                            ? 'Min 6 chars'
+                            : null, //validator voor wachtwoord
                       ),
                     ],
                   ),
                 ),
-              ),
+                const SizedBox(height: 24),
+
+                //laadicoon
+                if (_loading)
+                  const Center(child: CircularProgressIndicator())
+                else
+                  ElevatedButton(
+                    onPressed: _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
+                    child: Text(
+                      _isLogin ? 'Login' : 'Register',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+
+                const SizedBox(height: 24),
+
+                // Scheidingslijn
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: Colors.grey[300])),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'Of ga verder met',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: Colors.grey[300])),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                Column(
+                  mainAxisSize: MainAxisSize
+                      .min, //zorgt dat de kolom niet te veel ruimte inneemt
+                  children: [
+                    SignInButton(
+                      Buttons
+                          .Google, //Buttons.Google is een standaard google knop van de package
+                      text: "Inloggen met Google",
+                      onPressed: _signInWithGoogleHandler,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    const SizedBox(height: 12),
+                    SignInButton(
+                      Buttons
+                          .GitHub, //Buttons.GitHub is een standaard github knop van de package
+                      text: "Inloggen met GitHub",
+                      onPressed: _signInWithGitHubHandler,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    //knop is alleen zichtbaar voor ios en macos, niet op web
+                    if (!kIsWeb &&
+                        (defaultTargetPlatform == TargetPlatform.iOS ||
+                            defaultTargetPlatform == TargetPlatform.macOS)) ...[
+                      const SizedBox(height: 12),
+                      SignInButton(
+                        Buttons.Apple,
+                        text: "Inloggen met Apple",
+                        onPressed: _signInWithAppleHandler,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                //tekst knop om te wisselen tussen inloggen en registeren
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _isLogin ? 'Nog geen account?' : 'Heb je al een account?',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _isLogin = !_isLogin),
+                      child: Text(
+                        _isLogin ? 'Create an account' : 'Login',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),

@@ -6,6 +6,7 @@ import 'package:pws/views/home_screen.dart';
 import 'firebase_options.dart';
 import 'views/login_register_view.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 //start van de app
 Future<void> main() async {
@@ -55,6 +56,10 @@ class MyApp extends StatelessWidget {
           surface: Colors.white,
           onSurface: Colors.black,
         ),
+        //font voor de app
+        textTheme: GoogleFonts.nunitoTextTheme(
+          Theme.of(context).textTheme,
+        ),
       ),
       //thema voor darkmode
       darkTheme: ThemeData(
@@ -69,6 +74,10 @@ class MyApp extends StatelessWidget {
           onError: Colors.white,
           surface: Colors.black,
           onSurface: Colors.white,
+        ),
+        //font voor de app
+        textTheme: GoogleFonts.nunitoTextTheme(
+          Theme.of(context).textTheme,
         ),
       ),
       //controleert of de gebruiker al is ingelogd, ja: dan homescreen, nee: dan loginregisterscherm
