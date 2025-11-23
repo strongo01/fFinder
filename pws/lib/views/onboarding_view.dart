@@ -450,6 +450,12 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   @override
   Widget build(BuildContext context) {
+
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final inputTextStyle = TextStyle(color: isDarkMode ? Colors.white : Colors.black);
+
+
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -475,6 +481,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                     title: 'Wat is je voornaam?',
                     content: TextField(
                       controller: _firstNameController,
+                      style: inputTextStyle,
                       decoration: const InputDecoration(
                         labelText: 'Voornaam',
                         border: OutlineInputBorder(),
@@ -487,7 +494,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                     content: Column(
                       children: ['Man', 'Vrouw', 'Anders'].map((val) {
                         return RadioListTile<String>(
-                          title: Text(val),
+                          title: Text(val, style: inputTextStyle,),
                           value: val,
                           groupValue: _gender,
                           onChanged: (value) {
@@ -506,7 +513,10 @@ class _OnboardingViewState extends State<OnboardingView> {
                           _birthDate == null
                               ? 'Geen datum gekozen'
                               : '${_birthDate!.day}-${_birthDate!.month}-${_birthDate!.year}',
-                          style: const TextStyle(fontSize: 18),
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: isDarkMode ? Colors.white : Colors.black, // Toegevoegd
+                          ),
                         ),
                         const SizedBox(height: 20),
                         ElevatedButton(
@@ -579,6 +589,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                     content: TextField(
                       controller: _heightController,
                       keyboardType: TextInputType.number,
+                      style: inputTextStyle,
                       decoration: const InputDecoration(
                         labelText: 'Lengte in cm',
                         border: OutlineInputBorder(),
@@ -592,6 +603,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                     content: TextField(
                       controller: _weightController,
                       keyboardType: TextInputType.number,
+                      style: inputTextStyle,
                       decoration: const InputDecoration(
                         labelText: 'Gewicht in kg',
                         border: OutlineInputBorder(),
@@ -606,9 +618,10 @@ class _OnboardingViewState extends State<OnboardingView> {
                       children: [
                         Text(
                           '${_sleepHours.toStringAsFixed(1)} uur',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black, // Toegevoegd
                           ),
                         ),
                         Slider(
@@ -627,6 +640,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                     title: 'Hoe actief ben je?',
                     content: DropdownButtonFormField<String>(
                       value: _activityLevel,
+                      style: inputTextStyle,
                       items:
                           [
                                 'Niet actief',
@@ -653,6 +667,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                         TextField(
                           controller: _targetWeightController,
                           keyboardType: TextInputType.number,
+                          style: inputTextStyle,
                           decoration: const InputDecoration(
                             labelText: 'Streefgewicht in kg',
                             border: OutlineInputBorder(),
@@ -668,7 +683,11 @@ class _OnboardingViewState extends State<OnboardingView> {
                               Text(
                                 _rangeText,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(fontSize: 16),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color:
+                                      isDarkMode ? Colors.white : Colors.black,
+                                ),
                               ),
                               if (_rangeNote.isNotEmpty)
                                 Padding(
@@ -678,7 +697,9 @@ class _OnboardingViewState extends State<OnboardingView> {
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade600,
+                                      color: isDarkMode
+                                          ? Colors.grey.shade400
+                                          : Colors.grey.shade600,
                                     ),
                                   ),
                                 ),
@@ -692,7 +713,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                   _buildQuestionPage(
                     title: 'Wil je meldingen ontvangen?',
                     content: SwitchListTile(
-                      title: const Text('Meldingen inschakelen'),
+                      title: Text('Meldingen inschakelen', style: inputTextStyle,),
                       value: _notificationsEnabled,
                       onChanged: (val) async {
                         if (val) {
@@ -774,6 +795,8 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   // Helper widget om elke vraag pagina zelfde te maken
   Widget _buildQuestionPage({required String title, required Widget content}) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  
     //bouwt een pagina voor een vraag
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -782,7 +805,7 @@ class _OnboardingViewState extends State<OnboardingView> {
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black,),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 40),
