@@ -20,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    //haalt de huidige ingelogde gebruiker op 
+    //haalt de huidige ingelogde gebruiker op
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
@@ -58,14 +58,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     setState(() {
                       _errorMessage = null;
                     });
-// hij opent de barcode scanner en wacht totdat hij klaar is
+                    // hij opent de barcode scanner en wacht totdat hij klaar is
                     var res = await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const SimpleBarcodeScannerPage(),
                       ),
                     );
-// als er een geldige barcode is gescand en niet -1
+                    // als er een geldige barcode is gescand en niet -1
                     if (res is String && res != '-1') {
                       setState(() {
                         _isLoading = true; //start laden
@@ -81,10 +81,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           version: ProductQueryVersion.v3,
                         );
 
-// haal de productinformatie op via de api
+                        // haal de productinformatie op via de api
                         final ProductResultV3 result =
                             await OpenFoodAPIClient.getProductV3(configuration);
-// als het product goed is gevonden
+                        // als het product goed is gevonden
                         if (result.status == ProductResultV3.statusSuccess) {
                           setState(() {
                             _scannedProduct = result.product;
@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           });
                         }
                       } catch (e) {
-                        //vangt de technische fouten op 
+                        //vangt de technische fouten op
                         setState(() {
                           _errorMessage = 'Fout bij ophalen: $e';
                         });
@@ -110,16 +110,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: const Text('Scan een barcode'),
                 ),
                 const SizedBox(height: 30),
-//laadcircel animatie
+                //laadcircel animatie
                 if (_isLoading) const CircularProgressIndicator(),
-//toont een foutmelding in het rood gecenteerd als die er is
+                //toont een foutmelding in het rood gecenteerd als die er is
                 if (_errorMessage != null)
                   Text(
                     _errorMessage!,
                     style: const TextStyle(color: Colors.red),
                     textAlign: TextAlign.center,
                   ),
-//als er een product gevonden is, dan laat hij die resultaten zien
+                //als er een product gevonden is, dan laat hij die resultaten zien
                 if (_scannedProduct != null) ...[
                   const Text(
                     'Resultaat:',
@@ -136,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Voedingswaarden (per 100g/ml):',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-// lijst met de voedingswaarden
+                  // lijst met de voedingswaarden
                   _buildInfoRow(
                     'Energie (kcal)',
                     _scannedProduct!.nutriments
@@ -210,12 +210,16 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-//hulpmethode om netjes een rij te maken met een label en de waarde
+
+  //hulpmethode om netjes een rij te maken met een label en de waarde
   Widget _buildInfoRow(String label, String? value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0), // ruimte tussen de rijen
+      padding: const EdgeInsets.symmetric(
+        vertical: 4.0,
+      ), // ruimte tussen de rijen
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, // zorgt dat de tekst bovenaan uitgelijnd is
+        crossAxisAlignment: CrossAxisAlignment
+            .start, // zorgt dat de tekst bovenaan uitgelijnd is
         children: [
           SizedBox(
             width: 120,
@@ -224,7 +228,9 @@ class _HomeScreenState extends State<HomeScreen> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          Expanded(child: Text(value ?? 'Onbekend / Niet opgegeven')), // vult de rest van de rij op met de waarde
+          Expanded(
+            child: Text(value ?? 'Onbekend / Niet opgegeven'),
+          ), // vult de rest van de rij op met de waarde
         ],
       ),
     );
