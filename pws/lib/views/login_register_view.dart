@@ -390,8 +390,12 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
     super.dispose();
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
+    // kijken of de app in dark mode staat
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
     // Een moderne border stijl voor de invulvelden
     final inputBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -400,7 +404,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
 
     //bouw het scherm
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Iets zachtere achtergrondkleur
+      backgroundColor: isDarkMode
+          ? theme.scaffoldBackgroundColor
+          : Colors.grey[50],
       //scaffold is de basis van het scherm
       body: Center(
         child: SingleChildScrollView(
@@ -434,7 +440,11 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       ? 'Log in om verder te gaan'
                       : 'Registreer om te beginnen',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  style: TextStyle(
+                    // Iets lichtere tekst, maar wel leesbaar in dark mode
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 40),
 
@@ -445,6 +455,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       //email veld
                       TextFormField(
                         controller: _emailController,
+                        style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black),
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
                           labelText: 'Email',
@@ -453,7 +465,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                           border: inputBorder,
                           enabledBorder: inputBorder,
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: isDarkMode
+                              ? Colors.grey[900]
+                              : Colors.white,
                         ),
                         //validator voor email
                         validator: (v) =>
@@ -463,6 +477,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       //wachtwoord invoerveld met oogje om wachtwoord te tonen
                       TextFormField(
                         controller: _passwordController, //wachtwoord controller
+                        style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black),
                         obscureText:
                             _obscurePassword, //of het wachtwoord verborgen is
                         decoration: InputDecoration(
@@ -471,7 +487,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                           border: inputBorder,
                           enabledBorder: inputBorder,
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: isDarkMode
+                              ? Colors.grey[900]
+                              : Colors.white,
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword
@@ -509,9 +527,11 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       elevation: 2,
                     ),
                     child: Text(
-                      _isLogin ? 'Login' : 'Register',
+                      _isLogin ? 'Login' : 'Registreer',
                       style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
 
@@ -525,7 +545,12 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         'Of ga verder met',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                        style: TextStyle(
+                          color: isDarkMode
+                              ? Colors.grey[400]
+                              : Colors.grey[500],
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     Expanded(child: Divider(color: Colors.grey[300])),
@@ -538,12 +563,12 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       .min, //zorgt dat de kolom niet te veel ruimte inneemt
                   children: [
                     SignInButton(
-                      Buttons
-                          .Google, //Buttons.Google is een standaard google knop van de package
+                      isDarkMode ? Buttons.GoogleDark : Buttons.Google, //Buttons.Google is een standaard google knop van de package
                       text: "Inloggen met Google",
                       onPressed: _signInWithGoogleHandler,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     SignInButton(
@@ -552,7 +577,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       text: "Inloggen met GitHub",
                       onPressed: _signInWithGitHubHandler,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     //knop is alleen zichtbaar voor ios en macos, niet op web
                     if (!kIsWeb &&
@@ -564,7 +590,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                         text: "Inloggen met Apple",
                         onPressed: _signInWithAppleHandler,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ],
                   ],
@@ -577,12 +604,14 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                   children: [
                     Text(
                       _isLogin ? 'Nog geen account?' : 'Heb je al een account?',
-                      style: TextStyle(color: Colors.grey[600]),
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                      ),
                     ),
                     TextButton(
                       onPressed: () => setState(() => _isLogin = !_isLogin),
                       child: Text(
-                        _isLogin ? 'Create an account' : 'Login',
+                        _isLogin ? 'Maak een account' : 'Login',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
