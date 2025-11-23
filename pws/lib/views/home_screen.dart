@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
@@ -19,6 +20,96 @@ class _HomeScreenState extends State<HomeScreen> {
   Product? _scannedProduct; //het gevonden product
   bool _isLoading = false; // of hi jaan het laden is
   String? _errorMessage; // eventuele foutmelding
+
+  Map<String, dynamic>? _userData;
+  double? _calorieAllowance;
+
+  @override
+  void initState() {
+    // bij de start van  widget
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    if (doc.exists) {
+      setState(() {
+        _userData = doc.data();
+        _calorieAllowance = _calculateCalories(_userData!);
+      });
+    }
+  }
+
+  double _calculateCalories(Map<String, dynamic> data) { //calorieen
+    final gender = data['gender'] ?? 'Man';
+    final weight = (data['weight'] ?? 70).toDouble(); // kg
+    final height = (data['height'] ?? 170).toDouble(); // cm
+    final birthDateString =
+        data['birthDate'] ?? DateTime(2000).toIso8601String();
+    final goal = data['goal'] ?? 'Op gewicht blijven';
+    final activityFull =
+        data['activityLevel'] ??
+        'Weinig actief: je zit veel, weinig beweging per dag';
+
+    final birthDate = DateTime.tryParse(birthDateString) ?? DateTime(2000);
+    final age = DateTime.now().year - birthDate.year;
+
+    double bmr;
+    if (gender == 'Vrouw') {
+      bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+    } else {
+      bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+    }
+
+    final activity = activityFull.split(':')[0].trim();
+
+    double activityFactor;
+    switch (activity) {
+      case 'Weinig actief':
+        activityFactor = 1.2;
+        break;
+      case 'Licht actief':
+        activityFactor = 1.375;
+        break;
+      case 'Gemiddeld actief':
+        activityFactor = 1.55;
+        break;
+      case 'Zeer actief':
+        activityFactor = 1.725;
+        break;
+      case 'Extreem actief':
+        activityFactor = 1.9;
+        break;
+      default:
+        activityFactor = 1.2;
+    }
+
+    double calories = bmr * activityFactor;
+
+    // Doel aanpassen
+    switch (goal) {
+      case 'Afvallen':
+        calories -= 500;
+        break;
+      case 'Aankomen (spiermassa)':
+      case 'Aankomen (algemeen)':
+        calories += 300;
+        break;
+      case 'Op gewicht blijven':
+      default:
+        break;
+    }
+
+    return calories;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,11 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (index == 0) {
           return CupertinoPageScaffold(
             navigationBar: const CupertinoNavigationBar(middle: Text('Home')),
-            child: SafeArea(
-              child: Material(
-                child: _buildHomeContent(),
-              ),
-            ),
+            child: SafeArea(child: Material(child: _buildHomeContent())),
           );
         } else {
           // Tab 2: Instellingen
@@ -104,9 +191,38 @@ class _HomeScreenState extends State<HomeScreen> {
               //zegt wie er is ingelogd
               Text(
                 'Ingelogd als: ${user?.email ?? "Onbekend"}',
-                style:
-                    TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
               ),
+              const SizedBox(height: 20),
+              if (_userData != null && _calorieAllowance != null) // toont de caloriebehoefte als  data geladen
+                Card(
+                  color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Dagelijkse caloriebehoefte',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          '${_calorieAllowance!.round()} kcal',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
               const SizedBox(height: 40),
               //knop om een barcode te scannen
               ElevatedButton(

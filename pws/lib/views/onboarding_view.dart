@@ -29,20 +29,37 @@ class _OnboardingViewState extends State<OnboardingView> {
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   double _sleepHours = 8.0;
-  String _activityLevel = 'Gemiddeld';
+  String _activityLevel = 'Weinig actief';
+  String _goal = 'Afvallen';
   final TextEditingController _targetWeightController = TextEditingController();
   bool _notificationsEnabled = false;
 
-  final int _totalQuestions = 9;
+  final int _totalQuestions = 10;
 
   String _rangeText = '';
   bool _rangeLoading = false;
   String _rangeNote = '';
 
-  final Map<String, Map<int, Map<String, double>>> _lmsCache = { // cache voor LMS-waarden
-    '1': {}, // man 
+  final Map<String, Map<int, Map<String, double>>> _lmsCache = {
+    // cache voor LMS-waarden
+    '1': {}, // man
     '2': {}, // vrouw
   };
+
+  final List<String> activityOptions = [ // opties voor activiteitenniveau
+    'Weinig actief: je zit veel, weinig beweging per dag',
+    'Licht actief: je wandelt kort (10–20 min) of lichte beweging',
+    'Gemiddeld actief: 3–4x per week sporten of veel wandelen',
+    'Zeer actief: elke dag intensieve training of zwaar werk',
+    'Extreem actief: topsport niveau of fysiek zwaar dagelijks werk',
+  ];
+
+  final List<String> goalOptions = [ // opties voor doelen
+    'Afvallen',
+    'Op gewicht blijven',
+    'Aankomen (spiermassa)',
+    'Aankomen (algemeen)',
+  ];
 
   Timer? _debounceTimer; // timer voor debouncing range update
 
@@ -71,13 +88,16 @@ class _OnboardingViewState extends State<OnboardingView> {
         });
 
     // listeners
-    _heightController.addListener(_scheduleRangeUpdate); // update range bij veranderen lengte
+    _heightController.addListener(
+      _scheduleRangeUpdate,
+    ); // update range bij veranderen lengte
     _weightController.addListener(_scheduleRangeUpdate);
   }
 
   void _scheduleRangeUpdate() {
     _debounceTimer?.cancel(); // annuleer vorige timer als die er is
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () { // wacht 300ms
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      // wacht 300ms
       _updateRange();
     });
   }
@@ -182,10 +202,11 @@ class _OnboardingViewState extends State<OnboardingView> {
         'height': double.tryParse(_heightController.text) ?? 0,
         'weight': double.tryParse(_weightController.text) ?? 0,
         'sleepHours': _sleepHours,
-        'activityLevel': _activityLevel,
         'targetWeight': double.tryParse(_targetWeightController.text) ?? 0,
         'notificationsEnabled': _notificationsEnabled,
         'onboardingaf': true,
+        'activityLevel': _activityLevel,
+        'goal': _goal,
       }, SetOptions(merge: true));
 
       if (mounted) {
@@ -297,16 +318,22 @@ class _OnboardingViewState extends State<OnboardingView> {
     // kinderen 2-18 jaar
     try {
       await _ensureCdcLmsLoaded(); // zorgt dat _lmsCache gevuld is (offline)
-      final sexCode = (_gender == 'Vrouw') ? '2' : '1'; 
+      final sexCode = (_gender == 'Vrouw') ? '2' : '1';
       final nearestMonth = ageMonths;
-      Map<String, double>? lms = _lmsCache[sexCode]?[nearestMonth]; // probeer exacte maand
-      if (lms == null) { // zoek dichtstbijzijnde maand
-        final keys = _lmsCache[sexCode]?.keys.toList() ?? []; // allebeschikbaare maanden
-        if (keys.isNotEmpty) { // als er maanden zijn
-           keys.sort(); // sorteer ze
-          int nearest = keys.reduce( // vind dichtstbijzijnde maand
-            (a, b) =>
-                ((a - nearestMonth).abs() < (b - nearestMonth).abs()) ? a : b, // kies de dichtstbijzijnde
+      Map<String, double>? lms =
+          _lmsCache[sexCode]?[nearestMonth]; // probeer exacte maand
+      if (lms == null) {
+        // zoek dichtstbijzijnde maand
+        final keys =
+            _lmsCache[sexCode]?.keys.toList() ?? []; // allebeschikbaare maanden
+        if (keys.isNotEmpty) {
+          // als er maanden zijn
+          keys.sort(); // sorteer ze
+          int nearest = keys.reduce(
+            // vind dichtstbijzijnde maand
+            (a, b) => ((a - nearestMonth).abs() < (b - nearestMonth).abs())
+                ? a
+                : b, // kies de dichtstbijzijnde
           );
           lms = _lmsCache[sexCode]?[nearest];
         }
@@ -353,19 +380,23 @@ class _OnboardingViewState extends State<OnboardingView> {
     }
   }
 
-  double _bmiFromLms(double z, double L, double M, double S) { // BMI berekenen vanuit LMS en z-score
+  double _bmiFromLms(double z, double L, double M, double S) {
+    // BMI berekenen vanuit LMS en z-score
     if (L == 0) return M * exp(S * z); // speciale case L=0
     return M * pow(1 + L * S * z, 1 / L); // algemene formule
   }
 
-  Future<void> _ensureCdcLmsLoaded() async { // zorgt dat LMS data uit CSV is geladen
-    if ((_lmsCache['1']?.isNotEmpty ?? false) && 
+  Future<void> _ensureCdcLmsLoaded() async {
+    // zorgt dat LMS data uit CSV is geladen
+    if ((_lmsCache['1']?.isNotEmpty ?? false) &&
         (_lmsCache['2']?.isNotEmpty ?? false)) {
       return;
     }
 
     // asset path: assets/cdc/bmiagerev.csv
-    final csvString = await rootBundle.loadString('assets/cdc/bmiagerev.csv'); // laad CSV bestand
+    final csvString = await rootBundle.loadString(
+      'assets/cdc/bmiagerev.csv',
+    ); // laad CSV bestand
     final lines = const LineSplitter().convert(csvString);
     if (lines.isEmpty) throw Exception('Leeg CSV bestand');
 
@@ -450,11 +481,10 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   @override
   Widget build(BuildContext context) {
-
-        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final inputTextStyle = TextStyle(color: isDarkMode ? Colors.white : Colors.black);
-
-
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final inputTextStyle = TextStyle(
+      color: isDarkMode ? Colors.white : Colors.black,
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -494,7 +524,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                     content: Column(
                       children: ['Man', 'Vrouw', 'Anders'].map((val) {
                         return RadioListTile<String>(
-                          title: Text(val, style: inputTextStyle,),
+                          title: Text(val, style: inputTextStyle),
                           value: val,
                           groupValue: _gender,
                           onChanged: (value) {
@@ -515,14 +545,16 @@ class _OnboardingViewState extends State<OnboardingView> {
                               : '${_birthDate!.day}-${_birthDate!.month}-${_birthDate!.year}',
                           style: TextStyle(
                             fontSize: 18,
-                            color: isDarkMode ? Colors.white : Colors.black, // Toegevoegd
+                            color: isDarkMode
+                                ? Colors.white
+                                : Colors.black, // Toegevoegd
                           ),
                         ),
                         const SizedBox(height: 20),
                         ElevatedButton(
                           onPressed: () async {
                             // Check of het een iOS app is
-                            // Op web gebruiken westandaard picker 
+                            // Op web gebruiken westandaard picker
                             final bool isIosApp =
                                 !kIsWeb &&
                                 defaultTargetPlatform == TargetPlatform.iOS;
@@ -571,6 +603,15 @@ class _OnboardingViewState extends State<OnboardingView> {
                                 initialDate: _birthDate ?? DateTime(2000),
                                 firstDate: DateTime(1900),
                                 lastDate: DateTime.now(),
+                                builder: (context, child) {
+                                  // Forceer dark theme voor de picker als dark mode aan staat
+                                  return Theme(
+                                    data: isDarkMode
+                                        ? ThemeData.dark()
+                                        : Theme.of(context),
+                                    child: child!,
+                                  );
+                                },
                               );
                               if (picked != null) {
                                 setState(() => _birthDate = picked);
@@ -621,7 +662,9 @@ class _OnboardingViewState extends State<OnboardingView> {
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.white : Colors.black, // Toegevoegd
+                            color: isDarkMode
+                                ? Colors.white
+                                : Colors.black, // Toegevoegd
                           ),
                         ),
                         Slider(
@@ -637,26 +680,18 @@ class _OnboardingViewState extends State<OnboardingView> {
                   ),
                   // Vraag 7: Actief
                   _buildQuestionPage(
-                    title: 'Hoe actief ben je?',
-                    content: DropdownButtonFormField<String>(
-                      value: _activityLevel,
-                      style: inputTextStyle,
-                      items:
-                          [
-                                'Niet actief',
-                                'Licht actief',
-                                'Gemiddeld',
-                                'Zeer actief',
-                              ]
-                              .map(
-                                (e) =>
-                                    DropdownMenuItem(value: e, child: Text(e)),
-                              )
-                              .toList(),
-                      onChanged: (val) => setState(() => _activityLevel = val!),
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
+                    title: 'Hoe actief ben je dagelijks?',
+                    content: Column(
+                      children: activityOptions.map((val) {
+                        return RadioListTile<String>( // Radio knop voor elke optie
+                          title: Text(val, style: inputTextStyle),
+                          value: val,
+                          groupValue: _activityLevel,
+                          onChanged: (value) {
+                            setState(() => _activityLevel = value!);
+                          },
+                        );
+                      }).toList(),
                     ),
                   ),
                   // Vraag 8: Streefgewicht
@@ -685,8 +720,9 @@ class _OnboardingViewState extends State<OnboardingView> {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color:
-                                      isDarkMode ? Colors.white : Colors.black,
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black,
                                 ),
                               ),
                               if (_rangeNote.isNotEmpty)
@@ -709,11 +745,31 @@ class _OnboardingViewState extends State<OnboardingView> {
                     ),
                   ),
 
-                  // Vraag 9: Meldingen
+                  // Vraag9: Wat is je doel?
+                  _buildQuestionPage(
+                    title: 'Wat is je doel?',
+                    content: Column(
+                      children: goalOptions.map((val) {
+                        return RadioListTile<String>(
+                          title: Text(val, style: inputTextStyle),
+                          value: val, // waarde van deze optie
+                          groupValue: _goal,
+                          onChanged: (value) {
+                            setState(() => _goal = value!);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                  // Vraag 10: Meldingen
                   _buildQuestionPage(
                     title: 'Wil je meldingen ontvangen?',
                     content: SwitchListTile(
-                      title: Text('Meldingen inschakelen', style: inputTextStyle,),
+                      title: Text(
+                        'Meldingen inschakelen',
+                        style: inputTextStyle,
+                      ),
                       value: _notificationsEnabled,
                       onChanged: (val) async {
                         if (val) {
@@ -796,7 +852,7 @@ class _OnboardingViewState extends State<OnboardingView> {
   // Helper widget om elke vraag pagina zelfde te maken
   Widget _buildQuestionPage({required String title, required Widget content}) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-  
+
     //bouwt een pagina voor een vraag
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -805,7 +861,11 @@ class _OnboardingViewState extends State<OnboardingView> {
         children: [
           Text(
             title,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black,),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 40),
