@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -5,7 +6,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pws/views/home_screen.dart';
 import 'firebase_options.dart';
 import 'views/login_register_view.dart';
-import 'package:openfoodfacts/openfoodfacts.dart';
+import 'views/onboarding_view.dart';
+import 'package:openfoodfacts/openfoodfacts.dart' hide User;
 import 'package:google_fonts/google_fonts.dart';
 
 //start van de app
@@ -41,7 +43,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false, //verbergt de debug banner
       themeMode: ThemeMode.system, // systeem instelling voor light of darkmode
-
       //thema voor lightmode
       theme: ThemeData(
         useMaterial3: true,
@@ -57,9 +58,7 @@ class MyApp extends StatelessWidget {
           onSurface: Colors.black,
         ),
         //font voor de app
-        textTheme: GoogleFonts.nunitoTextTheme(
-          Theme.of(context).textTheme,
-        ),
+        textTheme: GoogleFonts.nunitoTextTheme(Theme.of(context).textTheme),
       ),
       //thema voor darkmode
       darkTheme: ThemeData(
@@ -76,14 +75,67 @@ class MyApp extends StatelessWidget {
           onSurface: Colors.white,
         ),
         //font voor de app
-        textTheme: GoogleFonts.nunitoTextTheme(
-          Theme.of(context).textTheme,
-        ),
+        textTheme: GoogleFonts.nunitoTextTheme(Theme.of(context).textTheme),
       ),
-      //controleert of de gebruiker al is ingelogd, ja: dan homescreen, nee: dan loginregisterscherm
-      home: FirebaseAuth.instance.currentUser != null
-          ? const HomeScreen()
-          : const LoginRegisterView(),
+      //controleert of de gebruiker al is ingelogd en of onboarding af is, ja: dan homescreen, nee: dan loginregisterscherm of onboardingview
+      home: StreamBuilder<User?>(
+        //luistert naar de authenticatie status
+        stream: FirebaseAuth.instance
+            .authStateChanges(), //stream van authenticatie veranderingen
+        builder: (context, snapshot) {
+          //builder functie die reageert op veranderingen in de stream
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            //wacht op de verbinding
+            return const Scaffold(
+              //laat een laadscherm zien terwijl hij wacht
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          if (snapshot.hasData) {
+            //als er een gebruiker is ingelogd
+            // Gebruiker is ingelogd, check nu Firestore voor onboardingaf
+            return FutureBuilder<DocumentSnapshot>(
+              //haalt het document van de gebruiker op
+              future: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(snapshot.data!.uid)
+                  .get(),
+              builder: (context, userDocSnapshot) {
+                //builder functie die reageert op het ophalen van het document
+                if (userDocSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                if (userDocSnapshot.hasData && userDocSnapshot.data!.exists) {
+                  //als het document bestaat
+                  final data =
+                      userDocSnapshot.data!.data()
+                          as Map<String, dynamic>; //haal de data op
+                  final bool onboardingAf =
+                      data['onboardingaf'] ??
+                      false; //controleer of onboarding is voltooid
+
+                  if (onboardingAf) {
+                    return const HomeScreen();
+                  } else {
+                    return const OnboardingView();
+                  }
+                }
+
+                // Als het document niet bestaat, stuur naar onboarding (veiligheidshalve)
+                return const OnboardingView();
+              },
+            );
+          }
+
+          // Niet ingelogd
+          return const LoginRegisterView();
+        },
+      ),
     );
   }
 }
