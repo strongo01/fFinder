@@ -264,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         });
                       } else {
                         setState(() {
-                          _errorMessage = 'Product niet gevonden in database';
+                          _errorMessage = 'Product niet gevonden in de database';
                         });
                       }
                     } catch (e) {
