@@ -33,6 +33,10 @@ class _OnboardingViewState extends State<OnboardingView> {
   String _goal = 'Afvallen';
   final TextEditingController _targetWeightController = TextEditingController();
   bool _notificationsEnabled = false;
+  static const int minHeightCm = 50;
+  static const int maxHeightCm = 300;
+  static const int minWeightKg = 20;
+  static const int maxWeightKg = 800;
 
   final int _totalQuestions = 10;
 
@@ -117,8 +121,18 @@ class _OnboardingViewState extends State<OnboardingView> {
         }
         break;
       case 3: // Lengte
-        if (_heightController.text.trim().isEmpty) {
+        final heightText = _heightController.text.trim();
+        if (heightText.isEmpty) {
           _showError('Vul alsjeblieft je lengte in.');
+          return false;
+        }
+        final value = int.tryParse(heightText);
+        if (value == null) {
+          _showError('Voer een geldig getal in voor lengte.');
+          return false;
+        }
+        if (value < minHeightCm || value > maxHeightCm) {
+          _showError('Lengte moet tussen $minHeightCm cm en $maxHeightCm cm liggen.');
           return false;
         }
         break;
@@ -129,8 +143,12 @@ class _OnboardingViewState extends State<OnboardingView> {
           return false;
         }
         final weight = double.tryParse(weightText);
-        if (weight == null || weight <= 0) {
-          _showError('Vul een geldig gewicht in (groter dan 0).');
+        if (weight == null) {
+          _showError('Vul een gewicht in.');
+          return false;
+        }
+        if (weight <= minWeightKg || weight >= maxWeightKg) {
+          _showError('Uw gewicht moet tussen $minWeightKg kg en $maxWeightKg kg liggen.');
           return false;
         }
         break;
@@ -141,8 +159,12 @@ class _OnboardingViewState extends State<OnboardingView> {
           return false;
         }
         final targetWeight = double.tryParse(targetWeightText);
-        if (targetWeight == null || targetWeight <= 0) {
-          _showError('Vul een geldig streefgewicht in (groter dan 0).');
+        if (targetWeight == null) {
+          _showError('Vul een streefgewicht in');
+          return false;
+        }
+        if (targetWeight <= minWeightKg || targetWeight >= maxWeightKg) {
+          _showError('Uw streefgewicht moet tussen $minWeightKg kg en $maxWeightKg kg liggen.');
           return false;
         }
         break;
@@ -297,7 +319,7 @@ class _OnboardingViewState extends State<OnboardingView> {
       final maxWeight = 24.9 * pow(heightM, 2); // bovengrens gezond gewicht
       setState(() {
         _rangeText =
-            'Gezond gewicht (volwassenen): ${minWeight.toStringAsFixed(1)} kg – ${maxWeight.toStringAsFixed(1)} kg';
+            'Gezond gewicht voor u (volwassen): ${minWeight.toStringAsFixed(1)} kg – ${maxWeight.toStringAsFixed(1)} kg';
         _rangeNote = 'Gezond BMI: 18.5 – 24.9';
         _rangeLoading = false;
       });
@@ -635,6 +657,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                         labelText: 'Lengte in cm',
                         border: OutlineInputBorder(),
                         suffixText: 'cm',
+                        helperText: 'Min $minHeightCm cm - Max $maxHeightCm cm',
                       ),
                     ),
                   ),
@@ -649,6 +672,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                         labelText: 'Gewicht in kg',
                         border: OutlineInputBorder(),
                         suffixText: 'kg',
+                        helperText: 'Min $minWeightKg kg - Max $maxWeightKg kg',
                       ),
                     ),
                   ),
