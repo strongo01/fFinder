@@ -594,7 +594,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                             fontSize: 18,
                             color: isDarkMode
                                 ? Colors.white
-                                : Colors.black, // Toegevoegd
+                                : Colors.black,
                           ),
                         ),
                         const SizedBox(height: 20),

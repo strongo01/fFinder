@@ -6,6 +6,7 @@ import 'package:pws/views/settings_view.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:flutter/cupertino.dart'; //voor ios stijl widgets
 import 'package:flutter/foundation.dart'; // Voor platform check
+import 'add_view.dart';
 
 //homescreen is een statefulwidget omdat de inhoud verandert
 class HomeScreen extends StatefulWidget {
@@ -48,7 +49,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  double _calculateCalories(Map<String, dynamic> data) { //calorieen
+  double _calculateCalories(Map<String, dynamic> data) {
+    //calorieen
     final gender = data['gender'] ?? 'Man';
     final weight = (data['weight'] ?? 70).toDouble(); // kg
     final height = (data['height'] ?? 170).toDouble(); // cm
@@ -139,8 +141,31 @@ class _HomeScreenState extends State<HomeScreen> {
       tabBuilder: (context, index) {
         if (index == 0) {
           return CupertinoPageScaffold(
-            navigationBar: const CupertinoNavigationBar(middle: Text('Vandaag')),
-            child: SafeArea(child: Material(child: _buildHomeContent())),
+            navigationBar: CupertinoNavigationBar(
+              middle: const Text('Vandaag'),
+              trailing: CupertinoButton(
+                padding: EdgeInsets.zero,
+                child: const Icon(CupertinoIcons.barcode_viewfinder),
+                onPressed: _scanBarcode,
+              ),
+            ),
+            child: SafeArea(
+              child: Material(
+                child: Scaffold(
+                  body: _buildHomeContent(),
+                  floatingActionButton: FloatingActionButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const AddPage(),
+                        ),
+                      );
+                    },
+                    child: const Icon(Icons.add),
+                  ),
+                ),
+              ),
+            ),
           );
         } else {
           // Tab 2: Instellingen
@@ -162,6 +187,10 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Home'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: _scanBarcode,
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
               Navigator.of(context).push(
@@ -172,7 +201,74 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: _buildHomeContent(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (context) => const AddPage()));
+        },
+        child: const Icon(Icons.add),
+      ),
     );
+  }
+
+  Future<void> _scanBarcode() async {
+    //hij reset de foutmeldingen
+    setState(() {
+      _errorMessage = null;
+    });
+    // hij opent de barcode scanner en wacht totdat hij klaar is
+    var res = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: const Text('Scan Barcode')),
+          body: const SimpleBarcodeScannerPage(),
+        ),
+      ),
+    );
+    // als er een geldige barcode is gescand en niet -1
+    if (res is String && res != '-1') {
+      setState(() {
+        _isLoading = true; //start laden
+        _scannedProduct = null; // wis vorige product
+      });
+
+      try {
+        //configureert de zoekopdracht voor openfoodfacts
+        final configuration = ProductQueryConfiguration(
+          res,
+          language: OpenFoodFactsLanguage.DUTCH,
+          fields: [ProductField.ALL],
+          version: ProductQueryVersion.v3,
+        );
+
+        // haal de productinformatie op via de api
+        final ProductResultV3 result = await OpenFoodAPIClient.getProductV3(
+          configuration,
+        );
+        // als het product goed is gevonden
+        if (result.status == ProductResultV3.statusSuccess) {
+          setState(() {
+            _scannedProduct = result.product;
+          });
+        } else {
+          setState(() {
+            _errorMessage = 'Product niet gevonden in de database';
+          });
+        }
+      } catch (e) {
+        //vangt de technische fouten op
+        setState(() {
+          _errorMessage = 'Fout bij ophalen: $e';
+        });
+      } finally {
+        //stop de laad animatie
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Widget _buildHomeContent() {
@@ -196,7 +292,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              if (_userData != null && _calorieAllowance != null) // toont de caloriebehoefte als  data geladen
+              if (_userData != null &&
+                  _calorieAllowance !=
+                      null) // toont de caloriebehoefte als  data geladen
                 Card(
                   color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
                   child: Padding(
@@ -226,60 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 40),
               //knop om een barcode te scannen
               ElevatedButton(
-                onPressed: () async {
-                  //hij reset de foutmeldingen
-                  setState(() {
-                    _errorMessage = null;
-                  });
-                  // hij opent de barcode scanner en wacht totdat hij klaar is
-                  var res = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SimpleBarcodeScannerPage(),
-                    ),
-                  );
-                  // als er een geldige barcode is gescand en niet -1
-                  if (res is String && res != '-1') {
-                    setState(() {
-                      _isLoading = true; //start laden
-                      _scannedProduct = null; // wis vorige product
-                    });
-
-                    try {
-                      //configureert de zoekopdracht voor openfoodfacts
-                      final configuration = ProductQueryConfiguration(
-                        res,
-                        language: OpenFoodFactsLanguage.DUTCH,
-                        fields: [ProductField.ALL],
-                        version: ProductQueryVersion.v3,
-                      );
-
-                      // haal de productinformatie op via de api
-                      final ProductResultV3 result =
-                          await OpenFoodAPIClient.getProductV3(configuration);
-                      // als het product goed is gevonden
-                      if (result.status == ProductResultV3.statusSuccess) {
-                        setState(() {
-                          _scannedProduct = result.product;
-                        });
-                      } else {
-                        setState(() {
-                          _errorMessage = 'Product niet gevonden in de database';
-                        });
-                      }
-                    } catch (e) {
-                      //vangt de technische fouten op
-                      setState(() {
-                        _errorMessage = 'Fout bij ophalen: $e';
-                      });
-                    } finally {
-                      //stop de laad animatie
-                      setState(() {
-                        _isLoading = false;
-                      });
-                    }
-                  }
-                },
+                onPressed: _scanBarcode,
                 child: const Text('Scan een barcode'),
               ),
               const SizedBox(height: 30),
