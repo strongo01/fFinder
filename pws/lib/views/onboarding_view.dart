@@ -545,7 +545,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                   _buildQuestionPage(
                     title: 'Wat is je geslacht?',
                     content: Column(
-                      children: ['Man', 'Vrouw', 'Anders'].map((val) {
+                      children: ['Man', 'Vrouw', 'Anders', 'Wil ik liever niet zeggen'].map((val) {
                         return RadioListTile<String>(
                           title: Text(val, style: inputTextStyle),
                           value: val,
