@@ -50,7 +50,8 @@ class _OnboardingViewState extends State<OnboardingView> {
     '2': {}, // vrouw
   };
 
-  final List<String> activityOptions = [ // opties voor activiteitenniveau
+  final List<String> activityOptions = [
+    // opties voor activiteitenniveau
     'Weinig actief: je zit veel, weinig beweging per dag',
     'Licht actief: je wandelt kort (10–20 min) of lichte beweging',
     'Gemiddeld actief: 3–4x per week sporten of veel wandelen',
@@ -58,7 +59,8 @@ class _OnboardingViewState extends State<OnboardingView> {
     'Extreem actief: topsport niveau of fysiek zwaar dagelijks werk',
   ];
 
-  final List<String> goalOptions = [ // opties voor doelen
+  final List<String> goalOptions = [
+    // opties voor doelen
     'Afvallen',
     'Op gewicht blijven',
     'Aankomen (spiermassa)',
@@ -132,7 +134,9 @@ class _OnboardingViewState extends State<OnboardingView> {
           return false;
         }
         if (value < minHeightCm || value > maxHeightCm) {
-          _showError('Lengte moet tussen $minHeightCm cm en $maxHeightCm cm liggen.');
+          _showError(
+            'Lengte moet tussen $minHeightCm cm en $maxHeightCm cm liggen.',
+          );
           return false;
         }
         break;
@@ -148,7 +152,9 @@ class _OnboardingViewState extends State<OnboardingView> {
           return false;
         }
         if (weight <= minWeightKg || weight >= maxWeightKg) {
-          _showError('Uw gewicht moet tussen $minWeightKg kg en $maxWeightKg kg liggen.');
+          _showError(
+            'Uw gewicht moet tussen $minWeightKg kg en $maxWeightKg kg liggen.',
+          );
           return false;
         }
         break;
@@ -164,7 +170,9 @@ class _OnboardingViewState extends State<OnboardingView> {
           return false;
         }
         if (targetWeight <= minWeightKg || targetWeight >= maxWeightKg) {
-          _showError('Uw streefgewicht moet tussen $minWeightKg kg en $maxWeightKg kg liggen.');
+          _showError(
+            'Uw streefgewicht moet tussen $minWeightKg kg en $maxWeightKg kg liggen.',
+          );
           return false;
         }
         break;
@@ -179,7 +187,6 @@ class _OnboardingViewState extends State<OnboardingView> {
         content: Text(message, style: const TextStyle(color: Colors.white)),
         backgroundColor: Theme.of(context).colorScheme.error,
         behavior: SnackBarBehavior.floating, //snackbar zwevend maken
-        
       ),
     );
   }
@@ -320,7 +327,7 @@ class _OnboardingViewState extends State<OnboardingView> {
       final maxWeight = 24.9 * pow(heightM, 2); // bovengrens gezond gewicht
       setState(() {
         _rangeText =
-            'Gezond gewicht voor u (volwassen): ${minWeight.toStringAsFixed(1)} kg – ${maxWeight.toStringAsFixed(1)} kg';
+            'Gezond gewicht voor u: ${minWeight.toStringAsFixed(1)} kg – ${maxWeight.toStringAsFixed(1)} kg';
         _rangeNote = 'Gezond BMI: 18.5 – 24.9';
         _rangeLoading = false;
       });
@@ -386,9 +393,9 @@ class _OnboardingViewState extends State<OnboardingView> {
 
       setState(() {
         _rangeText =
-            'Gezond gewicht (kind, 5e–85e pct): ${weightMin.toStringAsFixed(1)} kg – ${weightMax.toStringAsFixed(1)} kg';
+            'Gezond gewicht voor u: ${weightMin.toStringAsFixed(1)} kg – ${weightMax.toStringAsFixed(1)} kg';
         _rangeNote =
-            'Berekening met CDC LMS-data. Leeftijd: ${ageYears} jaar (${ageMonths} mnd).';
+            '';
         _rangeLoading = false;
       });
       return;
@@ -544,17 +551,34 @@ class _OnboardingViewState extends State<OnboardingView> {
                   // Vraag 2: Geslacht
                   _buildQuestionPage(
                     title: 'Wat is je geslacht?',
-                    content: Column(
-                      children: ['Man', 'Vrouw', 'Anders', 'Wil ik liever niet zeggen'].map((val) {
-                        return RadioListTile<String>(
-                          title: Text(val, style: inputTextStyle),
-                          value: val,
-                          groupValue: _gender,
-                          onChanged: (value) {
-                            setState(() => _gender = value!);
-                          },
-                        );
-                      }).toList(),
+                    content: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children:
+                            [
+                              'Man',
+                              'Vrouw',
+                              'Anders',
+                              'Wil ik liever niet zeggen',
+                            ].map((val) {
+                              return SizedBox(
+                                width:
+                                    300, // Vaste breedte voor consistente uitlijning
+                                child: RadioListTile<String>(
+                                  title: Text(val, style: inputTextStyle),
+                                  value: val,
+                                  groupValue: _gender,
+                                  onChanged: (value) {
+                                    setState(() => _gender = value!);
+                                    _scheduleRangeUpdate(); // Update range als geslacht verandert
+                                  },
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                      ),
                     ),
                   ),
                   // Vraag 3: Geboortedatum
@@ -708,7 +732,8 @@ class _OnboardingViewState extends State<OnboardingView> {
                     title: 'Hoe actief ben je dagelijks?',
                     content: Column(
                       children: activityOptions.map((val) {
-                        return RadioListTile<String>( // Radio knop voor elke optie
+                        return RadioListTile<String>(
+                          // Radio knop voor elke optie
                           title: Text(val, style: inputTextStyle),
                           value: val,
                           groupValue: _activityLevel,
@@ -853,12 +878,34 @@ class _OnboardingViewState extends State<OnboardingView> {
                   if (_currentIndex > 0)
                     TextButton(
                       onPressed: _previousPage,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 32, vertical: 16),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
                       child: const Text('Vorige'),
                     )
                   else
                     const SizedBox(), // Lege ruimte om layout gelijk te houden
                   ElevatedButton(
                     onPressed: _nextPage,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 16),
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
                     child: Text(
                       _currentIndex == _totalQuestions - 1
                           ? 'Afronden'

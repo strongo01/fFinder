@@ -428,10 +428,10 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                 Text(
                   _isLogin ? 'Welkom terug!' : 'Maak een account',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: isDarkMode ? const Color.fromARGB(255, 255, 255, 255) : const Color.fromARGB(255, 0, 0, 0),
                   ),
                 ),
                 const SizedBox(height: 8),

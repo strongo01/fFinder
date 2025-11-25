@@ -139,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
       tabBuilder: (context, index) {
         if (index == 0) {
           return CupertinoPageScaffold(
-            navigationBar: const CupertinoNavigationBar(middle: Text('Home')),
+            navigationBar: const CupertinoNavigationBar(middle: Text('Vandaag')),
             child: SafeArea(child: Material(child: _buildHomeContent())),
           );
         } else {
