@@ -176,9 +176,10 @@ class _OnboardingViewState extends State<OnboardingView> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
         backgroundColor: Theme.of(context).colorScheme.error,
         behavior: SnackBarBehavior.floating, //snackbar zwevend maken
+        
       ),
     );
   }
@@ -544,7 +545,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                   _buildQuestionPage(
                     title: 'Wat is je geslacht?',
                     content: Column(
-                      children: ['Man', 'Vrouw', 'Anders'].map((val) {
+                      children: ['Man', 'Vrouw', 'Anders', 'Wil ik liever niet zeggen'].map((val) {
                         return RadioListTile<String>(
                           title: Text(val, style: inputTextStyle),
                           value: val,
