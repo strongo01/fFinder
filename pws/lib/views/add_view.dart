@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class AddPage extends StatefulWidget {
   const AddPage({super.key});
@@ -17,57 +19,115 @@ class _AddPageState extends State<AddPage> {
   String? _errorMessage;
   bool _isLoading = false;
   Product? _scannedProduct;
-  List<Product>? _searchResults;
+  List<dynamic>? _searchResults;
   final List<bool> _selectedToggle = <bool>[true, false, false];
 
   Future<void> _searchProducts(String query) async {
-    if (query.isEmpty) {
-      setState(() {
-        _searchResults = null;
-        _isLoading = false;
-      });
-      return;
+  debugPrint('[searchProducts] called with query="$query"');
+
+  if (query.isEmpty) {
+    debugPrint('[searchProducts] empty -> clear state');
+    setState(() {
+      _searchResults = null;
+      _isLoading = false;
+    });
+    return;
+  }
+
+  final trimmed = query.trim();
+  debugPrint('[searchProducts] trimmed="$trimmed"');
+
+  if (trimmed.length < 2) {
+    debugPrint('[searchProducts] <2 chars -> abort');
+    setState(() {
+      _searchResults = null;
+      _errorMessage = 'Voer minimaal 2 tekens in.';
+    });
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
+
+  try {
+    // --- Solr search (same engine as OFF website) ---
+    final url = Uri.parse(
+      "https://world.openfoodfacts.org/cgi/search.pl"
+      "?search_terms=${Uri.encodeComponent(trimmed)}"
+      "&search_simple=1"
+      "&json=1"
+      "&action=process",
+    );
+
+    debugPrint('[searchProducts] Solr URL = $url');
+
+    final response = await http.get(url);
+    if (response.statusCode != 200) {
+      throw Exception("HTTP ${response.statusCode}");
     }
+
+    final data = jsonDecode(response.body);
+    final List all = (data["products"] as List?) ?? [];
+
+    debugPrint('[searchProducts] Solr returned ${all.length} products');
+
+    // --- Filtering (same logic as your previous version) ---
+    final escaped = RegExp.escape(trimmed);
+    final wholeWord = RegExp(r'\b' + escaped + r'\b',
+        caseSensitive: false, unicode: true);
+    final startsWith = RegExp('^' + escaped,
+        caseSensitive: false, unicode: true);
+
+    List filtered = all.where((p) {
+      final name = "${p["product_name"] ?? ''} "
+          "${p["generic_name"] ?? ''} "
+          "${p["brands"] ?? ''}";
+      return wholeWord.hasMatch(name);
+    }).toList();
+
+    debugPrint('[searchProducts] whole-word matches: ${filtered.length}');
+
+    if (filtered.isEmpty) {
+      filtered = all.where((p) {
+        final name = "${p["product_name"] ?? ''} "
+            "${p["generic_name"] ?? ''} "
+            "${p["brands"] ?? ''}";
+        return startsWith.hasMatch(name);
+      }).toList();
+
+      debugPrint('[searchProducts] startsWith matches: ${filtered.length}');
+    }
+
+    // fallback naar alle producten
+    final finalList = filtered.isNotEmpty ? filtered : all;
+    debugPrint('[searchProducts] final count: ${finalList.length}');
+
+    // limit
+    const maxResults = 50;
+    final limited = finalList.length > maxResults
+        ? finalList.sublist(0, maxResults)
+        : finalList;
+
+    debugPrint('[searchProducts] limited to: ${limited.length}');
 
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      _searchResults = limited;
     });
-
-    try {
-      final searchConfig = ProductSearchQueryConfiguration(
-        parametersList: [
-          SearchTerms(terms: [query]),
-        ],
-        language: OpenFoodFactsLanguage.DUTCH,
-        fields: [ProductField.ALL],
-        version: ProductQueryVersion.v3,
-      );
-
-      final SearchResult result = await OpenFoodAPIClient.searchProducts(
-        null,
-        searchConfig,
-      );
-
-      if (result.products != null) {
-        setState(() {
-          _searchResults = result.products;
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Geen producten gevonden.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Fout bij ophalen: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+  } catch (e, st) {
+    debugPrint('[searchProducts] ERROR: $e\n$st');
+    setState(() {
+      _errorMessage = 'Fout bij ophalen: $e';
+    });
+  } finally {
+    setState(() {
+      _isLoading = false;
+    });
+    debugPrint('[searchProducts] finished, loading=false');
   }
+}
+
 
   Future<void> _scanBarcode() async {
     //hij reset de foutmeldingen
@@ -134,15 +194,26 @@ class _AddPageState extends State<AddPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
+  title: TextField(
           controller: _searchController,
           style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'Zoek producten...',
-            hintStyle: TextStyle(color: Colors.white70),
+            hintStyle: TextStyle(
+              color: isDarkMode ? Colors.white70 : Colors.black,
+            ),
             border: InputBorder.none,
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: 'Zoek',
+              onPressed: () {
+                FocusScope.of(context).unfocus();
+                _searchProducts(_searchController.text);
+              },
+            ),
           ),
-          onChanged: (value) {
+          onSubmitted: (value) {
+            FocusScope.of(context).unfocus();
             _searchProducts(value);
           },
         ),
@@ -229,10 +300,10 @@ class _AddPageState extends State<AddPage> {
     return ListView.builder(
       itemCount: _searchResults!.length,
       itemBuilder: (context, index) {
-        final product = _searchResults![index];
+        final product = _searchResults![index] as Map<String, dynamic>;
         return ListTile(
-          title: Text(product.productName ?? 'Onbekende naam'),
-          subtitle: Text(product.brands ?? 'Onbekend merk'),
+          title: Text((product['product_name'] as String?) ?? 'Onbekende naam'),
+          subtitle: Text((product['brands'] as String?) ?? 'Onbekend merk'),
           onTap: () {},
         );
       },
