@@ -125,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // iOS layout
   Widget _buildIOSLayout() {
-        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return CupertinoTabScaffold(
       tabBar: CupertinoTabBar(
         items: const [
@@ -155,7 +155,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Scaffold(
                   body: _buildHomeContent(),
                   floatingActionButton: FloatingActionButton(
-                    backgroundColor: isDarkMode ? Colors.grey[850] : Colors.grey[200],
+                    backgroundColor: isDarkMode
+                        ? Colors.grey[850]
+                        : Colors.grey[200],
                     foregroundColor: isDarkMode ? Colors.white : Colors.black,
                     onPressed: () {
                       Navigator.of(context).push(
@@ -207,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _buildHomeContent(),
       floatingActionButton: FloatingActionButton(
         backgroundColor: isDarkMode ? Colors.grey[850] : Colors.grey[200],
-                    foregroundColor: isDarkMode ? Colors.white : Colors.black,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
         onPressed: () {
           Navigator.of(
             context,
@@ -235,45 +237,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     // als er een geldige barcode is gescand en niet -1
     if (res is String && res != '-1') {
-      setState(() {
-        _isLoading = true; //start laden
-        _scannedProduct = null; // wis vorige product
-      });
-
-      try {
-        //configureert de zoekopdracht voor openfoodfacts
-        final configuration = ProductQueryConfiguration(
-          res,
-          language: OpenFoodFactsLanguage.DUTCH,
-          fields: [ProductField.ALL],
-          version: ProductQueryVersion.v3,
-        );
-
-        // haal de productinformatie op via de api
-        final ProductResultV3 result = await OpenFoodAPIClient.getProductV3(
-          configuration,
-        );
-        // als het product goed is gevonden
-        if (result.status == ProductResultV3.statusSuccess) {
-          setState(() {
-            _scannedProduct = result.product;
-          });
-        } else {
-          setState(() {
-            _errorMessage = 'Product niet gevonden in de database';
-          });
-        }
-      } catch (e) {
-        //vangt de technische fouten op
-        setState(() {
-          _errorMessage = 'Fout bij ophalen: $e';
-        });
-      } finally {
-        //stop de laad animatie
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => AddPage(scannedBarcode: res)),
+      );
     }
   }
 
@@ -307,32 +273,28 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        const Text(
+                        Text(
                           'Dagelijkse caloriebehoefte',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black,
                           ),
                         ),
                         const SizedBox(height: 10),
                         Text(
                           '${_calorieAllowance!.round()} kcal',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-
-              const SizedBox(height: 40),
-              //knop om een barcode te scannen
-              ElevatedButton(
-                onPressed: _scanBarcode,
-                child: const Text('Scan een barcode'),
-              ),
+              _buildDailyLog(),
               const SizedBox(height: 30),
               //laadcircel animatie
               if (_isLoading) const CircularProgressIndicator(),
@@ -428,6 +390,91 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDailyLog() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    final todayDocId =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('logs')
+          .doc(todayDocId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final entries = data['entries'] as List<dynamic>? ?? [];
+
+        if (entries.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        double totalCalories = 0;
+        for (var entry in entries) {
+          totalCalories += (entry['nutriments']['energy-kcal'] ?? 0.0);
+        }
+
+        return Card(
+          color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Vandaag gegeten (${totalCalories.round()} kcal)',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+                const Divider(height: 20),
+                ...entries.map((entry) {
+                  final productName = entry['product_name'] ?? 'Onbekend';
+                  final calories = (entry['nutriments']['energy-kcal'] ?? 0.0)
+                      .round();
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            productName,
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          '$calories kcal',
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white70 : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
