@@ -23,111 +23,98 @@ class _AddPageState extends State<AddPage> {
   final List<bool> _selectedToggle = <bool>[true, false, false];
 
   Future<void> _searchProducts(String query) async {
-  debugPrint('[searchProducts] called with query="$query"');
-
-  if (query.isEmpty) {
-    debugPrint('[searchProducts] empty -> clear state');
-    setState(() {
-      _searchResults = null;
-      _isLoading = false;
-    });
-    return;
-  }
-
-  final trimmed = query.trim();
-  debugPrint('[searchProducts] trimmed="$trimmed"');
-
-  if (trimmed.length < 2) {
-    debugPrint('[searchProducts] <2 chars -> abort');
-    setState(() {
-      _searchResults = null;
-      _errorMessage = 'Voer minimaal 2 tekens in.';
-    });
-    return;
-  }
-
-  setState(() {
-    _isLoading = true;
-    _errorMessage = null;
-  });
-
-  try {
-    // --- Solr search (same engine as OFF website) ---
-    final url = Uri.parse(
-      "https://world.openfoodfacts.org/cgi/search.pl"
-      "?search_terms=${Uri.encodeComponent(trimmed)}"
-      "&search_simple=1"
-      "&json=1"
-      "&action=process",
-    );
-
-    debugPrint('[searchProducts] Solr URL = $url');
-
-    final response = await http.get(url);
-    if (response.statusCode != 200) {
-      throw Exception("HTTP ${response.statusCode}");
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = null;
+        _isLoading = false;
+      });
+      return;
     }
 
-    final data = jsonDecode(response.body);
-    final List all = (data["products"] as List?) ?? [];
+    final trimmed = query.trim();
 
-    debugPrint('[searchProducts] Solr returned ${all.length} products');
+    if (trimmed.length < 2) {
+      setState(() {
+        _searchResults = null;
+        _errorMessage = 'Voer minimaal 2 tekens in.';
+      });
+      return;
+    }
 
-    // --- Filtering (same logic as your previous version) ---
-    final escaped = RegExp.escape(trimmed);
-    final wholeWord = RegExp(r'\b' + escaped + r'\b',
-        caseSensitive: false, unicode: true);
-    final startsWith = RegExp('^' + escaped,
-        caseSensitive: false, unicode: true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    List filtered = all.where((p) {
-      final name = "${p["product_name"] ?? ''} "
-          "${p["generic_name"] ?? ''} "
-          "${p["brands"] ?? ''}";
-      return wholeWord.hasMatch(name);
-    }).toList();
+    try {
+      final url = Uri.parse(
+        "https://world.openfoodfacts.org/cgi/search.pl"
+        "?search_terms=${Uri.encodeComponent(trimmed)}"
+        "&search_simple=1"
+        "&json=1"
+        "&action=process",
+      );
 
-    debugPrint('[searchProducts] whole-word matches: ${filtered.length}');
+      final response = await http.get(url);
+      if (response.statusCode != 200) {
+        throw Exception("HTTP ${response.statusCode}");
+      }
 
-    if (filtered.isEmpty) {
-      filtered = all.where((p) {
-        final name = "${p["product_name"] ?? ''} "
+      final data = jsonDecode(response.body);
+      final List all = (data["products"] as List?) ?? [];
+
+      final escaped = RegExp.escape(trimmed);
+      final wholeWord = RegExp(
+        r'\b' + escaped + r'\b',
+        caseSensitive: false,
+        unicode: true,
+      );
+      final startsWith = RegExp(
+        '^' + escaped,
+        caseSensitive: false,
+        unicode: true,
+      );
+
+      List filtered = all.where((p) {
+        final name =
+            "${p["product_name"] ?? ''} "
             "${p["generic_name"] ?? ''} "
             "${p["brands"] ?? ''}";
-        return startsWith.hasMatch(name);
+        return wholeWord.hasMatch(name);
       }).toList();
 
-      debugPrint('[searchProducts] startsWith matches: ${filtered.length}');
+      if (filtered.isEmpty) {
+        filtered = all.where((p) {
+          final name =
+              "${p["product_name"] ?? ''} "
+              "${p["generic_name"] ?? ''} "
+              "${p["brands"] ?? ''}";
+          return startsWith.hasMatch(name);
+        }).toList();
+      }
+
+      // fallback naar alle producten
+      final finalList = filtered.isNotEmpty ? filtered : all;
+
+      // limiet
+      const maxResults = 50;
+      final limited = finalList.length > maxResults
+          ? finalList.sublist(0, maxResults)
+          : finalList;
+
+      setState(() {
+        _searchResults = limited;
+      });
+    } catch (e, st) {
+      setState(() {
+        _errorMessage = 'Fout bij ophalen: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
-
-    // fallback naar alle producten
-    final finalList = filtered.isNotEmpty ? filtered : all;
-    debugPrint('[searchProducts] final count: ${finalList.length}');
-
-    // limit
-    const maxResults = 50;
-    final limited = finalList.length > maxResults
-        ? finalList.sublist(0, maxResults)
-        : finalList;
-
-    debugPrint('[searchProducts] limited to: ${limited.length}');
-
-    setState(() {
-      _searchResults = limited;
-    });
-  } catch (e, st) {
-    debugPrint('[searchProducts] ERROR: $e\n$st');
-    setState(() {
-      _errorMessage = 'Fout bij ophalen: $e';
-    });
-  } finally {
-    setState(() {
-      _isLoading = false;
-    });
-    debugPrint('[searchProducts] finished, loading=false');
   }
-}
-
 
   Future<void> _scanBarcode() async {
     //hij reset de foutmeldingen
@@ -194,15 +181,24 @@ class _AddPageState extends State<AddPage> {
 
     return Scaffold(
       appBar: AppBar(
-  title: TextField(
+        title: TextField(
           controller: _searchController,
           style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           decoration: InputDecoration(
             hintText: 'Zoek producten...',
             hintStyle: TextStyle(
-              color: isDarkMode ? Colors.white70 : Colors.black,
+              color: isDarkMode ? Colors.white70 : Colors.black54,
             ),
-            border: InputBorder.none,
+            filled: true,
+            fillColor: isDarkMode ? Colors.grey[850] : Colors.grey[200],
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 0,
+              horizontal: 20,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30.0),
+              borderSide: BorderSide.none,
+            ),
             suffixIcon: IconButton(
               icon: const Icon(Icons.search),
               tooltip: 'Zoek',

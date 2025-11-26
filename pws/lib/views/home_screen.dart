@@ -125,6 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // iOS layout
   Widget _buildIOSLayout() {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return CupertinoTabScaffold(
       tabBar: CupertinoTabBar(
         items: const [
@@ -154,6 +155,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Scaffold(
                   body: _buildHomeContent(),
                   floatingActionButton: FloatingActionButton(
+                    backgroundColor: isDarkMode ? Colors.grey[850] : Colors.grey[200],
+                    foregroundColor: isDarkMode ? Colors.white : Colors.black,
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -182,6 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   //  Android layout
   Widget _buildAndroidLayout() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home'),
@@ -202,12 +206,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: _buildHomeContent(),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: isDarkMode ? Colors.grey[850] : Colors.grey[200],
+                    foregroundColor: isDarkMode ? Colors.white : Colors.black,
         onPressed: () {
           Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (context) => const AddPage()));
         },
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add),
       ),
     );
   }
