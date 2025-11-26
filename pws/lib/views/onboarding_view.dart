@@ -8,7 +8,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart';
 
 class OnboardingView extends StatefulWidget {
   const OnboardingView({super.key});
@@ -78,12 +78,16 @@ class _OnboardingViewState extends State<OnboardingView> {
     _weightController.dispose();
     _targetWeightController.dispose();
     _debounceTimer?.cancel();
+    _focusNode.dispose();
     super.dispose();
   }
+
+  late FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
+    _focusNode = FocusNode();
 
     _ensureCdcLmsLoaded() // zorgt dat LMS-data geladen is bij start
         .then((_) {
@@ -518,6 +522,17 @@ class _OnboardingViewState extends State<OnboardingView> {
 
     return Scaffold(
       body: SafeArea(
+        child: Focus(
+          focusNode: _focusNode,
+          autofocus: true,
+          onKey: (node, event) {
+            // Detect Enter key press on PC
+            if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
+              _nextPage();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
         child: Column(
           children: [
             const SizedBox(height: 20),
@@ -541,6 +556,8 @@ class _OnboardingViewState extends State<OnboardingView> {
                     title: 'Wat is je voornaam?',
                     content: TextField(
                       controller: _firstNameController,
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) => _nextPage(),
                       style: inputTextStyle,
                       decoration: const InputDecoration(
                         labelText: 'Voornaam',
@@ -677,6 +694,8 @@ class _OnboardingViewState extends State<OnboardingView> {
                     content: TextField(
                       controller: _heightController,
                       keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) => _nextPage(),
                       style: inputTextStyle,
                       decoration: const InputDecoration(
                         labelText: 'Lengte in cm',
@@ -692,6 +711,8 @@ class _OnboardingViewState extends State<OnboardingView> {
                     content: TextField(
                       controller: _weightController,
                       keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) => _nextPage(),
                       style: inputTextStyle,
                       decoration: const InputDecoration(
                         labelText: 'Gewicht in kg',
@@ -752,6 +773,8 @@ class _OnboardingViewState extends State<OnboardingView> {
                         TextField(
                           controller: _targetWeightController,
                           keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) => _nextPage(),
                           style: inputTextStyle,
                           decoration: const InputDecoration(
                             labelText: 'Streefgewicht in kg',
@@ -918,6 +941,7 @@ class _OnboardingViewState extends State<OnboardingView> {
           ],
         ),
       ),
+    )
     );
   }
 
