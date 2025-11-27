@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.home),
-            label: 'Home',
+            label: 'Vandaag',
           ),
           BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.settings),
@@ -190,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
+        title: const Text('Vandaag'),
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
