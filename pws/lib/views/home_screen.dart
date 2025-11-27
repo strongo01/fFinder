@@ -24,12 +24,42 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Map<String, dynamic>? _userData;
   double? _calorieAllowance;
+  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
     // bij de start van  widget
     super.initState();
     _fetchUserData();
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final selected = DateTime(date.year, date.month, date.day);
+
+    if (selected == today) {
+      return 'Vandaag';
+    } else if (selected == yesterday) {
+      return 'Gisteren';
+    } else {
+      return '${date.day}-${date.month}-${date.year}';
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
   }
 
   Future<void> _fetchUserData() async {
@@ -139,11 +169,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      tabBuilder: (context, index) {
+tabBuilder: (context, index) {
         if (index == 0) {
           return CupertinoPageScaffold(
             navigationBar: CupertinoNavigationBar(
-              middle: const Text('Vandaag'),
+              middle: GestureDetector(
+                onTap: () => _selectDate(context),
+                child: Text(_formatDate(_selectedDate)),
+              ),
               trailing: CupertinoButton(
                 padding: EdgeInsets.zero,
                 child: const Icon(CupertinoIcons.barcode_viewfinder),
@@ -190,7 +223,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Vandaag'),
+        title: GestureDetector(
+          onTap: () => _selectDate(context),
+          child: Text(_formatDate(_selectedDate)),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
@@ -355,9 +391,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const SizedBox.shrink();
 
-    final now = DateTime.now();
+    final date = _selectedDate;
     final todayDocId =
-        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return StreamBuilder<DocumentSnapshot>(
@@ -387,18 +423,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
         for (var entry in entries) {
           totalCalories += (entry['nutriments']?['energy-kcal'] ?? 0.0);
-          final timestamp =
-              (entry['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
-          final hour = timestamp.hour;
+          final mealType = entry['meal_type'] as String?;
 
-          if (hour >= 5 && hour < 11) {
-            meals['Ontbijt']!.add(entry);
-          } else if (hour >= 11 && hour < 15) {
-            meals['Lunch']!.add(entry);
-          } else if (hour >= 15 && hour < 22) {
-            meals['Avondeten']!.add(entry);
+          if (mealType != null && meals.containsKey(mealType)) {
+            meals[mealType]!.add(entry);
           } else {
-            meals['Snacks']!.add(entry);
+            // Fallback
+            final timestamp =
+                (entry['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
+            final hour = timestamp.hour;
+            if (hour >= 5 && hour < 11) {
+              meals['Ontbijt']!.add(entry);
+            } else if (hour >= 11 && hour < 15) {
+              meals['Lunch']!.add(entry);
+            } else if (hour >= 15 && hour < 22) {
+              meals['Avondeten']!.add(entry);
+            } else {
+              meals['Snacks']!.add(entry);
+            }
           }
         }
 
@@ -593,9 +635,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final now = DateTime.now();
+    final date = _selectedDate;
     final todayDocId =
-        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
     final docRef = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
@@ -620,20 +662,27 @@ class _HomeScreenState extends State<HomeScreen> {
       text: (entry['amount_g'] ?? '100').toString(),
     );
     final formKey = GlobalKey<FormState>();
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     final newAmount = await showDialog<double>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Hoeveelheid aanpassen (gram)'),
+          title: Text(
+            'Hoeveelheid aanpassen (gram / mililiter)',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+          ),
           content: Form(
             key: formKey,
             child: TextFormField(
               controller: amountController,
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(labelText: 'Hoeveelheid (g)'),
+              decoration: const InputDecoration(
+                labelText: 'Hoeveelheid (g / ml)',
+              ),
               validator: (value) {
                 if (value == null ||
                     value.isEmpty ||
@@ -677,12 +726,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final now = DateTime.now();
+    final date = _selectedDate;
     final todayDocId =
-        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
     final docRef = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
+
         .collection('logs')
         .doc(todayDocId);
 

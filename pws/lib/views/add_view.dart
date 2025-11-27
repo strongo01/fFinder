@@ -1439,7 +1439,7 @@ class _AddPageState extends State<AddPage> {
     Map<String, dynamic> productData,
     String docId,
   ) async {
-        _addRecentMyProduct(productData, docId);
+    _addRecentMyProduct(productData, docId);
 
     await showModalBottomSheet(
       context: context,
@@ -1557,167 +1557,208 @@ class _AddPageState extends State<AddPage> {
   ) async {
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+final hour = DateTime.now().hour;
+    String selectedMeal;
+    if (hour >= 5 && hour < 11) {
+      selectedMeal = 'Ontbijt';
+    } else if (hour >= 11 && hour < 15) {
+      selectedMeal = 'Lunch';
+    } else if (hour >= 15 && hour < 22) {
+      selectedMeal = 'Avondeten';
+    } else {
+      selectedMeal = 'Snacks';
+    }
+    final List<String> mealTypes = ['Ontbijt', 'Lunch', 'Avondeten', 'Snacks'];
 
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         final isDarkMode =
             Theme.of(dialogContext).brightness == Brightness.dark;
-        return AlertDialog(
-          title: Text(
-            'Hoeveelheid voor "$productName"',
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-          ),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: amountController,
-              autofocus: true,
-              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+        final textColor = isDarkMode ? Colors.white : Colors.black;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                'Hoeveelheid voor "$productName"',
+                style: TextStyle(color: textColor),
               ),
-              decoration: const InputDecoration(
-                labelText: 'Hoeveelheid (gram / mililiter)',
-                suffixText: 'g / ml',
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: amountController,
+                      autofocus: true,
+                      style: TextStyle(color: textColor),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Hoeveelheid (gram / milliliter)',
+                        suffixText: 'g / ml',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Voer een hoeveelheid in';
+                        }
+                        if (double.tryParse(value) == null) {
+                          return 'Voer een geldig getal in';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedMeal,
+                      style: TextStyle(color: textColor),
+                      decoration: const InputDecoration(labelText: 'Sectie'),
+                      items: mealTypes.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (newValue) {
+                        setDialogState(() {
+                          selectedMeal = newValue!;
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Voer een hoeveelheid in';
-                }
-                if (double.tryParse(value) == null) {
-                  return 'Voer een geldig getal in';
-                }
-                return null;
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Annuleren'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (formKey.currentState!.validate()) {
-                  final amount = double.parse(amountController.text);
-                  final user = FirebaseAuth.instance.currentUser;
-                  if (user == null || nutriments == null) {
-                    Navigator.pop(dialogContext, false);
-                    return;
-                  }
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Annuleren'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (formKey.currentState!.validate()) {
+                      final amount = double.parse(amountController.text);
+                      final user = FirebaseAuth.instance.currentUser;
+                      if (user == null || nutriments == null) {
+                        Navigator.pop(dialogContext, false);
+                        return;
+                      }
 
-                  final factor = amount / 100.0;
+                      final factor = amount / 100.0;
 
-                  final calculatedNutriments = {
-                    'energy-kcal':
-                        (nutriments.getValue(
-                              Nutrient.energyKCal,
-                              PerSize.oneHundredGrams,
-                            ) ??
-                            0) *
-                        factor,
-                    'fat':
-                        (nutriments.getValue(
-                              Nutrient.fat,
-                              PerSize.oneHundredGrams,
-                            ) ??
-                            0) *
-                        factor,
-                    'saturated-fat':
-                        (nutriments.getValue(
-                              Nutrient.saturatedFat,
-                              PerSize.oneHundredGrams,
-                            ) ??
-                            0) *
-                        factor,
-                    'carbohydrates':
-                        (nutriments.getValue(
-                              Nutrient.carbohydrates,
-                              PerSize.oneHundredGrams,
-                            ) ??
-                            0) *
-                        factor,
-                    'sugars':
-                        (nutriments.getValue(
-                              Nutrient.sugars,
-                              PerSize.oneHundredGrams,
-                            ) ??
-                            0) *
-                        factor,
-                    'fiber':
-                        (nutriments.getValue(
-                              Nutrient.fiber,
-                              PerSize.oneHundredGrams,
-                            ) ??
-                            0) *
-                        factor,
-                    'proteins':
-                        (nutriments.getValue(
-                              Nutrient.proteins,
-                              PerSize.oneHundredGrams,
-                            ) ??
-                            0) *
-                        factor,
-                    'salt':
-                        (nutriments.getValue(
-                              Nutrient.salt,
-                              PerSize.oneHundredGrams,
-                            ) ??
-                            0) *
-                        factor,
-                  };
+                      final calculatedNutriments = {
+                        'energy-kcal':
+                            (nutriments.getValue(
+                                  Nutrient.energyKCal,
+                                  PerSize.oneHundredGrams,
+                                ) ??
+                                0) *
+                            factor,
+                        'fat':
+                            (nutriments.getValue(
+                                  Nutrient.fat,
+                                  PerSize.oneHundredGrams,
+                                ) ??
+                                0) *
+                            factor,
+                        'saturated-fat':
+                            (nutriments.getValue(
+                                  Nutrient.saturatedFat,
+                                  PerSize.oneHundredGrams,
+                                ) ??
+                                0) *
+                            factor,
+                        'carbohydrates':
+                            (nutriments.getValue(
+                                  Nutrient.carbohydrates,
+                                  PerSize.oneHundredGrams,
+                                ) ??
+                                0) *
+                            factor,
+                        'sugars':
+                            (nutriments.getValue(
+                                  Nutrient.sugars,
+                                  PerSize.oneHundredGrams,
+                                ) ??
+                                0) *
+                            factor,
+                        'fiber':
+                            (nutriments.getValue(
+                                  Nutrient.fiber,
+                                  PerSize.oneHundredGrams,
+                                ) ??
+                                0) *
+                            factor,
+                        'proteins':
+                            (nutriments.getValue(
+                                  Nutrient.proteins,
+                                  PerSize.oneHundredGrams,
+                                ) ??
+                                0) *
+                            factor,
+                        'salt':
+                            (nutriments.getValue(
+                                  Nutrient.salt,
+                                  PerSize.oneHundredGrams,
+                                ) ??
+                                0) *
+                            factor,
+                      };
 
-                  final now = DateTime.now();
-                  final todayDocId =
-                      "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+                      final now = DateTime.now();
+                      final todayDocId =
+                          "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
-                  final dailyLogRef = FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(user.uid)
-                      .collection('logs')
-                      .doc(todayDocId);
+                      final dailyLogRef = FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(user.uid)
+                          .collection('logs')
+                          .doc(todayDocId);
 
-                  final logEntry = {
-                    'product_name': productName,
-                    'amount_g': amount,
-                    'timestamp': Timestamp.now(),
-                    'nutriments': calculatedNutriments,
-                  };
+                      final logEntry = {
+                        'product_name': productName,
+                        'amount_g': amount,
+                        'timestamp': Timestamp.now(),
+                        'nutriments': calculatedNutriments,
+                        'meal_type': selectedMeal,
+                      };
 
-                  try {
-                    await dailyLogRef.set({
-                      'entries': FieldValue.arrayUnion([logEntry]),
-                    }, SetOptions(merge: true));
+                      try {
+                        await dailyLogRef.set({
+                          'entries': FieldValue.arrayUnion([logEntry]),
+                        }, SetOptions(merge: true));
 
-                    if (mounted) {
-                      ScaffoldMessenger.of(this.context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            '$productName toegevoegd aan je logboek.',
-                          ),
-                        ),
-                      );
+                        if (mounted) {
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '$productName toegevoegd aan je logboek.',
+                              ),
+                            ),
+                          );
+                        }
+                        // Sluit de dialoog en geef 'true' terug voor succes.
+                        Navigator.pop(dialogContext, true);
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            SnackBar(
+                              content: Text('Fout bij opslaan: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                        // Sluit de dialoog en geef 'false' terug bij een fout.
+                        Navigator.pop(dialogContext, false);
+                      }
                     }
-                    // Sluit de dialoog en geef 'true' terug om succes aan te geven.
-                    Navigator.pop(dialogContext, true);
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(this.context).showSnackBar(
-                        SnackBar(
-                          content: Text('Fout bij opslaan: $e'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                    // Sluit de dialoog en geef 'false' terug bij een fout.
-                    Navigator.pop(dialogContext, false);
-                  }
-                }
-              },
-              child: const Text('Opslaan'),
-            ),
-          ],
+                  },
+                  child: const Text('Opslaan'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
