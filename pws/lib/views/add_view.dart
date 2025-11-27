@@ -63,7 +63,7 @@ class _AddPageState extends State<AddPage> {
 
     try {
       final url = Uri.parse(
-        "https://world.openfoodfacts.org/cgi/search.pl"
+        "https://nl.openfoodfacts.org/cgi/search.pl"
         "?search_terms=${Uri.encodeComponent(trimmed)}"
         "&search_simple=1"
         "&json=1"
@@ -1144,7 +1144,7 @@ class _AddPageState extends State<AddPage> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.add),
-                        onPressed: () {
+                        onPressed: () async {
                           final nutrimentsMap =
                               productData['nutriments_per_100g']
                                   as Map<String, dynamic>?;
@@ -1152,7 +1152,13 @@ class _AddPageState extends State<AddPage> {
                             nutrimentsMap ?? {},
                           );
 
-                          _showAddLogDialog(context, name, nutrimentsForLog);
+                          final bool? wasAdded = await _showAddLogDialog(
+                              context, name, nutrimentsForLog);
+
+                          // Als het product is toegevoegd, sluit dan ook de productdetails.
+                          if (wasAdded == true && context.mounted) {
+                            Navigator.pop(context);
+                          }
                         },
                       ),
                     ],
@@ -1197,7 +1203,7 @@ class _AddPageState extends State<AddPage> {
     );
   }
 
-  Future<void> _showAddLogDialog(
+  Future<bool?> _showAddLogDialog(
     BuildContext context,
     String productName,
     Nutriments? nutriments,
@@ -1205,16 +1211,17 @@ class _AddPageState extends State<AddPage> {
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    return showDialog(
+    return showDialog<bool>(
       context: context,
-      builder: (context) {
-        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+      builder: (dialogContext) {
+        final isDarkMode = Theme.of(dialogContext).brightness == Brightness.dark;
         return AlertDialog(
           title: Text(
             'Hoeveelheid voor "$productName"',
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           ),
           content: Form(
+
             key: formKey,
             child: TextFormField(
               controller: amountController,
@@ -1224,8 +1231,8 @@ class _AddPageState extends State<AddPage> {
                 decimal: true,
               ),
               decoration: const InputDecoration(
-                labelText: 'Hoeveelheid (gram)',
-                suffixText: 'g',
+                labelText: 'Hoeveelheid (gram / mililiter)',
+                suffixText: 'g / ml',
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -1240,7 +1247,7 @@ class _AddPageState extends State<AddPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Annuleren'),
             ),
             ElevatedButton(
@@ -1248,7 +1255,10 @@ class _AddPageState extends State<AddPage> {
                 if (formKey.currentState!.validate()) {
                   final amount = double.parse(amountController.text);
                   final user = FirebaseAuth.instance.currentUser;
-                  if (user == null || nutriments == null) return;
+                  if (user == null || nutriments == null) {
+                    Navigator.pop(dialogContext, false);
+                    return;
+                  }
 
                   final factor = amount / 100.0;
 
@@ -1328,19 +1338,33 @@ class _AddPageState extends State<AddPage> {
                     'nutriments': calculatedNutriments,
                   };
 
-                  await dailyLogRef.set({
-                    'entries': FieldValue.arrayUnion([logEntry]),
-                  }, SetOptions(merge: true));
+try {
+                    await dailyLogRef.set({
+                      'entries': FieldValue.arrayUnion([logEntry]),
+                    }, SetOptions(merge: true));
 
-                  Navigator.pop(context); // Sluit dialoog
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '$productName toegevoegd aan je logboek.',
+                    if (mounted) {
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '$productName toegevoegd aan je logboek.',
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    }
+                    // Sluit de dialoog en geef 'true' terug om succes aan te geven.
+                    Navigator.pop(dialogContext, true);
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        SnackBar(
+                          content: Text('Fout bij opslaan: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                    // Sluit de dialoog en geef 'false' terug bij een fout.
+                    Navigator.pop(dialogContext, false);
                   }
                 }
               },

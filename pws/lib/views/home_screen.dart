@@ -538,35 +538,51 @@ class _HomeScreenState extends State<HomeScreen> {
             const Divider(height: 20),
             ...entries.map((entry) {
               final productName = entry['product_name'] ?? 'Onbekend';
-              final calories =
-                  (entry['nutriments']?['energy-kcal'] ?? 0.0).round();
+              final calories = (entry['nutriments']?['energy-kcal'] ?? 0.0)
+                  .round();
+              final timestamp = entry['timestamp'] as Timestamp?;
 
-
-return InkWell(
-                onTap: () {
-                  _showEditAmountDialog(entry);
+              return Dismissible(
+                key: Key(timestamp?.toString() ?? UniqueKey().toString()),
+                direction: DismissDirection.endToStart,
+                onDismissed: (direction) {
+                  _deleteLogEntry(entry);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$productName verwijderd')),
+                  );
                 },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          productName,
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black,
+                background: Container(
+                  color: Colors.red,
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    _showEditAmountDialog(entry);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            productName,
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        '$calories kcal',
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white70 : Colors.black87,
+                        Text(
+                          '$calories kcal',
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white70 : Colors.black87,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -575,6 +591,32 @@ return InkWell(
         ),
       ),
     );
+  }
+
+  Future<void> _deleteLogEntry(Map<String, dynamic> entry) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final now = DateTime.now();
+    final todayDocId =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    final docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('logs')
+        .doc(todayDocId);
+
+    try {
+      await docRef.update({
+        'entries': FieldValue.arrayRemove([entry]),
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Fout bij verwijderen: $e')));
+      }
+    }
   }
 
   Future<void> _showEditAmountDialog(Map<String, dynamic> entry) async {
@@ -632,7 +674,7 @@ return InkWell(
     }
   }
 
-Future<void> _updateEntryAmount(
+  Future<void> _updateEntryAmount(
     Map<String, dynamic> originalEntry,
     double newAmount,
   ) async {
@@ -676,17 +718,19 @@ Future<void> _updateEntryAmount(
       'nutriments': newNutriments,
     };
 
-        try {
+    try {
       final doc = await docRef.get();
       if (doc.exists) {
         final entries = List<Map<String, dynamic>>.from(
           doc.data()?['entries'] ?? [],
         );
-        
-        final originalTimestamp = originalEntry['timestamp'] as Timestamp?;
-        if (originalTimestamp == null) return; 
 
-        final index = entries.indexWhere((e) => e['timestamp'] == originalTimestamp);
+        final originalTimestamp = originalEntry['timestamp'] as Timestamp?;
+        if (originalTimestamp == null) return;
+
+        final index = entries.indexWhere(
+          (e) => e['timestamp'] == originalTimestamp,
+        );
 
         if (index != -1) {
           entries[index] = updatedEntry;
