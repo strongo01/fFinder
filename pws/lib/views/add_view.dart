@@ -271,18 +271,58 @@ class _AddPageState extends State<AddPage> {
     }
     if (_searchResults!.isEmpty) {
       return Center(
-        child: Text(
-          'Geen producten gevonden.',
-          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Geen producten gevonden.',
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _showAddMyProductSheet,
+              child: const Text('Wilt u zelf een product toevoegen?'),
+            ),
+          ],
         ),
       );
     }
 
     return ListView.builder(
-      itemCount: _searchResults!.length,
+      itemCount: _searchResults!.length + 1,
       itemBuilder: (context, index) {
+        if (index == _searchResults!.length) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: TextButton(
+              onPressed: _showAddMyProductSheet,
+              child: const Text(
+                'Niet de gewenste resultaten: voeg een product toe!',
+              ),
+            ),
+          );
+        }
+
         final product = _searchResults![index] as Map<String, dynamic>;
+        final imageUrl = product['image_front_small_url'] as String?;
+
         return ListTile(
+          leading: imageUrl != null
+              ? SizedBox(
+                  width: 50,
+                  height: 50,
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.image_not_supported),
+                  ),
+                )
+              : const SizedBox(
+                  width: 50,
+                  height: 50,
+                  child: Icon(Icons.fastfood),
+                ),
           title: Text((product['product_name'] as String?) ?? 'Onbekende naam'),
           subtitle: Text((product['brands'] as String?) ?? 'Onbekend merk'),
           onTap: () {
@@ -364,9 +404,8 @@ class _AddPageState extends State<AddPage> {
                     'Voedingswaarden per 100g/ml',
                     style: Theme.of(
                       context,
-                    ).textTheme.titleMedium?.copyWith(color: textColor),
+                    ).textTheme.titleLarge?.copyWith(color: textColor),
                   ),
-                  const Divider(),
                   TextFormField(
                     controller: _caloriesController,
                     style: TextStyle(color: textColor),
@@ -525,6 +564,7 @@ class _AddPageState extends State<AddPage> {
       },
       'allergens': product.allergens?.names,
       'additives': product.additives?.names,
+      'isMyProduct': false,
     };
 
     // Verwijder null waarden uit de map voordat je opslaat
@@ -534,6 +574,26 @@ class _AddPageState extends State<AddPage> {
     );
 
     await docRef.set(productData, SetOptions(merge: true));
+  }
+
+  Future<void> _addRecentMyProduct(
+    Map<String, dynamic> productData,
+    String docId,
+  ) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('recents')
+        .doc(docId);
+
+    final dataToSave = Map<String, dynamic>.from(productData);
+    dataToSave['timestamp'] = FieldValue.serverTimestamp();
+    dataToSave['isMyProduct'] = true; // Mark as user-created product
+
+    await docRef.set(dataToSave, SetOptions(merge: true));
   }
 
   Future<void> _addFavoriteProduct(Product product) async {
@@ -753,10 +813,10 @@ class _AddPageState extends State<AddPage> {
                       _buildInfoRow('Hoeveelheid', product!.quantity),
                       const Divider(height: 24),
                       Text(
-                        'Voedingswaarden (per 100g/ml):',
+                        'Voedingswaarden per 100g/ml',
                         style: Theme.of(
                           context,
-                        ).textTheme.titleMedium?.copyWith(color: textColor),
+                        ).textTheme.titleLarge?.copyWith(color: textColor),
                       ),
                       const SizedBox(height: 8),
                       _buildInfoRow(
@@ -927,6 +987,7 @@ class _AddPageState extends State<AddPage> {
                 final name = product['product_name'] ?? 'Onbekende naam';
                 final brand = product['brands'] ?? 'Onbekend merk';
                 final imageUrl = product['image_front_url'] as String?;
+                final isMyProduct = product['isMyProduct'] as bool? ?? false;
 
                 return ListTile(
                   leading: imageUrl != null
@@ -948,7 +1009,11 @@ class _AddPageState extends State<AddPage> {
                   title: Text(name),
                   subtitle: Text(brand),
                   onTap: () {
-                    _showProductDetails(productDoc.id);
+                    if (isMyProduct) {
+                      _showMyProductDetails(product, productDoc.id);
+                    } else {
+                      _showProductDetails(productDoc.id);
+                    }
                   },
                 );
               },
@@ -1088,13 +1153,71 @@ class _AddPageState extends State<AddPage> {
                     product['nutriments_per_100g'] as Map<String, dynamic>?;
                 final calories = nutriments?['energy-kcal']?.toString() ?? '0';
 
-                return ListTile(
-                  title: Text(name),
-                  subtitle: Text(brand),
-                  trailing: Text('$calories kcal'),
-                  onTap: () {
-                    _showMyProductDetails(product);
+                return Dismissible(
+                  key: Key(productDoc.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  confirmDismiss: (direction) async {
+                    return await showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text(
+                            "Bevestig verwijdering",
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          content: Text(
+                            "Weet je zeker dat je '$name' wilt verwijderen?",
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          actions: <Widget>[
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text("Annuleren"),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text(
+                                "Verwijderen",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
                   },
+                  onDismissed: (direction) {
+                    FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .collection('my_products')
+                        .doc(productDoc.id)
+                        .delete();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("'$name' verwijderd")),
+                    );
+                  },
+                  child: ListTile(
+                    title: Text(name),
+                    subtitle: Text(brand),
+                    trailing: Text('$calories kcal'),
+                    onTap: () {
+                      _showMyProductDetails(
+                        product,
+                        productDoc.id,
+                      ); // Pass document ID
+                    },
+                  ),
                 );
               },
             );
@@ -1105,7 +1228,219 @@ class _AddPageState extends State<AddPage> {
     }
   }
 
-  Future<void> _showMyProductDetails(Map<String, dynamic> productData) async {
+  Future<void> _showEditMyProductSheet(
+    Map<String, dynamic> productData,
+    String docId,
+  ) async {
+    final _formKey = GlobalKey<FormState>();
+    final nutriments =
+        productData['nutriments_per_100g'] as Map<String, dynamic>? ?? {};
+
+    final _nameController = TextEditingController(
+      text: productData['product_name'],
+    );
+    final _brandController = TextEditingController(text: productData['brands']);
+    final _quantityController = TextEditingController(
+      text: productData['quantity'],
+    );
+    final _caloriesController = TextEditingController(
+      text: nutriments['energy-kcal']?.toString(),
+    );
+    final _fatController = TextEditingController(
+      text: nutriments['fat']?.toString(),
+    );
+    final _saturatedFatController = TextEditingController(
+      text: nutriments['saturated-fat']?.toString(),
+    );
+    final _carbsController = TextEditingController(
+      text: nutriments['carbohydrates']?.toString(),
+    );
+    final _sugarsController = TextEditingController(
+      text: nutriments['sugars']?.toString(),
+    );
+    final _fiberController = TextEditingController(
+      text: nutriments['fiber']?.toString(),
+    );
+    final _proteinsController = TextEditingController(
+      text: nutriments['proteins']?.toString(),
+    );
+    final _saltController = TextEditingController(
+      text: nutriments['salt']?.toString(),
+    );
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        final textColor = isDarkMode ? Colors.white : Colors.black;
+
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            top: 20,
+            left: 20,
+            right: 20,
+          ),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Product Bewerken',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.headlineSmall?.copyWith(color: textColor),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  TextFormField(
+                    controller: _nameController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(labelText: 'Productnaam'),
+                    validator: (value) => (value == null || value.isEmpty)
+                        ? 'Naam is verplicht'
+                        : null,
+                  ),
+                  TextFormField(
+                    controller: _brandController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(labelText: 'Merk'),
+                  ),
+                  TextFormField(
+                    controller: _quantityController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(
+                      labelText: 'Hoeveelheid (bijv. 100g, 250ml)',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Voedingswaarden per 100g/ml',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.copyWith(color: textColor),
+                  ),
+                  TextFormField(
+                    controller: _caloriesController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(
+                      labelText: 'Energie (kcal)',
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) => (value == null || value.isEmpty)
+                        ? 'Calorieën zijn verplicht'
+                        : null,
+                  ),
+                  TextFormField(
+                    controller: _fatController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(labelText: 'Vetten'),
+                    keyboardType: TextInputType.number,
+                  ),
+                  TextFormField(
+                    controller: _saturatedFatController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(
+                      labelText: '  - Waarvan verzadigd',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  TextFormField(
+                    controller: _carbsController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(
+                      labelText: 'Koolhydraten',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  TextFormField(
+                    controller: _sugarsController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(
+                      labelText: '  - Waarvan suikers',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  TextFormField(
+                    controller: _fiberController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(labelText: 'Vezels'),
+                    keyboardType: TextInputType.number,
+                  ),
+                  TextFormField(
+                    controller: _proteinsController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(labelText: 'Eiwitten'),
+                    keyboardType: TextInputType.number,
+                  ),
+                  TextFormField(
+                    controller: _saltController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(labelText: 'Zout'),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (_formKey.currentState!.validate()) {
+                        final user = FirebaseAuth.instance.currentUser;
+                        if (user == null) return;
+
+                        final updatedData = {
+                          'product_name': _nameController.text,
+                          'brands': _brandController.text,
+                          'quantity': _quantityController.text,
+                          'timestamp': FieldValue.serverTimestamp(),
+                          'nutriments_per_100g': {
+                            'energy-kcal':
+                                double.tryParse(_caloriesController.text) ?? 0,
+                            'fat': double.tryParse(_fatController.text),
+                            'saturated-fat': double.tryParse(
+                              _saturatedFatController.text,
+                            ),
+                            'carbohydrates': double.tryParse(
+                              _carbsController.text,
+                            ),
+                            'sugars': double.tryParse(_sugarsController.text),
+                            'fiber': double.tryParse(_fiberController.text),
+                            'proteins': double.tryParse(
+                              _proteinsController.text,
+                            ),
+                            'salt': double.tryParse(_saltController.text),
+                          },
+                        };
+
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(user.uid)
+                            .collection('my_products')
+                            .doc(docId)
+                            .update(updatedData);
+                        Navigator.pop(context); // Close edit sheet
+                      }
+                    },
+                    child: const Text('Opslaan'),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showMyProductDetails(
+    Map<String, dynamic> productData,
+    String docId,
+  ) async {
+        _addRecentMyProduct(productData, docId);
+
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1142,6 +1477,16 @@ class _AddPageState extends State<AddPage> {
                         ),
                       ),
                       IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          Navigator.pop(context); // Close details
+                          _showEditMyProductSheet(
+                            productData,
+                            docId,
+                          ); // Open edit
+                        },
+                      ),
+                      IconButton(
                         icon: const Icon(Icons.add),
                         onPressed: () async {
                           final nutrimentsMap =
@@ -1152,7 +1497,10 @@ class _AddPageState extends State<AddPage> {
                           );
 
                           final bool? wasAdded = await _showAddLogDialog(
-                              context, name, nutrimentsForLog);
+                            context,
+                            name,
+                            nutrimentsForLog,
+                          );
 
                           // Als het product is toegevoegd, sluit dan ook de productdetails.
                           if (wasAdded == true && context.mounted) {
@@ -1167,10 +1515,10 @@ class _AddPageState extends State<AddPage> {
                   _buildInfoRow('Hoeveelheid', quantity),
                   const Divider(height: 24),
                   Text(
-                    'Voedingswaarden (per 100g/ml):',
+                    'Voedingswaarden per 100g/ml',
                     style: Theme.of(
                       context,
-                    ).textTheme.titleMedium?.copyWith(color: textColor),
+                    ).textTheme.titleLarge?.copyWith(color: textColor),
                   ),
                   const SizedBox(height: 8),
                   _buildInfoRow(
@@ -1213,14 +1561,14 @@ class _AddPageState extends State<AddPage> {
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        final isDarkMode = Theme.of(dialogContext).brightness == Brightness.dark;
+        final isDarkMode =
+            Theme.of(dialogContext).brightness == Brightness.dark;
         return AlertDialog(
           title: Text(
             'Hoeveelheid voor "$productName"',
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           ),
           content: Form(
-
             key: formKey,
             child: TextFormField(
               controller: amountController,
@@ -1337,7 +1685,7 @@ class _AddPageState extends State<AddPage> {
                     'nutriments': calculatedNutriments,
                   };
 
-try {
+                  try {
                     await dailyLogRef.set({
                       'entries': FieldValue.arrayUnion([logEntry]),
                     }, SetOptions(merge: true));
