@@ -244,10 +244,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeContent() {
-    //haalt de huidige ingelogde gebruiker op
-    final user = FirebaseAuth.instance.currentUser;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     //SingleChildScrollView zorgt ervoor dat je kan scrollen als de inhoud te groot is voor het scherm
     return SingleChildScrollView(
       child: Center(

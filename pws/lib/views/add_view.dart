@@ -20,7 +20,6 @@ class _AddPageState extends State<AddPage> {
   int _selectedTabIndex = 0;
   String? _errorMessage;
   bool _isLoading = false;
-  Product? _scannedProduct;
   List<dynamic>? _searchResults;
   final List<bool> _selectedToggle = <bool>[true, false, false];
 
