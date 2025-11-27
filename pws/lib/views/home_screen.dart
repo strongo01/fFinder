@@ -256,44 +256,6 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              //zegt wie er is ingelogd
-              Text(
-                'Ingelogd als: ${user?.email ?? "Onbekend"}',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.black,
-                ),
-              ),
-              const SizedBox(height: 20),
-              if (_userData != null &&
-                  _calorieAllowance !=
-                      null) // toont de caloriebehoefte als  data geladen
-                Card(
-                  color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Dagelijkse caloriebehoefte',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.white : Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          '${_calorieAllowance!.round()} kcal',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.white : Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               _buildDailyLog(),
               const SizedBox(height: 30),
               //laadcircel animatie
@@ -414,68 +376,328 @@ class _HomeScreenState extends State<HomeScreen> {
           return const SizedBox.shrink();
         }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>;
-        final entries = data['entries'] as List<dynamic>? ?? [];
-
-        if (entries.isEmpty) {
-          return const SizedBox.shrink();
-        }
+        final data = snapshot.hasData && snapshot.data!.exists
+            ? snapshot.data!.data() as Map<String, dynamic>
+            : null;
+        final entries = data?['entries'] as List<dynamic>? ?? [];
 
         double totalCalories = 0;
+        final Map<String, List<dynamic>> meals = {
+          'Ontbijt': [],
+          'Lunch': [],
+          'Avondeten': [],
+          'Snacks': [],
+        };
+
         for (var entry in entries) {
-          totalCalories += (entry['nutriments']['energy-kcal'] ?? 0.0);
+          totalCalories += (entry['nutriments']?['energy-kcal'] ?? 0.0);
+          final timestamp =
+              (entry['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
+          final hour = timestamp.hour;
+
+          if (hour >= 5 && hour < 11) {
+            meals['Ontbijt']!.add(entry);
+          } else if (hour >= 11 && hour < 15) {
+            meals['Lunch']!.add(entry);
+          } else if (hour >= 15 && hour < 22) {
+            meals['Avondeten']!.add(entry);
+          } else {
+            meals['Snacks']!.add(entry);
+          }
         }
 
-        return Card(
-          color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        final calorieGoal = _calorieAllowance ?? 0.0;
+        final remainingCalories = calorieGoal - totalCalories;
+        final progress = calorieGoal > 0
+            ? (totalCalories / calorieGoal).clamp(0.0, 1.0)
+            : 0.0;
+
+        return Column(
+          children: [
+            Card(
+              color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildCalorieInfo('Gegeten', totalCalories, isDarkMode),
+                        _buildCalorieInfo('Doel', calorieGoal, isDarkMode),
+                        _buildCalorieInfo(
+                          'Over',
+                          remainingCalories,
+                          isDarkMode,
+                          isRemaining: true,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 10,
+                      borderRadius: BorderRadius.circular(5),
+                      backgroundColor: isDarkMode
+                          ? Colors.grey[700]
+                          : Colors.grey[300],
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        progress > 1.0
+                            ? Colors.red
+                            : (isDarkMode ? Colors.green[300]! : Colors.green),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ...meals.entries.map((mealEntry) {
+              if (mealEntry.value.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return _buildMealSection(
+                title: mealEntry.key,
+                entries: mealEntry.value,
+                isDarkMode: isDarkMode,
+              );
+            }).toList(),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCalorieInfo(
+    String title,
+    double value,
+    bool isDarkMode, {
+    bool isRemaining = false,
+  }) {
+    return Column(
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            color: isDarkMode ? Colors.white70 : Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${value.round()}',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMealSection({
+    required String title,
+    required List<dynamic> entries,
+    required bool isDarkMode,
+  }) {
+    double totalMealCalories = 0;
+    for (var entry in entries) {
+      totalMealCalories += (entry['nutriments']?['energy-kcal'] ?? 0.0);
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      color: isDarkMode ? Colors.grey[850] : Colors.white,
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Vandaag gegeten (${totalCalories.round()} kcal)',
+                  title,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
-                const Divider(height: 20),
-                ...entries.map((entry) {
-                  final productName = entry['product_name'] ?? 'Onbekend';
-                  final calories = (entry['nutriments']['energy-kcal'] ?? 0.0)
-                      .round();
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            productName,
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Text(
-                          '$calories kcal',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white70 : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                Text(
+                  '${totalMealCalories.round()} kcal',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
               ],
             ),
+            const Divider(height: 20),
+            ...entries.map((entry) {
+              final productName = entry['product_name'] ?? 'Onbekend';
+              final calories =
+                  (entry['nutriments']?['energy-kcal'] ?? 0.0).round();
+
+
+return InkWell(
+                onTap: () {
+                  _showEditAmountDialog(entry);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          productName,
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '$calories kcal',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showEditAmountDialog(Map<String, dynamic> entry) async {
+    final amountController = TextEditingController(
+      text: (entry['amount_g'] ?? '100').toString(),
+    );
+    final formKey = GlobalKey<FormState>();
+
+    final newAmount = await showDialog<double>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Hoeveelheid aanpassen (gram)'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: amountController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(labelText: 'Hoeveelheid (g)'),
+              validator: (value) {
+                if (value == null ||
+                    value.isEmpty ||
+                    double.tryParse(value) == null ||
+                    double.parse(value) <= 0) {
+                  return 'Voer een geldig getal in';
+                }
+                return null;
+              },
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Annuleren'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(
+                    context,
+                  ).pop(double.parse(amountController.text));
+                }
+              },
+              child: const Text('Opslaan'),
+            ),
+          ],
         );
       },
     );
+
+    if (newAmount != null) {
+      _updateEntryAmount(entry, newAmount);
+    }
+  }
+
+Future<void> _updateEntryAmount(
+    Map<String, dynamic> originalEntry,
+    double newAmount,
+  ) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final now = DateTime.now();
+    final todayDocId =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    final docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('logs')
+        .doc(todayDocId);
+
+    final originalAmount = originalEntry['amount_g'] as num?;
+    final originalNutriments =
+        originalEntry['nutriments'] as Map<String, dynamic>?;
+
+    if (originalAmount == null ||
+        originalAmount <= 0 ||
+        originalNutriments == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Fout: Originele productgegevens zijn onvolledig om te herberekenen.',
+          ),
+        ),
+      );
+      return;
+    }
+    final factor = newAmount / originalAmount.toDouble();
+
+    final newNutriments = originalNutriments.map(
+      (key, value) => MapEntry(key, (value is num ? value * factor : value)),
+    );
+
+    final updatedEntry = {
+      ...originalEntry,
+      'amount_g': newAmount,
+      'nutriments': newNutriments,
+    };
+
+        try {
+      final doc = await docRef.get();
+      if (doc.exists) {
+        final entries = List<Map<String, dynamic>>.from(
+          doc.data()?['entries'] ?? [],
+        );
+        
+        final originalTimestamp = originalEntry['timestamp'] as Timestamp?;
+        if (originalTimestamp == null) return; 
+
+        final index = entries.indexWhere((e) => e['timestamp'] == originalTimestamp);
+
+        if (index != -1) {
+          entries[index] = updatedEntry;
+          await docRef.update({'entries': entries});
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Fout bij bijwerken: $e')));
+    }
   }
 
   //hulpmethode om netjes een rij te maken met een label en de waarde
