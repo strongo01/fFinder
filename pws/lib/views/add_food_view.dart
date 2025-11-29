@@ -6,15 +6,15 @@ import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class AddPage extends StatefulWidget {
+class AddFoodPage extends StatefulWidget {
   final String? scannedBarcode;
   final Map<String, dynamic>? initialProductData;
 
-  const AddPage({super.key, this.scannedBarcode, this.initialProductData});
-  State<AddPage> createState() => _AddPageState();
+  const AddFoodPage({super.key, this.scannedBarcode, this.initialProductData});
+  State<AddFoodPage> createState() => _AddFoodPageState();
 }
 
-class _AddPageState extends State<AddPage> {
+class _AddFoodPageState extends State<AddFoodPage> {
   final _searchController = TextEditingController();
   int _selectedTabIndex = 0;
   String? _errorMessage;

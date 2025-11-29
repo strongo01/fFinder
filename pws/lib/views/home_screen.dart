@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/cupertino.dart'; //voor ios stijl widgets
 import 'package:flutter/foundation.dart'; // Voor platform check
 import 'add_food_view.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'add_drink_view.dart';
 
 //homescreen is een statefulwidget omdat de inhoud verandert
 class HomeScreen extends StatefulWidget {
@@ -27,11 +29,21 @@ class _HomeScreenState extends State<HomeScreen> {
   double? _calorieAllowance;
   DateTime _selectedDate = DateTime.now();
 
+  late PageController _pageController;
+  static const int _initialPage = 50000;
+
   @override
   void initState() {
     // bij de start van  widget
     super.initState();
+    _pageController = PageController(initialPage: _initialPage);
     _fetchUserData();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   String _formatDate(DateTime date) {
@@ -57,9 +69,11 @@ class _HomeScreenState extends State<HomeScreen> {
       lastDate: DateTime.now(),
     );
     if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
+      final today = DateTime.now();
+      final todayWithoutTime = DateTime(today.year, today.month, today.day);
+      final pickedWithoutTime = DateTime(picked.year, picked.month, picked.day);
+      final difference = pickedWithoutTime.difference(todayWithoutTime).inDays;
+      _pageController.jumpToPage(_initialPage + difference);
     }
   }
 
@@ -145,18 +159,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _goToPreviousDay() {
-    setState(() {
-      _selectedDate = _selectedDate.subtract(const Duration(days: 1));
-    });
+    _pageController.previousPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   void _goToNextDay() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     if (_selectedDate.isBefore(today)) {
-      setState(() {
-        _selectedDate = _selectedDate.add(const Duration(days: 1));
-      });
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
@@ -272,7 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
           labelStyle: TextStyle(color: fabForegroundColor),
           onTap: () {
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const AddPage()),
+              MaterialPageRoute(builder: (context) => const AddFoodPage()),
             );
           },
         ),
@@ -282,10 +298,8 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: childBackgroundColor,
           labelStyle: TextStyle(color: fabForegroundColor),
           onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Functie voor drinken is nog niet beschikbaar.'),
-              ),
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const AddDrinkPage()),
             );
           },
         ),
@@ -344,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => AddPage(
+            builder: (context) => AddFoodPage(
               scannedBarcode: barcode,
               initialProductData: productData,
             ),
@@ -362,154 +376,89 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeContent() {
-    return GestureDetector(
-      onHorizontalDragEnd: (details) {
-        // Swipe van rechts naar links
-        if (details.primaryVelocity! < -100) {
-          _goToNextDay();
+    return PageView.builder(
+      controller: _pageController,
+      dragStartBehavior: DragStartBehavior.start,
+      onPageChanged: (index) {
+        final today = DateTime.now();
+        final todayWithoutTime = DateTime(today.year, today.month, today.day);
+        // Voorkom dat je naar de toekomst swipet
+        final newDate = todayWithoutTime.add(
+          Duration(days: index - _initialPage),
+        );
+        if (newDate.isAfter(today)) {
+          _pageController.jumpToPage(index - 1);
+          return;
         }
-        // Swipe van links naar rechts
-        else if (details.primaryVelocity! > 100) {
-          _goToPreviousDay();
-        }
+        setState(() {
+          _selectedDate = newDate;
+        });
       },
-      //SingleChildScrollView zorgt ervoor dat je kan scrollen als de inhoud te groot is voor het scherm
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildDailyLog(),
-                const SizedBox(height: 30),
-                //laadcircel animatie
-                if (_isLoading) const CircularProgressIndicator(),
-                //toont een foutmelding in het rood gecenteerd als die er is
-                if (_errorMessage != null)
-                  Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                //als er een product gevonden is, dan laat hij die resultaten zien
-                if (_scannedProduct != null) ...[
-                  const Text(
-                    'Resultaat:',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  //algemene product informatie
-                  _buildInfoRow('Naam', _scannedProduct!.productName),
-                  _buildInfoRow('Merk', _scannedProduct!.brands),
-                  _buildInfoRow('Hoeveelheid', _scannedProduct!.quantity),
+      itemBuilder: (context, index) {
+        final today = DateTime.now();
+        final todayWithoutTime = DateTime(today.year, today.month, today.day);
+        final dateForPage = todayWithoutTime.add(
+          Duration(days: index - _initialPage),
+        );
 
-                  const Divider(),
-                  const Text(
-                    'Voedingswaarden (per 100g/ml):',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  // lijst met de voedingswaarden
-                  _buildInfoRow(
-                    'Energie (kcal)',
-                    _scannedProduct!.nutriments
-                        ?.getValue(Nutrient.energyKCal, PerSize.oneHundredGrams)
-                        ?.toStringAsFixed(1),
-                  ),
-                  _buildInfoRow(
-                    'Vetten',
-                    _scannedProduct!.nutriments
-                        ?.getValue(Nutrient.fat, PerSize.oneHundredGrams)
-                        ?.toStringAsFixed(1),
-                  ),
-                  _buildInfoRow(
-                    '  - Waarvan verzadigd',
-                    _scannedProduct!.nutriments
-                        ?.getValue(
-                          Nutrient.saturatedFat,
-                          PerSize.oneHundredGrams,
-                        )
-                        ?.toStringAsFixed(1),
-                  ),
-                  _buildInfoRow(
-                    'Koolhydraten',
-                    _scannedProduct!.nutriments
-                        ?.getValue(
-                          Nutrient.carbohydrates,
-                          PerSize.oneHundredGrams,
-                        )
-                        ?.toStringAsFixed(1),
-                  ),
-                  _buildInfoRow(
-                    '  - Waarvan suikers',
-                    _scannedProduct!.nutriments
-                        ?.getValue(Nutrient.sugars, PerSize.oneHundredGrams)
-                        ?.toStringAsFixed(1),
-                  ),
-                  _buildInfoRow(
-                    'Vezels',
-                    _scannedProduct!.nutriments
-                        ?.getValue(Nutrient.fiber, PerSize.oneHundredGrams)
-                        ?.toStringAsFixed(1),
-                  ),
-                  _buildInfoRow(
-                    'Eiwitten',
-                    _scannedProduct!.nutriments
-                        ?.getValue(Nutrient.proteins, PerSize.oneHundredGrams)
-                        ?.toStringAsFixed(1),
-                  ),
-                  _buildInfoRow(
-                    'Zout',
-                    _scannedProduct!.nutriments
-                        ?.getValue(Nutrient.salt, PerSize.oneHundredGrams)
-                        ?.toStringAsFixed(2),
-                  ),
+        // Blokkeer het bouwen van toekomstige pagina's
+        if (dateForPage.isAfter(today)) {
+          return Container(color: Theme.of(context).scaffoldBackgroundColor);
+        }
 
-                  const Divider(),
-                  //extra informatie voor toevoeginen en de allergien van het product
-                  _buildInfoRow(
-                    'Additieven',
-                    _scannedProduct!.additives?.names.join(", "),
-                  ),
-                  _buildInfoRow(
-                    'Allergenen',
-                    _scannedProduct!.allergens?.names.join(", "),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
+        return _buildPageForDate(dateForPage);
+      },
+    );
+  }
+
+  Widget _buildPageForDate(DateTime date) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const Center(child: Text("Niet ingelogd."));
+
+    final docId =
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: _buildDailyLog(user.uid, docId, isDarkMode),
       ),
     );
   }
 
-  Widget _buildDailyLog() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const SizedBox.shrink();
-
-    final date = _selectedDate;
-    final todayDocId =
-        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _buildDailyLog(String uid, String docId, bool isDarkMode) {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid)
+          .doc(uid)
           .collection('logs')
-          .doc(todayDocId)
+          .doc(docId)
           .snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
         if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const SizedBox.shrink();
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Center(
+                child: Text(
+                  'Nog geen items gelogd voor deze dag.',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              ),
+            ),
+          );
         }
 
-        final data = snapshot.hasData && snapshot.data!.exists
-            ? snapshot.data!.data() as Map<String, dynamic>
-            : null;
-        final entries = data?['entries'] as List<dynamic>? ?? [];
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final entries = data['entries'] as List<dynamic>? ?? [];
 
         double totalCalories = 0;
         double totalProteins = 0;
@@ -558,6 +507,25 @@ class _HomeScreenState extends State<HomeScreen> {
         final progress = calorieGoal > 0
             ? (totalCalories / calorieGoal).clamp(0.0, 1.0)
             : 0.0;
+
+        final Map<String, double> drinkBreakdown = {};
+        double totalWater = 0;
+        for (var entry in entries) {
+          if (entry['meal_type'] == 'Drinken') {
+            final quantityString = entry['quantity'] as String? ?? '0 ml';
+            final amount =
+                double.tryParse(quantityString.replaceAll(' ml', '')) ?? 0.0;
+            final drinkName = entry['product_name'] as String? ?? 'Onbekend';
+            drinkBreakdown.update(
+              drinkName,
+              (value) => value + amount,
+              ifAbsent: () => amount,
+            );
+            totalWater += amount;
+          }
+        }
+        final weight = _userData?['weight'] as num? ?? 70;
+        final waterGoal = weight * 32.5;
 
         return Column(
           children: [
@@ -626,6 +594,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 20),
+            _buildWaterCircle(
+              totalWater,
+              waterGoal.toDouble(),
+              drinkBreakdown,
+              isDarkMode,
+            ),
+            const SizedBox(height: 20),
             ...meals.entries.map((mealEntry) {
               if (mealEntry.value.isEmpty) {
                 return const SizedBox.shrink();
@@ -642,6 +617,70 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildWaterCircle(
+    double consumed,
+    double goal,
+    Map<String, double> breakdown,
+    bool isDarkMode,
+  ) {
+    final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: progress),
+      duration: const Duration(milliseconds: 750),
+      builder: (context, value, child) {
+        final sortedBreakdown = breakdown.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
+
+        return Column(
+          children: [
+            SizedBox(
+              width: 100,
+              height: 100,
+              child: CustomPaint(
+                painter: SegmentedArcPainter(
+                  progress: value,
+                  goal: goal,
+                  breakdown: sortedBreakdown,
+                  isDarkMode: isDarkMode,
+                  strokeWidth: 8,
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.water_drop,
+                        color: Colors.blue,
+                        size: 24,
+                      ),
+                      Text(
+                        '${(consumed * value / (progress.isFinite && progress > 0 ? progress : 1.0)).round()} ml',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Drankinname / Doel: ${goal.round()} ml',
+              style: TextStyle(
+                fontSize: 14,
+                color: isDarkMode ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildMacroCircle(
     String title,
     double consumed,
@@ -652,53 +691,59 @@ class _HomeScreenState extends State<HomeScreen> {
     final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
     final percentage = (progress * 100).round();
 
-    return Column(
-      children: [
-        SizedBox(
-          width: 70,
-          height: 70,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              CircularProgressIndicator(
-                value: progress,
-                strokeWidth: 6,
-                backgroundColor: isDarkMode
-                    ? Colors.grey[700]
-                    : Colors.grey[300],
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-              Center(
-                child: Text(
-                  '$percentage%',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: isDarkMode ? Colors.white : Colors.black,
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: progress),
+      duration: const Duration(milliseconds: 750),
+      builder: (context, value, child) {
+        return Column(
+          children: [
+            SizedBox(
+              width: 70,
+              height: 70,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CircularProgressIndicator(
+                    value: value,
+                    strokeWidth: 6,
+                    backgroundColor: isDarkMode
+                        ? Colors.grey[700]
+                        : Colors.grey[300],
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
                   ),
-                ),
+                  Center(
+                    child: Text(
+                      '${(value * 100).round()}%', // Animeer de percentage tekst
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : Colors.black,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '${consumed.round()}/${goal.round()}g',
-          style: TextStyle(
-            fontSize: 12,
-            color: isDarkMode ? Colors.white70 : Colors.black87,
-          ),
-        ),
-      ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${consumed.round()}/${goal.round()}g',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDarkMode ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -776,6 +821,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   .round();
               final timestamp = entry['timestamp'] as Timestamp?;
 
+              String rightSideText;
+
+              if (entry['meal_type'] == 'Drinken') {
+                rightSideText = entry['quantity'] as String? ?? '0 ml';
+              } else {
+                // Anders is het voedsel, toon kcal
+                final calories = (entry['nutriments']?['energy-kcal'] ?? 0.0)
+                    .round();
+                rightSideText = '$calories kcal';
+              }
+
               return Dismissible(
                 key: Key(timestamp?.toString() ?? UniqueKey().toString()),
                 direction: DismissDirection.endToStart,
@@ -810,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         Text(
-                          '$calories kcal',
+                          rightSideText,
                           style: TextStyle(
                             color: isDarkMode ? Colors.white70 : Colors.black87,
                           ),
@@ -1008,5 +1064,105 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+}
+
+class SegmentedArcPainter extends CustomPainter {
+  final double progress;
+  final double goal;
+  final List<MapEntry<String, double>> breakdown;
+  final bool isDarkMode;
+  final double strokeWidth;
+
+  SegmentedArcPainter({
+    required this.progress,
+    required this.goal,
+    required this.breakdown,
+    required this.isDarkMode,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+    const startAngle = -90 * (3.1415926535 / 180);
+
+    // Achtergrond cirkel
+    final backgroundPaint = Paint()
+      ..color = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+    canvas.drawCircle(center, radius, backgroundPaint);
+
+    double currentAngle = startAngle;
+
+    for (final entry in breakdown) {
+      final sweepAngle = (entry.value / goal) * 2 * 3.1415926535;
+      final color = _getColorsForDrink(entry.key, isDarkMode)['background']!;
+
+      final segmentPaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+
+      final totalSweep = progress * 2 * 3.1415926535;
+      final angleToDraw = currentAngle - startAngle;
+
+      if (angleToDraw < totalSweep) {
+        double sweepToDraw = sweepAngle;
+        if (angleToDraw + sweepAngle > totalSweep) {
+          sweepToDraw = totalSweep - angleToDraw;
+        }
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          currentAngle,
+          sweepToDraw,
+          false,
+          segmentPaint,
+        );
+      }
+      currentAngle += sweepAngle;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
+  }
+
+  Map<String, Color> _getColorsForDrink(String name, bool isDarkMode) {
+    final lowerCaseName = name.toLowerCase();
+
+    if (lowerCaseName.contains('water')) {
+      return isDarkMode
+          ? {'background': Colors.blue[700]!, 'foreground': Colors.blue[200]!}
+          : {'background': Colors.blue[400]!, 'foreground': Colors.blue[800]!};
+    }
+    if (lowerCaseName.contains('koffie')) {
+      return isDarkMode
+          ? {'background': Colors.brown[600]!, 'foreground': Colors.brown[100]!}
+          : {
+              'background': Colors.brown[400]!,
+              'foreground': Colors.brown[800]!,
+            };
+    }
+    if (lowerCaseName.contains('thee')) {
+      return isDarkMode
+          ? {'background': Colors.amber[800]!, 'foreground': Colors.amber[200]!}
+          : {
+              'background': Colors.amber[500]!,
+              'foreground': Colors.amber[800]!,
+            };
+    }
+    if (lowerCaseName.contains('fris') || lowerCaseName.contains('soda')) {
+      return isDarkMode
+          ? {'background': Colors.red[800]!, 'foreground': Colors.red[200]!}
+          : {'background': Colors.red[400]!, 'foreground': Colors.red[800]!};
+    }
+    return isDarkMode
+        ? {'background': Colors.grey[600]!, 'foreground': Colors.white}
+        : {'background': Colors.grey[400]!, 'foreground': Colors.black};
   }
 }
