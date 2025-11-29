@@ -71,7 +71,8 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   // Opruimen van controllers
   @override
-  void dispose() { //hij ruimt op omdat hij anders geheugen lekt
+  void dispose() {
+    //hij ruimt op omdat hij anders geheugen lekt
     _pageController.dispose();
     _firstNameController.dispose();
     _heightController.dispose();
@@ -362,8 +363,9 @@ class _OnboardingViewState extends State<OnboardingView> {
     );
   }
 
-  int _ageYearsFromBirthDate() { // bereken leeftijd in jaren
-    if (_birthDate == null) return 0; 
+  int _ageYearsFromBirthDate() {
+    // bereken leeftijd in jaren
+    if (_birthDate == null) return 0;
     final now = DateTime.now();
     int years = now.year - _birthDate!.year;
     if (now.month < _birthDate!.month ||
@@ -373,7 +375,8 @@ class _OnboardingViewState extends State<OnboardingView> {
     return years;
   }
 
-  int _ageMonthsFromBirthDate() { // bereken leeftijd in maanden
+  int _ageMonthsFromBirthDate() {
+    // bereken leeftijd in maanden
     if (_birthDate == null) return 0;
     final now = DateTime.now();
     int months =
@@ -382,14 +385,16 @@ class _OnboardingViewState extends State<OnboardingView> {
     return max(0, months);
   }
 
-  double? _parseHeightMeters() { // parse lengte in meters
+  double? _parseHeightMeters() {
+    // parse lengte in meters
     final text = _heightController.text;
     final h = double.tryParse(text); // hoogte in cm
     if (h == null) return null; // niet geldig
     return h / 100.0; // omzetten naar meters
   }
 
-  Future<void> _updateRange() async { // update de gewicht range berekening
+  Future<void> _updateRange() async {
+    // update de gewicht range berekening
     final heightM = _parseHeightMeters();
     final ageYears = _ageYearsFromBirthDate();
     final ageMonths = _ageMonthsFromBirthDate();
@@ -621,6 +626,8 @@ class _OnboardingViewState extends State<OnboardingView> {
               // De bolletjes voortgangs dingetje
               _buildProgressIndicator(),
               const SizedBox(height: 20),
+              // gif en Titel
+              Image.asset('assets/mascotte/mascottelangzaam.gif', height: 240),
 
               // De vragen pagina's
               Expanded(
@@ -1038,23 +1045,25 @@ class _OnboardingViewState extends State<OnboardingView> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     //bouwt een pagina voor een vraag
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : Colors.black,
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 40),
-          content,
-        ],
+            const SizedBox(height: 40),
+            content,
+          ],
+        ),
       ),
     );
   }

@@ -46,6 +46,7 @@ dependencies:
   google_fonts: ^6.3.2
   firebase_messaging: ^16.0.4
   flutter_speed_dial: ^7.0.0
+  chat_bubbles: ^1.7.0
 
 flutter_launcher_icons:
   android: "launcher_icon"
@@ -91,6 +92,10 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/cdc/bmiagerev.csv
+    - assets/mascotte/mascottelangzaam.gif
+    - assets/mascotte/mascottesnel.gif
+    - assets/mascotte/mascotte1.png
+    - assets/mascotte/mascotte2.png
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

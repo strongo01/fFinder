@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +11,7 @@ import 'package:flutter/cupertino.dart'; //voor ios stijl widgets
 import 'package:flutter/foundation.dart'; // Voor platform check
 import 'add_food_view.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:chat_bubbles/chat_bubbles.dart';
 import 'add_drink_view.dart';
 
 //homescreen is een statefulwidget omdat de inhoud verandert
@@ -118,7 +121,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     double bmr;
     if (gender == 'Vrouw') {
-      bmr = 10 * weight + 6.25 * height - 5 * age - 161; // Harris-Benedict formule voor vrouwen
+      bmr =
+          10 * weight +
+          6.25 * height -
+          5 * age -
+          161; // Harris-Benedict formule voor vrouwen
     } else {
       bmr = 10 * weight + 6.25 * height - 5 * age + 5; // voor mannen
     }
@@ -178,7 +185,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // iOS layout
   Widget _buildIOSLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    return CupertinoTabScaffold( // Tab scaffold voor iOS stijl tabs
+    return CupertinoTabScaffold(
+      // Tab scaffold voor iOS stijl tabs
       tabBar: CupertinoTabBar(
         items: const [
           BottomNavigationBarItem(
@@ -191,13 +199,33 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      tabBuilder: (context, index) { // bouwt de inhoud voor elke tab
+      tabBuilder: (context, index) {
+        // bouwt de inhoud voor elke tab
         if (index == 0) {
           return CupertinoPageScaffold(
             navigationBar: CupertinoNavigationBar(
               middle: GestureDetector(
                 onTap: () => _selectDate(context),
-                child: Text(_formatDate(_selectedDate)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.black.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_formatDate(_selectedDate)),
+                      const SizedBox(width: 8),
+                      const Icon(CupertinoIcons.calendar, size: 22),
+                    ],
+                  ),
+                ),
               ),
               trailing: CupertinoButton(
                 padding: EdgeInsets.zero,
@@ -229,12 +257,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   //  Android layout
   Widget _buildAndroidLayout() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
-        title: GestureDetector( // maakt de datum aanklikbaar
+        title: GestureDetector(
           onTap: () => _selectDate(context),
-          child: Text(_formatDate(_selectedDate)),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDarkMode
+                  ? Colors.white.withOpacity(0.1)
+                  : Colors.black.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_formatDate(_selectedDate)),
+                const SizedBox(width: 8),
+                const Icon(Icons.calendar_today, size: 20),
+              ],
+            ),
+          ),
         ),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
@@ -255,7 +302,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSpeedDial() { // bouwt de SpeedDial knop
+  Widget _buildSpeedDial() {
+    // bouwt de SpeedDial knop
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final fabBackgroundColor = isDarkMode ? Colors.grey[850] : Colors.grey[200];
     final fabForegroundColor = isDarkMode ? Colors.white : Colors.black;
@@ -274,8 +322,9 @@ class _HomeScreenState extends State<HomeScreen> {
           label: 'Voedsel',
           backgroundColor: childBackgroundColor,
           labelStyle: TextStyle(color: fabForegroundColor),
-          onTap: () { // actie bij tikken
-            Navigator.of(context).push( 
+          onTap: () {
+            // actie bij tikken
+            Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const AddFoodPage()),
             );
           },
@@ -343,7 +392,8 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      if (mounted) { // Controleer of de widget nog bestaat
+      if (mounted) {
+        // Controleer of de widget nog bestaat
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => AddFoodPage(
@@ -363,7 +413,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildHomeContent() { // bouwt de inhoud van het homescreen
+  Widget _buildHomeContent() {
+    // bouwt de inhoud van het homescreen
     return PageView.builder(
       controller: _pageController,
       dragStartBehavior: DragStartBehavior.start,
@@ -374,7 +425,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final newDate = todayWithoutTime.add(
           Duration(days: index - _initialPage),
         );
-        if (newDate.isAfter(today)) { // blokkeer toekomst
+        if (newDate.isAfter(today)) {
+          // blokkeer toekomst
           _pageController.jumpToPage(index - 1);
           return;
         }
@@ -382,7 +434,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _selectedDate = newDate;
         });
       },
-      itemBuilder: (context, index) { // bouwt elke pagina
+      itemBuilder: (context, index) {
+        // bouwt elke pagina
         final today = DateTime.now();
         final todayWithoutTime = DateTime(today.year, today.month, today.day);
         final dateForPage = todayWithoutTime.add(
@@ -399,7 +452,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildPageForDate(DateTime date) { // bouwt de inhoud voor een specifieke datum
+  Widget _buildPageForDate(DateTime date) {
+    // bouwt de inhoud voor een specifieke datum
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const Center(child: Text("Niet ingelogd."));
 
@@ -411,12 +465,17 @@ class _HomeScreenState extends State<HomeScreen> {
       physics: const BouncingScrollPhysics(),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: _buildDailyLog(user.uid, docId, isDarkMode), // bouwt de dagelijkse log
+        child: _buildDailyLog(
+          user.uid,
+          docId,
+          isDarkMode,
+        ), // bouwt de dagelijkse log
       ),
     );
   }
 
-  Widget _buildDailyLog(String uid, String docId, bool isDarkMode) { // bouwt de dagelijkse log voor een specifieke dag
+  Widget _buildDailyLog(String uid, String docId, bool isDarkMode) {
+    // bouwt de dagelijkse log voor een specifieke dag
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
@@ -453,23 +512,26 @@ class _HomeScreenState extends State<HomeScreen> {
         double totalFats = 0;
         double totalCarbs = 0;
 
-        final Map<String, List<dynamic>> meals = { // Maaltijdcategorieën
+        final Map<String, List<dynamic>> meals = {
+          // Maaltijdcategorieën
           'Ontbijt': [],
           'Lunch': [],
           'Avondeten': [],
           'Snacks': [],
         };
 
-        for (var entry in entries) { // berekent de totale macro's en verdeelt de maaltijden
+        for (var entry in entries) {
+          // berekent de totale macro's en verdeelt de maaltijden
           totalCalories += (entry['nutriments']?['energy-kcal'] ?? 0.0);
           totalProteins += (entry['nutriments']?['proteins'] ?? 0.0);
           totalFats += (entry['nutriments']?['fat'] ?? 0.0);
           totalCarbs += (entry['nutriments']?['carbohydrates'] ?? 0.0);
           final mealType = entry['meal_type'] as String?;
 
-          if (mealType != null && meals.containsKey(mealType)) { //als maaltijdtype bekend is
+          if (mealType != null && meals.containsKey(mealType)) {
+            //als maaltijdtype bekend is
             meals[mealType]!.add(entry);
-          } else { 
+          } else {
             // Fallback
             final timestamp =
                 (entry['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
@@ -504,7 +566,8 @@ class _HomeScreenState extends State<HomeScreen> {
             final amount =
                 double.tryParse(quantityString.replaceAll(' ml', '')) ?? 0.0;
             final drinkName = entry['product_name'] as String? ?? 'Onbekend';
-            drinkBreakdown.update( // waterinname per drankje bijhouden
+            drinkBreakdown.update(
+              // waterinname per drankje bijhouden
               drinkName,
               (value) => value + amount, // optellen als al aanwezig
               ifAbsent: () => amount, // nieuw drankje toevoegen
@@ -514,6 +577,14 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         final weight = _userData?['weight'] as num? ?? 70;
         final waterGoal = weight * 32.5;
+
+        final motivationalMessage = _getMotivationalMessage(
+          totalCalories,
+          calorieGoal,
+          totalWater,
+          waterGoal,
+          entries.isNotEmpty,
+        );
 
         return Column(
           children: [
@@ -525,7 +596,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [ // Calorie-informatie
+                      children: [
+                        // Calorie-informatie
                         _buildCalorieInfo('Gegeten', totalCalories, isDarkMode),
                         _buildCalorieInfo('Doel', calorieGoal, isDarkMode),
                         _buildCalorieInfo(
@@ -537,21 +609,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     const SizedBox(height: 15),
-                    LinearProgressIndicator( // Calorie voortgangsbalk
+                    LinearProgressIndicator(
+                      // Calorie voortgangsbalk
                       value: progress,
                       minHeight: 10,
                       borderRadius: BorderRadius.circular(5),
                       backgroundColor: isDarkMode
                           ? Colors.grey[700]
                           : Colors.grey[300],
-                      valueColor: AlwaysStoppedAnimation<Color>( // kleur op basis van voortgang
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        // kleur op basis van voortgang
                         progress > 1.0
                             ? Colors.red
                             : (isDarkMode ? Colors.green[300]! : Colors.green),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Row( // Macro-cirkels
+                    Row(
+                      // Macro-cirkels
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _buildMacroCircle(
@@ -582,11 +657,51 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            _buildWaterCircle(
-              totalWater,
-              waterGoal.toDouble(),
-              drinkBreakdown,
-              isDarkMode,
+            Center(
+              child: Row(
+                mainAxisAlignment:
+                    MainAxisAlignment.center, // alles in het midden
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 80),
+                        child: BubbleSpecialThree(
+                          text: motivationalMessage,
+                          color: isDarkMode
+                              ? const Color(0xFF1B97F3)
+                              : Colors.blueAccent,
+                          tail: true,
+                          isSender: true,
+                          textStyle: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      Image.asset(
+                        'assets/mascotte/mascottelangzaam.gif',
+                        height: 120,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(width: 30),
+
+                  _buildWaterCircle(
+                    totalWater,
+                    waterGoal.toDouble(),
+                    drinkBreakdown,
+                    isDarkMode,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
             ...meals.entries.map((mealEntry) {
@@ -605,7 +720,62 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildWaterCircle( // bouwt de waterinname cirkel
+  String _getMotivationalMessage(
+    double totalCalories,
+    double calorieGoal,
+    double totalWater,
+    double waterGoal,
+    bool hasEntries,
+  ) {
+    final random = Random();
+
+    if (!hasEntries) {
+      const messages = [
+        'Klaar om je dag te loggen?',
+        'Een nieuwe dag, nieuwe kansen!',
+        'Laten we beginnen!',
+      ];
+      return messages[random.nextInt(messages.length)];
+    }
+
+    if (calorieGoal > 0 && totalCalories > calorieGoal) {
+      const messages = [
+        'Doel bereikt! Rustig aan nu.',
+        'Wow, je zit boven je doel!',
+        'Goed bezig, morgen weer een dag.',
+      ];
+      return messages[random.nextInt(messages.length)];
+    }
+
+    if (waterGoal > 0 && totalWater < waterGoal / 3) {
+      const messages = [
+        'Vergeet niet te drinken vandaag!',
+        'Een slokje water is een goed begin.',
+        'Hydrateren is belangrijk!',
+      ];
+      return messages[random.nextInt(messages.length)];
+    }
+
+    if (calorieGoal > 0 && totalCalories > calorieGoal * 0.8) {
+      const messages = [
+        'Je bent er bijna!',
+        'Nog een klein stukje te gaan!',
+        'Bijna je caloriedoel bereikt!',
+      ];
+      return messages[random.nextInt(messages.length)];
+    }
+
+    const defaultMessages = [
+      'Goed bezig, ga zo door!',
+      'Elke stap telt!',
+      'Je doet het geweldig!',
+      'Consistentie is de sleutel!',
+    ];
+    return defaultMessages[random.nextInt(defaultMessages.length)];
+  }
+
+  Widget _buildWaterCircle(
+    // bouwt de waterinname cirkel
     double consumed,
     double goal,
     Map<String, double> breakdown,
@@ -613,12 +783,15 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
 
-    return TweenAnimationBuilder<double>( // animeert de voortgang
+    return TweenAnimationBuilder<double>(
+      // animeert de voortgang
       tween: Tween<double>(begin: 0.0, end: progress),
       duration: const Duration(milliseconds: 750),
       builder: (context, value, child) {
         final sortedBreakdown = breakdown.entries.toList()
-          ..sort((a, b) => a.key.compareTo(b.key)); // Sorteer de breakdown op naam
+          ..sort(
+            (a, b) => a.key.compareTo(b.key),
+          ); // Sorteer de breakdown op naam
 
         return Column(
           children: [
@@ -626,7 +799,8 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 100,
               height: 100,
               child: CustomPaint(
-                painter: SegmentedArcPainter( // aangepaste kleur voor soorten
+                painter: SegmentedArcPainter(
+                  // aangepaste kleur voor soorten
                   progress: value,
                   goal: goal,
                   breakdown: sortedBreakdown,
@@ -669,7 +843,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMacroCircle( // bouwt cirkel voor macro
+  Widget _buildMacroCircle(
+    // bouwt cirkel voor macro
     String title,
     double consumed,
     double goal,
@@ -679,7 +854,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
     final percentage = (progress * 100).round();
 
-    return TweenAnimationBuilder<double>( // animeert de voortgang
+    return TweenAnimationBuilder<double>(
+      // animeert de voortgang
       tween: Tween<double>(begin: 0.0, end: progress),
       duration: const Duration(milliseconds: 750),
       builder: (context, value, child) {
@@ -735,41 +911,84 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCalorieInfo( // bouwt de calorie-informatie sectie
+  Widget _buildCalorieInfo(
+    // maakt de calorie-informatie sectie
     String title,
     double value,
     bool isDarkMode, {
     bool isRemaining = false,
   }) {
-    return Column(
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 14,
-            color: isDarkMode ? Colors.white70 : Colors.black87,
+    final defaultColor = isDarkMode ? Colors.white : Colors.black;
+    final labelStyle = TextStyle(
+      fontSize: 14,
+      color: isDarkMode ? Colors.white70 : Colors.black87,
+    );
+
+    if (title == 'Doel') {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(title, style: labelStyle),
+          const SizedBox(height: 4),
+          Text(
+            '${value.round()}', // toon het doel afgerond
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: defaultColor,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
+        ],
+      );
+    }
+
+    String topText;
+    String bottomText;
+    Color valueColor = defaultColor;
+    double displayValue = value;
+
+    if (isRemaining) {
+      // als er nog calorieen over zijn
+      if (value < 0) {
+        topText = 'Je bent';
+        bottomText = 'calorieën over je doel';
+        displayValue = value.abs(); // maak positief voor weergave
+        valueColor = Colors.red;
+      } else {
+        topText = 'Je hebt nog';
+        bottomText = 'calorieën over';
+      }
+    } else {
+      topText = 'Je hebt';
+      bottomText = 'calorieën gegeten';
+    }
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(topText, style: labelStyle),
         Text(
-          '${value.round()}',
+          '${displayValue.round()}',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : Colors.black,
+            color: valueColor,
           ),
         ),
+        Text(bottomText, style: labelStyle),
       ],
     );
   }
 
-  Widget _buildMealSection({ // bouwt een maaltijdsectie
+  Widget _buildMealSection({
+    // bouwt een maaltijdsectie
     required String title,
     required List<dynamic> entries,
     required bool isDarkMode,
   }) {
     double totalMealCalories = 0;
-    for (var entry in entries) { // berekent de totale calorieën voor de maaltijd
+    for (var entry in entries) {
+      // berekent de totale calorieën voor de maaltijd
       totalMealCalories += (entry['nutriments']?['energy-kcal'] ?? 0.0);
     }
 
@@ -783,7 +1002,8 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start, // uitlijning naar links
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween, // titel en totaal kcal
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween, // titel en totaal kcal
               children: [
                 Text(
                   title,
@@ -803,15 +1023,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const Divider(height: 20),
-            ...entries.map((entry) { // bouwt elke log entry
+            ...entries.map((entry) {
+              // bouwt elke log entry
               final productName = entry['product_name'] ?? 'Onbekend';
               final calories = (entry['nutriments']?['energy-kcal'] ?? 0.0)
                   .round();
               final timestamp = entry['timestamp'] as Timestamp?;
 
               String rightSideText;
- 
-              if (entry['meal_type'] == 'Drinken') { // Als het drinken is, toon ml anders kcal
+
+              if (entry['meal_type'] == 'Drinken') {
+                // Als het drinken is, toon ml anders kcal
                 rightSideText = entry['quantity'] as String? ?? '0 ml';
               } else {
                 final calories = (entry['nutriments']?['energy-kcal'] ?? 0.0)
@@ -819,7 +1041,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 rightSideText = '$calories kcal';
               }
 
-              return Dismissible( // veeg om te verwijderen
+              return Dismissible(
+                // veeg om te verwijderen
                 key: Key(timestamp?.toString() ?? UniqueKey().toString()),
                 direction: DismissDirection.endToStart,
                 onDismissed: (direction) {
@@ -831,10 +1054,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 background: Container(
                   color: Colors.red,
                   alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0), // ruimte aan de zijkant
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                  ), // ruimte aan de zijkant
                   child: const Icon(Icons.delete, color: Colors.white),
                 ),
-                child: InkWell( // tik om hoeveelheid aan te passen
+                child: InkWell(
+                  // tik om hoeveelheid aan te passen
                   onTap: () {
                     _showEditAmountDialog(entry);
                   },
@@ -870,7 +1096,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _deleteLogEntry(Map<String, dynamic> entry) async { // verwijdert een log entry uit Firestore
+  Future<void> _deleteLogEntry(Map<String, dynamic> entry) async {
+    // verwijdert een log entry uit Firestore
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -896,16 +1123,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _showEditAmountDialog(Map<String, dynamic> entry) async { // toont dialoog om hoeveelheid aan te passen
+  Future<void> _showEditAmountDialog(Map<String, dynamic> entry) async {
+    // toont dialoog om hoeveelheid aan te passen
     final amountController = TextEditingController(
       text: (entry['amount_g'] ?? '100').toString(),
     ); // standaard 100gof ml
-    final formKey = GlobalKey<FormState>(); 
+    final formKey = GlobalKey<FormState>();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    final newAmount = await showDialog<double>( // toont dialoog en wacht op hoeveelheid
+    final newAmount = await showDialog<double>(
+      // toont dialoog en wacht op hoeveelheid
       context: context,
-      builder: (context) { // bouwt dialoog
+      builder: (context) {
+        // bouwt dialoog
         return AlertDialog(
           title: Text(
             'Hoeveelheid aanpassen (gram of mililiter)',
@@ -916,13 +1146,15 @@ class _HomeScreenState extends State<HomeScreen> {
             child: TextFormField(
               controller: amountController,
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-              keyboardType: const TextInputType.numberWithOptions( // numeriek toetsenbord
+              keyboardType: const TextInputType.numberWithOptions(
+                // numeriek toetsenbord
                 decimal: true,
               ),
               decoration: const InputDecoration(
                 labelText: 'Hoeveelheid (g of ml)',
               ),
-              validator: (value) { // validatie van invoer
+              validator: (value) {
+                // validatie van invoer
                 if (value == null ||
                     value.isEmpty ||
                     double.tryParse(value) == null ||
@@ -941,9 +1173,9 @@ class _HomeScreenState extends State<HomeScreen> {
             TextButton(
               onPressed: () {
                 if (formKey.currentState!.validate()) {
-                  Navigator.of(
-                    context,
-                  ).pop(double.parse(amountController.text)); // nieuwe hoeveelheid
+                  Navigator.of(context).pop(
+                    double.parse(amountController.text),
+                  ); // nieuwe hoeveelheid
                 }
               },
               child: const Text('Opslaan'),
@@ -953,13 +1185,15 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
 
-    if (newAmount != null) { // als er een nieuwe hoeveelheid is opgegeven
+    if (newAmount != null) {
+      // als er een nieuwe hoeveelheid is opgegeven
       _updateEntryAmount(entry, newAmount);
     }
   }
 
-  Future<void> _updateEntryAmount( // werkt de hoeveelheid van een log entry bij in de la Firestore
-    Map<String, dynamic> originalEntry, 
+  Future<void> _updateEntryAmount(
+    // werkt de hoeveelheid van een log entry bij in de la Firestore
+    Map<String, dynamic> originalEntry,
     double newAmount,
   ) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -981,7 +1215,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (originalAmount == null ||
         originalAmount <= 0 ||
         originalNutriments == null) {
-      ScaffoldMessenger.of(context).showSnackBar( 
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
             'Fout: Originele productgegevens zijn onvolledig om te herberekenen.',
@@ -990,7 +1224,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       return;
     }
-    final factor = newAmount / originalAmount.toDouble(); // bereken de schaalfactor
+    final factor =
+        newAmount / originalAmount.toDouble(); // bereken de schaalfactor
 
     final newNutriments = originalNutriments.map(
       (key, value) => MapEntry(key, (value is num ? value * factor : value)),
@@ -1002,7 +1237,8 @@ class _HomeScreenState extends State<HomeScreen> {
       'nutriments': newNutriments,
     };
 
-    try { // werk de entry bij in Firestore
+    try {
+      // werk de entry bij in Firestore
       final doc = await docRef.get();
       if (doc.exists) {
         final entries = List<Map<String, dynamic>>.from(
@@ -1016,7 +1252,8 @@ class _HomeScreenState extends State<HomeScreen> {
           (e) => e['timestamp'] == originalTimestamp,
         );
 
-        if (index != -1) { // als entry gevonden is
+        if (index != -1) {
+          // als entry gevonden is
           entries[index] = updatedEntry;
           await docRef.update({'entries': entries});
         }
@@ -1054,7 +1291,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class SegmentedArcPainter extends CustomPainter { // aangepaste kleuren voor segmenten in de cirkel
+class SegmentedArcPainter extends CustomPainter {
+  // aangepaste kleuren voor segmenten in de cirkel
   final double progress;
   final double goal;
   final List<MapEntry<String, double>> breakdown;
@@ -1070,9 +1308,11 @@ class SegmentedArcPainter extends CustomPainter { // aangepaste kleuren voor seg
   });
 
   @override
-  void paint(Canvas canvas, Size size) { // tekent de cirkel
+  void paint(Canvas canvas, Size size) {
+    // tekent de cirkel
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - strokeWidth) / 2; // radius rekening houdend met dikte
+    final radius =
+        (size.width - strokeWidth) / 2; // radius rekening houdend met dikte
     const startAngle = -90 * (3.1415926535 / 180); // start bovenaan
 
     // Achtergrond cirkel
@@ -1084,25 +1324,33 @@ class SegmentedArcPainter extends CustomPainter { // aangepaste kleuren voor seg
 
     double currentAngle = startAngle;
 
-    for (final entry in breakdown) { // teken elk stukjee
-      final sweepAngle = (entry.value / goal) * 2 * 3.1415926535; // hoek voor dit stukje
+    for (final entry in breakdown) {
+      // teken elk stukjee
+      final sweepAngle =
+          (entry.value / goal) * 2 * 3.1415926535; // hoek voor dit stukje
       final color = _getColorsForDrink(entry.key, isDarkMode)['background']!;
 
       final segmentPaint = Paint()
-        ..color = color // kleur voor dit stukje
-        ..style = PaintingStyle.stroke // stijl voor cirkel
-        ..strokeWidth = strokeWidth // dikte van de cirkel
+        ..color =
+            color // kleur voor dit stukje
+        ..style = PaintingStyle
+            .stroke // stijl voor cirkel
+        ..strokeWidth =
+            strokeWidth // dikte van de cirkel
         ..strokeCap = StrokeCap.round; // afgeronde uiteinden
 
-      final totalSweep = progress * 2 * 3.1415926535; // totale hoek om te tekenen
+      final totalSweep =
+          progress * 2 * 3.1415926535; // totale hoek om te tekenen
       final angleToDraw = currentAngle - startAngle; // huidige hoek
 
-      if (angleToDraw < totalSweep) { // alleen tekenen binnen de voortgang
+      if (angleToDraw < totalSweep) {
+        // alleen tekenen binnen de voortgang
         double sweepToDraw = sweepAngle;
         if (angleToDraw + sweepAngle > totalSweep) {
           sweepToDraw = totalSweep - angleToDraw;
         } // teken het segment
-        canvas.drawArc( // teken het segment
+        canvas.drawArc(
+          // teken het segment
           Rect.fromCircle(center: center, radius: radius),
           currentAngle,
           sweepToDraw,
@@ -1115,11 +1363,13 @@ class SegmentedArcPainter extends CustomPainter { // aangepaste kleuren voor seg
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) { // altijd opnieuw schilderen bij verandering
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    // altijd opnieuw schilderen bij verandering
     return true;
   }
- 
-  Map<String, Color> _getColorsForDrink(String name, bool isDarkMode) { // bepaalt kleuren op basis van dranknaam
+
+  Map<String, Color> _getColorsForDrink(String name, bool isDarkMode) {
+    // bepaalt kleuren op basis van dranknaam
     final lowerCaseName = name.toLowerCase();
 
     if (lowerCaseName.contains('water')) {
