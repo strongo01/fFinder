@@ -10,16 +10,16 @@ class AddDrinkPage extends StatefulWidget {
 }
 
 class _AddDrinkPageState extends State<AddDrinkPage> {
-  List<Map<String, dynamic>> _drinkPresets = [];
+  List<Map<String, dynamic>> _drinkPresets = []; // lijst van drank standaarden
   bool _isLoading = true;
 
   @override
   void initState() {
-    super.initState();
+    super.initState(); 
     _loadDrinkPresets();
   }
 
-  Future<void> _loadDrinkPresets() async {
+  Future<void> _loadDrinkPresets() async { // laadt de drank standaarden van firestore
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       setState(() {
@@ -36,9 +36,9 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
           .collection('users')
           .doc(user.uid)
           .get();
-      if (doc.exists && doc.data()!.containsKey('drinkPresets')) {
+      if (doc.exists && doc.data()!.containsKey('drinkPresets')) { // als er standaarden zijn opgeslagen
         final presets = List<Map<String, dynamic>>.from(
-          doc.data()!['drinkPresets'],
+          doc.data()!['drinkPresets'], // haal de lijst op
         );
         setState(() {
           _drinkPresets = presets;
@@ -63,16 +63,16 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     }
   }
 
-  Future<void> _saveDrinkPresets() async {
+  Future<void> _saveDrinkPresets() async { // slaat de drank standaarden op in firestore
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-      'drinkPresets': _drinkPresets,
-    }, SetOptions(merge: true));
+      'drinkPresets': _drinkPresets, // in drinkPresets veld
+    }, SetOptions(merge: true)); // voeg toe zonder te overschrijven
   }
 
-  Future<void> _logDrink(String name, int amount) async {
+  Future<void> _logDrink(String name, int amount) async { // logt het drinken van een drankje
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -85,8 +85,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     final todayDocId =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
-    final logEntry = {
-      'product_name': name,
+    final logEntry = { // maak een log entry aan 
+      'product_name': name, 
       'quantity': '$amount ml',
       'meal_type': 'Drinken',
       'timestamp': DateTime.now(),
@@ -118,7 +118,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     }
   }
 
-  void _showAddPresetDialog() {
+  void _showAddPresetDialog() { // toont dialoog om nieuwe drank standaard toe te voegen
     final nameController = TextEditingController();
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -130,7 +130,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       context: context,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setStateDialog) {
+          builder: (context, setStateDialog) { // gebruik StatefulBuilder om de diaaloog te updaten
             return AlertDialog(
               title: const Text('Nieuw Drankje Toevoegen'),
               content: Form(
@@ -141,14 +141,14 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                     DropdownButtonFormField<String>(
                       value: selectedDrink,
                       hint: const Text('Kies een drankje'),
-                      onChanged: (value) {
-                        setStateDialog(() {
+                      onChanged: (value) { // update geselecteerde drank
+                        setStateDialog(() { // updat de dialoog
                           selectedDrink = value;
                         });
                       },
                       items: drinkOptions
                           .map(
-                            (drink) => DropdownMenuItem(
+                            (drink) => DropdownMenuItem( // maak een dropdown item voor elke optie
                               value: drink,
                               child: Text(drink),
                             ),
@@ -179,7 +179,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       keyboardType: TextInputType.number,
                       validator: (value) {
                         if (value!.isEmpty) return 'Hoeveelheid is verplicht';
-                        if (int.tryParse(value) == null) {
+                        if (int.tryParse(value) == null) { // controleer of het een getal is
                           return 'Voer een getal in';
                         }
                         return null;
@@ -190,7 +190,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.of(context).pop(), // sluit de dialoog
                   child: const Text('Annuleren'),
                 ),
                 ElevatedButton(
@@ -230,11 +230,11 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
           : Padding(
               padding: const EdgeInsets.all(8.0),
               child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 1,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount( // rooster met vaste aantal kolommen
+                  crossAxisCount: 3, // aantal kolommen
+                  crossAxisSpacing: 8, // ruimte tussen kolommen
+                  mainAxisSpacing: 8, // ruimte tussen rijen
+                  childAspectRatio: 1, // vierkante knoppen
                 ),
                 itemCount: _drinkPresets.length + 1,
                 itemBuilder: (context, index) {
@@ -256,7 +256,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                   }
 
                   final preset = _drinkPresets[index];
-                  final colors = _getColorsForDrink(preset['name'], isDarkMode);
+                  final colors = _getColorsForDrink(preset['name'], isDarkMode); // bepaal kleuren op basis van dranknaam
 
                   return ElevatedButton(
                     onPressed: () =>
@@ -298,7 +298,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     );
   }
 
-  IconData _getIconForDrink(String name) {
+  IconData _getIconForDrink(String name) { // bepaalt icoon op basis van dranknaam
     final lowerCaseName = name.toLowerCase();
     if (lowerCaseName.contains('water')) return Icons.water_drop;
     if (lowerCaseName.contains('koffie')) return Icons.coffee;
@@ -309,7 +309,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     return Icons.local_drink;
   }
 
-  Map<String, Color> _getColorsForDrink(String name, bool isDarkMode) {
+  Map<String, Color> _getColorsForDrink(String name, bool isDarkMode) { // bepaalt kleuren op basis van dranknaam
     final lowerCaseName = name.toLowerCase();
 
     if (lowerCaseName.contains('water')) {

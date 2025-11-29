@@ -71,7 +71,7 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   // Opruimen van controllers
   @override
-  void dispose() {
+  void dispose() { //hij ruimt op omdat hij anders geheugen lekt
     _pageController.dispose();
     _firstNameController.dispose();
     _heightController.dispose();
@@ -82,7 +82,7 @@ class _OnboardingViewState extends State<OnboardingView> {
     super.dispose();
   }
 
-  late FocusNode _focusNode;
+  late FocusNode _focusNode; // focus node voor keyboard events
 
   @override
   void initState() {
@@ -362,8 +362,8 @@ class _OnboardingViewState extends State<OnboardingView> {
     );
   }
 
-  int _ageYearsFromBirthDate() {
-    if (_birthDate == null) return 0;
+  int _ageYearsFromBirthDate() { // bereken leeftijd in jaren
+    if (_birthDate == null) return 0; 
     final now = DateTime.now();
     int years = now.year - _birthDate!.year;
     if (now.month < _birthDate!.month ||
@@ -373,7 +373,7 @@ class _OnboardingViewState extends State<OnboardingView> {
     return years;
   }
 
-  int _ageMonthsFromBirthDate() {
+  int _ageMonthsFromBirthDate() { // bereken leeftijd in maanden
     if (_birthDate == null) return 0;
     final now = DateTime.now();
     int months =
@@ -382,14 +382,14 @@ class _OnboardingViewState extends State<OnboardingView> {
     return max(0, months);
   }
 
-  double? _parseHeightMeters() {
+  double? _parseHeightMeters() { // parse lengte in meters
     final text = _heightController.text;
     final h = double.tryParse(text); // hoogte in cm
     if (h == null) return null; // niet geldig
     return h / 100.0; // omzetten naar meters
   }
 
-  Future<void> _updateRange() async {
+  Future<void> _updateRange() async { // update de gewicht range berekening
     final heightM = _parseHeightMeters();
     final ageYears = _ageYearsFromBirthDate();
     final ageMonths = _ageMonthsFromBirthDate();
@@ -609,7 +609,6 @@ class _OnboardingViewState extends State<OnboardingView> {
           focusNode: _focusNode,
           autofocus: true,
           onKey: (node, event) {
-            // Detect Enter key press on PC
             if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
               _nextPage();
               return KeyEventResult.handled;
