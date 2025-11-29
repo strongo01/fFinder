@@ -1,5 +1,4 @@
 import 'dart:math';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +8,8 @@ import 'package:pws/views/settings_view.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:flutter/cupertino.dart'; //voor ios stijl widgets
 import 'package:flutter/foundation.dart'; // Voor platform check
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'add_food_view.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:chat_bubbles/chat_bubbles.dart';
@@ -32,6 +33,16 @@ class _HomeScreenState extends State<HomeScreen> {
   double? _calorieAllowance;
   DateTime _selectedDate = DateTime.now();
 
+  final GlobalKey _dateKey = GlobalKey();
+  final GlobalKey _calorieInfoRowKey = GlobalKey();
+  final GlobalKey _barcodeKey = GlobalKey();
+  final GlobalKey _waterCircleKey = GlobalKey();
+  final GlobalKey _addFabKey = GlobalKey();
+  final GlobalKey _mascotteKey = GlobalKey();
+  final GlobalKey _mealKey = GlobalKey();
+
+  late TutorialCoachMark tutorialCoachMark;
+
   late PageController _pageController; // controller voor de paginaweergave
   static const int _initialPage =
       50000; // een groot getal om ver in de toekomst te starten voor swipen
@@ -47,10 +58,244 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _createTutorial();
+    _showTutorial();
+  }
+
+  @override
   void dispose() {
     _pageController
         .dispose(); // de controller opruimen bij het verwijderen van de widget
     super.dispose();
+  }
+
+  void _showTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool tutorialShown = prefs.getBool('home_tutorial_shown') ?? false;
+
+    if (!tutorialShown) {
+    Future.delayed(const Duration(seconds: 1), () {
+    tutorialCoachMark.show(context: context);
+    prefs.setBool('home_tutorial_shown', true);
+    });
+    }
+  }
+
+  void _createTutorial() {
+    tutorialCoachMark = TutorialCoachMark(
+      targets: _createTargets(context),
+      colorShadow: Colors.blue.withOpacity(0.7),
+      paddingFocus: 10,
+      opacityShadow: 0.8,
+      hideSkip: true,
+      onFinish: () {
+        print("Tutorial voltooid");
+      },
+      onClickTarget: (target) {
+        print('Target geklikt: $target');
+      },
+    );
+  }
+
+  List<TargetFocus> _createTargets(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    List<TargetFocus> targets = [];
+
+    //Datumkiezer
+    targets.add(
+      TargetFocus(
+        identify: "date-key",
+        keyTarget: _dateKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Datum Wisselen',
+              'Tik hier om naar een andere dag te gaan of veeg over het scherm naar links of rechts.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+    //Barcode
+    targets.add(
+      TargetFocus(
+        identify: "barcode-key",
+        keyTarget: _barcodeKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Barcode Scannen',
+              'Tik hier om een product te scannen en snel toe te voegen aan je dag.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Calorieën-kaart
+    targets.add(
+      TargetFocus(
+        identify: "calorie-info-row-key",
+        keyTarget: _calorieInfoRowKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContentWithArrow(
+              'Calorieën Overzicht',
+              'Hier zie je een samenvatting van je calorie-inname voor de geselecteerde dag.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Mascotte-kaart
+    targets.add(
+      TargetFocus(
+        identify: "mascotte-key",
+        keyTarget: _mascotteKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Mascotte', //TODO: verander titel
+              'Persoonlijke motivatie en tips van je mascotte!', //TODO: verander tekst
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Watercirkel
+    targets.add(
+      TargetFocus(
+        identify: "water-circle-key",
+        keyTarget: _waterCircleKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            child: _buildTutorialContent(
+              'Drankinname',
+              'Houd hier je drankinname bij. De cirkel vult zich naarmate je je doel nadert.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Toevoegen knop
+    targets.add(
+      TargetFocus(
+        identify: "add-fab-key",
+        keyTarget: _addFabKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            child: _buildTutorialContent(
+              'Items Toevoegen',
+              'Gebruik deze knop om snel een maaltijd of drankje aan je dag toe te voegen.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Meals-kaart
+    targets.add(
+      TargetFocus(
+        identify: "meal-key",
+        keyTarget: _mealKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            child: _buildTutorialContentWithArrow(
+              'Logs', //TODO: verander titel
+              'Hier komen al het voedsel en drankjes die je toevoegt.',
+              isDarkMode,
+              arrowIcon: Icons.arrow_downward,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return targets;
+  }
+
+  Widget _buildTutorialContentWithArrow(
+    String title,
+    String text,
+    bool isDarkMode, {
+    IconData arrowIcon = Icons.arrow_upward,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (arrowIcon == Icons.arrow_downward) // Pijl bovenaan als hij omlaag wijst
+          Center(
+            child: Icon(
+              arrowIcon,
+              color: isDarkMode ? Colors.white : Colors.black,
+              size: 320,
+            ),
+          ),
+        if (arrowIcon == Icons.arrow_downward) const SizedBox(height: 10),
+        _buildTutorialContent(title, text, isDarkMode),
+        if (arrowIcon == Icons.arrow_upward) // Pijl onderaan als hij omhoog wijst
+          const SizedBox(height: 10),
+        if (arrowIcon == Icons.arrow_upward)
+          Center(
+            child: Icon(
+              arrowIcon,
+              color: isDarkMode ? Colors.white : Colors.black,
+              size: 40,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTutorialContent(String title, String text, bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[800] : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : Colors.black,
+              fontSize: 20,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatDate(DateTime date) {
@@ -205,6 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return CupertinoPageScaffold(
             navigationBar: CupertinoNavigationBar(
               middle: GestureDetector(
+                key: _dateKey,
                 onTap: () => _selectDate(context),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -229,6 +475,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               trailing: CupertinoButton(
                 padding: EdgeInsets.zero,
+                key: _barcodeKey,
                 child: const Icon(CupertinoIcons.barcode_viewfinder),
                 onPressed: _scanBarcode,
               ),
@@ -262,6 +509,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: GestureDetector(
+          key: _dateKey,
           onTap: () => _selectDate(context),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -284,6 +532,7 @@ class _HomeScreenState extends State<HomeScreen> {
         centerTitle: true,
         actions: [
           IconButton(
+            key: _barcodeKey,
             icon: const Icon(Icons.qr_code_scanner),
             onPressed: _scanBarcode,
           ),
@@ -310,6 +559,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final childBackgroundColor = isDarkMode ? Colors.grey[700] : Colors.white;
 
     return SpeedDial(
+      key: _addFabKey,
       icon: Icons.add,
       activeIcon: Icons.close,
       backgroundColor: fabBackgroundColor,
@@ -595,6 +845,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   children: [
                     Row(
+                      key: _calorieInfoRowKey,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // Calorie-informatie
@@ -663,9 +914,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     MainAxisAlignment.center, // alles in het midden
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
+                    key: _mascotteKey,
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(bottom: 80),
@@ -694,26 +945,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(width: 30),
 
-                  _buildWaterCircle(
-                    totalWater,
-                    waterGoal.toDouble(),
-                    drinkBreakdown,
-                    isDarkMode,
+                  Container(
+                    key: _waterCircleKey,
+                    child: _buildWaterCircle(
+                      totalWater,
+                      waterGoal.toDouble(),
+                      drinkBreakdown,
+                      isDarkMode,
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
-            ...meals.entries.map((mealEntry) {
-              if (mealEntry.value.isEmpty) {
-                return const SizedBox.shrink(); // sla lege maaltijden over
-              }
-              return _buildMealSection(
-                title: mealEntry.key,
-                entries: mealEntry.value,
-                isDarkMode: isDarkMode,
-              );
-            }).toList(),
+            ...() {
+              bool mealKeyAssigned = false;
+              return meals.entries.map((mealEntry) {
+                if (mealEntry.value.isEmpty) {
+                  return const SizedBox.shrink(); // sla lege maaltijden over
+                }
+
+                Key? currentKey;
+                if (!mealKeyAssigned) {
+                  currentKey = _mealKey;
+                  mealKeyAssigned = true;
+                }
+
+                return _buildMealSection(
+                  key: currentKey, // Geef de sleutel hier door
+                  title: mealEntry.key,
+                  entries: mealEntry.value,
+                  isDarkMode: isDarkMode,
+                );
+              });
+            }(),
           ],
         );
       },
@@ -982,6 +1247,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMealSection({
     // bouwt een maaltijdsectie
+    Key? key,
     required String title,
     required List<dynamic> entries,
     required bool isDarkMode,
@@ -993,6 +1259,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Card(
+      key: key,
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       color: isDarkMode ? Colors.grey[850] : Colors.white,
       elevation: 1,
