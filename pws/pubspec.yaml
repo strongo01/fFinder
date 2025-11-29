@@ -45,6 +45,7 @@ dependencies:
   simple_barcode_scanner: ^0.4.0
   google_fonts: ^6.3.2
   firebase_messaging: ^16.0.4
+  flutter_speed_dial: ^7.0.0
 
 flutter_launcher_icons:
   android: "launcher_icon"

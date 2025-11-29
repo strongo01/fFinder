@@ -6,7 +6,8 @@ import 'package:pws/views/settings_view.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:flutter/cupertino.dart'; //voor ios stijl widgets
 import 'package:flutter/foundation.dart'; // Voor platform check
-import 'add_view.dart';
+import 'add_food_view.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
 //homescreen is een statefulwidget omdat de inhoud verandert
 class HomeScreen extends StatefulWidget {
@@ -203,20 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Material(
                 child: Scaffold(
                   body: _buildHomeContent(),
-                  floatingActionButton: FloatingActionButton(
-                    backgroundColor: isDarkMode
-                        ? Colors.grey[850]
-                        : Colors.grey[200],
-                    foregroundColor: isDarkMode ? Colors.white : Colors.black,
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const AddPage(),
-                        ),
-                      );
-                    },
-                    child: const Icon(Icons.add),
-                  ),
+                  floatingActionButton: _buildSpeedDial(),
                 ),
               ),
             ),
@@ -259,16 +247,49 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: _buildHomeContent(),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: isDarkMode ? Colors.grey[850] : Colors.grey[200],
-        foregroundColor: isDarkMode ? Colors.white : Colors.black,
-        onPressed: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (context) => const AddPage()));
-        },
-        child: Icon(Icons.add),
-      ),
+      floatingActionButton: _buildSpeedDial(),
+    );
+  }
+
+  Widget _buildSpeedDial() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final fabBackgroundColor = isDarkMode ? Colors.grey[850] : Colors.grey[200];
+    final fabForegroundColor = isDarkMode ? Colors.white : Colors.black;
+    final childBackgroundColor = isDarkMode ? Colors.grey[700] : Colors.white;
+
+    return SpeedDial(
+      icon: Icons.add,
+      activeIcon: Icons.close,
+      backgroundColor: fabBackgroundColor,
+      foregroundColor: fabForegroundColor,
+      animationCurve: Curves.bounceInOut,
+      animationDuration: const Duration(milliseconds: 300),
+      children: [
+        SpeedDialChild(
+          child: const Icon(Icons.restaurant),
+          label: 'Voedsel',
+          backgroundColor: childBackgroundColor,
+          labelStyle: TextStyle(color: fabForegroundColor),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const AddPage()),
+            );
+          },
+        ),
+        SpeedDialChild(
+          child: const Icon(Icons.local_drink),
+          label: 'Drinken',
+          backgroundColor: childBackgroundColor,
+          labelStyle: TextStyle(color: fabForegroundColor),
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Functie voor drinken is nog niet beschikbaar.'),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 

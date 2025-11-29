@@ -10,11 +10,7 @@ class AddPage extends StatefulWidget {
   final String? scannedBarcode;
   final Map<String, dynamic>? initialProductData;
 
-  const AddPage({
-    super.key,
-    this.scannedBarcode,
-    this.initialProductData,
-  });
+  const AddPage({super.key, this.scannedBarcode, this.initialProductData});
   State<AddPage> createState() => _AddPageState();
 }
 
@@ -26,7 +22,7 @@ class _AddPageState extends State<AddPage> {
   List<dynamic>? _searchResults;
   final List<bool> _selectedToggle = <bool>[true, false, false, false];
 
- @override
+  @override
   void initState() {
     super.initState();
     if (widget.scannedBarcode != null) {
@@ -774,8 +770,9 @@ class _AddPageState extends State<AddPage> {
         final formKey = GlobalKey<FormState>();
         final caloriesController = TextEditingController();
         final fatController = TextEditingController();
-        final amountController =
-            TextEditingController(text: initialAmount?.toString() ?? '');
+        final amountController = TextEditingController(
+          text: initialAmount?.toString() ?? '',
+        );
         final saturatedFatController = TextEditingController();
         final carbsController = TextEditingController();
         final sugarsController = TextEditingController();
@@ -803,12 +800,10 @@ class _AddPageState extends State<AddPage> {
                       nutriments['carbohydrates']?.toString() ?? '';
                   sugarsController.text =
                       nutriments['sugars']?.toString() ?? '';
-                  fiberController.text =
-                      nutriments['fiber']?.toString() ?? '';
+                  fiberController.text = nutriments['fiber']?.toString() ?? '';
                   proteinsController.text =
                       nutriments['proteins']?.toString() ?? '';
-                  saltController.text =
-                      nutriments['salt']?.toString() ?? '';
+                  saltController.text = nutriments['salt']?.toString() ?? '';
 
                   product = Product(
                     barcode: barcode,
@@ -1114,22 +1109,6 @@ class _AddPageState extends State<AddPage> {
                                     ),
                                   };
 
-                                  final nutrimentsForLog = Nutriments.fromJson({
-                                    'energy-kcal':
-                                        nutrimentsData['energy-kcal'],
-                                    'fat': nutrimentsData['fat'],
-                                    'saturated-fat':
-                                        nutrimentsData['saturated-fat'],
-                                    'carbohydrates':
-                                        nutrimentsData['carbohydrates'],
-                                    'sugars':
-                                        nutrimentsData['sugars'],
-                                    'fiber': nutrimentsData['fiber'],
-                                    'proteins':
-                                        nutrimentsData['proteins'],
-                                    'salt': nutrimentsData['salt'],
-                                  });
-
                                   if (product != null) {
                                     await _addRecentProduct(
                                       product!,
@@ -1142,7 +1121,7 @@ class _AddPageState extends State<AddPage> {
                                         context,
                                         product!.productName ??
                                             'Onbekend product',
-                                        nutrimentsForLog,
+                                        nutrimentsData,
                                       );
                                   if (wasAdded == true && context.mounted) {
                                     Navigator.pop(context);
@@ -2104,7 +2083,7 @@ class _AddPageState extends State<AddPage> {
                           final selectedProduct =
                               entry['selectedProduct'] as Map<String, dynamic>?;
 
-if (selectedProduct != null) {
+                          if (selectedProduct != null) {
                             return Card(
                               margin: const EdgeInsets.symmetric(vertical: 4.0),
                               child: ListTile(
@@ -2117,8 +2096,9 @@ if (selectedProduct != null) {
                                       selectedProduct['_id'] as String?;
                                   if (barcode == null) return;
 
-                                  final currentAmount =
-                                      double.tryParse(amountController.text);
+                                  final currentAmount = double.tryParse(
+                                    amountController.text,
+                                  );
 
                                   final result = await _showProductDetails(
                                     barcode,
@@ -2130,8 +2110,8 @@ if (selectedProduct != null) {
                                   if (result != null &&
                                       result['amount'] != null) {
                                     setModalState(() {
-                                      amountController.text =
-                                          result['amount'].toString();
+                                      amountController.text = result['amount']
+                                          .toString();
                                       entry['selectedProduct'] =
                                           result['product'];
                                     });
@@ -2617,14 +2597,11 @@ if (selectedProduct != null) {
                           final nutrimentsMap =
                               productData['nutriments_per_100g']
                                   as Map<String, dynamic>?;
-                          final nutrimentsForLog = Nutriments.fromJson(
-                            nutrimentsMap ?? {},
-                          );
 
                           final bool? wasAdded = await _showAddLogDialog(
                             context,
                             name,
-                            nutrimentsForLog,
+                            nutrimentsMap, // GEWIJZIGD: Geef de Map direct door
                           );
 
                           // Als het product is toegevoegd, sluit dan ook de productdetails.
@@ -2678,7 +2655,7 @@ if (selectedProduct != null) {
   Future<bool?> _showAddLogDialog(
     BuildContext context,
     String productName,
-    Nutriments? nutriments,
+    Map<String, dynamic>? nutriments,
   ) async {
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -2775,61 +2752,47 @@ if (selectedProduct != null) {
 
                       final factor = amount / 100.0;
 
+                      final nutrimentsJson = nutriments;
+
                       final calculatedNutriments = {
                         'energy-kcal':
-                            (nutriments.getValue(
-                                  Nutrient.energyKCal,
-                                  PerSize.oneHundredGrams,
-                                ) ??
+                            (nutrimentsJson['energy-kcal_100g'] as num? ??
+                                nutrimentsJson['energy-kcal'] as num? ??
                                 0) *
                             factor,
                         'fat':
-                            (nutriments.getValue(
-                                  Nutrient.fat,
-                                  PerSize.oneHundredGrams,
-                                ) ??
+                            (nutrimentsJson['fat_100g'] as num? ??
+                                nutrimentsJson['fat'] as num? ??
                                 0) *
                             factor,
                         'saturated-fat':
-                            (nutriments.getValue(
-                                  Nutrient.saturatedFat,
-                                  PerSize.oneHundredGrams,
-                                ) ??
+                            (nutrimentsJson['saturated-fat_100g'] as num? ??
+                                nutrimentsJson['saturated-fat'] as num? ??
                                 0) *
                             factor,
                         'carbohydrates':
-                            (nutriments.getValue(
-                                  Nutrient.carbohydrates,
-                                  PerSize.oneHundredGrams,
-                                ) ??
+                            (nutrimentsJson['carbohydrates_100g'] as num? ??
+                                nutrimentsJson['carbohydrates'] as num? ??
                                 0) *
                             factor,
                         'sugars':
-                            (nutriments.getValue(
-                                  Nutrient.sugars,
-                                  PerSize.oneHundredGrams,
-                                ) ??
+                            (nutrimentsJson['sugars_100g'] as num? ??
+                                nutrimentsJson['sugars'] as num? ??
                                 0) *
                             factor,
                         'fiber':
-                            (nutriments.getValue(
-                                  Nutrient.fiber,
-                                  PerSize.oneHundredGrams,
-                                ) ??
+                            (nutrimentsJson['fiber_100g'] as num? ??
+                                nutrimentsJson['fiber'] as num? ??
                                 0) *
                             factor,
                         'proteins':
-                            (nutriments.getValue(
-                                  Nutrient.proteins,
-                                  PerSize.oneHundredGrams,
-                                ) ??
+                            (nutrimentsJson['proteins_100g'] as num? ??
+                                nutrimentsJson['proteins'] as num? ??
                                 0) *
                             factor,
                         'salt':
-                            (nutriments.getValue(
-                                  Nutrient.salt,
-                                  PerSize.oneHundredGrams,
-                                ) ??
+                            (nutrimentsJson['salt_100g'] as num? ??
+                                nutrimentsJson['salt'] as num? ??
                                 0) *
                             factor,
                       };
