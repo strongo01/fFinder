@@ -8,7 +8,7 @@ import 'dart:convert';
 
 class AddFoodPage extends StatefulWidget {
   final String? scannedBarcode;
-  final Map<String, dynamic>? initialProductData;
+  final Map<String, dynamic>? initialProductData; //initialproductdata: de data van het product als die al bekend is (barcode)
 
   const AddFoodPage({super.key, this.scannedBarcode, this.initialProductData});
   State<AddFoodPage> createState() => _AddFoodPageState();
@@ -26,7 +26,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   void initState() {
     super.initState();
     if (widget.scannedBarcode != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) { // wacht totdat de build klaar is
         if (mounted) {
           _showProductDetails(
             widget.scannedBarcode!,
@@ -37,7 +37,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
-  Future<void> _searchProducts(String query) async {
+  Future<void> _searchProducts(String query) async { // zoek producten via openfoodfacts api
     if (query.isEmpty) {
       setState(() {
         _searchResults = null;
@@ -46,9 +46,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
       return;
     }
 
-    final trimmed = query.trim();
+    final trimmed = query.trim(); // verwijder spaties aan begin en eind
 
-    if (trimmed.length < 2) {
+    if (trimmed.length < 2) { // minimaal 2 tekens
       setState(() {
         _searchResults = null;
         _errorMessage = 'Voer minimaal 2 tekens in.';
@@ -64,7 +64,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     try {
       final url = Uri.parse(
         "https://nl.openfoodfacts.org/cgi/search.pl"
-        "?search_terms=${Uri.encodeComponent(trimmed)}"
+        "?search_terms=${Uri.encodeComponent(trimmed)}" // zoekterm encoden
         "&search_simple=1"
         "&json=1"
         "&action=process",
@@ -76,10 +76,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
       }
 
       final data = jsonDecode(response.body);
-      final List all = (data["products"] as List?) ?? [];
+      final List all = (data["products"] as List?) ?? []; // alle producten
 
-      final escaped = RegExp.escape(trimmed);
-      final wholeWord = RegExp(
+      final escaped = RegExp.escape(trimmed); // escape speciale tekens
+      final wholeWord = RegExp( // hele woord matchen
         r'\b' + escaped + r'\b',
         caseSensitive: false,
         unicode: true,
@@ -90,7 +90,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         unicode: true,
       );
 
-      List filtered = all.where((p) {
+      List filtered = all.where((p) { // filter op hele woord
         final name =
             "${p["product_name"] ?? ''} "
             "${p["generic_name"] ?? ''} "
@@ -98,7 +98,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         return wholeWord.hasMatch(name);
       }).toList();
 
-      if (filtered.isEmpty) {
+      if (filtered.isEmpty) { // als geen hele woord matches, filter op starts with
         filtered = all.where((p) {
           final name =
               "${p["product_name"] ?? ''} "
@@ -220,7 +220,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
               vertical: 0,
               horizontal: 20,
             ),
-            border: OutlineInputBorder(
+            border: OutlineInputBorder( // afgeronde hoeken
               borderRadius: BorderRadius.circular(30.0),
               borderSide: BorderSide.none,
             ),
@@ -240,7 +240,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         ),
         actions: [
           if (_searchController.text.isEmpty &&
-              (_selectedTabIndex == 2 || _selectedTabIndex == 3))
+              (_selectedTabIndex == 2 || _selectedTabIndex == 3)) 
             IconButton(
               icon: const Icon(Icons.add),
               tooltip: _selectedTabIndex == 2
@@ -274,7 +274,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 onPressed: (int index) {
                   setState(() {
                     _selectedTabIndex = index;
-                    for (int i = 0; i < _selectedToggle.length; i++) {
+                    for (int i = 0; i < _selectedToggle.length; i++) { // update toggle state
                       _selectedToggle[i] = i == index;
                     }
                   });
@@ -282,7 +282,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 borderRadius: const BorderRadius.all(Radius.circular(8)),
                 constraints: BoxConstraints(
                   minHeight: 40.0,
-                  minWidth: (MediaQuery.of(context).size.width - 48) / 4,
+                  minWidth: (MediaQuery.of(context).size.width - 48) / 4, // verdeel groote gelijk
                 ),
                 isSelected: _selectedToggle,
                 children: const [
@@ -299,7 +299,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent() { // bouw de juiste content op basis van de zoekterm
     if (_searchController.text.isNotEmpty) {
       return _buildSearchResults();
     } else {
@@ -307,7 +307,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
-  Widget _buildSearchResults() {
+  Widget _buildSearchResults() { // bouw de zoekresultaten lijst
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -331,7 +331,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
             ),
             const SizedBox(height: 8),
-            TextButton(
+            TextButton( // knop om eigen product toe te voegen
               onPressed: _showAddMyProductSheet,
               child: const Text('Wilt u zelf een product toevoegen?'),
             ),
@@ -340,8 +340,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
       );
     }
 
-    return ListView.builder(
-      itemCount: _searchResults!.length + 1,
+    return ListView.builder( 
+      itemCount: _searchResults!.length + 1, 
       itemBuilder: (context, index) {
         if (index == _searchResults!.length) {
           return Padding(
@@ -358,12 +358,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
         final product = _searchResults![index] as Map<String, dynamic>;
         final imageUrl = product['image_front_small_url'] as String?;
 
-        return ListTile(
+        return ListTile( // toon elk product in de lijst
           leading: imageUrl != null
               ? SizedBox(
                   width: 50,
                   height: 50,
-                  child: Image.network(
+                  child: Image.network( // laad de afbeelding van het product
                     imageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) =>
@@ -388,9 +388,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<void> _showAddMyProductSheet() async {
+  Future<void> _showAddMyProductSheet() async { // toon sheet om eigen product toe te voegen
     final _formKey = GlobalKey<FormState>();
-    final _nameController = TextEditingController();
+    final _nameController = TextEditingController(); // naam controller
     final _brandController = TextEditingController();
     final _quantityController = TextEditingController();
     final _caloriesController = TextEditingController();
@@ -402,7 +402,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final _proteinsController = TextEditingController();
     final _saltController = TextEditingController();
 
-    await showModalBottomSheet(
+    await showModalBottomSheet( // toon modal sheet. modal is een soort popup
       context: context,
       isScrollControlled: true,
       builder: (context) {
@@ -518,9 +518,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 24),
-                  ElevatedButton(
+                  ElevatedButton( // knop om product op te slaan
                     onPressed: () async {
-                      if (_formKey.currentState!.validate()) {
+                      if (_formKey.currentState!.validate()) { // valideer formulier
                         final user = FirebaseAuth.instance.currentUser;
                         if (user == null) return;
 
@@ -536,9 +536,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               'nutriments_per_100g': {
                                 'energy-kcal':
                                     double.tryParse(_caloriesController.text) ??
-                                    0,
-                                'fat': double.tryParse(_fatController.text),
-                                'saturated-fat': double.tryParse(
+                                    0, // calorieën zijn verplicht
+                                'fat': double.tryParse(_fatController.text), 
+                                'saturated-fat': double.tryParse( 
                                   _saturatedFatController.text,
                                 ),
                                 'carbohydrates': double.tryParse(
@@ -554,7 +554,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 'salt': double.tryParse(_saltController.text),
                               },
                             });
-                        Navigator.pop(context);
+                        Navigator.pop(context); // sluit de sheet na opslaan
                       }
                     },
                     child: const Text('Opslaan'),
@@ -569,9 +569,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<void> _addRecentProduct(
+  Future<void> _addRecentProduct( // voeg recent product toe
     Product product, {
-    Map<String, dynamic>? editedNutriments,
+    Map<String, dynamic>? editedNutriments, // bewerkte voedingswaarden
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return; // Gebruiker niet ingelogd
@@ -639,7 +639,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     await docRef.set(productData, SetOptions(merge: true));
   }
 
-  Future<void> _addRecentMyProduct(
+  Future<void> _addRecentMyProduct( // voeg recent eigen product toe
     Map<String, dynamic> productData,
     String docId,
   ) async {
@@ -654,12 +654,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
     final dataToSave = Map<String, dynamic>.from(productData);
     dataToSave['timestamp'] = FieldValue.serverTimestamp();
-    dataToSave['isMyProduct'] = true;
+    dataToSave['isMyProduct'] = true; // markeer als eigen product
 
-    await docRef.set(dataToSave, SetOptions(merge: true));
+    await docRef.set(dataToSave, SetOptions(merge: true)); // sla op met merge
   }
 
-  Future<void> _addFavoriteProduct(
+  Future<void> _addFavoriteProduct( // voeg favoriet product toe
     Product product, {
     Map<String, dynamic>? editedNutriments,
   }) async {
@@ -752,15 +752,15 @@ class _AddFoodPageState extends State<AddFoodPage> {
     return doc.exists;
   }
 
-  Future<Map<String, dynamic>?> _showProductDetails(
+  Future<Map<String, dynamic>?> _showProductDetails( // toon product details in een modal sheet
     String barcode, {
     Map<String, dynamic>? productData,
     bool isForMeal = false,
     double? initialAmount,
   }) async {
-    return showModalBottomSheet<Map<String, dynamic>>(
+    return showModalBottomSheet<Map<String, dynamic>>( // toon modal sheet
       context: context,
-      isScrollControlled: true,
+      isScrollControlled: true, // zorg dat keyboard de sheet niet overlapt
       builder: (context) {
         Product? product;
         String? error;
@@ -927,7 +927,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
               fetchDetails();
             }
 
-            return DraggableScrollableSheet(
+            return DraggableScrollableSheet( // maak de sheet scrollable
               expand: false,
               initialChildSize: 0.8,
               maxChildSize: 0.9,
@@ -1045,7 +1045,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
                                       await _addFavoriteProduct(
                                         product!,
-                                        editedNutriments: nutrimentsData,
+                                        editedNutriments: nutrimentsData, // bewerkte voedingswaarden
                                       );
                                       setModalState(() {
                                         isFavorite = !isFavorite;
@@ -1195,7 +1195,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           const SizedBox(height: 24),
                           TextFormField(
                             controller: amountController,
-                            autofocus: true,
+                            autofocus: true, // focus op dit veld
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
@@ -1288,8 +1288,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Widget _buildEditableInfoRow(
-    String label,
+  Widget _buildEditableInfoRow( // bouw een rij met bewerkbare voedingswaarde
+    String label, 
     TextEditingController controller,
     bool isDarkMode, {
     bool isRequired = false,
@@ -1343,8 +1343,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Widget _buildInfoRow(String label, String? value) {
-    if (value == null || value.trim().isEmpty) {
+  Widget _buildInfoRow(String label, String? value) { // bouw een rij met niet-bewerkbare info
+    if (value == null || value.trim().isEmpty) { // geen waarde om te tonen
       return const SizedBox.shrink();
     }
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -1356,7 +1356,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
           SizedBox(
             width: 140,
             child: Text(
-              '$label:',
+              '$label:', // label tekst
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.white70 : Colors.black87,
@@ -1374,11 +1374,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Widget _buildProductList() {
+  Widget _buildProductList() { // bouw de lijst met producten op basis van geselecteerde tab
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final user = FirebaseAuth.instance.currentUser;
 
-    switch (_selectedTabIndex) {
+    switch (_selectedTabIndex) { // bepaal welke tab is geselecteerd
       case 0: // Recent
         if (user == null) {
           return Center(
@@ -1796,13 +1796,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
-  Future<void> _logMeal(BuildContext context, Map<String, dynamic> meal) async {
+  Future<void> _logMeal(BuildContext context, Map<String, dynamic> meal) async { // log een maaltijd naar de logs in firebase
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final ingredients =
         (meal['ingredients'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
-        [];
+        []; // haal de ingrediënten op
     if (ingredients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1813,7 +1813,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       return;
     }
 
-    final totalNutriments = <String, double>{
+    final totalNutriments = <String, double>{ // totale voedingswaarden initialiseren
       'energy-kcal': 0,
       'fat': 0,
       'saturated-fat': 0,
@@ -1825,7 +1825,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     };
     double totalAmount = 0;
 
-    for (final ingredient in ingredients) {
+    for (final ingredient in ingredients) { // bereken de totale voedingswaarden
       final amount = (ingredient['amount'] as num?)?.toDouble() ?? 0;
       final nutrimentsPer100g =
           (ingredient['nutriments_per_100g'] as Map<String, dynamic>?) ?? {};
@@ -1853,7 +1853,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         .collection('logs')
         .doc(todayDocId);
 
-    final logEntry = {
+    final logEntry = { // logboek invoer
       'product_name': meal['name'] ?? 'Onbekende maaltijd',
       'amount_g': totalAmount,
       'timestamp': Timestamp.now(),
@@ -1862,7 +1862,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       'is_meal': true,
     };
 
-    try {
+    try { // probeer de maaltijd op te slaan
       await dailyLogRef.set({
         'entries': FieldValue.arrayUnion([logEntry]),
       }, SetOptions(merge: true));
@@ -1886,7 +1886,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
-  Future<String?> _showSelectMealTypeDialog(BuildContext context) async {
+  Future<String?> _showSelectMealTypeDialog(BuildContext context) async { // toon dialoog om maaltijdtype te selecteren
     final hour = DateTime.now().hour;
     String selectedMeal;
     if (hour >= 5 && hour < 11) {
@@ -1900,9 +1900,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
     final List<String> mealTypes = ['Ontbijt', 'Lunch', 'Avondeten', 'Snacks'];
 
-    return showDialog<String>(
+    return showDialog<String>( // toon dialoog
       context: context,
-      builder: (dialogContext) {
+      builder: (dialogContext) { // bouw de dialoog
         final isDarkMode =
             Theme.of(dialogContext).brightness == Brightness.dark;
         final textColor = isDarkMode ? Colors.white : Colors.black;
@@ -1911,11 +1911,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
           builder: (context, setDialogState) {
             return AlertDialog(
               title: Text('Log Maaltijd', style: TextStyle(color: textColor)),
-              content: DropdownButtonFormField<String>(
+              content: DropdownButtonFormField<String>( // dropdown om maaltijdtype te selecteren
                 value: selectedMeal,
                 style: TextStyle(color: textColor),
                 decoration: const InputDecoration(labelText: 'Sectie'),
-                items: mealTypes.map((String value) {
+                items: mealTypes.map((String value) { // bouw de dropdown items
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value),
@@ -1946,7 +1946,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<void> _showAddMealSheet({
+  Future<void> _showAddMealSheet({ // toon de sheet om een maaltijd toe te voegen of te bewerken
     Map<String, dynamic>? existingMeal,
     String? mealId,
   }) async {
@@ -1961,7 +1961,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
           (existingMeal['ingredients'] as List<dynamic>?)
               ?.cast<Map<String, dynamic>>() ??
           [];
-      for (var ingredient in ingredients) {
+      for (var ingredient in ingredients) { // vul de ingrediënten in
         ingredientEntries.add({
           'searchController': TextEditingController(),
           'amountController': TextEditingController(
@@ -1993,7 +1993,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       isScrollControlled: true,
       builder: (context) {
         return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
+          builder: (BuildContext context, StateSetter setModalState) { // bouw de sheet
             final isDarkMode = Theme.of(context).brightness == Brightness.dark;
             final textColor = isDarkMode ? Colors.white : Colors.black;
 
@@ -2066,11 +2066,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         'Ingrediënten',
                         style: Theme.of(
                           context,
-                        ).textTheme.titleLarge?.copyWith(color: textColor),
+                        ).textTheme.titleLarge?.copyWith(color: textColor), 
                       ),
                       ListView.builder(
                         shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
+                        physics: const NeverScrollableScrollPhysics(), // voorkom interne scroll
                         itemCount: ingredientEntries.length,
                         itemBuilder: (context, index) {
                           final entry = ingredientEntries[index];
@@ -2100,7 +2100,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     amountController.text,
                                   );
 
-                                  final result = await _showProductDetails(
+                                  final result = await _showProductDetails( // toon productdetails om hoeveelheid aan te passen
                                     barcode,
                                     productData: selectedProduct,
                                     isForMeal: true,
@@ -2170,7 +2170,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     ),
                                 ],
                               ),
-                              if (entry['isSearching'] as bool)
+                              if (entry['isSearching'] as bool) // toon laadindicator
                                 const Padding(
                                   padding: EdgeInsets.all(8.0),
                                   child: Center(
@@ -2284,7 +2284,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               }
                             }
 
-                            if (finalProducts.isEmpty) {
+                            if (finalProducts.isEmpty) { // controleer of er producten zijn toegevoegd
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
@@ -2333,7 +2333,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<void> _showEditMyProductSheet(
+  Future<void> _showEditMyProductSheet( // toon sheet om eigen product te bewerken
     Map<String, dynamic> productData,
     String docId,
   ) async {
@@ -2525,7 +2525,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             .collection('my_products')
                             .doc(docId)
                             .update(updatedData);
-                        Navigator.pop(context); // Close edit sheet
+                        Navigator.pop(context); // sluit de sheet
                       }
                     },
                     child: const Text('Opslaan'),
@@ -2540,7 +2540,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<void> _showMyProductDetails(
+  Future<void> _showMyProductDetails( // toon details van eigen product
     Map<String, dynamic> productData,
     String docId,
   ) async {
@@ -2582,13 +2582,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.edit),
+                        icon: const Icon(Icons.edit), // bewerk icoon
                         onPressed: () {
                           Navigator.pop(context); // Close details
                           _showEditMyProductSheet(
                             productData,
                             docId,
-                          ); // Open edit
+                          );
                         },
                       ),
                       IconButton(
@@ -2601,11 +2601,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           final bool? wasAdded = await _showAddLogDialog(
                             context,
                             name,
-                            nutrimentsMap, // GEWIJZIGD: Geef de Map direct door
+                            nutrimentsMap, 
                           );
 
-                          // Als het product is toegevoegd, sluit dan ook de productdetails.
-                          if (wasAdded == true && context.mounted) {
+                          if (wasAdded == true && context.mounted) { // als toegevoegd, sluit dan de sheet
                             Navigator.pop(context);
                           }
                         },
@@ -2652,12 +2651,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<bool?> _showAddLogDialog(
+  Future<bool?> _showAddLogDialog( // toon dialoog om product aan log toe te voegen
     BuildContext context,
     String productName,
     Map<String, dynamic>? nutriments,
   ) async {
-    final amountController = TextEditingController();
+    final amountController = TextEditingController(); // controller voor hoeveelheid input
     final formKey = GlobalKey<FormState>();
     final hour = DateTime.now().hour;
     String selectedMeal;
