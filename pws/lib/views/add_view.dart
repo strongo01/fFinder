@@ -8,10 +8,13 @@ import 'dart:convert';
 
 class AddPage extends StatefulWidget {
   final String? scannedBarcode;
+  final Map<String, dynamic>? initialProductData;
 
-  const AddPage({super.key, this.scannedBarcode});
-
-  @override
+  const AddPage({
+    super.key,
+    this.scannedBarcode,
+    this.initialProductData,
+  });
   State<AddPage> createState() => _AddPageState();
 }
 
@@ -21,16 +24,18 @@ class _AddPageState extends State<AddPage> {
   String? _errorMessage;
   bool _isLoading = false;
   List<dynamic>? _searchResults;
-  final List<bool> _selectedToggle = <bool>[true, false, false];
+  final List<bool> _selectedToggle = <bool>[true, false, false, false];
 
-  @override
+ @override
   void initState() {
     super.initState();
     if (widget.scannedBarcode != null) {
-      // Roep _showProductDetails aan nadat de eerste frame is gebouwd.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          _showProductDetails(widget.scannedBarcode!);
+          _showProductDetails(
+            widget.scannedBarcode!,
+            productData: widget.initialProductData,
+          );
         }
       });
     }
@@ -149,8 +154,53 @@ class _AddPageState extends State<AddPage> {
     );
     // als er een geldige barcode is gescand en niet -1
     if (res is String && res != '-1') {
-      // Toon direct de productdetails, die het ook aan recents toevoegt.
-      _showProductDetails(res);
+      final barcode = res;
+      final user = FirebaseAuth.instance.currentUser;
+
+      // Als er geen gebruiker is, haal direct op van API
+      if (user == null) {
+        _showProductDetails(barcode);
+        return;
+      }
+
+      // Toon laadindicator terwijl we Firestore controleren
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        // Controleer eerst collectie
+        final recentDocRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('recents')
+            .doc(barcode);
+
+        final docSnapshot = await recentDocRef.get();
+
+        if (docSnapshot.exists) {
+          // Product gevonden in recents, gebruik die data
+          final productData = docSnapshot.data() as Map<String, dynamic>;
+          // Roep de details sheet aan met de gevonden data
+          _showProductDetails(barcode, productData: productData);
+        } else {
+          // Product niet in recents, haal op van API
+          _showProductDetails(barcode);
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = "Fout bij controleren van recente producten: $e";
+          });
+        }
+      } finally {
+        // Verberg laadindicator NADAT de data is doorgegeven
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
@@ -193,11 +243,16 @@ class _AddPageState extends State<AddPage> {
           },
         ),
         actions: [
-          if (_searchController.text.isEmpty && _selectedTabIndex == 2)
+          if (_searchController.text.isEmpty &&
+              (_selectedTabIndex == 2 || _selectedTabIndex == 3))
             IconButton(
               icon: const Icon(Icons.add),
-              tooltip: 'Product toevoegen',
-              onPressed: _showAddMyProductSheet,
+              tooltip: _selectedTabIndex == 2
+                  ? 'Product toevoegen'
+                  : 'Maaltijd toevoegen',
+              onPressed: _selectedTabIndex == 2
+                  ? _showAddMyProductSheet
+                  : _showAddMealSheet,
             ),
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
@@ -231,13 +286,14 @@ class _AddPageState extends State<AddPage> {
                 borderRadius: const BorderRadius.all(Radius.circular(8)),
                 constraints: BoxConstraints(
                   minHeight: 40.0,
-                  minWidth: (MediaQuery.of(context).size.width - 36) / 3,
+                  minWidth: (MediaQuery.of(context).size.width - 48) / 4,
                 ),
                 isSelected: _selectedToggle,
                 children: const [
                   Text('Recent'),
                   Text('Favorieten'),
                   Text('Mijn Producten'),
+                  Text('Maaltijden'),
                 ],
               ),
             ),
@@ -517,7 +573,10 @@ class _AddPageState extends State<AddPage> {
     );
   }
 
-  Future<void> _addRecentProduct(Product product) async {
+  Future<void> _addRecentProduct(
+    Product product, {
+    Map<String, dynamic>? editedNutriments,
+  }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return; // Gebruiker niet ingelogd
 
@@ -537,31 +596,39 @@ class _AddPageState extends State<AddPage> {
       'image_front_url': product.imageFrontUrl,
       'quantity': product.quantity,
       'timestamp': FieldValue.serverTimestamp(),
-      'nutriments_per_100g': {
-        'energy-kcal': nutriments?.getValue(
-          Nutrient.energyKCal,
-          PerSize.oneHundredGrams,
-        ),
-        'fat': nutriments?.getValue(Nutrient.fat, PerSize.oneHundredGrams),
-        'saturated-fat': nutriments?.getValue(
-          Nutrient.saturatedFat,
-          PerSize.oneHundredGrams,
-        ),
-        'carbohydrates': nutriments?.getValue(
-          Nutrient.carbohydrates,
-          PerSize.oneHundredGrams,
-        ),
-        'sugars': nutriments?.getValue(
-          Nutrient.sugars,
-          PerSize.oneHundredGrams,
-        ),
-        'fiber': nutriments?.getValue(Nutrient.fiber, PerSize.oneHundredGrams),
-        'proteins': nutriments?.getValue(
-          Nutrient.proteins,
-          PerSize.oneHundredGrams,
-        ),
-        'salt': nutriments?.getValue(Nutrient.salt, PerSize.oneHundredGrams),
-      },
+      'nutriments_per_100g':
+          editedNutriments ??
+          {
+            'energy-kcal': nutriments?.getValue(
+              Nutrient.energyKCal,
+              PerSize.oneHundredGrams,
+            ),
+            'fat': nutriments?.getValue(Nutrient.fat, PerSize.oneHundredGrams),
+            'saturated-fat': nutriments?.getValue(
+              Nutrient.saturatedFat,
+              PerSize.oneHundredGrams,
+            ),
+            'carbohydrates': nutriments?.getValue(
+              Nutrient.carbohydrates,
+              PerSize.oneHundredGrams,
+            ),
+            'sugars': nutriments?.getValue(
+              Nutrient.sugars,
+              PerSize.oneHundredGrams,
+            ),
+            'fiber': nutriments?.getValue(
+              Nutrient.fiber,
+              PerSize.oneHundredGrams,
+            ),
+            'proteins': nutriments?.getValue(
+              Nutrient.proteins,
+              PerSize.oneHundredGrams,
+            ),
+            'salt': nutriments?.getValue(
+              Nutrient.salt,
+              PerSize.oneHundredGrams,
+            ),
+          },
       'allergens': product.allergens?.names,
       'additives': product.additives?.names,
       'isMyProduct': false,
@@ -591,12 +658,15 @@ class _AddPageState extends State<AddPage> {
 
     final dataToSave = Map<String, dynamic>.from(productData);
     dataToSave['timestamp'] = FieldValue.serverTimestamp();
-    dataToSave['isMyProduct'] = true; // Mark as user-created product
+    dataToSave['isMyProduct'] = true;
 
     await docRef.set(dataToSave, SetOptions(merge: true));
   }
 
-  Future<void> _addFavoriteProduct(Product product) async {
+  Future<void> _addFavoriteProduct(
+    Product product, {
+    Map<String, dynamic>? editedNutriments,
+  }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -616,31 +686,39 @@ class _AddPageState extends State<AddPage> {
       'image_front_url': product.imageFrontUrl,
       'quantity': product.quantity,
       'timestamp': FieldValue.serverTimestamp(),
-      'nutriments_per_100g': {
-        'energy-kcal': nutriments?.getValue(
-          Nutrient.energyKCal,
-          PerSize.oneHundredGrams,
-        ),
-        'fat': nutriments?.getValue(Nutrient.fat, PerSize.oneHundredGrams),
-        'saturated-fat': nutriments?.getValue(
-          Nutrient.saturatedFat,
-          PerSize.oneHundredGrams,
-        ),
-        'carbohydrates': nutriments?.getValue(
-          Nutrient.carbohydrates,
-          PerSize.oneHundredGrams,
-        ),
-        'sugars': nutriments?.getValue(
-          Nutrient.sugars,
-          PerSize.oneHundredGrams,
-        ),
-        'fiber': nutriments?.getValue(Nutrient.fiber, PerSize.oneHundredGrams),
-        'proteins': nutriments?.getValue(
-          Nutrient.proteins,
-          PerSize.oneHundredGrams,
-        ),
-        'salt': nutriments?.getValue(Nutrient.salt, PerSize.oneHundredGrams),
-      },
+      'nutriments_per_100g':
+          editedNutriments ??
+          {
+            'energy-kcal': nutriments?.getValue(
+              Nutrient.energyKCal,
+              PerSize.oneHundredGrams,
+            ),
+            'fat': nutriments?.getValue(Nutrient.fat, PerSize.oneHundredGrams),
+            'saturated-fat': nutriments?.getValue(
+              Nutrient.saturatedFat,
+              PerSize.oneHundredGrams,
+            ),
+            'carbohydrates': nutriments?.getValue(
+              Nutrient.carbohydrates,
+              PerSize.oneHundredGrams,
+            ),
+            'sugars': nutriments?.getValue(
+              Nutrient.sugars,
+              PerSize.oneHundredGrams,
+            ),
+            'fiber': nutriments?.getValue(
+              Nutrient.fiber,
+              PerSize.oneHundredGrams,
+            ),
+            'proteins': nutriments?.getValue(
+              Nutrient.proteins,
+              PerSize.oneHundredGrams,
+            ),
+            'salt': nutriments?.getValue(
+              Nutrient.salt,
+              PerSize.oneHundredGrams,
+            ),
+          },
       'allergens': product.allergens?.names,
       'additives': product.additives?.names,
     };
@@ -678,8 +756,13 @@ class _AddPageState extends State<AddPage> {
     return doc.exists;
   }
 
-  Future<void> _showProductDetails(String barcode) async {
-    showModalBottomSheet(
+  Future<Map<String, dynamic>?> _showProductDetails(
+    String barcode, {
+    Map<String, dynamic>? productData,
+    bool isForMeal = false,
+    double? initialAmount,
+  }) async {
+    return showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
@@ -688,9 +771,80 @@ class _AddPageState extends State<AddPage> {
         bool isLoading = true;
         bool isFavorite = false;
 
+        final formKey = GlobalKey<FormState>();
+        final caloriesController = TextEditingController();
+        final fatController = TextEditingController();
+        final amountController =
+            TextEditingController(text: initialAmount?.toString() ?? '');
+        final saturatedFatController = TextEditingController();
+        final carbsController = TextEditingController();
+        final sugarsController = TextEditingController();
+        final fiberController = TextEditingController();
+        final proteinsController = TextEditingController();
+        final saltController = TextEditingController();
+
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             Future<void> fetchDetails() async {
+              if (productData != null) {
+                try {
+                  final isFav = await _isFavorite(barcode);
+                  final nutriments =
+                      productData['nutriments_per_100g']
+                          as Map<String, dynamic>? ??
+                      {};
+
+                  caloriesController.text =
+                      nutriments['energy-kcal']?.toString() ?? '';
+                  fatController.text = nutriments['fat']?.toString() ?? '';
+                  saturatedFatController.text =
+                      nutriments['saturated-fat']?.toString() ?? '';
+                  carbsController.text =
+                      nutriments['carbohydrates']?.toString() ?? '';
+                  sugarsController.text =
+                      nutriments['sugars']?.toString() ?? '';
+                  fiberController.text =
+                      nutriments['fiber']?.toString() ?? '';
+                  proteinsController.text =
+                      nutriments['proteins']?.toString() ?? '';
+                  saltController.text =
+                      nutriments['salt']?.toString() ?? '';
+
+                  product = Product(
+                    barcode: barcode,
+                    productName: productData['product_name'],
+                    brands: productData['brands'],
+                    quantity: productData['quantity'],
+                    imageFrontUrl: productData['image_front_url'],
+                    additives: Additives(
+                      [],
+                      (productData['additives'] as List<dynamic>?)
+                              ?.map((e) => e.toString())
+                              .toList() ??
+                          [],
+                    ),
+                    allergens: Allergens(
+                      [],
+                      (productData['allergens'] as List<dynamic>?)
+                              ?.map((e) => e.toString())
+                              .toList() ??
+                          [],
+                    ),
+                  );
+
+                  setModalState(() {
+                    isLoading = false;
+                    isFavorite = isFav;
+                  });
+                } catch (e) {
+                  setModalState(() {
+                    error = 'Fout bij laden lokale data: $e';
+                    isLoading = false;
+                  });
+                }
+                return;
+              }
+
               try {
                 final isFav = await _isFavorite(barcode);
                 final config = ProductQueryConfiguration(
@@ -703,9 +857,60 @@ class _AddPageState extends State<AddPage> {
 
                 if (result.status == ProductResultV3.statusSuccess &&
                     result.product != null) {
-                  _addRecentProduct(result.product!);
+                  final p = result.product!;
+
+                  caloriesController.text =
+                      p.nutriments
+                          ?.getValue(
+                            Nutrient.energyKCal,
+                            PerSize.oneHundredGrams,
+                          )
+                          ?.toString() ??
+                      '';
+                  fatController.text =
+                      p.nutriments
+                          ?.getValue(Nutrient.fat, PerSize.oneHundredGrams)
+                          ?.toString() ??
+                      '';
+                  saturatedFatController.text =
+                      p.nutriments
+                          ?.getValue(
+                            Nutrient.saturatedFat,
+                            PerSize.oneHundredGrams,
+                          )
+                          ?.toString() ??
+                      '';
+                  carbsController.text =
+                      p.nutriments
+                          ?.getValue(
+                            Nutrient.carbohydrates,
+                            PerSize.oneHundredGrams,
+                          )
+                          ?.toString() ??
+                      '';
+                  sugarsController.text =
+                      p.nutriments
+                          ?.getValue(Nutrient.sugars, PerSize.oneHundredGrams)
+                          ?.toString() ??
+                      '';
+                  fiberController.text =
+                      p.nutriments
+                          ?.getValue(Nutrient.fiber, PerSize.oneHundredGrams)
+                          ?.toString() ??
+                      '';
+                  proteinsController.text =
+                      p.nutriments
+                          ?.getValue(Nutrient.proteins, PerSize.oneHundredGrams)
+                          ?.toString() ??
+                      '';
+                  saltController.text =
+                      p.nutriments
+                          ?.getValue(Nutrient.salt, PerSize.oneHundredGrams)
+                          ?.toString() ??
+                      '';
+
                   setModalState(() {
-                    product = result.product;
+                    product = p;
                     isLoading = false;
                     isFavorite = isFav;
                   });
@@ -723,8 +928,7 @@ class _AddPageState extends State<AddPage> {
               }
             }
 
-            // Fetch details only on the first build
-            if (product == null && error == null) {
+            if (product == null && error == null && isLoading) {
               fetchDetails();
             }
 
@@ -754,141 +958,347 @@ class _AddPageState extends State<AddPage> {
                     Theme.of(context).brightness == Brightness.dark;
                 final textColor = isDarkMode ? Colors.white : Colors.black;
 
-                return SingleChildScrollView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              product!.productName ?? 'Onbekende naam',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(color: textColor),
+                return Form(
+                  key: formKey,
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                product!.productName ?? 'Onbekende naam',
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(color: textColor),
+                              ),
                             ),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              isFavorite
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              color: isFavorite
-                                  ? Colors.red
-                                  : (isDarkMode ? Colors.white : Colors.black),
-                            ),
-                            onPressed: () async {
-                              if (product != null) {
-                                if (isFavorite) {
-                                  await _removeFavoriteProduct(
-                                    product!.barcode!,
-                                  );
-                                } else {
-                                  await _addFavoriteProduct(product!);
+                            IconButton(
+                              icon: Icon(
+                                isFavorite
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: isFavorite
+                                    ? Colors.red
+                                    : (isDarkMode
+                                          ? Colors.white
+                                          : Colors.black),
+                              ),
+                              onPressed: () async {
+                                if (product != null) {
+                                  if (isFavorite) {
+                                    await _removeFavoriteProduct(
+                                      product!.barcode!,
+                                    );
+                                    setModalState(() {
+                                      isFavorite = !isFavorite;
+                                    });
+                                  } else {
+                                    // Valideer voordat je toevoegt aan favorieten
+                                    if (formKey.currentState!.validate()) {
+                                      final nutrimentsData = {
+                                        'energy-kcal': double.tryParse(
+                                          caloriesController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ),
+                                        'fat': double.tryParse(
+                                          fatController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ),
+                                        'saturated-fat': double.tryParse(
+                                          saturatedFatController.text
+                                              .replaceAll(',', '.'),
+                                        ),
+                                        'carbohydrates': double.tryParse(
+                                          carbsController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ),
+                                        'sugars': double.tryParse(
+                                          sugarsController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ),
+                                        'fiber': double.tryParse(
+                                          fiberController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ),
+                                        'proteins': double.tryParse(
+                                          proteinsController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ),
+                                        'salt': double.tryParse(
+                                          saltController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ),
+                                      };
+
+                                      await _addFavoriteProduct(
+                                        product!,
+                                        editedNutriments: nutrimentsData,
+                                      );
+                                      setModalState(() {
+                                        isFavorite = !isFavorite;
+                                      });
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Vul alle verplichte velden in (kcal).',
+                                          ),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
                                 }
-                                setModalState(() {
-                                  isFavorite = !isFavorite;
-                                });
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.add),
+                              onPressed: () async {
+                                if (formKey.currentState!.validate()) {
+                                  final nutrimentsData = {
+                                    'energy-kcal': double.tryParse(
+                                      caloriesController.text.replaceAll(
+                                        ',',
+                                        '.',
+                                      ),
+                                    ),
+                                    'fat': double.tryParse(
+                                      fatController.text.replaceAll(',', '.'),
+                                    ),
+                                    'saturated-fat': double.tryParse(
+                                      saturatedFatController.text.replaceAll(
+                                        ',',
+                                        '.',
+                                      ),
+                                    ),
+                                    'carbohydrates': double.tryParse(
+                                      carbsController.text.replaceAll(',', '.'),
+                                    ),
+                                    'sugars': double.tryParse(
+                                      sugarsController.text.replaceAll(
+                                        ',',
+                                        '.',
+                                      ),
+                                    ),
+                                    'fiber': double.tryParse(
+                                      fiberController.text.replaceAll(',', '.'),
+                                    ),
+                                    'proteins': double.tryParse(
+                                      proteinsController.text.replaceAll(
+                                        ',',
+                                        '.',
+                                      ),
+                                    ),
+                                    'salt': double.tryParse(
+                                      saltController.text.replaceAll(',', '.'),
+                                    ),
+                                  };
+
+                                  final nutrimentsForLog = Nutriments.fromJson({
+                                    'energy-kcal':
+                                        nutrimentsData['energy-kcal'],
+                                    'fat': nutrimentsData['fat'],
+                                    'saturated-fat':
+                                        nutrimentsData['saturated-fat'],
+                                    'carbohydrates':
+                                        nutrimentsData['carbohydrates'],
+                                    'sugars':
+                                        nutrimentsData['sugars'],
+                                    'fiber': nutrimentsData['fiber'],
+                                    'proteins':
+                                        nutrimentsData['proteins'],
+                                    'salt': nutrimentsData['salt'],
+                                  });
+
+                                  if (product != null) {
+                                    await _addRecentProduct(
+                                      product!,
+                                      editedNutriments: nutrimentsData,
+                                    );
+                                  }
+
+                                  final bool? wasAdded =
+                                      await _showAddLogDialog(
+                                        context,
+                                        product!.productName ??
+                                            'Onbekend product',
+                                        nutrimentsForLog,
+                                      );
+                                  if (wasAdded == true && context.mounted) {
+                                    Navigator.pop(context);
+                                  }
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Vul alle verplichte velden in (kcal).',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _buildEditableInfoRow(
+                          'Energie (kcal)',
+                          caloriesController,
+                          isDarkMode,
+                          isRequired: true,
+                        ),
+                        _buildEditableInfoRow(
+                          'Vetten',
+                          fatController,
+                          isDarkMode,
+                        ),
+                        _buildEditableInfoRow(
+                          '  - Waarvan verzadigd',
+                          saturatedFatController,
+                          isDarkMode,
+                        ),
+                        _buildEditableInfoRow(
+                          'Koolhydraten',
+                          carbsController,
+                          isDarkMode,
+                        ),
+                        _buildEditableInfoRow(
+                          '  - Waarvan suikers',
+                          sugarsController,
+                          isDarkMode,
+                        ),
+                        _buildEditableInfoRow(
+                          'Vezels',
+                          fiberController,
+                          isDarkMode,
+                        ),
+                        _buildEditableInfoRow(
+                          'Eiwitten',
+                          proteinsController,
+                          isDarkMode,
+                        ),
+                        _buildEditableInfoRow(
+                          'Zout',
+                          saltController,
+                          isDarkMode,
+                        ),
+                        const Divider(height: 24),
+                        _buildInfoRow(
+                          'Additieven',
+                          product!.additives?.names.join(", "),
+                        ),
+                        _buildInfoRow(
+                          'Allergenen',
+                          product!.allergens?.names.join(", "),
+                        ),
+                        if (isForMeal) ...[
+                          const SizedBox(height: 24),
+                          TextFormField(
+                            controller: amountController,
+                            autofocus: true,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Hoeveelheid voor maaltijd',
+                              suffixText: 'g',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Hoeveelheid is verplicht';
                               }
+                              if (double.tryParse(value.replaceAll(',', '.')) ==
+                                  null) {
+                                return 'Ongeldig getal';
+                              }
+                              return null;
                             },
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.add),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            child: const Text('Voeg toe aan Maaltijd'),
                             onPressed: () {
-                              if (product != null) {
-                                _showAddLogDialog(
-                                  context,
-                                  product!.productName ?? 'Onbekend product',
-                                  product!.nutriments,
-                                );
+                              if (formKey.currentState!.validate()) {
+                                final nutrimentsData = {
+                                  'energy-kcal': double.tryParse(
+                                    caloriesController.text.replaceAll(
+                                      ',',
+                                      '.',
+                                    ),
+                                  ),
+                                  'fat': double.tryParse(
+                                    fatController.text.replaceAll(',', '.'),
+                                  ),
+                                  'saturated-fat': double.tryParse(
+                                    saturatedFatController.text.replaceAll(
+                                      ',',
+                                      '.',
+                                    ),
+                                  ),
+                                  'carbohydrates': double.tryParse(
+                                    carbsController.text.replaceAll(',', '.'),
+                                  ),
+                                  'sugars': double.tryParse(
+                                    sugarsController.text.replaceAll(',', '.'),
+                                  ),
+                                  'fiber': double.tryParse(
+                                    fiberController.text.replaceAll(',', '.'),
+                                  ),
+                                  'proteins': double.tryParse(
+                                    proteinsController.text.replaceAll(
+                                      ',',
+                                      '.',
+                                    ),
+                                  ),
+                                  'salt': double.tryParse(
+                                    saltController.text.replaceAll(',', '.'),
+                                  ),
+                                };
+
+                                final productForMeal = {
+                                  '_id': product!.barcode,
+                                  'product_name': product!.productName,
+                                  'brands': product!.brands,
+                                  'image_front_small_url':
+                                      product!.imageFrontSmallUrl,
+                                  'nutriments_per_100g': nutrimentsData,
+                                };
+
+                                final result = {
+                                  'amount': double.parse(
+                                    amountController.text.replaceAll(',', '.'),
+                                  ),
+                                  'product': productForMeal,
+                                };
+                                Navigator.pop(context, result);
                               }
                             },
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 8),
-                      _buildInfoRow('Merk', product!.brands),
-                      _buildInfoRow('Hoeveelheid', product!.quantity),
-                      const Divider(height: 24),
-                      Text(
-                        'Voedingswaarden per 100g/ml',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleLarge?.copyWith(color: textColor),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildInfoRow(
-                        'Energie (kcal)',
-                        product!.nutriments
-                            ?.getValue(
-                              Nutrient.energyKCal,
-                              PerSize.oneHundredGrams,
-                            )
-                            ?.toStringAsFixed(1),
-                      ),
-                      _buildInfoRow(
-                        'Vetten',
-                        product!.nutriments
-                            ?.getValue(Nutrient.fat, PerSize.oneHundredGrams)
-                            ?.toStringAsFixed(1),
-                      ),
-                      _buildInfoRow(
-                        '  - Waarvan verzadigd',
-                        product!.nutriments
-                            ?.getValue(
-                              Nutrient.saturatedFat,
-                              PerSize.oneHundredGrams,
-                            )
-                            ?.toStringAsFixed(1),
-                      ),
-                      _buildInfoRow(
-                        'Koolhydraten',
-                        product!.nutriments
-                            ?.getValue(
-                              Nutrient.carbohydrates,
-                              PerSize.oneHundredGrams,
-                            )
-                            ?.toStringAsFixed(1),
-                      ),
-                      _buildInfoRow(
-                        '  - Waarvan suikers',
-                        product!.nutriments
-                            ?.getValue(Nutrient.sugars, PerSize.oneHundredGrams)
-                            ?.toStringAsFixed(1),
-                      ),
-                      _buildInfoRow(
-                        'Vezels',
-                        product!.nutriments
-                            ?.getValue(Nutrient.fiber, PerSize.oneHundredGrams)
-                            ?.toStringAsFixed(1),
-                      ),
-                      _buildInfoRow(
-                        'Eiwitten',
-                        product!.nutriments
-                            ?.getValue(
-                              Nutrient.proteins,
-                              PerSize.oneHundredGrams,
-                            )
-                            ?.toStringAsFixed(1),
-                      ),
-                      _buildInfoRow(
-                        'Zout',
-                        product!.nutriments
-                            ?.getValue(Nutrient.salt, PerSize.oneHundredGrams)
-                            ?.toStringAsFixed(2),
-                      ),
-                      const Divider(height: 24),
-                      _buildInfoRow(
-                        'Additieven',
-                        product!.additives?.names.join(", "),
-                      ),
-                      _buildInfoRow(
-                        'Allergenen',
-                        product!.allergens?.names.join(", "),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               },
@@ -896,6 +1306,61 @@ class _AddPageState extends State<AddPage> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildEditableInfoRow(
+    String label,
+    TextEditingController controller,
+    bool isDarkMode, {
+    bool isRequired = false,
+  }) {
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ),
+          Expanded(
+            child: TextFormField(
+              controller: controller,
+              style: TextStyle(color: textColor),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Waarde mist',
+                hintStyle: TextStyle(
+                  color: isDarkMode ? Colors.white38 : Colors.black38,
+                ),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+              validator: (value) {
+                if (isRequired && (value == null || value.isEmpty)) {
+                  return 'Verplicht';
+                }
+                if (value != null &&
+                    value.isNotEmpty &&
+                    double.tryParse(value.replaceAll(',', '.')) == null) {
+                  return 'Ongeldig';
+                }
+                return null;
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1012,7 +1477,7 @@ class _AddPageState extends State<AddPage> {
                     if (isMyProduct) {
                       _showMyProductDetails(product, productDoc.id);
                     } else {
-                      _showProductDetails(productDoc.id);
+                      _showProductDetails(productDoc.id, productData: product);
                     }
                   },
                 );
@@ -1092,7 +1557,7 @@ class _AddPageState extends State<AddPage> {
                   title: Text(name),
                   subtitle: Text(brand),
                   onTap: () {
-                    _showProductDetails(productDoc.id);
+                    _showProductDetails(productDoc.id, productData: product);
                   },
                 );
               },
@@ -1223,9 +1688,669 @@ class _AddPageState extends State<AddPage> {
             );
           },
         );
+      case 3: // Maaltijden
+        if (user == null) {
+          return Center(
+            child: Text(
+              'Log in om je maaltijden te zien.',
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+            ),
+          );
+        }
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('meals')
+              .orderBy('name')
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return Center(
+                child: Text(
+                  'Je hebt nog geen maaltijden aangemaakt.',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+              );
+            }
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Er is een fout opgetreden.',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+              );
+            }
+
+            final meals = snapshot.data!.docs;
+
+            return ListView.builder(
+              itemCount: meals.length,
+              itemBuilder: (context, index) {
+                final mealDoc = meals[index];
+                final meal = mealDoc.data() as Map<String, dynamic>;
+                final name = meal['name'] ?? 'Onbekende maaltijd';
+
+                return Dismissible(
+                  key: Key(mealDoc.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  confirmDismiss: (direction) async {
+                    return await showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text(
+                            "Bevestig verwijdering",
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          content: Text(
+                            "Weet je zeker dat je maaltijd '$name' wilt verwijderen?",
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          actions: <Widget>[
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text("Annuleren"),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text(
+                                "Verwijderen",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  onDismissed: (direction) {
+                    FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .collection('meals')
+                        .doc(mealDoc.id)
+                        .delete();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Maaltijd '$name' verwijderd")),
+                    );
+                  },
+                  child: ListTile(
+                    title: Text(name),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.add_shopping_cart),
+                      tooltip: 'Log maaltijd',
+                      onPressed: () {
+                        final mealWithId = Map<String, dynamic>.from(meal);
+                        mealWithId['id'] = mealDoc.id;
+                        _logMeal(context, mealWithId);
+                      },
+                    ),
+                    onTap: () {
+                      _showAddMealSheet(existingMeal: meal, mealId: mealDoc.id);
+                    },
+                  ),
+                );
+              },
+            );
+          },
+        );
       default:
         return Container();
     }
+  }
+
+  Future<void> _logMeal(BuildContext context, Map<String, dynamic> meal) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final ingredients =
+        (meal['ingredients'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
+    if (ingredients.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Deze maaltijd heeft geen ingrediënten.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final totalNutriments = <String, double>{
+      'energy-kcal': 0,
+      'fat': 0,
+      'saturated-fat': 0,
+      'carbohydrates': 0,
+      'sugars': 0,
+      'fiber': 0,
+      'proteins': 0,
+      'salt': 0,
+    };
+    double totalAmount = 0;
+
+    for (final ingredient in ingredients) {
+      final amount = (ingredient['amount'] as num?)?.toDouble() ?? 0;
+      final nutrimentsPer100g =
+          (ingredient['nutriments_per_100g'] as Map<String, dynamic>?) ?? {};
+      final factor = amount / 100.0;
+      totalAmount += amount;
+
+      totalNutriments.forEach((key, value) {
+        final nutrientValue =
+            (nutrimentsPer100g[key] as num?)?.toDouble() ?? 0.0;
+        totalNutriments[key] =
+            (totalNutriments[key] ?? 0.0) + (nutrientValue * factor);
+      });
+    }
+
+    final String? selectedMealType = await _showSelectMealTypeDialog(context);
+    if (selectedMealType == null) return;
+
+    final now = DateTime.now();
+    final todayDocId =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+
+    final dailyLogRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('logs')
+        .doc(todayDocId);
+
+    final logEntry = {
+      'product_name': meal['name'] ?? 'Onbekende maaltijd',
+      'amount_g': totalAmount,
+      'timestamp': Timestamp.now(),
+      'nutriments': totalNutriments,
+      'meal_type': selectedMealType,
+      'is_meal': true,
+    };
+
+    try {
+      await dailyLogRef.set({
+        'entries': FieldValue.arrayUnion([logEntry]),
+      }, SetOptions(merge: true));
+
+      if (mounted) {
+        ScaffoldMessenger.of(this.context).showSnackBar(
+          SnackBar(
+            content: Text('"${meal['name']}" toegevoegd aan je logboek.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(this.context).showSnackBar(
+          SnackBar(
+            content: Text('Fout bij opslaan van maaltijd: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<String?> _showSelectMealTypeDialog(BuildContext context) async {
+    final hour = DateTime.now().hour;
+    String selectedMeal;
+    if (hour >= 5 && hour < 11) {
+      selectedMeal = 'Ontbijt';
+    } else if (hour >= 11 && hour < 15) {
+      selectedMeal = 'Lunch';
+    } else if (hour >= 15 && hour < 22) {
+      selectedMeal = 'Avondeten';
+    } else {
+      selectedMeal = 'Snacks';
+    }
+    final List<String> mealTypes = ['Ontbijt', 'Lunch', 'Avondeten', 'Snacks'];
+
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        final isDarkMode =
+            Theme.of(dialogContext).brightness == Brightness.dark;
+        final textColor = isDarkMode ? Colors.white : Colors.black;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Log Maaltijd', style: TextStyle(color: textColor)),
+              content: DropdownButtonFormField<String>(
+                value: selectedMeal,
+                style: TextStyle(color: textColor),
+                decoration: const InputDecoration(labelText: 'Sectie'),
+                items: mealTypes.map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (newValue) {
+                  setDialogState(() {
+                    selectedMeal = newValue!;
+                  });
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Annuleren'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext, selectedMeal);
+                  },
+                  child: const Text('Log'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showAddMealSheet({
+    Map<String, dynamic>? existingMeal,
+    String? mealId,
+  }) async {
+    final _mealNameController = TextEditingController();
+    final _formKey = GlobalKey<FormState>();
+
+    List<Map<String, dynamic>> ingredientEntries = [];
+
+    if (existingMeal != null) {
+      _mealNameController.text = existingMeal['name'] ?? '';
+      final ingredients =
+          (existingMeal['ingredients'] as List<dynamic>?)
+              ?.cast<Map<String, dynamic>>() ??
+          [];
+      for (var ingredient in ingredients) {
+        ingredientEntries.add({
+          'searchController': TextEditingController(),
+          'amountController': TextEditingController(
+            text: ingredient['amount']?.toString() ?? '',
+          ),
+          'searchResults': null,
+          'selectedProduct': {
+            'product_name': ingredient['product_name'],
+            'brands': ingredient['brands'],
+            '_id': ingredient['product_id'],
+            'image_front_small_url': ingredient['image_front_small_url'],
+            'nutriments_per_100g': ingredient['nutriments_per_100g'],
+          },
+          'isSearching': false,
+        });
+      }
+    } else {
+      ingredientEntries.add({
+        'searchController': TextEditingController(),
+        'amountController': TextEditingController(),
+        'searchResults': null,
+        'selectedProduct': null,
+        'isSearching': false,
+      });
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+            final textColor = isDarkMode ? Colors.white : Colors.black;
+
+            Future<void> searchProductsForIngredient(
+              String query,
+              int index,
+            ) async {
+              if (query.length < 2) {
+                setModalState(() {
+                  ingredientEntries[index]['searchResults'] = null;
+                });
+                return;
+              }
+              setModalState(() {
+                ingredientEntries[index]['isSearching'] = true;
+              });
+
+              final url = Uri.parse(
+                "https://nl.openfoodfacts.org/cgi/search.pl?search_terms=${Uri.encodeComponent(query)}&search_simple=1&json=1&action=process",
+              );
+              final response = await http.get(url);
+              if (response.statusCode == 200) {
+                final data = jsonDecode(response.body);
+                setModalState(() {
+                  ingredientEntries[index]['searchResults'] =
+                      (data["products"] as List?) ?? [];
+                  ingredientEntries[index]['isSearching'] = false;
+                });
+              } else {
+                setModalState(() {
+                  ingredientEntries[index]['isSearching'] = false;
+                });
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                top: 20,
+                left: 20,
+                right: 20,
+              ),
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Nieuwe Maaltijd Samenstellen',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.headlineSmall?.copyWith(color: textColor),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _mealNameController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(
+                          labelText: 'Naam van maaltijd',
+                        ),
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? 'Naam is verplicht'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Ingrediënten',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleLarge?.copyWith(color: textColor),
+                      ),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: ingredientEntries.length,
+                        itemBuilder: (context, index) {
+                          final entry = ingredientEntries[index];
+                          final searchController =
+                              entry['searchController']
+                                  as TextEditingController;
+                          final amountController =
+                              entry['amountController']
+                                  as TextEditingController;
+                          final selectedProduct =
+                              entry['selectedProduct'] as Map<String, dynamic>?;
+
+if (selectedProduct != null) {
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 4.0),
+                              child: ListTile(
+                                title: Text(selectedProduct['product_name']),
+                                subtitle: Text(
+                                  'Hoeveelheid: ${amountController.text}g',
+                                ),
+                                onTap: () async {
+                                  final barcode =
+                                      selectedProduct['_id'] as String?;
+                                  if (barcode == null) return;
+
+                                  final currentAmount =
+                                      double.tryParse(amountController.text);
+
+                                  final result = await _showProductDetails(
+                                    barcode,
+                                    productData: selectedProduct,
+                                    isForMeal: true,
+                                    initialAmount: currentAmount,
+                                  );
+
+                                  if (result != null &&
+                                      result['amount'] != null) {
+                                    setModalState(() {
+                                      amountController.text =
+                                          result['amount'].toString();
+                                      entry['selectedProduct'] =
+                                          result['product'];
+                                    });
+                                  }
+                                },
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      ingredientEntries.removeAt(index);
+                                    });
+                                  },
+                                ),
+                              ),
+                            );
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: searchController,
+                                      style: TextStyle(color: textColor),
+                                      decoration: InputDecoration(
+                                        labelText: 'Product ${index + 1}',
+                                        suffixIcon: IconButton(
+                                          icon: const Icon(Icons.search),
+                                          onPressed: () =>
+                                              searchProductsForIngredient(
+                                                searchController.text,
+                                                index,
+                                              ),
+                                        ),
+                                      ),
+                                      onSubmitted: (query) =>
+                                          searchProductsForIngredient(
+                                            query,
+                                            index,
+                                          ),
+                                    ),
+                                  ),
+                                  if (ingredientEntries.length > 1)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.remove_circle_outline,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () {
+                                        setModalState(() {
+                                          ingredientEntries.removeAt(index);
+                                        });
+                                      },
+                                    ),
+                                ],
+                              ),
+                              if (entry['isSearching'] as bool)
+                                const Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                ),
+                              if (entry['searchResults'] != null)
+                                SizedBox(
+                                  height: 150,
+                                  child: ListView.builder(
+                                    itemCount:
+                                        (entry['searchResults'] as List).length,
+                                    itemBuilder: (context, resultIndex) {
+                                      final product =
+                                          (entry['searchResults']
+                                              as List)[resultIndex];
+                                      return ListTile(
+                                        title: Text(
+                                          product['product_name'] ?? 'Onbekend',
+                                        ),
+                                        subtitle: Text(
+                                          product['brands'] ?? 'Onbekend',
+                                        ),
+                                        onTap: () async {
+                                          final barcode =
+                                              product['_id'] as String?;
+                                          if (barcode == null) return;
+
+                                          final result =
+                                              await _showProductDetails(
+                                                barcode,
+                                                isForMeal: true,
+                                              );
+
+                                          if (result != null &&
+                                              result['amount'] != null) {
+                                            setModalState(() {
+                                              amountController.text =
+                                                  result['amount'].toString();
+                                              entry['selectedProduct'] =
+                                                  result['product'];
+                                              entry['searchResults'] = null;
+                                            });
+                                          }
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.add_circle,
+                            color: Colors.green,
+                            size: 30,
+                          ),
+                          tooltip: 'Voeg nog een product toe',
+                          onPressed: () {
+                            setModalState(() {
+                              ingredientEntries.add({
+                                'searchController': TextEditingController(),
+                                'amountController': TextEditingController(),
+                                'searchResults': null,
+                                'selectedProduct': null,
+                                'isSearching': false,
+                              });
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () async {
+                          if (_formKey.currentState!.validate()) {
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user == null) return;
+
+                            List<Map<String, dynamic>> finalProducts = [];
+                            for (var entry in ingredientEntries) {
+                              if (entry['selectedProduct'] != null &&
+                                  (entry['amountController']
+                                          as TextEditingController)
+                                      .text
+                                      .isNotEmpty) {
+                                final product =
+                                    entry['selectedProduct']
+                                        as Map<String, dynamic>;
+                                final amount = double.tryParse(
+                                  (entry['amountController']
+                                          as TextEditingController)
+                                      .text,
+                                );
+                                if (amount != null) {
+                                  finalProducts.add({
+                                    'product_id': product['_id'],
+                                    'product_name': product['product_name'],
+                                    'brands': product['brands'],
+                                    'image_front_small_url':
+                                        product['image_front_small_url'],
+                                    'amount': amount,
+                                    'nutriments_per_100g':
+                                        product['nutriments_per_100g'],
+                                  });
+                                }
+                              }
+                            }
+
+                            if (finalProducts.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Voeg minimaal één product toe.',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            final mealData = {
+                              'name': _mealNameController.text,
+                              'ingredients': finalProducts,
+                              'timestamp': FieldValue.serverTimestamp(),
+                            };
+
+                            final collection = FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .collection('meals');
+
+                            if (mealId != null) {
+                              await collection.doc(mealId).update(mealData);
+                            } else {
+                              await collection.add(mealData);
+                            }
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: Text(
+                          mealId != null
+                              ? 'Wijzigingen Opslaan'
+                              : 'Maaltijd Opslaan',
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _showEditMyProductSheet(
@@ -1557,7 +2682,7 @@ class _AddPageState extends State<AddPage> {
   ) async {
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
-final hour = DateTime.now().hour;
+    final hour = DateTime.now().hour;
     String selectedMeal;
     if (hour >= 5 && hour < 11) {
       selectedMeal = 'Ontbijt';
@@ -1597,14 +2722,15 @@ final hour = DateTime.now().hour;
                         decimal: true,
                       ),
                       decoration: const InputDecoration(
-                        labelText: 'Hoeveelheid (gram / milliliter)',
-                        suffixText: 'g / ml',
+                        labelText: 'Hoeveelheid (gram of milliliter)',
+                        suffixText: 'g of ml',
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Voer een hoeveelheid in';
                         }
-                        if (double.tryParse(value) == null) {
+                        if (double.tryParse(value.replaceAll(',', '.')) ==
+                            null) {
                           return 'Voer een geldig getal in';
                         }
                         return null;
@@ -1638,7 +2764,9 @@ final hour = DateTime.now().hour;
                 ElevatedButton(
                   onPressed: () async {
                     if (formKey.currentState!.validate()) {
-                      final amount = double.parse(amountController.text);
+                      final amount = double.parse(
+                        amountController.text.replaceAll(',', '.'),
+                      );
                       final user = FirebaseAuth.instance.currentUser;
                       if (user == null || nutriments == null) {
                         Navigator.pop(dialogContext, false);

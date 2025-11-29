@@ -228,6 +228,85 @@ class _OnboardingViewState extends State<OnboardingView> {
     final user = FirebaseAuth.instance.currentUser; // Huidige gebruiker ophalen
     if (user == null) return; // Als er geen gebruiker is, stop
 
+    final heightCm = double.tryParse(_heightController.text);
+    final weightKg = double.tryParse(_weightController.text);
+    final birthDate = _birthDate;
+    final gender = _gender;
+    final activityFull = _activityLevel;
+    final goal = _goal;
+
+    double? bmi;
+    double? calorieGoal;
+    double? proteinGoal;
+    double? fatGoal;
+    double? carbGoal;
+
+    if (heightCm != null &&
+        heightCm > 0 &&
+        weightKg != null &&
+        weightKg > 0 &&
+        birthDate != null) {
+      // Bereken BMI
+      final heightM = heightCm / 100;
+      bmi = weightKg / (heightM * heightM);
+
+      // Bereken caloriebehoefte
+      final age = DateTime.now().year - birthDate.year;
+
+      double bmr;
+      if (gender == 'Vrouw') {
+        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+      } else {
+        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+      }
+
+      final activity = activityFull.split(':')[0].trim();
+      double activityFactor;
+      switch (activity) {
+        case 'Weinig actief':
+          activityFactor = 1.2;
+          break;
+        case 'Licht actief':
+          activityFactor = 1.375;
+          break;
+        case 'Gemiddeld actief':
+          activityFactor = 1.55;
+          break;
+        case 'Zeer actief':
+          activityFactor = 1.725;
+          break;
+        case 'Extreem actief':
+          activityFactor = 1.9;
+          break;
+        default:
+          activityFactor = 1.2;
+      }
+
+      double calories = bmr * activityFactor;
+
+      switch (goal) {
+        case 'Afvallen':
+          calories -= 500;
+          break;
+        case 'Aankomen (spiermassa)':
+        case 'Aankomen (algemeen)':
+          calories += 300;
+          break;
+        case 'Op gewicht blijven':
+        default:
+          break;
+      }
+      calorieGoal = calories;
+
+      proteinGoal = weightKg; // 1g per kg
+      final fatCalories = calorieGoal * 0.30;
+      fatGoal = fatCalories / 9; // 9 kcal per gram vet
+
+      final proteinCalories = proteinGoal * 4; // 4 kcal per gram eiwit
+      final carbCalories = calorieGoal - fatCalories - proteinCalories;
+      carbGoal = carbCalories / 4; // 4 kcal per gram koolhydraten
+    }
+
     try {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'firstName': _firstNameController.text.trim(),
@@ -235,6 +314,11 @@ class _OnboardingViewState extends State<OnboardingView> {
         'birthDate': _birthDate?.toIso8601String(),
         'height': double.tryParse(_heightController.text) ?? 0,
         'weight': double.tryParse(_weightController.text) ?? 0,
+        'calorieGoal': calorieGoal,
+        'proteinGoal': proteinGoal,
+        'fatGoal': fatGoal,
+        'carbGoal': carbGoal,
+        'bmi': bmi,
         'sleepHours': _sleepHours,
         'targetWeight': double.tryParse(_targetWeightController.text) ?? 0,
         'notificationsEnabled': _notificationsEnabled,
@@ -398,8 +482,7 @@ class _OnboardingViewState extends State<OnboardingView> {
       setState(() {
         _rangeText =
             'Gezond gewicht voor u: ${weightMin.toStringAsFixed(1)} kg – ${weightMax.toStringAsFixed(1)} kg';
-        _rangeNote =
-            '';
+        _rangeNote = '';
         _rangeLoading = false;
       });
       return;
@@ -533,377 +616,400 @@ class _OnboardingViewState extends State<OnboardingView> {
             }
             return KeyEventResult.ignored;
           },
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            // De bolletjes voortgangs dingetje
-            _buildProgressIndicator(),
-            const SizedBox(height: 20),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              // De bolletjes voortgangs dingetje
+              _buildProgressIndicator(),
+              const SizedBox(height: 20),
 
-            // De vragen pagina's
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(), // Voorkom swipen
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                },
-                children: [
-                  // Vraag 1: Voornaam
-                  _buildQuestionPage(
-                    title: 'Wat is je voornaam?',
-                    content: TextField(
-                      controller: _firstNameController,
-                      textInputAction: TextInputAction.next,
-                      onSubmitted: (_) => _nextPage(),
-                      style: inputTextStyle,
-                      decoration: const InputDecoration(
-                        labelText: 'Voornaam',
-                        border: OutlineInputBorder(),
+              // De vragen pagina's
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics:
+                      const NeverScrollableScrollPhysics(), // Voorkom swipen
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+                  children: [
+                    // Vraag 1: Voornaam
+                    _buildQuestionPage(
+                      title: 'Wat is je voornaam?',
+                      content: TextField(
+                        controller: _firstNameController,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => _nextPage(),
+                        style: inputTextStyle,
+                        decoration: const InputDecoration(
+                          labelText: 'Voornaam',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
                     ),
-                  ),
-                  // Vraag 2: Geslacht
-                  _buildQuestionPage(
-                    title: 'Wat is je geslacht?',
-                    content: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children:
-                            [
-                              'Man',
-                              'Vrouw',
-                              'Anders',
-                              'Wil ik liever niet zeggen',
-                            ].map((val) {
-                              return SizedBox(
-                                width:
-                                    300, // Vaste breedte voor consistente uitlijning
-                                child: RadioListTile<String>(
-                                  title: Text(val, style: inputTextStyle),
-                                  value: val,
-                                  groupValue: _gender,
-                                  onChanged: (value) {
-                                    setState(() => _gender = value!);
-                                    _scheduleRangeUpdate(); // Update range als geslacht verandert
-                                  },
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                      ),
-                    ),
-                  ),
-                  // Vraag 3: Geboortedatum
-                  _buildQuestionPage(
-                    title: 'Wat is je geboortedatum?',
-                    content: Column(
-                      children: [
-                        Text(
-                          _birthDate == null
-                              ? 'Geen datum gekozen'
-                              : '${_birthDate!.day}-${_birthDate!.month}-${_birthDate!.year}',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: isDarkMode
-                                ? Colors.white
-                                : Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () async {
-                            // Check of het een iOS app is
-                            // Op web gebruiken westandaard picker
-                            final bool isIosApp =
-                                !kIsWeb &&
-                                defaultTargetPlatform == TargetPlatform.iOS;
-
-                            if (isIosApp) {
-                              // iOS datepicker
-                              showCupertinoModalPopup(
-                                context: context,
-                                builder: (_) => Container(
-                                  height: 250,
-                                  // Zorgt voor de juiste achtergrondkleur in light/dark mode
-                                  color: Theme.of(
-                                    context,
-                                  ).scaffoldBackgroundColor,
-                                  child: Column(
-                                    children: [
-                                      SizedBox(
-                                        height: 180,
-                                        child: CupertinoDatePicker(
-                                          initialDateTime:
-                                              _birthDate ?? DateTime(2000),
-                                          mode: CupertinoDatePickerMode.date,
-                                          use24hFormat: true,
-                                          minimumDate: DateTime(1900),
-                                          maximumDate: DateTime.now(),
-                                          onDateTimeChanged: (val) {
-                                            setState(() => _birthDate = val);
-                                            _scheduleRangeUpdate(); // Update berekening bij scrollen datum (iOS)
-                                          },
-                                        ),
-                                      ),
-                                      // Knop om de picker te sluiten
-                                      CupertinoButton(
-                                        child: const Text('Klaar'),
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            } else {
-                              // Android en Web standaard picker
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: _birthDate ?? DateTime(2000),
-                                firstDate: DateTime(1900),
-                                lastDate: DateTime.now(),
-                                builder: (context, child) {
-                                  // Forceer dark theme voor de picker als dark mode aan staat
-                                  return Theme(
-                                    data: isDarkMode
-                                        ? ThemeData.dark()
-                                        : Theme.of(context),
-                                    child: child!,
-                                  );
-                                },
-                              );
-                              if (picked != null) {
-                                setState(() => _birthDate = picked);
-                                _scheduleRangeUpdate(); // Update berekening
-                              }
-                            }
-                          },
-                          child: const Text('Kies datum'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Vraag 4: Lengte
-                  _buildQuestionPage(
-                    title: 'Wat is je lengte (cm)?',
-                    content: TextField(
-                      controller: _heightController,
-                      keyboardType: TextInputType.number,
-                      textInputAction: TextInputAction.next,
-                      onSubmitted: (_) => _nextPage(),
-                      style: inputTextStyle,
-                      decoration: const InputDecoration(
-                        labelText: 'Lengte in cm',
-                        border: OutlineInputBorder(),
-                        suffixText: 'cm',
-                        helperText: 'Min $minHeightCm cm - Max $maxHeightCm cm',
-                      ),
-                    ),
-                  ),
-                  // Vraag 5: Gewicht
-                  _buildQuestionPage(
-                    title: 'Wat is je gewicht (kg)?',
-                    content: TextField(
-                      controller: _weightController,
-                      keyboardType: TextInputType.number,
-                      textInputAction: TextInputAction.next,
-                      onSubmitted: (_) => _nextPage(),
-                      style: inputTextStyle,
-                      decoration: const InputDecoration(
-                        labelText: 'Gewicht in kg',
-                        border: OutlineInputBorder(),
-                        suffixText: 'kg',
-                        helperText: 'Min $minWeightKg kg - Max $maxWeightKg kg',
-                      ),
-                    ),
-                  ),
-                  // Vraag 6: Slaap
-                  _buildQuestionPage(
-                    title: 'Hoeveel uur slaap je gemiddeld?',
-                    content: Column(
-                      children: [
-                        Text(
-                          '${_sleepHours.toStringAsFixed(1)} uur',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: isDarkMode
-                                ? Colors.white
-                                : Colors.black, // Toegevoegd
-                          ),
-                        ),
-                        Slider(
-                          value: _sleepHours,
-                          min: 4,
-                          max: 12,
-                          divisions: 16,
-                          label: _sleepHours.toString(),
-                          onChanged: (val) => setState(() => _sleepHours = val),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Vraag 7: Actief
-                  _buildQuestionPage(
-                    title: 'Hoe actief ben je dagelijks?',
-                    content: Column(
-                      children: activityOptions.map((val) {
-                        return RadioListTile<String>(
-                          // Radio knop voor elke optie
-                          title: Text(val, style: inputTextStyle),
-                          value: val,
-                          groupValue: _activityLevel,
-                          onChanged: (value) {
-                            setState(() => _activityLevel = value!);
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  // Vraag 8: Streefgewicht
-                  _buildQuestionPage(
-                    title: 'Wat is je streefgewicht?',
-                    content: Column(
-                      children: [
-                        TextField(
-                          controller: _targetWeightController,
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.next,
-                          onSubmitted: (_) => _nextPage(),
-                          style: inputTextStyle,
-                          decoration: const InputDecoration(
-                            labelText: 'Streefgewicht in kg',
-                            border: OutlineInputBorder(),
-                            suffixText: 'kg',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (_rangeLoading) const CircularProgressIndicator(),
-                        if (!_rangeLoading)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                _rangeText,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : Colors.black,
-                                ),
-                              ),
-                              if (_rangeNote.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 6.0),
-                                  child: Text(
-                                    _rangeNote,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: isDarkMode
-                                          ? Colors.grey.shade400
-                                          : Colors.grey.shade600,
+                    // Vraag 2: Geslacht
+                    _buildQuestionPage(
+                      title: 'Wat is je geslacht?',
+                      content: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children:
+                              [
+                                'Man',
+                                'Vrouw',
+                                'Anders',
+                                'Wil ik liever niet zeggen',
+                              ].map((val) {
+                                return SizedBox(
+                                  width:
+                                      300, // Vaste breedte voor consistente uitlijning
+                                  child: RadioListTile<String>(
+                                    title: Text(val, style: inputTextStyle),
+                                    value: val,
+                                    groupValue: _gender,
+                                    onChanged: (value) {
+                                      setState(() => _gender = value!);
+                                      _scheduleRangeUpdate(); // Update range als geslacht verandert
+                                    },
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8.0,
                                     ),
                                   ),
-                                ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // Vraag9: Wat is je doel?
-                  _buildQuestionPage(
-                    title: 'Wat is je doel?',
-                    content: Column(
-                      children: goalOptions.map((val) {
-                        return RadioListTile<String>(
-                          title: Text(val, style: inputTextStyle),
-                          value: val, // waarde van deze optie
-                          groupValue: _goal,
-                          onChanged: (value) {
-                            setState(() => _goal = value!);
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ),
-
-                  // Vraag 10: Meldingen
-                  _buildQuestionPage(
-                    title: 'Wil je meldingen ontvangen?',
-                    content: SwitchListTile(
-                      title: Text(
-                        'Meldingen inschakelen',
-                        style: inputTextStyle,
+                                );
+                              }).toList(),
+                        ),
                       ),
-                      value: _notificationsEnabled,
-                      onChanged: (val) async {
-                        if (val) {
-                          // Als de gebruiker het aan zet, vraag om toestemming
-                          FirebaseMessaging messaging =
-                              FirebaseMessaging.instance;
+                    ),
+                    // Vraag 3: Geboortedatum
+                    _buildQuestionPage(
+                      title: 'Wat is je geboortedatum?',
+                      content: Column(
+                        children: [
+                          Text(
+                            _birthDate == null
+                                ? 'Geen datum gekozen'
+                                : '${_birthDate!.day}-${_birthDate!.month}-${_birthDate!.year}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          ElevatedButton(
+                            onPressed: () async {
+                              // Check of het een iOS app is
+                              // Op web gebruiken westandaard picker
+                              final bool isIosApp =
+                                  !kIsWeb &&
+                                  defaultTargetPlatform == TargetPlatform.iOS;
 
-                          // Vraagt toestemming op iOS, Android 13+ en Web
-                          NotificationSettings settings = await messaging
-                              .requestPermission(
-                                alert: true,
-                                announcement: false,
-                                badge: true,
-                                carPlay: false,
-                                criticalAlert: false,
-                                provisional: false,
-                                sound: true,
-                              );
-
-                          if (settings.authorizationStatus ==
-                                  AuthorizationStatus.authorized ||
-                              settings.authorizationStatus ==
-                                  AuthorizationStatus.provisional) {
-                            // Toestemming gekregen
-                            setState(() => _notificationsEnabled = true);
-                          } else {
-                            // Toestemming geweigerd
-                            setState(() => _notificationsEnabled = false);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Toestemming voor meldingen is geweigerd.',
+                              if (isIosApp) {
+                                // iOS datepicker
+                                showCupertinoModalPopup(
+                                  context: context,
+                                  builder: (_) => Container(
+                                    height: 250,
+                                    // Zorgt voor de juiste achtergrondkleur in light/dark mode
+                                    color: Theme.of(
+                                      context,
+                                    ).scaffoldBackgroundColor,
+                                    child: Column(
+                                      children: [
+                                        SizedBox(
+                                          height: 180,
+                                          child: CupertinoDatePicker(
+                                            initialDateTime:
+                                                _birthDate ?? DateTime(2000),
+                                            mode: CupertinoDatePickerMode.date,
+                                            use24hFormat: true,
+                                            minimumDate: DateTime(1900),
+                                            maximumDate: DateTime.now(),
+                                            onDateTimeChanged: (val) {
+                                              setState(() => _birthDate = val);
+                                              _scheduleRangeUpdate(); // Update berekening bij scrollen datum (iOS)
+                                            },
+                                          ),
+                                        ),
+                                        // Knop om de picker te sluiten
+                                        CupertinoButton(
+                                          child: const Text('Klaar'),
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                // Android en Web standaard picker
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _birthDate ?? DateTime(2000),
+                                  firstDate: DateTime(1900),
+                                  lastDate: DateTime.now(),
+                                  builder: (context, child) {
+                                    // Forceer dark theme voor de picker als dark mode aan staat
+                                    return Theme(
+                                      data: isDarkMode
+                                          ? ThemeData.dark()
+                                          : Theme.of(context),
+                                      child: child!,
+                                    );
+                                  },
+                                );
+                                if (picked != null) {
+                                  setState(() => _birthDate = picked);
+                                  _scheduleRangeUpdate(); // Update berekening
+                                }
+                              }
+                            },
+                            child: const Text('Kies datum'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Vraag 4: Lengte
+                    _buildQuestionPage(
+                      title: 'Wat is je lengte (cm)?',
+                      content: TextField(
+                        controller: _heightController,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => _nextPage(),
+                        style: inputTextStyle,
+                        decoration: const InputDecoration(
+                          labelText: 'Lengte in cm',
+                          border: OutlineInputBorder(),
+                          suffixText: 'cm',
+                          helperText:
+                              'Min $minHeightCm cm - Max $maxHeightCm cm',
+                        ),
+                      ),
+                    ),
+                    // Vraag 5: Gewicht
+                    _buildQuestionPage(
+                      title: 'Wat is je gewicht (kg)?',
+                      content: TextField(
+                        controller: _weightController,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => _nextPage(),
+                        style: inputTextStyle,
+                        decoration: const InputDecoration(
+                          labelText: 'Gewicht in kg',
+                          border: OutlineInputBorder(),
+                          suffixText: 'kg',
+                          helperText:
+                              'Min $minWeightKg kg - Max $maxWeightKg kg',
+                        ),
+                      ),
+                    ),
+                    // Vraag 6: Slaap
+                    _buildQuestionPage(
+                      title: 'Hoeveel uur slaap je gemiddeld?',
+                      content: Column(
+                        children: [
+                          Text(
+                            '${_sleepHours.toStringAsFixed(1)} uur',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode
+                                  ? Colors.white
+                                  : Colors.black, // Toegevoegd
+                            ),
+                          ),
+                          Slider(
+                            value: _sleepHours,
+                            min: 4,
+                            max: 12,
+                            divisions: 16,
+                            label: _sleepHours.toString(),
+                            onChanged: (val) =>
+                                setState(() => _sleepHours = val),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Vraag 7: Actief
+                    _buildQuestionPage(
+                      title: 'Hoe actief ben je dagelijks?',
+                      content: Column(
+                        children: activityOptions.map((val) {
+                          return RadioListTile<String>(
+                            // Radio knop voor elke optie
+                            title: Text(val, style: inputTextStyle),
+                            value: val,
+                            groupValue: _activityLevel,
+                            onChanged: (value) {
+                              setState(() => _activityLevel = value!);
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    // Vraag 8: Streefgewicht
+                    _buildQuestionPage(
+                      title: 'Wat is je streefgewicht?',
+                      content: Column(
+                        children: [
+                          TextField(
+                            controller: _targetWeightController,
+                            keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) => _nextPage(),
+                            style: inputTextStyle,
+                            decoration: const InputDecoration(
+                              labelText: 'Streefgewicht in kg',
+                              border: OutlineInputBorder(),
+                              suffixText: 'kg',
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          if (_rangeLoading) const CircularProgressIndicator(),
+                          if (!_rangeLoading)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _rangeText,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: isDarkMode
+                                        ? Colors.white
+                                        : Colors.black,
                                   ),
                                 ),
-                              );
-                            }
-                          }
-                        } else {
-                          // Gewoon uitzetten
-                          setState(() => _notificationsEnabled = false);
-                        }
-                      },
+                                if (_rangeNote.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 6.0),
+                                    child: Text(
+                                      _rangeNote,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isDarkMode
+                                            ? Colors.grey.shade400
+                                            : Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
 
-            // Navigatie knoppen
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (_currentIndex > 0)
-                    TextButton(
-                      onPressed: _previousPage,
-                      style: TextButton.styleFrom(
+                    // Vraag9: Wat is je doel?
+                    _buildQuestionPage(
+                      title: 'Wat is je doel?',
+                      content: Column(
+                        children: goalOptions.map((val) {
+                          return RadioListTile<String>(
+                            title: Text(val, style: inputTextStyle),
+                            value: val, // waarde van deze optie
+                            groupValue: _goal,
+                            onChanged: (value) {
+                              setState(() => _goal = value!);
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ),
+
+                    // Vraag 10: Meldingen
+                    _buildQuestionPage(
+                      title: 'Wil je meldingen ontvangen?',
+                      content: SwitchListTile(
+                        title: Text(
+                          'Meldingen inschakelen',
+                          style: inputTextStyle,
+                        ),
+                        value: _notificationsEnabled,
+                        onChanged: (val) async {
+                          if (val) {
+                            // Als de gebruiker het aan zet, vraag om toestemming
+                            FirebaseMessaging messaging =
+                                FirebaseMessaging.instance;
+
+                            // Vraagt toestemming op iOS, Android 13+ en Web
+                            NotificationSettings settings = await messaging
+                                .requestPermission(
+                                  alert: true,
+                                  announcement: false,
+                                  badge: true,
+                                  carPlay: false,
+                                  criticalAlert: false,
+                                  provisional: false,
+                                  sound: true,
+                                );
+
+                            if (settings.authorizationStatus ==
+                                    AuthorizationStatus.authorized ||
+                                settings.authorizationStatus ==
+                                    AuthorizationStatus.provisional) {
+                              // Toestemming gekregen
+                              setState(() => _notificationsEnabled = true);
+                            } else {
+                              // Toestemming geweigerd
+                              setState(() => _notificationsEnabled = false);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Toestemming voor meldingen is geweigerd.',
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          } else {
+                            // Gewoon uitzetten
+                            setState(() => _notificationsEnabled = false);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Navigatie knoppen
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (_currentIndex > 0)
+                      TextButton(
+                        onPressed: _previousPage,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 16,
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: const Text('Vorige'),
+                      )
+                    else
+                      const SizedBox(), // Lege ruimte om layout gelijk te houden
+                    ElevatedButton(
+                      onPressed: _nextPage,
+                      style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 32, vertical: 16),
+                          horizontal: 32,
+                          vertical: 16,
+                        ),
                         textStyle: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -912,36 +1018,19 @@ class _OnboardingViewState extends State<OnboardingView> {
                           borderRadius: BorderRadius.circular(30),
                         ),
                       ),
-                      child: const Text('Vorige'),
-                    )
-                  else
-                    const SizedBox(), // Lege ruimte om layout gelijk te houden
-                  ElevatedButton(
-                    onPressed: _nextPage,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 32, vertical: 16),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                      child: Text(
+                        _currentIndex == _totalQuestions - 1
+                            ? 'Afronden'
+                            : 'Volgende',
                       ),
                     ),
-                    child: Text(
-                      _currentIndex == _totalQuestions - 1
-                          ? 'Afronden'
-                          : 'Volgende',
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    )
     );
   }
 

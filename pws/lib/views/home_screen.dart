@@ -143,6 +143,22 @@ class _HomeScreenState extends State<HomeScreen> {
     return calories;
   }
 
+  void _goToPreviousDay() {
+    setState(() {
+      _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+    });
+  }
+
+  void _goToNextDay() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (_selectedDate.isBefore(today)) {
+      setState(() {
+        _selectedDate = _selectedDate.add(const Duration(days: 1));
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Check of we op iOS zitten
@@ -169,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-tabBuilder: (context, index) {
+      tabBuilder: (context, index) {
         if (index == 0) {
           return CupertinoPageScaffold(
             navigationBar: CupertinoNavigationBar(
@@ -260,7 +276,9 @@ tabBuilder: (context, index) {
     //hij reset de foutmeldingen
     setState(() {
       _errorMessage = null;
+      _isLoading = true; // Toon laadindicator
     });
+
     // hij opent de barcode scanner en wacht totdat hij klaar is
     var res = await Navigator.push(
       context,
@@ -271,116 +289,175 @@ tabBuilder: (context, index) {
         ),
       ),
     );
+
     // als er een geldige barcode is gescand en niet -1
     if (res is String && res != '-1') {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => AddPage(scannedBarcode: res)),
-      );
+      final barcode = res;
+      final user = FirebaseAuth.instance.currentUser;
+      Map<String, dynamic>? productData;
+
+      if (user != null) {
+        try {
+          // Controleer eerst de 'recents' collectie
+          final recentDocRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('recents')
+              .doc(barcode);
+
+          final docSnapshot = await recentDocRef.get();
+
+          if (docSnapshot.exists) {
+            // Product gevonden in recents, gebruik die data
+            productData = docSnapshot.data() as Map<String, dynamic>;
+          }
+        } catch (e) {
+          if (mounted) {
+            setState(() {
+              _errorMessage = "Fout bij ophalen recente producten: $e";
+            });
+          }
+        }
+      }
+
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => AddPage(
+              scannedBarcode: barcode,
+              initialProductData: productData,
+            ),
+          ),
+        );
+      }
+    }
+
+    // Verberg laadindicator
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   Widget _buildHomeContent() {
-    //SingleChildScrollView zorgt ervoor dat je kan scrollen als de inhoud te groot is voor het scherm
-    return SingleChildScrollView(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildDailyLog(),
-              const SizedBox(height: 30),
-              //laadcircel animatie
-              if (_isLoading) const CircularProgressIndicator(),
-              //toont een foutmelding in het rood gecenteerd als die er is
-              if (_errorMessage != null)
-                Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-              //als er een product gevonden is, dan laat hij die resultaten zien
-              if (_scannedProduct != null) ...[
-                const Text(
-                  'Resultaat:',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                //algemene product informatie
-                _buildInfoRow('Naam', _scannedProduct!.productName),
-                _buildInfoRow('Merk', _scannedProduct!.brands),
-                _buildInfoRow('Hoeveelheid', _scannedProduct!.quantity),
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        // Swipe van rechts naar links
+        if (details.primaryVelocity! < -100) {
+          _goToNextDay();
+        }
+        // Swipe van links naar rechts
+        else if (details.primaryVelocity! > 100) {
+          _goToPreviousDay();
+        }
+      },
+      //SingleChildScrollView zorgt ervoor dat je kan scrollen als de inhoud te groot is voor het scherm
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildDailyLog(),
+                const SizedBox(height: 30),
+                //laadcircel animatie
+                if (_isLoading) const CircularProgressIndicator(),
+                //toont een foutmelding in het rood gecenteerd als die er is
+                if (_errorMessage != null)
+                  Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                //als er een product gevonden is, dan laat hij die resultaten zien
+                if (_scannedProduct != null) ...[
+                  const Text(
+                    'Resultaat:',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  //algemene product informatie
+                  _buildInfoRow('Naam', _scannedProduct!.productName),
+                  _buildInfoRow('Merk', _scannedProduct!.brands),
+                  _buildInfoRow('Hoeveelheid', _scannedProduct!.quantity),
 
-                const Divider(),
-                const Text(
-                  'Voedingswaarden (per 100g/ml):',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                // lijst met de voedingswaarden
-                _buildInfoRow(
-                  'Energie (kcal)',
-                  _scannedProduct!.nutriments
-                      ?.getValue(Nutrient.energyKCal, PerSize.oneHundredGrams)
-                      ?.toStringAsFixed(1),
-                ),
-                _buildInfoRow(
-                  'Vetten',
-                  _scannedProduct!.nutriments
-                      ?.getValue(Nutrient.fat, PerSize.oneHundredGrams)
-                      ?.toStringAsFixed(1),
-                ),
-                _buildInfoRow(
-                  '  - Waarvan verzadigd',
-                  _scannedProduct!.nutriments
-                      ?.getValue(Nutrient.saturatedFat, PerSize.oneHundredGrams)
-                      ?.toStringAsFixed(1),
-                ),
-                _buildInfoRow(
-                  'Koolhydraten',
-                  _scannedProduct!.nutriments
-                      ?.getValue(
-                        Nutrient.carbohydrates,
-                        PerSize.oneHundredGrams,
-                      )
-                      ?.toStringAsFixed(1),
-                ),
-                _buildInfoRow(
-                  '  - Waarvan suikers',
-                  _scannedProduct!.nutriments
-                      ?.getValue(Nutrient.sugars, PerSize.oneHundredGrams)
-                      ?.toStringAsFixed(1),
-                ),
-                _buildInfoRow(
-                  'Vezels',
-                  _scannedProduct!.nutriments
-                      ?.getValue(Nutrient.fiber, PerSize.oneHundredGrams)
-                      ?.toStringAsFixed(1),
-                ),
-                _buildInfoRow(
-                  'Eiwitten',
-                  _scannedProduct!.nutriments
-                      ?.getValue(Nutrient.proteins, PerSize.oneHundredGrams)
-                      ?.toStringAsFixed(1),
-                ),
-                _buildInfoRow(
-                  'Zout',
-                  _scannedProduct!.nutriments
-                      ?.getValue(Nutrient.salt, PerSize.oneHundredGrams)
-                      ?.toStringAsFixed(2),
-                ),
+                  const Divider(),
+                  const Text(
+                    'Voedingswaarden (per 100g/ml):',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  // lijst met de voedingswaarden
+                  _buildInfoRow(
+                    'Energie (kcal)',
+                    _scannedProduct!.nutriments
+                        ?.getValue(Nutrient.energyKCal, PerSize.oneHundredGrams)
+                        ?.toStringAsFixed(1),
+                  ),
+                  _buildInfoRow(
+                    'Vetten',
+                    _scannedProduct!.nutriments
+                        ?.getValue(Nutrient.fat, PerSize.oneHundredGrams)
+                        ?.toStringAsFixed(1),
+                  ),
+                  _buildInfoRow(
+                    '  - Waarvan verzadigd',
+                    _scannedProduct!.nutriments
+                        ?.getValue(
+                          Nutrient.saturatedFat,
+                          PerSize.oneHundredGrams,
+                        )
+                        ?.toStringAsFixed(1),
+                  ),
+                  _buildInfoRow(
+                    'Koolhydraten',
+                    _scannedProduct!.nutriments
+                        ?.getValue(
+                          Nutrient.carbohydrates,
+                          PerSize.oneHundredGrams,
+                        )
+                        ?.toStringAsFixed(1),
+                  ),
+                  _buildInfoRow(
+                    '  - Waarvan suikers',
+                    _scannedProduct!.nutriments
+                        ?.getValue(Nutrient.sugars, PerSize.oneHundredGrams)
+                        ?.toStringAsFixed(1),
+                  ),
+                  _buildInfoRow(
+                    'Vezels',
+                    _scannedProduct!.nutriments
+                        ?.getValue(Nutrient.fiber, PerSize.oneHundredGrams)
+                        ?.toStringAsFixed(1),
+                  ),
+                  _buildInfoRow(
+                    'Eiwitten',
+                    _scannedProduct!.nutriments
+                        ?.getValue(Nutrient.proteins, PerSize.oneHundredGrams)
+                        ?.toStringAsFixed(1),
+                  ),
+                  _buildInfoRow(
+                    'Zout',
+                    _scannedProduct!.nutriments
+                        ?.getValue(Nutrient.salt, PerSize.oneHundredGrams)
+                        ?.toStringAsFixed(2),
+                  ),
 
-                const Divider(),
-                //extra informatie voor toevoeginen en de allergien van het product
-                _buildInfoRow(
-                  'Additieven',
-                  _scannedProduct!.additives?.names.join(", "),
-                ),
-                _buildInfoRow(
-                  'Allergenen',
-                  _scannedProduct!.allergens?.names.join(", "),
-                ),
+                  const Divider(),
+                  //extra informatie voor toevoeginen en de allergien van het product
+                  _buildInfoRow(
+                    'Additieven',
+                    _scannedProduct!.additives?.names.join(", "),
+                  ),
+                  _buildInfoRow(
+                    'Allergenen',
+                    _scannedProduct!.allergens?.names.join(", "),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -414,6 +491,10 @@ tabBuilder: (context, index) {
         final entries = data?['entries'] as List<dynamic>? ?? [];
 
         double totalCalories = 0;
+        double totalProteins = 0;
+        double totalFats = 0;
+        double totalCarbs = 0;
+
         final Map<String, List<dynamic>> meals = {
           'Ontbijt': [],
           'Lunch': [],
@@ -423,6 +504,9 @@ tabBuilder: (context, index) {
 
         for (var entry in entries) {
           totalCalories += (entry['nutriments']?['energy-kcal'] ?? 0.0);
+          totalProteins += (entry['nutriments']?['proteins'] ?? 0.0);
+          totalFats += (entry['nutriments']?['fat'] ?? 0.0);
+          totalCarbs += (entry['nutriments']?['carbohydrates'] ?? 0.0);
           final mealType = entry['meal_type'] as String?;
 
           if (mealType != null && meals.containsKey(mealType)) {
@@ -445,6 +529,10 @@ tabBuilder: (context, index) {
         }
 
         final calorieGoal = _calorieAllowance ?? 0.0;
+        final proteinGoal = _userData?['proteinGoal'] as num? ?? 0.0;
+        final fatGoal = _userData?['fatGoal'] as num? ?? 0.0;
+        final carbGoal = _userData?['carbGoal'] as num? ?? 0.0;
+
         final remainingCalories = calorieGoal - totalCalories;
         final progress = calorieGoal > 0
             ? (totalCalories / calorieGoal).clamp(0.0, 1.0)
@@ -485,6 +573,33 @@ tabBuilder: (context, index) {
                             : (isDarkMode ? Colors.green[300]! : Colors.green),
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildMacroCircle(
+                          'Koolhydraten',
+                          totalCarbs,
+                          carbGoal.toDouble(),
+                          isDarkMode,
+                          Colors.orange,
+                        ),
+                        _buildMacroCircle(
+                          'Eiwitten',
+                          totalProteins,
+                          proteinGoal.toDouble(),
+                          isDarkMode,
+                          const Color.fromARGB(255, 0, 140, 255),
+                        ),
+                        _buildMacroCircle(
+                          'Vetten',
+                          totalFats,
+                          fatGoal.toDouble(),
+                          isDarkMode,
+                          const Color.fromARGB(255, 0, 213, 255),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -503,6 +618,66 @@ tabBuilder: (context, index) {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildMacroCircle(
+    String title,
+    double consumed,
+    double goal,
+    bool isDarkMode,
+    Color color,
+  ) {
+    final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
+    final percentage = (progress * 100).round();
+
+    return Column(
+      children: [
+        SizedBox(
+          width: 70,
+          height: 70,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CircularProgressIndicator(
+                value: progress,
+                strokeWidth: 6,
+                backgroundColor: isDarkMode
+                    ? Colors.grey[700]
+                    : Colors.grey[300],
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+              Center(
+                child: Text(
+                  '$percentage%',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${consumed.round()}/${goal.round()}g',
+          style: TextStyle(
+            fontSize: 12,
+            color: isDarkMode ? Colors.white70 : Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 
@@ -669,7 +844,7 @@ tabBuilder: (context, index) {
       builder: (context) {
         return AlertDialog(
           title: Text(
-            'Hoeveelheid aanpassen (gram / mililiter)',
+            'Hoeveelheid aanpassen (gram of mililiter)',
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           ),
           content: Form(
@@ -681,7 +856,7 @@ tabBuilder: (context, index) {
                 decimal: true,
               ),
               decoration: const InputDecoration(
-                labelText: 'Hoeveelheid (g / ml)',
+                labelText: 'Hoeveelheid (g of ml)',
               ),
               validator: (value) {
                 if (value == null ||
@@ -732,7 +907,6 @@ tabBuilder: (context, index) {
     final docRef = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
-
         .collection('logs')
         .doc(todayDocId);
 
