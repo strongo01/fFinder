@@ -892,11 +892,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     MainAxisAlignment.center, // alles in het midden
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
+                  Expanded(
+                    child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     key: _mascotteKey,
                     children: [
-                      Padding(
+                      Expanded(
+                          child: Padding(
                         padding: const EdgeInsets.only(bottom: 80),
                         child: BubbleSpecialThree(
                           text: _motivationalMessage ?? motivationalMessage,
@@ -910,6 +912,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontSize: 14,
                           ),
                         ),
+                      ),
                       ),
 
                       const SizedBox(width: 10),
@@ -931,6 +934,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ],
+                  ),
                   ),
 
                   const SizedBox(width: 30),
