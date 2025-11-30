@@ -200,6 +200,8 @@ class _OnboardingViewState extends State<OnboardingView> {
   void _nextPage() {
     if (!_validateCurrentPage()) return; // valideer huidige pagina
 
+    FocusScope.of(context).unfocus();
+
     if (_currentIndex < _totalQuestions - 1) {
       // Als er nog vragen over zijn
       _pageController.nextPage(
@@ -214,6 +216,7 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   // Functie om terug te gaan
   void _previousPage() {
+    FocusScope.of(context).unfocus();
     if (_currentIndex > 0) {
       // Als we niet op de eerste pagina zijn
       _pageController.previousPage(
@@ -607,6 +610,7 @@ class _OnboardingViewState extends State<OnboardingView> {
     final inputTextStyle = TextStyle(
       color: isDarkMode ? Colors.white : Colors.black,
     );
+    final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
       body: SafeArea(
@@ -627,7 +631,7 @@ class _OnboardingViewState extends State<OnboardingView> {
               _buildProgressIndicator(),
               const SizedBox(height: 20),
               // gif en Titel
-              Image.asset('assets/mascotte/mascottelangzaam.gif', height: 240),
+              Image.asset('assets/mascotte/mascottelangzaam.gif', height: isKeyboardVisible ? 120 : 240,),
 
               // De vragen pagina's
               Expanded(
@@ -647,6 +651,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                       content: TextField(
                         controller: _firstNameController,
                         textInputAction: TextInputAction.next,
+                        textCapitalization: TextCapitalization.words,
                         onSubmitted: (_) => _nextPage(),
                         style: inputTextStyle,
                         decoration: const InputDecoration(
@@ -824,7 +829,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                               fontWeight: FontWeight.bold,
                               color: isDarkMode
                                   ? Colors.white
-                                  : Colors.black, // Toegevoegd
+                                  : Colors.black,
                             ),
                           ),
                           Slider(

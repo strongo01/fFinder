@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:308332286849:android:461ed16392466cda744e80",
+        "mobilesdk_app_id": "1:308332286849:android:cee2703cb9ccc4b8744e80",
         "android_client_info": {
-          "package_name": "com.MaxTristan.pws"
+          "package_name": "com.MaxTristan.fFinder"
         }
       },
       "oauth_client": [
@@ -43,17 +43,25 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:308332286849:android:b397d421e60494c2744e80",
+        "mobilesdk_app_id": "1:308332286849:android:461ed16392466cda744e80",
         "android_client_info": {
-          "package_name": "com.example.pws"
+          "package_name": "com.MaxTristan.pws"
         }
       },
       "oauth_client": [
         {
-          "client_id": "308332286849-3k9g3ctdfebaj8mh56p7619lgococd03.apps.googleusercontent.com",
+          "client_id": "308332286849-du0ikk33c31kus7j42894cgfg68e6o6t.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.pws",
+            "package_name": "com.MaxTristan.pws",
+            "certificate_hash": "2048a33b724640ab24801036dba8b61dc9c1511b"
+          }
+        },
+        {
+          "client_id": "308332286849-qiscpjmvhinu7sr29r3lsgvg44n6qd7h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.MaxTristan.pws",
             "certificate_hash": "2fa187382b7c979fab2e077bd0d603ce66dcc08f"
           }
         },

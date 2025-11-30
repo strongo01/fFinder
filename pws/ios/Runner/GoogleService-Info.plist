@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>308332286849-mk554sbg5ers5edvo1bkr155v2kffjd5.apps.googleusercontent.com</string>
+	<string>308332286849-irnt6u02lpvht2k3987i28vahs623lqd.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.308332286849-mk554sbg5ers5edvo1bkr155v2kffjd5</string>
+	<string>com.googleusercontent.apps.308332286849-irnt6u02lpvht2k3987i28vahs623lqd</string>
 	<key>ANDROID_CLIENT_ID</key>
 	<string>308332286849-3k9g3ctdfebaj8mh56p7619lgococd03.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.MaxTristan.pws</string>
+	<string>com.MaxTristan.fFinder</string>
 	<key>PROJECT_ID</key>
 	<string>pwsmt-fd851</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:308332286849:ios:6b93ac48bd272bc7744e80</string>
+	<string>1:308332286849:ios:0c34a050f4747298744e80</string>
 </dict>
 </plist>

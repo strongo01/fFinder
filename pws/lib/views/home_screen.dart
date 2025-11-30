@@ -300,19 +300,56 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      // datumkiezer openen
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null && picked != _selectedDate) {
-      final today = DateTime.now();
-      final todayWithoutTime = DateTime(today.year, today.month, today.day);
-      final pickedWithoutTime = DateTime(picked.year, picked.month, picked.day);
-      final difference = pickedWithoutTime.difference(todayWithoutTime).inDays;
-      _pageController.jumpToPage(_initialPage + difference);
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      showCupertinoModalPopup(
+        context: context,
+        builder: (_) => Container(
+          height: 250,
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 180,
+                child: CupertinoDatePicker(
+                  initialDateTime: _selectedDate,
+                  mode: CupertinoDatePickerMode.date,
+                  use24hFormat: true,
+                  minimumDate: DateTime(2020),
+                  maximumDate: DateTime.now(),
+                  onDateTimeChanged: (val) {
+                    setState(() {
+                      _selectedDate = val;
+                      final today = DateTime.now();
+                      final todayWithoutTime = DateTime(today.year, today.month, today.day);
+                      final pickedWithoutTime = DateTime(val.year, val.month, val.day);
+                      final difference = pickedWithoutTime.difference(todayWithoutTime).inDays;
+                      _pageController.jumpToPage(_initialPage + difference);
+                    });
+                  },
+                ),
+              ),
+              CupertinoButton(
+                child: const Text('Klaar'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: _selectedDate,
+        firstDate: DateTime(2020),
+        lastDate: DateTime.now(),
+      );
+      if (picked != null && picked != _selectedDate) {
+        final today = DateTime.now();
+        final todayWithoutTime = DateTime(today.year, today.month, today.day);
+        final pickedWithoutTime = DateTime(picked.year, picked.month, picked.day);
+        final difference = pickedWithoutTime.difference(todayWithoutTime).inDays;
+        _pageController.jumpToPage(_initialPage + difference);
+      }
     }
   }
 
@@ -462,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
               trailing: CupertinoButton(
                 padding: EdgeInsets.zero,
                 key: _barcodeKey,
-                child: const Icon(CupertinoIcons.barcode_viewfinder),
+                child: const Icon(CupertinoIcons.barcode_viewfinder, size: 32,),
                 onPressed: _scanBarcode,
               ),
             ),
@@ -887,68 +924,130 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
             Center(
-              child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.center, // alles in het midden
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    key: _mascotteKey,
-                    children: [
-                      Expanded(
-                          child: Padding(
-                        padding: const EdgeInsets.only(bottom: 80),
-                        child: BubbleSpecialThree(
-                          text: _motivationalMessage ?? motivationalMessage,
-                          color: isDarkMode
-                              ? const Color(0xFF1B97F3)
-                              : Colors.blueAccent,
-                          tail: true,
-                          isSender: true,
-                          textStyle: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth < 400) {
+                    return Column(
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          key: _mascotteKey,
+                          children: [
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 80),
+                                child: BubbleSpecialThree(
+                                  text: _motivationalMessage ?? motivationalMessage,
+                                  color: isDarkMode
+                                      ? const Color(0xFF1B97F3)
+                                      : Colors.blueAccent,
+                                  tail: true,
+                                  isSender: true,
+                                  textStyle: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _motivationalMessage = _getMotivationalMessage(
+                                    totalCalories,
+                                    calorieGoal,
+                                    totalWater,
+                                    waterGoal,
+                                    entries.isNotEmpty,
+                                  );
+                                });
+                              },
+                              child: Image.asset(
+                                'assets/mascotte/mascottelangzaam.gif',
+                                height: 120,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          key: _waterCircleKey,
+                          child: _buildWaterCircle(
+                            totalWater,
+                            waterGoal.toDouble(),
+                            drinkBreakdown,
+                            isDarkMode,
                           ),
                         ),
-                      ),
-                      ),
-
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _motivationalMessage = _getMotivationalMessage(
-                              totalCalories,
-                              calorieGoal,
-                              totalWater,
-                              waterGoal,
-                              entries.isNotEmpty,
-                            );
-                          });
-                        },
-                        child: Image.asset(
-                          'assets/mascotte/mascottelangzaam.gif',
-                          height: 120,
+                      ],
+                    );
+                  } else {
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          flex: 1,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            key: _mascotteKey,
+                            children: [
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 80),
+                                  child: BubbleSpecialThree(
+                                    text: _motivationalMessage ?? motivationalMessage,
+                                    color: isDarkMode
+                                        ? const Color(0xFF1B97F3)
+                                        : Colors.blueAccent,
+                                    tail: true,
+                                    isSender: true,
+                                    textStyle: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _motivationalMessage = _getMotivationalMessage(
+                                      totalCalories,
+                                      calorieGoal,
+                                      totalWater,
+                                      waterGoal,
+                                      entries.isNotEmpty,
+                                    );
+                                  });
+                                },
+                                child: Image.asset(
+                                  'assets/mascotte/mascottelangzaam.gif',
+                                  height: 120,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  ),
-
-                  const SizedBox(width: 30),
-
-                  Container(
-                    key: _waterCircleKey,
-                    child: _buildWaterCircle(
-                      totalWater,
-                      waterGoal.toDouble(),
-                      drinkBreakdown,
-                      isDarkMode,
-                    ),
-                  ),
-                ],
+                        const SizedBox(width: 30),
+                        Flexible(
+                          flex: 1,
+                          child: Container(
+                            key: _waterCircleKey,
+                            child: _buildWaterCircle(
+                              totalWater,
+                              waterGoal.toDouble(),
+                              drinkBreakdown,
+                              isDarkMode,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                }
+                },
               ),
             ),
             const SizedBox(height: 20),
@@ -983,8 +1082,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   entries: mealEntry.value,
                   isDarkMode: isDarkMode,
                 );
-              });
+              }).toList();
             }(),
+            const SizedBox(height: 80),
           ],
         );
       },
