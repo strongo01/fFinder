@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" />
     <application
-        android:label="pws"
+        android:label="fFinder"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity

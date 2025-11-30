@@ -4,7 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
-import 'package:pws/views/settings_view.dart';
+import 'package:fFinder/views/settings_view.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:flutter/cupertino.dart'; //voor ios stijl widgets
 import 'package:flutter/foundation.dart'; // Voor platform check
@@ -71,19 +71,24 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _showTutorial() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool tutorialShown = prefs.getBool('home_tutorial_shown') ?? false;
+void _showTutorial() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-    if (!tutorialShown) {
-    Future.delayed(const Duration(seconds: 1), () {
-    tutorialCoachMark.show(context: context);
-    prefs.setBool('home_tutorial_shown', true);
-    });
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final bool tutorialHomeAf = userDoc.data()?['tutorialHomeAf'] ?? false;
+
+    if (!tutorialHomeAf) {
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          tutorialCoachMark.show(context: context);
+        }
+      });
     }
   }
 
-  void _createTutorial() {
+  void _createTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
     tutorialCoachMark = TutorialCoachMark(
       targets: _createTargets(context),
       colorShadow: Colors.blue.withOpacity(0.7),
@@ -92,6 +97,14 @@ class _HomeScreenState extends State<HomeScreen> {
       hideSkip: true,
       onFinish: () {
         print("Tutorial voltooid");
+        prefs.setBool('home_tutorial_shown', true);
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({'tutorialHomeAf': true});
+        }
       },
       onClickTarget: (target) {
         print('Target geklikt: $target');
@@ -143,12 +156,14 @@ class _HomeScreenState extends State<HomeScreen> {
       TargetFocus(
         identify: "calorie-info-row-key",
         keyTarget: _calorieInfoRowKey,
+        shape: ShapeLightFocus.RRect,
+        color: Colors.blue,
         contents: [
           TargetContent(
             align: ContentAlign.bottom,
-            child: _buildTutorialContentWithArrow(
+            child: _buildTutorialContent(
               'Calorieën Overzicht',
-              'Hier zie je een samenvatting van je calorie-inname voor de geselecteerde dag.',
+              'Hier zie je een samenvatting van je calorie-inname voor de dag.',
               isDarkMode,
             ),
           ),
@@ -165,8 +180,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Mascotte', //TODO: verander titel
-              'Persoonlijke motivatie en tips van je mascotte!', //TODO: verander tekst
+              'Reppy', //TODO: verander titel
+              'Reppy geeft persoonlijke motivatie en tips!', //TODO: verander tekst
               isDarkMode,
             ),
           ),
@@ -184,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
             align: ContentAlign.top,
             child: _buildTutorialContent(
               'Drankinname',
-              'Houd hier je drankinname bij. De cirkel vult zich naarmate je je doel nadert.',
+              'Houd hier je drankinname bij. De cirkel laat ziet hoeveel je nog moet drinken om je doel te bereiken.',
               isDarkMode,
             ),
           ),
@@ -195,6 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Toevoegen knop
     targets.add(
       TargetFocus(
+        //fab is floating action button
         identify: "add-fab-key",
         keyTarget: _addFabKey,
         contents: [
@@ -215,14 +231,15 @@ class _HomeScreenState extends State<HomeScreen> {
       TargetFocus(
         identify: "meal-key",
         keyTarget: _mealKey,
+        shape: ShapeLightFocus.RRect,
+        color: Colors.blue,
         contents: [
           TargetContent(
             align: ContentAlign.top,
-            child: _buildTutorialContentWithArrow(
+            child: _buildTutorialContent(
               'Logs', //TODO: verander titel
-              'Hier komen al het voedsel en drankjes die je toevoegt.',
+              'Hier komen al het voedsel en de drankjes die je toevoegt.',
               isDarkMode,
-              arrowIcon: Icons.arrow_downward,
             ),
           ),
         ],
@@ -230,40 +247,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     return targets;
-  }
-
-  Widget _buildTutorialContentWithArrow(
-    String title,
-    String text,
-    bool isDarkMode, {
-    IconData arrowIcon = Icons.arrow_upward,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (arrowIcon == Icons.arrow_downward) // Pijl bovenaan als hij omlaag wijst
-          Center(
-            child: Icon(
-              arrowIcon,
-              color: isDarkMode ? Colors.white : Colors.black,
-              size: 320,
-            ),
-          ),
-        if (arrowIcon == Icons.arrow_downward) const SizedBox(height: 10),
-        _buildTutorialContent(title, text, isDarkMode),
-        if (arrowIcon == Icons.arrow_upward) // Pijl onderaan als hij omhoog wijst
-          const SizedBox(height: 10),
-        if (arrowIcon == Icons.arrow_upward)
-          Center(
-            child: Icon(
-              arrowIcon,
-              color: isDarkMode ? Colors.white : Colors.black,
-              size: 40,
-            ),
-          ),
-      ],
-    );
   }
 
   Widget _buildTutorialContent(String title, String text, bool isDarkMode) {
@@ -552,6 +535,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSpeedDial() {
+    //fab is floating action button
     // bouwt de SpeedDial knop
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final fabBackgroundColor = isDarkMode ? Colors.grey[850] : Colors.grey[200];
@@ -738,24 +722,11 @@ class _HomeScreenState extends State<HomeScreen> {
             !snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Center(
-                child: Text(
-                  'Nog geen items gelogd voor deze dag.',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>;
-        final entries = data['entries'] as List<dynamic>? ?? [];
+        final data = (snapshot.hasData && snapshot.data!.exists)
+            ? snapshot.data!.data() as Map<String, dynamic>
+            : null;
+        final entries = data?['entries'] as List<dynamic>? ?? [];
 
         double totalCalories = 0;
         double totalProteins = 0;
@@ -961,14 +932,26 @@ class _HomeScreenState extends State<HomeScreen> {
             ...() {
               bool mealKeyAssigned = false;
               return meals.entries.map((mealEntry) {
-                if (mealEntry.value.isEmpty) {
-                  return const SizedBox.shrink(); // sla lege maaltijden over
-                }
-
                 Key? currentKey;
                 if (!mealKeyAssigned) {
                   currentKey = _mealKey;
                   mealKeyAssigned = true;
+                }
+
+                // Maak de sectie onzichtbaar als hij leeg is
+                if (mealEntry.value.isEmpty) {
+                  return SizedBox(
+                    width: double.infinity,
+                    child: Offstage(
+                      offstage: true,
+                      child: _buildMealSection(
+                        key: currentKey,
+                        title: mealEntry.key,
+                        entries: const [],
+                        isDarkMode: isDarkMode,
+                      ),
+                    ),
+                  );
                 }
 
                 return _buildMealSection(
@@ -1556,6 +1539,53 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+class _ArrowPainter extends CustomPainter {
+  final bool isUp;
+  final Color color;
+
+  _ArrowPainter({required this.isUp, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6.0
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+
+    if (isUp) {
+      path.moveTo(size.width * 0.5, size.height);
+      path.quadraticBezierTo(
+        size.width * 0.5,
+        size.height * 0.4,
+        size.width * 0.5,
+        0,
+      );
+      path.moveTo(size.width * 0.1, size.height * 0.3);
+      path.lineTo(size.width * 0.5, 0);
+      path.lineTo(size.width * 0.9, size.height * 0.3);
+    } else {
+      path.moveTo(size.width * 0.5, 0);
+      path.quadraticBezierTo(
+        size.width * 0.5,
+        size.height * 0.6,
+        size.width * 0.5,
+        size.height,
+      );
+      path.moveTo(size.width * 0.1, size.height * 0.7);
+      path.lineTo(size.width * 0.5, size.height);
+      path.lineTo(size.width * 0.9, size.height * 0.7);
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class SegmentedArcPainter extends CustomPainter {

@@ -1,4 +1,4 @@
-# pws
+# fFinder
 
 A new Flutter project.
 

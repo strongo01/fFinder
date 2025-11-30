@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:pws/views/home_screen.dart';
+import 'package:fFinder/views/home_screen.dart';
 import 'firebase_options.dart';
 import 'views/login_register_view.dart';
 import 'views/onboarding_view.dart';
@@ -21,7 +21,7 @@ Future<void> main() async {
       .initialize(); // de sign in voor google wordt geinitialiseerd
 
   OpenFoodAPIConfiguration.userAgent = UserAgent(
-    name: 'PWS',
+    name: 'fFinder',
   ); // de configuratie van de openfoodfacts api ingesteld
 
   // standaard taal voor openfoodfacts

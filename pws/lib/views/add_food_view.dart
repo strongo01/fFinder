@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+
 class AddFoodPage extends StatefulWidget {
   final String? scannedBarcode;
-  final Map<String, dynamic>? initialProductData; //initialproductdata: de data van het product als die al bekend is (barcode)
+  final Map<String, dynamic>?
+  initialProductData; //initialproductdata: de data van het product als die al bekend is (barcode)
 
   const AddFoodPage({super.key, this.scannedBarcode, this.initialProductData});
   State<AddFoodPage> createState() => _AddFoodPageState();
@@ -22,11 +26,24 @@ class _AddFoodPageState extends State<AddFoodPage> {
   List<dynamic>? _searchResults;
   final List<bool> _selectedToggle = <bool>[true, false, false, false];
 
+  final GlobalKey _searchKey = GlobalKey();
+  final GlobalKey _barcodeKey = GlobalKey();
+  final GlobalKey _recentKey = GlobalKey();
+  final GlobalKey _favoritesKey = GlobalKey();
+  final GlobalKey _myproductsKey = GlobalKey();
+  final GlobalKey _myproductsAddKey = GlobalKey();
+  final GlobalKey _maaltijdenKey = GlobalKey();
+  final GlobalKey _maaltijdenAddKey = GlobalKey();
+  final GlobalKey _maaltijdenLogKey = GlobalKey();
+
+  late TutorialCoachMark tutorialCoachMark;
+
   @override
   void initState() {
     super.initState();
     if (widget.scannedBarcode != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) { // wacht totdat de build klaar is
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // wacht totdat de build klaar is
         if (mounted) {
           _showProductDetails(
             widget.scannedBarcode!,
@@ -37,7 +54,284 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
-  Future<void> _searchProducts(String query) async { // zoek producten via openfoodfacts api
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _createTutorial();
+    _showTutorial();
+  }
+
+void _showTutorial() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final bool tutorialHomeAf = userDoc.data()?['tutorialFoodAf'] ?? false;
+
+    if (!tutorialHomeAf) {
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          tutorialCoachMark.show(context: context);
+        }
+      });
+    }
+  }
+
+  void _createTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    tutorialCoachMark = TutorialCoachMark(
+      targets: _createTargets(context),
+      colorShadow: Colors.blue.withOpacity(0.7),
+      paddingFocus: 10,
+      opacityShadow: 0.8,
+      hideSkip: true,
+      onFinish: () {
+        print("Tutorial voltooid");
+        prefs.setBool('food_tutorial_shown', true);
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({'tutorialFoodAf': true});
+        }
+      },
+      onClickTarget: (target) {
+        print('Target geklikt: $target');
+        final String? identify = target.identify;
+        int? targetIndex;
+
+        switch (identify) {
+          case 'recent-key':
+            targetIndex = 0;
+            break;
+          case 'favorites-key':
+            targetIndex = 1;
+            break;
+          case 'myproducts-key':
+            targetIndex = 2;
+            break;
+          case 'maaltijden-key':
+            targetIndex = 3;
+            break;
+        }
+
+        if (targetIndex != null) {
+          setState(() {
+            _selectedTabIndex = targetIndex!;
+            for (int i = 0; i < _selectedToggle.length; i++) {
+              _selectedToggle[i] = i == targetIndex;
+            }
+          });
+        }
+      },
+    );
+  }
+
+  List<TargetFocus> _createTargets(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    List<TargetFocus> targets = [];
+
+    //Zoekbalk
+    targets.add(
+      TargetFocus(
+        identify: "search-key",
+        keyTarget: _searchKey,
+        shape: ShapeLightFocus.RRect,
+        color: Colors.blue,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Zoekbalk',
+              'Hier kan je een product zoeken om toe te voegen aan je dag.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+    //Barcode
+    targets.add(
+      TargetFocus(
+        identify: "barcode-key",
+        keyTarget: _barcodeKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Barcode Scannen',
+              'Tik hier om een product te scannen en snel toe te voegen aan je dag.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Recent
+    targets.add(
+      TargetFocus(
+        identify: "recent-key",
+        keyTarget: _recentKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Recente Producten',
+              'Hier zie je alle producten die je recent hebt toegevoegd.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Favorieten-kaart
+    targets.add(
+      TargetFocus(
+        identify: "favorites-key",
+        keyTarget: _favoritesKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Favorieten',
+              'Hier zie je al jouw favorieten producten.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Mijn producten
+    targets.add(
+      TargetFocus(
+        identify: "myproducts-key",
+        keyTarget: _myproductsKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Mijn producten',
+              'Hier kan je zelf producten toevoegen die niet kunnen worden gevonden.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Mijn producten +
+    targets.add(
+      TargetFocus(
+        identify: "myproductsplusje-key",
+        keyTarget: _myproductsAddKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Voeg product toe',
+              'Tik op dit plusje om een eigen product toe te voegen aan jouw lijst met producten.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Maaltijden knop
+    targets.add(
+      TargetFocus(
+        identify: "maaltijden-key",
+        keyTarget: _maaltijdenKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Maaltijden',
+              'Hier kan je maaltijden maken uit meerdere producten, zodat je sneller vaak gegeten maaltijden kan toevoegen.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Maaltijden knop +
+    targets.add(
+      TargetFocus(
+        identify: "maaltijdenplus-key",
+        keyTarget: _maaltijdenAddKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Maaltijden toevoegen',
+              'Tik op dit plusje om maaltijden te maken uit meerdere producten, zodat je sneller vaak gegeten maaltijden kan toevoegen.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Maaltijden knop toevoegen
+    targets.add(
+      TargetFocus(
+        identify: "maaltijdenlog-key",
+        keyTarget: _maaltijdenLogKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Maaltijden loggen',
+              'Tik op dit winkelwagentje om maaltijden toe te voegen aan de logs.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return targets;
+  }
+
+  Widget _buildTutorialContent(String title, String text, bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[800] : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : Colors.black,
+              fontSize: 20,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _searchProducts(String query) async {
+    // zoek producten via openfoodfacts api
     if (query.isEmpty) {
       setState(() {
         _searchResults = null;
@@ -48,7 +342,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
     final trimmed = query.trim(); // verwijder spaties aan begin en eind
 
-    if (trimmed.length < 2) { // minimaal 2 tekens
+    if (trimmed.length < 2) {
+      // minimaal 2 tekens
       setState(() {
         _searchResults = null;
         _errorMessage = 'Voer minimaal 2 tekens in.';
@@ -79,7 +374,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
       final List all = (data["products"] as List?) ?? []; // alle producten
 
       final escaped = RegExp.escape(trimmed); // escape speciale tekens
-      final wholeWord = RegExp( // hele woord matchen
+      final wholeWord = RegExp(
+        // hele woord matchen
         r'\b' + escaped + r'\b',
         caseSensitive: false,
         unicode: true,
@@ -90,7 +386,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
         unicode: true,
       );
 
-      List filtered = all.where((p) { // filter op hele woord
+      List filtered = all.where((p) {
+        // filter op hele woord
         final name =
             "${p["product_name"] ?? ''} "
             "${p["generic_name"] ?? ''} "
@@ -98,7 +395,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
         return wholeWord.hasMatch(name);
       }).toList();
 
-      if (filtered.isEmpty) { // als geen hele woord matches, filter op starts with
+      if (filtered.isEmpty) {
+        // als geen hele woord matches, filter op starts with
         filtered = all.where((p) {
           final name =
               "${p["product_name"] ?? ''} "
@@ -207,6 +505,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     return Scaffold(
       appBar: AppBar(
         title: TextField(
+          key: _searchKey, //TODO werkend maken
           controller: _searchController,
           style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           decoration: InputDecoration(
@@ -220,7 +519,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
               vertical: 0,
               horizontal: 20,
             ),
-            border: OutlineInputBorder( // afgeronde hoeken
+            border: OutlineInputBorder(
+              // afgeronde hoeken
               borderRadius: BorderRadius.circular(30.0),
               borderSide: BorderSide.none,
             ),
@@ -238,10 +538,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
             _searchProducts(value);
           },
         ),
-        actions: [
+                actions: [
           if (_searchController.text.isEmpty &&
-              (_selectedTabIndex == 2 || _selectedTabIndex == 3)) 
+              (_selectedTabIndex == 2 || _selectedTabIndex == 3))
             IconButton(
+              key: _selectedTabIndex == 2 ? _myproductsAddKey : _maaltijdenAddKey,
               icon: const Icon(Icons.add),
               tooltip: _selectedTabIndex == 2
                   ? 'Product toevoegen'
@@ -251,6 +552,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   : _showAddMealSheet,
             ),
           IconButton(
+            key: _barcodeKey,
             icon: const Icon(Icons.qr_code_scanner),
             onPressed: _scanBarcode,
           ),
@@ -274,7 +576,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 onPressed: (int index) {
                   setState(() {
                     _selectedTabIndex = index;
-                    for (int i = 0; i < _selectedToggle.length; i++) { // update toggle state
+                    for (int i = 0; i < _selectedToggle.length; i++) {
+                      // update toggle state
                       _selectedToggle[i] = i == index;
                     }
                   });
@@ -282,14 +585,16 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 borderRadius: const BorderRadius.all(Radius.circular(8)),
                 constraints: BoxConstraints(
                   minHeight: 40.0,
-                  minWidth: (MediaQuery.of(context).size.width - 48) / 4, // verdeel groote gelijk
+                  minWidth:
+                      (MediaQuery.of(context).size.width - 48) /
+                      4, // verdeel groote gelijk
                 ),
                 isSelected: _selectedToggle,
-                children: const [
-                  Text('Recent'),
-                  Text('Favorieten'),
-                  Text('Mijn Producten'),
-                  Text('Maaltijden'),
+                children: [
+                  Text('Recent', key: _recentKey),
+                  Text('Favorieten', key: _favoritesKey),
+                  Text('Mijn Producten', key: _myproductsKey),
+                  Text('Maaltijden', key: _maaltijdenKey),
                 ],
               ),
             ),
@@ -299,7 +604,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Widget _buildContent() { // bouw de juiste content op basis van de zoekterm
+  Widget _buildContent() {
+    // bouw de juiste content op basis van de zoekterm
     if (_searchController.text.isNotEmpty) {
       return _buildSearchResults();
     } else {
@@ -307,7 +613,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
-  Widget _buildSearchResults() { // bouw de zoekresultaten lijst
+  Widget _buildSearchResults() {
+    // bouw de zoekresultaten lijst
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -331,7 +638,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
             ),
             const SizedBox(height: 8),
-            TextButton( // knop om eigen product toe te voegen
+            TextButton(
+              // knop om eigen product toe te voegen
               onPressed: _showAddMyProductSheet,
               child: const Text('Wilt u zelf een product toevoegen?'),
             ),
@@ -340,8 +648,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
       );
     }
 
-    return ListView.builder( 
-      itemCount: _searchResults!.length + 1, 
+    return ListView.builder(
+      itemCount: _searchResults!.length + 1,
       itemBuilder: (context, index) {
         if (index == _searchResults!.length) {
           return Padding(
@@ -358,12 +666,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
         final product = _searchResults![index] as Map<String, dynamic>;
         final imageUrl = product['image_front_small_url'] as String?;
 
-        return ListTile( // toon elk product in de lijst
+        return ListTile(
+          // toon elk product in de lijst
           leading: imageUrl != null
               ? SizedBox(
                   width: 50,
                   height: 50,
-                  child: Image.network( // laad de afbeelding van het product
+                  child: Image.network(
+                    // laad de afbeelding van het product
                     imageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) =>
@@ -388,7 +698,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<void> _showAddMyProductSheet() async { // toon sheet om eigen product toe te voegen
+  Future<void> _showAddMyProductSheet() async {
+    // toon sheet om eigen product toe te voegen
     final _formKey = GlobalKey<FormState>();
     final _nameController = TextEditingController(); // naam controller
     final _brandController = TextEditingController();
@@ -402,7 +713,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final _proteinsController = TextEditingController();
     final _saltController = TextEditingController();
 
-    await showModalBottomSheet( // toon modal sheet. modal is een soort popup
+    await showModalBottomSheet(
+      // toon modal sheet. modal is een soort popup
       context: context,
       isScrollControlled: true,
       builder: (context) {
@@ -518,9 +830,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 24),
-                  ElevatedButton( // knop om product op te slaan
+                  ElevatedButton(
+                    // knop om product op te slaan
                     onPressed: () async {
-                      if (_formKey.currentState!.validate()) { // valideer formulier
+                      if (_formKey.currentState!.validate()) {
+                        // valideer formulier
                         final user = FirebaseAuth.instance.currentUser;
                         if (user == null) return;
 
@@ -537,8 +851,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 'energy-kcal':
                                     double.tryParse(_caloriesController.text) ??
                                     0, // calorieën zijn verplicht
-                                'fat': double.tryParse(_fatController.text), 
-                                'saturated-fat': double.tryParse( 
+                                'fat': double.tryParse(_fatController.text),
+                                'saturated-fat': double.tryParse(
                                   _saturatedFatController.text,
                                 ),
                                 'carbohydrates': double.tryParse(
@@ -569,7 +883,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<void> _addRecentProduct( // voeg recent product toe
+  Future<void> _addRecentProduct(
+    // voeg recent product toe
     Product product, {
     Map<String, dynamic>? editedNutriments, // bewerkte voedingswaarden
   }) async {
@@ -639,7 +954,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     await docRef.set(productData, SetOptions(merge: true));
   }
 
-  Future<void> _addRecentMyProduct( // voeg recent eigen product toe
+  Future<void> _addRecentMyProduct(
+    // voeg recent eigen product toe
     Map<String, dynamic> productData,
     String docId,
   ) async {
@@ -659,7 +975,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     await docRef.set(dataToSave, SetOptions(merge: true)); // sla op met merge
   }
 
-  Future<void> _addFavoriteProduct( // voeg favoriet product toe
+  Future<void> _addFavoriteProduct(
+    // voeg favoriet product toe
     Product product, {
     Map<String, dynamic>? editedNutriments,
   }) async {
@@ -752,13 +1069,15 @@ class _AddFoodPageState extends State<AddFoodPage> {
     return doc.exists;
   }
 
-  Future<Map<String, dynamic>?> _showProductDetails( // toon product details in een modal sheet
+  Future<Map<String, dynamic>?> _showProductDetails(
+    // toon product details in een modal sheet
     String barcode, {
     Map<String, dynamic>? productData,
     bool isForMeal = false,
     double? initialAmount,
   }) async {
-    return showModalBottomSheet<Map<String, dynamic>>( // toon modal sheet
+    return showModalBottomSheet<Map<String, dynamic>>(
+      // toon modal sheet
       context: context,
       isScrollControlled: true, // zorg dat keyboard de sheet niet overlapt
       builder: (context) {
@@ -927,7 +1246,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
               fetchDetails();
             }
 
-            return DraggableScrollableSheet( // maak de sheet scrollable
+            return DraggableScrollableSheet(
+              // maak de sheet scrollable
               expand: false,
               initialChildSize: 0.8,
               maxChildSize: 0.9,
@@ -1045,7 +1365,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
                                       await _addFavoriteProduct(
                                         product!,
-                                        editedNutriments: nutrimentsData, // bewerkte voedingswaarden
+                                        editedNutriments:
+                                            nutrimentsData, // bewerkte voedingswaarden
                                       );
                                       setModalState(() {
                                         isFavorite = !isFavorite;
@@ -1288,8 +1609,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Widget _buildEditableInfoRow( // bouw een rij met bewerkbare voedingswaarde
-    String label, 
+  Widget _buildEditableInfoRow(
+    // bouw een rij met bewerkbare voedingswaarde
+    String label,
     TextEditingController controller,
     bool isDarkMode, {
     bool isRequired = false,
@@ -1343,8 +1665,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Widget _buildInfoRow(String label, String? value) { // bouw een rij met niet-bewerkbare info
-    if (value == null || value.trim().isEmpty) { // geen waarde om te tonen
+  Widget _buildInfoRow(String label, String? value) {
+    // bouw een rij met niet-bewerkbare info
+    if (value == null || value.trim().isEmpty) {
+      // geen waarde om te tonen
       return const SizedBox.shrink();
     }
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -1374,11 +1698,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Widget _buildProductList() { // bouw de lijst met producten op basis van geselecteerde tab
+  Widget _buildProductList() {
+    // bouw de lijst met producten op basis van geselecteerde tab
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final user = FirebaseAuth.instance.currentUser;
 
-    switch (_selectedTabIndex) { // bepaal welke tab is geselecteerd
+    switch (_selectedTabIndex) {
+      // bepaal welke tab is geselecteerd
       case 0: // Recent
         if (user == null) {
           return Center(
@@ -1687,16 +2013,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Center(
-                child: Text(
-                  'Je hebt nog geen maaltijden aangemaakt.',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-              );
-            }
+
             if (snapshot.hasError) {
               return Center(
                 child: Text(
@@ -1704,6 +2021,29 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
                   ),
+                ),
+              );
+            }
+
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              // Toon een voorbeelditem voor de tutorial als er geen maaltijden zijn
+              return ListTile(
+                title: const Text('Voorbeeld Maaltijd'),
+                subtitle: const Text('Klik op + om je eerste maaltijd te maken'),
+                trailing: IconButton(
+                  key: _maaltijdenLogKey, // Sleutel voor de tutorial
+                  icon: const Icon(Icons.add_shopping_cart),
+                  tooltip: 'Log maaltijd',
+                  onPressed: () {
+                    // Dit is een voorbeeld, dus doe niets of toon een bericht
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'Dit is een voorbeeld. Maak eerst een eigen maaltijd aan.'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  },
                 ),
               );
             }
@@ -1776,6 +2116,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     trailing: IconButton(
                       icon: const Icon(Icons.add_shopping_cart),
                       tooltip: 'Log maaltijd',
+                     key: index == 0 ? _maaltijdenLogKey : null,
                       onPressed: () {
                         final mealWithId = Map<String, dynamic>.from(meal);
                         mealWithId['id'] = mealDoc.id;
@@ -1796,7 +2137,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
-  Future<void> _logMeal(BuildContext context, Map<String, dynamic> meal) async { // log een maaltijd naar de logs in firebase
+  Future<void> _logMeal(BuildContext context, Map<String, dynamic> meal) async {
+    // log een maaltijd naar de logs in firebase
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -1813,7 +2155,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
       return;
     }
 
-    final totalNutriments = <String, double>{ // totale voedingswaarden initialiseren
+    final totalNutriments = <String, double>{
+      // totale voedingswaarden initialiseren
       'energy-kcal': 0,
       'fat': 0,
       'saturated-fat': 0,
@@ -1825,7 +2168,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     };
     double totalAmount = 0;
 
-    for (final ingredient in ingredients) { // bereken de totale voedingswaarden
+    for (final ingredient in ingredients) {
+      // bereken de totale voedingswaarden
       final amount = (ingredient['amount'] as num?)?.toDouble() ?? 0;
       final nutrimentsPer100g =
           (ingredient['nutriments_per_100g'] as Map<String, dynamic>?) ?? {};
@@ -1853,7 +2197,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
         .collection('logs')
         .doc(todayDocId);
 
-    final logEntry = { // logboek invoer
+    final logEntry = {
+      // logboek invoer
       'product_name': meal['name'] ?? 'Onbekende maaltijd',
       'amount_g': totalAmount,
       'timestamp': Timestamp.now(),
@@ -1862,7 +2207,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
       'is_meal': true,
     };
 
-    try { // probeer de maaltijd op te slaan
+    try {
+      // probeer de maaltijd op te slaan
       await dailyLogRef.set({
         'entries': FieldValue.arrayUnion([logEntry]),
       }, SetOptions(merge: true));
@@ -1886,7 +2232,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
-  Future<String?> _showSelectMealTypeDialog(BuildContext context) async { // toon dialoog om maaltijdtype te selecteren
+  Future<String?> _showSelectMealTypeDialog(BuildContext context) async {
+    // toon dialoog om maaltijdtype te selecteren
     final hour = DateTime.now().hour;
     String selectedMeal;
     if (hour >= 5 && hour < 11) {
@@ -1900,9 +2247,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
     final List<String> mealTypes = ['Ontbijt', 'Lunch', 'Avondeten', 'Snacks'];
 
-    return showDialog<String>( // toon dialoog
+    return showDialog<String>(
+      // toon dialoog
       context: context,
-      builder: (dialogContext) { // bouw de dialoog
+      builder: (dialogContext) {
+        // bouw de dialoog
         final isDarkMode =
             Theme.of(dialogContext).brightness == Brightness.dark;
         final textColor = isDarkMode ? Colors.white : Colors.black;
@@ -1911,11 +2260,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
           builder: (context, setDialogState) {
             return AlertDialog(
               title: Text('Log Maaltijd', style: TextStyle(color: textColor)),
-              content: DropdownButtonFormField<String>( // dropdown om maaltijdtype te selecteren
+              content: DropdownButtonFormField<String>(
+                // dropdown om maaltijdtype te selecteren
                 value: selectedMeal,
                 style: TextStyle(color: textColor),
                 decoration: const InputDecoration(labelText: 'Sectie'),
-                items: mealTypes.map((String value) { // bouw de dropdown items
+                items: mealTypes.map((String value) {
+                  // bouw de dropdown items
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value),
@@ -1946,7 +2297,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<void> _showAddMealSheet({ // toon de sheet om een maaltijd toe te voegen of te bewerken
+  Future<void> _showAddMealSheet({
+    // toon de sheet om een maaltijd toe te voegen of te bewerken
     Map<String, dynamic>? existingMeal,
     String? mealId,
   }) async {
@@ -1961,7 +2313,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           (existingMeal['ingredients'] as List<dynamic>?)
               ?.cast<Map<String, dynamic>>() ??
           [];
-      for (var ingredient in ingredients) { // vul de ingrediënten in
+      for (var ingredient in ingredients) {
+        // vul de ingrediënten in
         ingredientEntries.add({
           'searchController': TextEditingController(),
           'amountController': TextEditingController(
@@ -1993,7 +2346,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
       isScrollControlled: true,
       builder: (context) {
         return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) { // bouw de sheet
+          builder: (BuildContext context, StateSetter setModalState) {
+            // bouw de sheet
             final isDarkMode = Theme.of(context).brightness == Brightness.dark;
             final textColor = isDarkMode ? Colors.white : Colors.black;
 
@@ -2066,11 +2420,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         'Ingrediënten',
                         style: Theme.of(
                           context,
-                        ).textTheme.titleLarge?.copyWith(color: textColor), 
+                        ).textTheme.titleLarge?.copyWith(color: textColor),
                       ),
                       ListView.builder(
                         shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(), // voorkom interne scroll
+                        physics:
+                            const NeverScrollableScrollPhysics(), // voorkom interne scroll
                         itemCount: ingredientEntries.length,
                         itemBuilder: (context, index) {
                           final entry = ingredientEntries[index];
@@ -2100,7 +2455,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     amountController.text,
                                   );
 
-                                  final result = await _showProductDetails( // toon productdetails om hoeveelheid aan te passen
+                                  final result = await _showProductDetails(
+                                    // toon productdetails om hoeveelheid aan te passen
                                     barcode,
                                     productData: selectedProduct,
                                     isForMeal: true,
@@ -2170,7 +2526,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     ),
                                 ],
                               ),
-                              if (entry['isSearching'] as bool) // toon laadindicator
+                              if (entry['isSearching']
+                                  as bool) // toon laadindicator
                                 const Padding(
                                   padding: EdgeInsets.all(8.0),
                                   child: Center(
@@ -2284,7 +2641,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               }
                             }
 
-                            if (finalProducts.isEmpty) { // controleer of er producten zijn toegevoegd
+                            if (finalProducts.isEmpty) {
+                              // controleer of er producten zijn toegevoegd
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
@@ -2333,7 +2691,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<void> _showEditMyProductSheet( // toon sheet om eigen product te bewerken
+  Future<void> _showEditMyProductSheet(
+    // toon sheet om eigen product te bewerken
     Map<String, dynamic> productData,
     String docId,
   ) async {
@@ -2540,7 +2899,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<void> _showMyProductDetails( // toon details van eigen product
+  Future<void> _showMyProductDetails(
+    // toon details van eigen product
     Map<String, dynamic> productData,
     String docId,
   ) async {
@@ -2585,10 +2945,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         icon: const Icon(Icons.edit), // bewerk icoon
                         onPressed: () {
                           Navigator.pop(context); // Close details
-                          _showEditMyProductSheet(
-                            productData,
-                            docId,
-                          );
+                          _showEditMyProductSheet(productData, docId);
                         },
                       ),
                       IconButton(
@@ -2601,10 +2958,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           final bool? wasAdded = await _showAddLogDialog(
                             context,
                             name,
-                            nutrimentsMap, 
+                            nutrimentsMap,
                           );
 
-                          if (wasAdded == true && context.mounted) { // als toegevoegd, sluit dan de sheet
+                          if (wasAdded == true && context.mounted) {
+                            // als toegevoegd, sluit dan de sheet
                             Navigator.pop(context);
                           }
                         },
@@ -2651,12 +3009,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<bool?> _showAddLogDialog( // toon dialoog om product aan log toe te voegen
+  Future<bool?> _showAddLogDialog(
+    // toon dialoog om product aan log toe te voegen
     BuildContext context,
     String productName,
     Map<String, dynamic>? nutriments,
   ) async {
-    final amountController = TextEditingController(); // controller voor hoeveelheid input
+    final amountController =
+        TextEditingController(); // controller voor hoeveelheid input
     final formKey = GlobalKey<FormState>();
     final hour = DateTime.now().hour;
     String selectedMeal;

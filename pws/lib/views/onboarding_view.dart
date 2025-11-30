@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:pws/views/home_screen.dart';
+import 'package:fFinder/views/home_screen.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/cupertino.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';

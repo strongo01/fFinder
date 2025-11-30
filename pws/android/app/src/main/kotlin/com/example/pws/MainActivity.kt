@@ -1,4 +1,4 @@
-package com.MaxTristan.pws
+package com.MaxTristan.fFinder
 
 import io.flutter.embedding.android.FlutterActivity
 
