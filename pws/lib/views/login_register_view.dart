@@ -253,7 +253,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       }
 
       if (!mounted) return;
-            Navigator.of(
+      Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
@@ -277,11 +277,13 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
           content: Text(
-              'Er is een onbekende fout opgetreden bij het inloggen met GitHub.')));
+            'Er is een onbekende fout opgetreden bij het inloggen met GitHub.',
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -415,7 +417,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
           break;
         case 'wrong-password':
         case 'invalid-credential':
-          message = 'Onjuist wachtwoord of e-mailadres. Probeer het opnieuw. Heeft u nog geen account, klik dan onderaan om er een aan te maken.';
+          message =
+              'Onjuist wachtwoord of e-mailadres. Probeer het opnieuw. Heeft u nog geen account, klik dan onderaan om er een aan te maken.';
           break;
         case 'email-already-in-use':
           message = 'Dit e-mailadres is al in gebruik. Probeer in te loggen.';

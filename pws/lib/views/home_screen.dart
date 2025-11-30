@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:fFinder/views/settings_view.dart';
-import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:flutter/cupertino.dart'; //voor ios stijl widgets
 import 'package:flutter/foundation.dart'; // Voor platform check
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
@@ -14,6 +13,7 @@ import 'add_food_view.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:chat_bubbles/chat_bubbles.dart';
 import 'add_drink_view.dart';
+import 'barcode_scanner.dart';
 
 //homescreen is een statefulwidget omdat de inhoud verandert
 class HomeScreen extends StatefulWidget {
@@ -300,11 +300,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
+
+      final today = DateTime.now();
+  final todayWithoutTime = DateTime(today.year, today.month, today.day);
+
+
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       showCupertinoModalPopup(
         context: context,
         builder: (_) => Container(
-          height: 250,
+          height: 300,
           color: Theme.of(context).scaffoldBackgroundColor,
           child: Column(
             children: [
@@ -315,34 +320,63 @@ class _HomeScreenState extends State<HomeScreen> {
                   mode: CupertinoDatePickerMode.date,
                   use24hFormat: true,
                   minimumDate: DateTime(2020),
-                  maximumDate: DateTime.now(),
+                  maximumDate: today,
                   onDateTimeChanged: (val) {
                     setState(() {
-                      _selectedDate = val;
-                      final today = DateTime.now();
-                      final todayWithoutTime = DateTime(today.year, today.month, today.day);
-                      final pickedWithoutTime = DateTime(val.year, val.month, val.day);
-                      final difference = pickedWithoutTime.difference(todayWithoutTime).inDays;
-                      _pageController.jumpToPage(_initialPage + difference);
-                    });
+                    _selectedDate = val;
+                    final pickedWithoutTime = DateTime(val.year, val.month, val.day);
+                    final difference = pickedWithoutTime.difference(todayWithoutTime).inDays;
+                    _pageController.jumpToPage(_initialPage + difference);
+                  });
                   },
                 ),
               ),
               CupertinoButton(
-                child: const Text('Klaar'),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+              child: const Text('Vandaag'),
+              onPressed: () {
+                setState(() {
+                  _selectedDate = todayWithoutTime;
+                  _pageController.jumpToPage(_initialPage);
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+            CupertinoButton(
+              child: const Text('Klaar'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
             ],
           ),
         ),
       );
     } else {
-      final DateTime? picked = await showDatePicker(
-        context: context,
-        initialDate: _selectedDate,
-        firstDate: DateTime(2020),
-        lastDate: DateTime.now(),
-      );
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: today,
+      builder: (context, child) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Expanded(child: child!),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: ElevatedButton(
+                child: const Text('Vandaag'),
+                onPressed: () {
+                  setState(() {
+                    _selectedDate = todayWithoutTime;
+                    _pageController.jumpToPage(_initialPage);
+                  });
+                  Navigator.of(context).pop();
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
       if (picked != null && picked != _selectedDate) {
         final today = DateTime.now();
         final todayWithoutTime = DateTime(today.year, today.month, today.day);
@@ -626,15 +660,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     // hij opent de barcode scanner en wacht totdat hij klaar is
-    var res = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Scan Barcode')),
-          body: const SimpleBarcodeScannerPage(),
-        ),
-      ),
-    );
+var res = await Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => const SimpleBarcodeScannerPage(),
+  ),
+);
+
 
     // als er een geldige barcode is gescand en niet -1
     if (res is String && res != '-1') {
@@ -691,6 +723,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // bouwt de inhoud van het homescreen
     return PageView.builder(
       controller: _pageController,
+      physics: const NeverScrollableScrollPhysics(),
       dragStartBehavior: DragStartBehavior.start,
       onPageChanged: (index) {
         final today = DateTime.now();
