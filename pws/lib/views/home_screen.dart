@@ -14,7 +14,7 @@ import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:chat_bubbles/chat_bubbles.dart';
 import 'add_drink_view.dart';
 import 'barcode_scanner.dart';
-
+import 'recipes_view.dart';
 //homescreen is een statefulwidget omdat de inhoud verandert
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _addFabKey = GlobalKey();
   final GlobalKey _mascotteKey = GlobalKey();
   final GlobalKey _mealKey = GlobalKey();
+final GlobalKey _recipesKey = GlobalKey();
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -136,6 +137,25 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+
+        //Receptenkiezer
+    targets.add(
+      TargetFocus(
+        identify: "recipes-key",
+        keyTarget: _recipesKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Recepten',
+              'Tik hier om naar recepten te zoeken.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
     //Barcode
     targets.add(
       TargetFocus(
@@ -300,10 +320,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
-
-      final today = DateTime.now();
-  final todayWithoutTime = DateTime(today.year, today.month, today.day);
-
+    final today = DateTime.now();
+    final todayWithoutTime = DateTime(today.year, today.month, today.day);
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       showCupertinoModalPopup(
@@ -323,46 +341,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   maximumDate: today,
                   onDateTimeChanged: (val) {
                     setState(() {
-                    _selectedDate = val;
-                    final pickedWithoutTime = DateTime(val.year, val.month, val.day);
-                    final difference = pickedWithoutTime.difference(todayWithoutTime).inDays;
-                    _pageController.jumpToPage(_initialPage + difference);
-                  });
+                      _selectedDate = val;
+                      final pickedWithoutTime = DateTime(
+                        val.year,
+                        val.month,
+                        val.day,
+                      );
+                      final difference = pickedWithoutTime
+                          .difference(todayWithoutTime)
+                          .inDays;
+                      _pageController.jumpToPage(_initialPage + difference);
+                    });
                   },
                 ),
               ),
               CupertinoButton(
-              child: const Text('Vandaag'),
-              onPressed: () {
-                setState(() {
-                  _selectedDate = todayWithoutTime;
-                  _pageController.jumpToPage(_initialPage);
-                });
-                Navigator.of(context).pop();
-              },
-            ),
-            CupertinoButton(
-              child: const Text('Klaar'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            ],
-          ),
-        ),
-      );
-    } else {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: today,
-      builder: (context, child) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Expanded(child: child!),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: ElevatedButton(
                 child: const Text('Vandaag'),
                 onPressed: () {
                   setState(() {
@@ -372,16 +365,53 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.of(context).pop();
                 },
               ),
-            ),
-          ],
-        );
-      },
-    );
+              CupertinoButton(
+                child: const Text('Klaar'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: _selectedDate,
+        firstDate: DateTime(2020),
+        lastDate: today,
+        builder: (context, child) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Expanded(child: child!),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: ElevatedButton(
+                  child: const Text('Vandaag'),
+                  onPressed: () {
+                    setState(() {
+                      _selectedDate = todayWithoutTime;
+                      _pageController.jumpToPage(_initialPage);
+                    });
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      );
       if (picked != null && picked != _selectedDate) {
         final today = DateTime.now();
         final todayWithoutTime = DateTime(today.year, today.month, today.day);
-        final pickedWithoutTime = DateTime(picked.year, picked.month, picked.day);
-        final difference = pickedWithoutTime.difference(todayWithoutTime).inDays;
+        final pickedWithoutTime = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+        );
+        final difference = pickedWithoutTime
+            .difference(todayWithoutTime)
+            .inDays;
         _pageController.jumpToPage(_initialPage + difference);
       }
     }
@@ -506,37 +536,47 @@ class _HomeScreenState extends State<HomeScreen> {
         if (index == 0) {
           return CupertinoPageScaffold(
             navigationBar: CupertinoNavigationBar(
-              middle: GestureDetector(
-                key: _dateKey,
-                onTap: () => _selectDate(context),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDarkMode
-                        ? Colors.white.withOpacity(0.1)
-                        : Colors.black.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_formatDate(_selectedDate)),
-                      const SizedBox(width: 8),
-                      const Icon(CupertinoIcons.calendar, size: 22),
-                    ],
-                  ),
-                ),
-              ),
-              trailing: CupertinoButton(
-                padding: EdgeInsets.zero,
-                key: _barcodeKey,
-                child: const Icon(CupertinoIcons.barcode_viewfinder, size: 32,),
-                onPressed: _scanBarcode,
-              ),
-            ),
+  leading: CupertinoButton(
+    padding: EdgeInsets.zero,
+    key: _recipesKey,
+    child: const Icon(CupertinoIcons.book, size: 28),
+    onPressed: () {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => const RecipesScreen()),
+      );
+    },
+  ),
+  middle: GestureDetector(
+    key: _dateKey,
+    onTap: () => _selectDate(context),
+    child: Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? Colors.white.withOpacity(0.1)
+            : Colors.black.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_formatDate(_selectedDate)),
+          const SizedBox(width: 8),
+          const Icon(CupertinoIcons.calendar, size: 22),
+        ],
+      ),
+    ),
+  ),
+  trailing: CupertinoButton(
+    padding: EdgeInsets.zero,
+    key: _barcodeKey,
+    child: const Icon(CupertinoIcons.barcode_viewfinder, size: 32),
+    onPressed: _scanBarcode,
+  ),
+),
             child: SafeArea(
               child: Material(
                 child: Scaffold(
@@ -565,44 +605,53 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: GestureDetector(
-          key: _dateKey,
-          onTap: () => _selectDate(context),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDarkMode
-                  ? Colors.white.withOpacity(0.1)
-                  : Colors.black.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(_formatDate(_selectedDate)),
-                const SizedBox(width: 8),
-                const Icon(Icons.calendar_today, size: 20),
-              ],
-            ),
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            key: _barcodeKey,
-            icon: const Icon(Icons.qr_code_scanner),
-            onPressed: _scanBarcode,
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
+  leading: IconButton(
+    key: _recipesKey,
+    icon: const Icon(Icons.menu_book),
+    onPressed: () {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => const RecipesScreen()),
+      );
+    },
+  ),
+  title: GestureDetector(
+    key: _dateKey,
+    onTap: () => _selectDate(context),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? Colors.white.withOpacity(0.1)
+            : Colors.black.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_formatDate(_selectedDate)),
+          const SizedBox(width: 8),
+          const Icon(Icons.calendar_today, size: 20),
         ],
       ),
+    ),
+  ),
+  centerTitle: true,
+  actions: [
+    IconButton(
+      key: _barcodeKey,
+      icon: const Icon(Icons.qr_code_scanner),
+      onPressed: _scanBarcode,
+    ),
+    IconButton(
+      icon: const Icon(Icons.settings),
+      onPressed: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const SettingsScreen()),
+        );
+      },
+    ),
+  ],
+),
       body: _buildHomeContent(),
       floatingActionButton: _buildSpeedDial(),
     );
@@ -660,13 +709,10 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     // hij opent de barcode scanner en wacht totdat hij klaar is
-var res = await Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => const SimpleBarcodeScannerPage(),
-  ),
-);
-
+    var res = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SimpleBarcodeScannerPage()),
+    );
 
     // als er een geldige barcode is gescand en niet -1
     if (res is String && res != '-1') {
@@ -970,7 +1016,9 @@ var res = await Navigator.push(
                               child: Padding(
                                 padding: const EdgeInsets.only(bottom: 80),
                                 child: BubbleSpecialThree(
-                                  text: _motivationalMessage ?? motivationalMessage,
+                                  text:
+                                      _motivationalMessage ??
+                                      motivationalMessage,
                                   color: isDarkMode
                                       ? const Color(0xFF1B97F3)
                                       : Colors.blueAccent,
@@ -987,13 +1035,14 @@ var res = await Navigator.push(
                             GestureDetector(
                               onTap: () {
                                 setState(() {
-                                  _motivationalMessage = _getMotivationalMessage(
-                                    totalCalories,
-                                    calorieGoal,
-                                    totalWater,
-                                    waterGoal,
-                                    entries.isNotEmpty,
-                                  );
+                                  _motivationalMessage =
+                                      _getMotivationalMessage(
+                                        totalCalories,
+                                        calorieGoal,
+                                        totalWater,
+                                        waterGoal,
+                                        entries.isNotEmpty,
+                                      );
                                 });
                               },
                               child: Image.asset(
@@ -1030,7 +1079,9 @@ var res = await Navigator.push(
                                 child: Padding(
                                   padding: const EdgeInsets.only(bottom: 80),
                                   child: BubbleSpecialThree(
-                                    text: _motivationalMessage ?? motivationalMessage,
+                                    text:
+                                        _motivationalMessage ??
+                                        motivationalMessage,
                                     color: isDarkMode
                                         ? const Color(0xFF1B97F3)
                                         : Colors.blueAccent,
@@ -1047,13 +1098,14 @@ var res = await Navigator.push(
                               GestureDetector(
                                 onTap: () {
                                   setState(() {
-                                    _motivationalMessage = _getMotivationalMessage(
-                                      totalCalories,
-                                      calorieGoal,
-                                      totalWater,
-                                      waterGoal,
-                                      entries.isNotEmpty,
-                                    );
+                                    _motivationalMessage =
+                                        _getMotivationalMessage(
+                                          totalCalories,
+                                          calorieGoal,
+                                          totalWater,
+                                          waterGoal,
+                                          entries.isNotEmpty,
+                                        );
                                   });
                                 },
                                 child: Image.asset(
@@ -1079,7 +1131,7 @@ var res = await Navigator.push(
                         ),
                       ],
                     );
-                }
+                  }
                 },
               ),
             ),
