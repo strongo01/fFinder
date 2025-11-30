@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import 'edit_product_view.dart';
+import 'barcode_scanner.dart';
 
 class AddFoodPage extends StatefulWidget {
   final String? scannedBarcode;
@@ -438,15 +438,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
       _errorMessage = null;
     });
     // hij opent de barcode scanner en wacht totdat hij klaar is
-    var res = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Scan Barcode')),
-          body: const SimpleBarcodeScannerPage(),
-        ),
-      ),
-    );
+var res = await Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => const SimpleBarcodeScannerPage(),
+  ),
+);
+
     // als er een geldige barcode is gescand en niet -1
     if (res is String && res != '-1') {
       final barcode = res;

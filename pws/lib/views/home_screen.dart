@@ -550,7 +550,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Tab 2: Instellingen
           return CupertinoPageScaffold(
             navigationBar: const CupertinoNavigationBar(
-              middle: Text('Instellingen'),
+              //middle: Text('Instellingen'),
             ),
             child: const SettingsScreen(),
           );
