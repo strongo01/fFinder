@@ -193,8 +193,18 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
+      String message;
+      switch (e.code) {
+        case 'account-exists-with-different-credential':
+          message =
+              'Er bestaat al een account met dit e-mailadres. Log in met een andere methode.';
+          break;
+        default:
+          message =
+              'Er is een onbekende fout opgetreden bij het inloggen met Apple.';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Auth error')),
+        SnackBar(content: Text(message)),
       ); //snackbar is bar onderaan scherm. toon firebase foutmelding
     } catch (e) {
       if (!mounted) return;
@@ -243,19 +253,35 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       }
 
       if (!mounted) return;
-      Navigator.of(
+            Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
+      String message;
+      switch (e.code) {
+        case 'account-exists-with-different-credential':
+          message =
+              'Er bestaat al een account met dit e-mailadres. Log in met een andere methode.';
+          break;
+        case 'cancelled':
+        case 'popup-closed-by-user':
+          message = 'Het inloggen is geannuleerd.';
+          break;
+        default:
+          message =
+              'Er is een onbekende fout opgetreden bij het inloggen met GitHub.';
+      }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Auth error')));
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Unknown error')));
+      ).showSnackBar(const SnackBar(
+          content: Text(
+              'Er is een onbekende fout opgetreden bij het inloggen met GitHub.')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -289,14 +315,28 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
+      String message;
+      switch (e.code) {
+        case 'account-exists-with-different-credential':
+          message =
+              'Er bestaat al een account met dit e-mailadres. Log in met een andere methode.';
+          break;
+        case 'sign_in_cancelled':
+        case 'popup-closed-by-user':
+          message = 'Het inloggen is geannuleerd.';
+          break;
+        default:
+          message =
+              'Er is een onbekende fout opgetreden bij het inloggen met Google.';
+      }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Auth error')));
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Unknown error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Er is een onbekende fout opgetreden.')),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -367,7 +407,29 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on FirebaseAuthException catch (e) {
       //toon foutmelding van firebase
-      final message = e.message ?? 'Authentication error';
+      String message;
+      switch (e.code) {
+        case 'user-not-found':
+          message =
+              'Geen account gevonden voor dit e-mailadres. Klik onderaan om een account te maken.';
+          break;
+        case 'wrong-password':
+        case 'invalid-credential':
+          message = 'Onjuist wachtwoord of e-mailadres. Probeer het opnieuw. Heeft u nog geen account, klik dan onderaan om er een aan te maken.';
+          break;
+        case 'email-already-in-use':
+          message = 'Dit e-mailadres is al in gebruik. Probeer in te loggen.';
+          break;
+        case 'weak-password':
+          message = 'Het wachtwoord moet uit minimaal 6 tekens bestaan.';
+          break;
+        case 'invalid-email':
+          message = 'Het ingevoerde e-mailadres is ongeldig.';
+          break;
+        default:
+          message =
+              'Er is een authenticatiefout opgetreden. Probeer het later opnieuw.';
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -431,7 +493,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? const Color.fromARGB(255, 255, 255, 255) : const Color.fromARGB(255, 0, 0, 0),
+                    color: isDarkMode
+                        ? const Color.fromARGB(255, 255, 255, 255)
+                        : const Color.fromARGB(255, 0, 0, 0),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -456,7 +520,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       TextFormField(
                         controller: _emailController,
                         style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black),
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
                           labelText: 'Email',
@@ -478,7 +543,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       TextFormField(
                         controller: _passwordController, //wachtwoord controller
                         style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black),
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
                         obscureText:
                             _obscurePassword, //of het wachtwoord verborgen is
                         decoration: InputDecoration(
@@ -563,7 +629,10 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       .min, //zorgt dat de kolom niet te veel ruimte inneemt
                   children: [
                     SignInButton(
-                      isDarkMode ? Buttons.GoogleDark : Buttons.Google, //Buttons.Google is een standaard google knop van de package
+                      isDarkMode
+                          ? Buttons.GoogleDark
+                          : Buttons
+                                .Google, //Buttons.Google is een standaard google knop van de package
                       text: "Inloggen met Google",
                       onPressed: _signInWithGoogleHandler,
                       shape: RoundedRectangleBorder(

@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Product? _scannedProduct; //het gevonden product
   bool _isLoading = false; // of hi jaan het laden is
   String? _errorMessage; // eventuele foutmelding
+  String? _motivationalMessage;
 
   Map<String, dynamic>? _userData;
   double? _calorieAllowance;
@@ -71,11 +72,14 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-void _showTutorial() async {
+  void _showTutorial() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
     final bool tutorialHomeAf = userDoc.data()?['tutorialHomeAf'] ?? false;
 
     if (!tutorialHomeAf) {
@@ -100,10 +104,9 @@ void _showTutorial() async {
         prefs.setBool('home_tutorial_shown', true);
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .update({'tutorialHomeAf': true});
+          FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+            'tutorialHomeAf': true,
+          });
         }
       },
       onClickTarget: (target) {
@@ -238,7 +241,7 @@ void _showTutorial() async {
             align: ContentAlign.top,
             child: _buildTutorialContent(
               'Logs', //TODO: verander titel
-              'Hier komen al het voedsel en de drankjes die je toevoegt.',
+              'Hier verschijnen al het voedsel en alle drankjes die je toevoegt.',
               isDarkMode,
             ),
           ),
@@ -807,6 +810,10 @@ void _showTutorial() async {
           entries.isNotEmpty,
         );
 
+        if (_motivationalMessage == null) {
+          _motivationalMessage = motivationalMessage;
+        }
+
         return Column(
           children: [
             Card(
@@ -892,7 +899,7 @@ void _showTutorial() async {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 80),
                         child: BubbleSpecialThree(
-                          text: motivationalMessage,
+                          text: _motivationalMessage ?? motivationalMessage,
                           color: isDarkMode
                               ? const Color(0xFF1B97F3)
                               : Colors.blueAccent,
@@ -906,10 +913,22 @@ void _showTutorial() async {
                       ),
 
                       const SizedBox(width: 10),
-
-                      Image.asset(
-                        'assets/mascotte/mascottelangzaam.gif',
-                        height: 120,
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _motivationalMessage = _getMotivationalMessage(
+                              totalCalories,
+                              calorieGoal,
+                              totalWater,
+                              waterGoal,
+                              entries.isNotEmpty,
+                            );
+                          });
+                        },
+                        child: Image.asset(
+                          'assets/mascotte/mascottelangzaam.gif',
+                          height: 120,
+                        ),
                       ),
                     ],
                   ),
@@ -977,13 +996,33 @@ void _showTutorial() async {
   ) {
     final random = Random();
 
+    const defaultMessages = [
+      'Goed bezig, ga zo door!',
+      'Elke stap telt!',
+      'Je doet het geweldig!',
+      'Wist je dat fFinder een afkorting is voor FoodFinder?',
+      'Je logt beter dan 97% van de mensen... waarschijnlijk.',
+    ];
+
     if (!hasEntries) {
       const messages = [
         'Klaar om je dag te loggen?',
         'Een nieuwe dag, nieuwe kansen!',
         'Laten we beginnen!',
+        'Elke gezonde dag start met één invoer.',
+        'Je eerste maaltijd zit verstopt. Zoek hem even op!',
       ];
       return messages[random.nextInt(messages.length)];
+    }
+
+    if (hasEntries && totalCalories == 0) {
+      const messages = [
+        'Goed dat je al drinken hebt gelogd! Wat wordt je eerste maaltijd?',
+        'Hydratatie is een goed begin. Tijd om ook wat te eten.',
+        'Lekker bezig! Wat wordt je eerste hapje?',
+      ];
+      final allMessages = [...messages, ...defaultMessages];
+      return allMessages[random.nextInt(allMessages.length)];
     }
 
     if (calorieGoal > 0 && totalCalories > calorieGoal) {
@@ -991,17 +1030,10 @@ void _showTutorial() async {
         'Doel bereikt! Rustig aan nu.',
         'Wow, je zit boven je doel!',
         'Goed bezig, morgen weer een dag.',
+        'Goed bezig vandaag, echt waar!',
       ];
-      return messages[random.nextInt(messages.length)];
-    }
-
-    if (waterGoal > 0 && totalWater < waterGoal / 3) {
-      const messages = [
-        'Vergeet niet te drinken vandaag!',
-        'Een slokje water is een goed begin.',
-        'Hydrateren is belangrijk!',
-      ];
-      return messages[random.nextInt(messages.length)];
+      final allMessages = [...messages, ...defaultMessages];
+      return allMessages[random.nextInt(allMessages.length)];
     }
 
     if (calorieGoal > 0 && totalCalories > calorieGoal * 0.8) {
@@ -1009,16 +1041,37 @@ void _showTutorial() async {
         'Je bent er bijna!',
         'Nog een klein stukje te gaan!',
         'Bijna je caloriedoel bereikt!',
+        'Goed bezig! Let op de laatste stap.',
+        'Je doet het fantastisch, bijna daar!',
       ];
-      return messages[random.nextInt(messages.length)];
+      final allMessages = [...messages, ...defaultMessages];
+      return allMessages[random.nextInt(allMessages.length)];
     }
 
-    const defaultMessages = [
-      'Goed bezig, ga zo door!',
-      'Elke stap telt!',
-      'Je doet het geweldig!',
-      'Consistentie is de sleutel!',
-    ];
+    if (calorieGoal > 0 && totalCalories < calorieGoal * 0.5) {
+      const messages = [
+        'Je bent goed op weg, ga zo door!',
+        'De eerste helft zit erop, houd de focus!',
+        'Blijf je maaltijden en drankjes loggen.',
+        'Je doet het geweldig, blijf volhouden!',
+      ];
+      final allMessages = [...messages, ...defaultMessages];
+      return allMessages[random.nextInt(allMessages.length)];
+    }
+
+    if (waterGoal > 0 && totalWater < waterGoal / 3) {
+      const messages = [
+        'Vergeet niet te drinken vandaag!',
+        'Een slokje water is een goed begin.',
+        'Warm of koud, water is altijd goed!',
+        'Hydrateren is belangrijk!',
+        'Een glas water kan wonderen doen.',
+        'Even pauze? Drink een beetje water.',
+      ];
+      final allMessages = [...messages, ...defaultMessages];
+      return allMessages[random.nextInt(allMessages.length)];
+    }
+
     return defaultMessages[random.nextInt(defaultMessages.length)];
   }
 
