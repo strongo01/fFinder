@@ -1198,9 +1198,6 @@ PODS:
     - GoogleUtilities/Environment (~> 8.0)
     - GoogleUtilities/UserDefaults (~> 8.0)
     - PromisesObjC (~> 2.4)
-  - barcode_scanner (1.0.0):
-    - Flutter
-    - ScanbotBarcodeSDKWrapper (= 7.1.4.0)
   - BoringSSL-GRPC (0.0.37):
     - BoringSSL-GRPC/Implementation (= 0.0.37)
     - BoringSSL-GRPC/Interface (= 0.0.37)
@@ -1441,9 +1438,6 @@ PODS:
     - Flutter
   - PromisesObjC (2.4.0)
   - RecaptchaInterop (101.0.0)
-  - ScanbotBarcodeScannerSDK (7.1.4)
-  - ScanbotBarcodeSDKWrapper (7.1.4.0):
-    - ScanbotBarcodeScannerSDK (= 7.1.4)
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -1453,7 +1447,6 @@ PODS:
     - Flutter
 
 DEPENDENCIES:
-  - barcode_scanner (from `.symlinks/plugins/barcode_scanner/ios`)
   - cloud_firestore (from `.symlinks/plugins/cloud_firestore/ios`)
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
@@ -1496,12 +1489,8 @@ SPEC REPOS:
     - nanopb
     - PromisesObjC
     - RecaptchaInterop
-    - ScanbotBarcodeScannerSDK
-    - ScanbotBarcodeSDKWrapper
 
 EXTERNAL SOURCES:
-  barcode_scanner:
-    :path: ".symlinks/plugins/barcode_scanner/ios"
   cloud_firestore:
     :path: ".symlinks/plugins/cloud_firestore/ios"
   firebase_auth:
@@ -1531,7 +1520,6 @@ SPEC CHECKSUMS:
   abseil: a05cc83bf02079535e17169a73c5be5ba47f714b
   AppAuth: 1c1a8afa7e12f2ec3a294d9882dfa5ab7d3cb063
   AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
-  barcode_scanner: 31f26027b7ac71c51f19183e1c1897aaa0fdd601
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
   cloud_firestore: 7a6d8a533ec7418a7fe46b3a5dabf55661a5b298
   Firebase: f07b15ae5a6ec0f93713e30b923d9970d144af3e
@@ -1565,8 +1553,6 @@ SPEC CHECKSUMS:
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
-  ScanbotBarcodeScannerSDK: 763b4307353c249fa9d0eea69fb2a49df4f04889
-  ScanbotBarcodeSDKWrapper: 4a478864519ab5818e5bce9287dedcf1db9d96d6
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   sign_in_with_apple: c5dcc141574c8c54d5ac99dd2163c0c72ad22418
   simple_barcode_scanner: f1217b91fbad5848d37fa6d794f443416fd3e44d

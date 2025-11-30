@@ -119,7 +119,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
   }
 
   void _showAddPresetDialog() { // toont dialoog om nieuwe drank standaard toe te voegen
-    final nameController = TextEditingController();
+    //final nameController = TextEditingController();
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     final customNameController = TextEditingController();
