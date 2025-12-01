@@ -16,6 +16,7 @@ import 'add_drink_view.dart';
 import 'barcode_scanner.dart';
 import 'recipes_view.dart';
 import 'feedback_view.dart';
+import 'weight_view.dart';
 
 //homescreen is een statefulwidget omdat de inhoud verandert
 class HomeScreen extends StatefulWidget {
@@ -46,6 +47,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _mealKey = GlobalKey();
   final GlobalKey _recipesKey = GlobalKey();
   final GlobalKey _feedbackKey = GlobalKey();
+  final GlobalKey _settingsKey = GlobalKey();
+  final GlobalKey _weightKey = GlobalKey();
+
   late TutorialCoachMark tutorialCoachMark;
 
   late PageController _pageController; // controller voor de paginaweergave
@@ -162,6 +166,27 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
+        //Weight
+    targets.add(
+      TargetFocus(
+        identify: "weight-key",
+        keyTarget: _weightKey,
+
+        shape: ShapeLightFocus.RRect,
+        color: Colors.blue,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            child: _buildTutorialContent(
+              'Gewicht',
+              'Tik hier om je gewicht toe te voegen en je bmi te bekijken. Door grafieken en tabellen kan je je gewicht bijhouden.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
     //Barcode
     targets.add(
       TargetFocus(
@@ -173,6 +198,23 @@ class _HomeScreenState extends State<HomeScreen> {
             child: _buildTutorialContent(
               'Barcode scannen',
               'Tik hier om een product te scannen en snel toe te voegen aan je dag.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+        //Settings
+    targets.add(
+      TargetFocus(
+        identify: "settings-key",
+        keyTarget: _settingsKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              'Instellingen',
+              'Tik hier om uw gegevens aan te passen of andere instellingen te wijzigen.',
               isDarkMode,
             ),
           ),
@@ -548,14 +590,20 @@ class _HomeScreenState extends State<HomeScreen> {
     return CupertinoTabScaffold(
       // Tab scaffold voor iOS stijl tabs
       tabBar: CupertinoTabBar(
-        items: const [
+        items: [
           BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.home),
             label: 'Vandaag',
           ),
           BottomNavigationBarItem(
+            key: _settingsKey,
             icon: Icon(CupertinoIcons.settings),
             label: 'Instellingen',
+          ),
+          BottomNavigationBarItem(
+            key: _weightKey,
+            icon: Icon(CupertinoIcons.chart_bar),
+            label: 'Gewicht',
           ),
         ],
       ),
@@ -633,13 +681,19 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           );
-        } else {
+        } else if (index == 1) {
           // Tab 2: Instellingen
           return CupertinoPageScaffold(
-            navigationBar: const CupertinoNavigationBar(
-              //middle: Text('Instellingen'),
-            ),
+            navigationBar: const CupertinoNavigationBar(),
             child: const SettingsScreen(),
+          );
+        } else {
+          // Tab 3: Gewicht
+          return CupertinoPageScaffold(
+            navigationBar: const CupertinoNavigationBar(
+              middle: Text('Gewicht'),
+            ),
+            child: const WeightView(), // <-- jouw gewichtspagina
           );
         }
       },
@@ -667,9 +721,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       );
       fab = _buildSpeedDial();
-    } else {
+    } else if (_selectedIndex == 1) {
       // Recepten-tab
       body = const RecipesScreen();
+      fab = null;
+    } else {
+      // Gewicht-tab
+      body = const WeightView();
       fab = null;
     }
 
@@ -708,6 +766,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: _scanBarcode,
                 ),
                 IconButton(
+                  key: _settingsKey,
                   icon: const Icon(Icons.settings),
                   onPressed: () {
                     Navigator.of(context).push(
@@ -719,7 +778,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             )
-          : AppBar(title: const Text('Recepten'), centerTitle: true),
+          : AppBar(
+              title: Text(_selectedIndex == 1 ? 'Recepten' : 'Gewicht'),
+              centerTitle: true,
+            ),
       body: body,
       floatingActionButton: fab,
       bottomNavigationBar: BottomNavigationBar(
@@ -730,11 +792,16 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Logs'),
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Logs'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book),
+            icon: const Icon(Icons.menu_book),
             label: 'Recepten',
             key: _recipesKey,
+          ),
+          BottomNavigationBarItem(
+            key: _weightKey,
+            icon: Icon(Icons.monitor_weight),
+            label: 'Gewicht',
           ),
         ],
       ),
@@ -1603,7 +1670,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // bouwt elke log entry
               final productName = entry['product_name'] ?? 'Onbekend';
               //final calories = (entry['nutriments']?['energy-kcal'] ?? 0.0)
-                //  .round();
+              //  .round();
               final timestamp = entry['timestamp'] as Timestamp?;
 
               String rightSideText;
@@ -1866,7 +1933,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }*/
 }
-
 
 class SegmentedArcPainter extends CustomPainter {
   // aangepaste kleuren voor segmenten in de cirkel

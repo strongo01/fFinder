@@ -631,7 +631,10 @@ class _OnboardingViewState extends State<OnboardingView> {
               _buildProgressIndicator(),
               const SizedBox(height: 20),
               // gif en Titel
-              Image.asset('assets/mascotte/mascottelangzaam.gif', height: isKeyboardVisible ? 120 : 240,),
+              Image.asset(
+                'assets/mascotte/mascottelangzaam.gif',
+                height: isKeyboardVisible ? 120 : 240,
+              ),
 
               // De vragen pagina's
               Expanded(
@@ -827,9 +830,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: isDarkMode
-                                  ? Colors.white
-                                  : Colors.black,
+                              color: isDarkMode ? Colors.white : Colors.black,
                             ),
                           ),
                           Slider(

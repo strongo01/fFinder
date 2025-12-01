@@ -12,9 +12,11 @@ class FeedbackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        final baseColor = isDarkMode ? Colors.teal[700]! : Colors.teal;
+
     return FloatingActionButton(
       heroTag: 'feedback_btn',
-      backgroundColor: isDarkMode ? Colors.teal[700] : Colors.teal,
+      backgroundColor: baseColor.withOpacity(0.7),
       mini: true,
       onPressed: () => _openFeedbackSheet(context),
       child: Icon(Icons.feedback, color: Colors.white),
