@@ -15,6 +15,8 @@ import 'package:chat_bubbles/chat_bubbles.dart';
 import 'add_drink_view.dart';
 import 'barcode_scanner.dart';
 import 'recipes_view.dart';
+import 'feedback_view.dart';
+
 //homescreen is een statefulwidget omdat de inhoud verandert
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -584,7 +586,16 @@ final GlobalKey _recipesKey = GlobalKey();
             child: SafeArea(
               child: Material(
                 child: Scaffold(
-                  body: _buildHomeContent(),
+                  body: Stack(
+                    children: [
+                      _buildHomeContent(),
+                      Positioned(
+                        right: 16,
+                        bottom: 120,
+                        child: FeedbackButton(),
+                      ),
+                    ],
+                  ),
                   floatingActionButton: _buildSpeedDial(),
                 ),
               ),
@@ -656,7 +667,16 @@ final GlobalKey _recipesKey = GlobalKey();
     ),
   ],
 ),
-      body: _buildHomeContent(),
+      body: Stack(
+        children: [
+          _buildHomeContent(),
+          Positioned(
+            right: 16,
+            bottom: 120, 
+            child: const FeedbackButton(),
+          ),
+        ],
+      ),
       floatingActionButton: _buildSpeedDial(),
     );
   }

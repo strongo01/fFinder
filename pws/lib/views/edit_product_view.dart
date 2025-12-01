@@ -407,8 +407,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                          style: TextStyle(color: textColor),
-          cursorColor: textColor, 
+                      style: TextStyle(color: textColor),
+                      cursorColor: textColor,
                       decoration: InputDecoration(
                         labelText: 'Hoeveelheid voor maaltijd',
                         suffixText: 'g',
