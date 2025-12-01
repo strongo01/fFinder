@@ -129,8 +129,8 @@ final GlobalKey _recipesKey = GlobalKey();
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Datum Wisselen',
-              'Tik hier om naar een andere dag te gaan of veeg over het scherm naar links of rechts.',
+              'Datum wisselen',
+              'Tik hier om naar een andere dag te gaan.',
               isDarkMode,
             ),
           ),
@@ -165,7 +165,7 @@ final GlobalKey _recipesKey = GlobalKey();
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Barcode Scannen',
+              'Barcode scannen',
               'Tik hier om een product te scannen en snel toe te voegen aan je dag.',
               isDarkMode,
             ),
@@ -185,7 +185,7 @@ final GlobalKey _recipesKey = GlobalKey();
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Calorieën Overzicht',
+              'Calorieën overzicht',
               'Hier zie je een samenvatting van je calorie-inname voor de dag.',
               isDarkMode,
             ),
@@ -221,8 +221,8 @@ final GlobalKey _recipesKey = GlobalKey();
           TargetContent(
             align: ContentAlign.top,
             child: _buildTutorialContent(
-              'Drankinname',
-              'Houd hier je drankinname bij. De cirkel laat ziet hoeveel je nog moet drinken om je doel te bereiken.',
+              'Drinken',
+              'Houd hier bij hoeveel je per dag drinkt. De cirkel laat ziet hoeveel je nog moet drinken om je doel te bereiken.',
               isDarkMode,
             ),
           ),
@@ -240,7 +240,7 @@ final GlobalKey _recipesKey = GlobalKey();
           TargetContent(
             align: ContentAlign.top,
             child: _buildTutorialContent(
-              'Items Toevoegen',
+              'Items toevoegen',
               'Gebruik deze knop om snel een maaltijd of drankje aan je dag toe te voegen.',
               isDarkMode,
             ),

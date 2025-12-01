@@ -198,7 +198,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
               'Favorieten',
-              'Hier zie je al jouw favorieten producten.',
+              'Hier zie je al jouw favoriete producten.',
               isDarkMode,
             ),
           ),
@@ -216,25 +216,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
               'Mijn producten',
-              'Hier kan je zelf producten toevoegen die niet kunnen worden gevonden.',
-              isDarkMode,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    // Mijn producten +
-    targets.add(
-      TargetFocus(
-        identify: "myproductsplusje-key",
-        keyTarget: _myproductsAddKey,
-        contents: [
-          TargetContent(
-            align: ContentAlign.bottom,
-            child: _buildTutorialContent(
-              'Voeg product toe',
-              'Tik op dit plusje om een eigen product toe te voegen aan jouw lijst met producten.',
+              'Hier kan je zelf producten toevoegen die niet gevonden kunnen worden.',
               isDarkMode,
             ),
           ),
@@ -252,7 +234,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
               'Maaltijden',
-              'Hier kan je maaltijden maken uit meerdere producten, zodat je sneller vaak gegeten maaltijden kan toevoegen.',
+              'Hier kan je maaltijden zien en loggen, maaltijden bestaan uit meerdere producten.',
               isDarkMode,
             ),
           ),
@@ -358,13 +340,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
     });
 
     try {
-      final url = Uri.parse(
-        "https://nl.openfoodfacts.org/cgi/search.pl"
-        "?search_terms=${Uri.encodeComponent(trimmed)}" // zoekterm encoden
-        "&search_simple=1"
-        "&json=1"
-        "&action=process",
-      );
+final url = Uri.parse(
+  "https://nl.openfoodfacts.org/cgi/search.pl"
+  "?search_terms=${Uri.encodeComponent(trimmed)}"
+  "&search_simple=1"
+  "&json=1"
+  "&action=process"
+);
+
 
       final response = await http.get(url);
       if (response.statusCode != 200) {
@@ -594,7 +577,7 @@ var res = await Navigator.push(
                 children: [
                   Text('Recent', key: _recentKey),
                   Text('Favorieten', key: _favoritesKey),
-                  Text('Mijn Producten', key: _myproductsKey),
+                  Text('Mijn producten', key: _myproductsKey),
                   Text('Maaltijden', key: _maaltijdenKey),
                 ],
               ),

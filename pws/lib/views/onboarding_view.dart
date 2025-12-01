@@ -304,11 +304,11 @@ class _OnboardingViewState extends State<OnboardingView> {
 
       proteinGoal = weightKg; // 1g per kg
       final fatCalories = calorieGoal * 0.30;
-      fatGoal = fatCalories / 9; // 9 kcal per gram vet
+      fatGoal = fatCalories / 9; // 1 gram per 9 kcal vet
 
-      final proteinCalories = proteinGoal * 4; // 4 kcal per gram eiwit
+      final proteinCalories = proteinGoal * 4; // 1 gram per 4 eiwitten eiwit
       final carbCalories = calorieGoal - fatCalories - proteinCalories;
-      carbGoal = carbCalories / 4; // 4 kcal per gram koolhydraten
+      carbGoal = carbCalories / 4; // 1 gram per 4 kcal koolhydraten
     }
 
     try {

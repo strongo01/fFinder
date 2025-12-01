@@ -125,6 +125,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     final customNameController = TextEditingController();
     String? selectedDrink;
     final drinkOptions = ['Water', 'Koffie', 'Thee', 'Frisdrank', 'Anders'];
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
@@ -132,7 +133,10 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) { // gebruik StatefulBuilder om de diaaloog te updaten
             return AlertDialog(
-              title: const Text('Nieuw Drankje Toevoegen'),
+              title: Text(
+                'Nieuw Drankje Toevoegen',
+                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              ),
               content: Form(
                 key: formKey,
                 child: Column(
@@ -150,7 +154,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                           .map(
                             (drink) => DropdownMenuItem( // maak een dropdown item voor elke optie
                               value: drink,
-                              child: Text(drink),
+                              child: Text(drink, style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
                             ),
                           )
                           .toList(),
