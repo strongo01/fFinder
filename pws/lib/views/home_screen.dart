@@ -31,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false; // of hi jaan het laden is
   String? _errorMessage; // eventuele foutmelding
   String? _motivationalMessage;
+  int _selectedIndex = 0;
 
   Map<String, dynamic>? _userData;
   double? _calorieAllowance;
@@ -43,8 +44,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _addFabKey = GlobalKey();
   final GlobalKey _mascotteKey = GlobalKey();
   final GlobalKey _mealKey = GlobalKey();
-final GlobalKey _recipesKey = GlobalKey();
-
+  final GlobalKey _recipesKey = GlobalKey();
+  final GlobalKey _feedbackKey = GlobalKey();
   late TutorialCoachMark tutorialCoachMark;
 
   late PageController _pageController; // controller voor de paginaweergave
@@ -140,14 +141,17 @@ final GlobalKey _recipesKey = GlobalKey();
       ),
     );
 
-        //Receptenkiezer
+    //Receptenkiezer
     targets.add(
       TargetFocus(
         identify: "recipes-key",
         keyTarget: _recipesKey,
+
+        shape: ShapeLightFocus.RRect,
+        color: Colors.blue,
         contents: [
           TargetContent(
-            align: ContentAlign.bottom,
+            align: ContentAlign.top,
             child: _buildTutorialContent(
               'Recepten',
               'Tik hier om naar recepten te zoeken.',
@@ -169,6 +173,24 @@ final GlobalKey _recipesKey = GlobalKey();
             child: _buildTutorialContent(
               'Barcode scannen',
               'Tik hier om een product te scannen en snel toe te voegen aan je dag.',
+              isDarkMode,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // feedback-button
+    targets.add(
+      TargetFocus(
+        identify: "feedback-key",
+        keyTarget: _feedbackKey,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            child: _buildTutorialContent(
+              'Feedback geven',
+              'Hier kan je feedback geven over de app. Werkt er iets niet of iets wat je graag nog wilt zien in de app? We horen graag van je!',
               isDarkMode,
             ),
           ),
@@ -376,14 +398,14 @@ final GlobalKey _recipesKey = GlobalKey();
         ),
       );
     } else {
-       final DateTime? picked = await showDatePicker(
+      final DateTime? picked = await showDatePicker(
         context: context,
         initialDate: _selectedDate,
         firstDate: DateTime(2020),
         lastDate: today,
         builder: (context, child) {
           final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-        return Theme(
+          return Theme(
             data: isDarkMode ? ThemeData.dark() : ThemeData.light(),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -542,47 +564,56 @@ final GlobalKey _recipesKey = GlobalKey();
         if (index == 0) {
           return CupertinoPageScaffold(
             navigationBar: CupertinoNavigationBar(
-  leading: CupertinoButton(
-    padding: EdgeInsets.zero,
-    key: _recipesKey,
-    child: const Icon(CupertinoIcons.book, size: 28),
-    onPressed: () {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const RecipesScreen()),
-      );
-    },
-  ),
-  middle: GestureDetector(
-    key: _dateKey,
-    onTap: () => _selectDate(context),
-    child: Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        color: isDarkMode
-            ? Colors.white.withOpacity(0.1)
-            : Colors.black.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(_formatDate(_selectedDate)),
-          const SizedBox(width: 8),
-          const Icon(CupertinoIcons.calendar, size: 22),
-        ],
-      ),
-    ),
-  ),
-  trailing: CupertinoButton(
-    padding: EdgeInsets.zero,
-    key: _barcodeKey,
-    child: const Icon(CupertinoIcons.barcode_viewfinder, size: 32),
-    onPressed: _scanBarcode,
-  ),
-),
+              leading: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                key: _recipesKey,
+                child: const Text(
+                  'Recepten',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: CupertinoColors.activeBlue,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const RecipesScreen(),
+                    ),
+                  );
+                },
+              ),
+              middle: GestureDetector(
+                key: _dateKey,
+                onTap: () => _selectDate(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.black.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_formatDate(_selectedDate)),
+                      const SizedBox(width: 8),
+                      const Icon(CupertinoIcons.calendar, size: 22),
+                    ],
+                  ),
+                ),
+              ),
+              trailing: CupertinoButton(
+                padding: EdgeInsets.zero,
+                key: _barcodeKey,
+                child: const Icon(CupertinoIcons.barcode_viewfinder, size: 32),
+                onPressed: _scanBarcode,
+              ),
+            ),
             child: SafeArea(
               child: Material(
                 child: Scaffold(
@@ -592,7 +623,8 @@ final GlobalKey _recipesKey = GlobalKey();
                       Positioned(
                         right: 16,
                         bottom: 120,
-                        child: FeedbackButton(),
+                        key: _feedbackKey,
+                        child: const FeedbackButton(),
                       ),
                     ],
                   ),
@@ -618,66 +650,94 @@ final GlobalKey _recipesKey = GlobalKey();
   Widget _buildAndroidLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-  leading: IconButton(
-    key: _recipesKey,
-    icon: const Icon(Icons.menu_book),
-    onPressed: () {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const RecipesScreen()),
-      );
-    },
-  ),
-  title: GestureDetector(
-    key: _dateKey,
-    onTap: () => _selectDate(context),
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDarkMode
-            ? Colors.white.withOpacity(0.1)
-            : Colors.black.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(_formatDate(_selectedDate)),
-          const SizedBox(width: 8),
-          const Icon(Icons.calendar_today, size: 20),
-        ],
-      ),
-    ),
-  ),
-  centerTitle: true,
-  actions: [
-    IconButton(
-      key: _barcodeKey,
-      icon: const Icon(Icons.qr_code_scanner),
-      onPressed: _scanBarcode,
-    ),
-    IconButton(
-      icon: const Icon(Icons.settings),
-      onPressed: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const SettingsScreen()),
-        );
-      },
-    ),
-  ],
-),
-      body: Stack(
+    Widget body;
+    Widget? fab;
+
+    if (_selectedIndex == 0) {
+      // Home-tab
+      body = Stack(
         children: [
           _buildHomeContent(),
           Positioned(
             right: 16,
-            bottom: 120, 
+            bottom: 120,
+            key: _feedbackKey,
             child: const FeedbackButton(),
           ),
         ],
+      );
+      fab = _buildSpeedDial();
+    } else {
+      // Recepten-tab
+      body = const RecipesScreen();
+      fab = null;
+    }
+
+    return Scaffold(
+      appBar: _selectedIndex == 0
+          ? AppBar(
+              title: GestureDetector(
+                key: _dateKey,
+                onTap: () => _selectDate(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.black.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_formatDate(_selectedDate)),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.calendar_today, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  key: _barcodeKey,
+                  icon: const Icon(Icons.qr_code_scanner),
+                  onPressed: _scanBarcode,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            )
+          : AppBar(title: const Text('Recepten'), centerTitle: true),
+      body: body,
+      floatingActionButton: fab,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.menu_book),
+            label: 'Recepten',
+            key: _recipesKey,
+          ),
+        ],
       ),
-      floatingActionButton: _buildSpeedDial(),
     );
   }
 

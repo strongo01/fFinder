@@ -6,9 +6,6 @@ class RecipesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recepten'),
-      ),
       body: const Center(
         child: Text('Hier komen de recepten!'),
       ),
