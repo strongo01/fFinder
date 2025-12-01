@@ -27,6 +27,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   bool _loading = true;
   bool _saving = false;
+  bool _deletingAccount = false; 
 
   final List<String> _activityOptions = [
     // opties voor activiteitenniveau
@@ -277,6 +278,172 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+String _generateDeletionCode() {
+    final random = DateTime.now().millisecondsSinceEpoch.remainder(1000000);
+    return random.toString().padLeft(6, '0');
+  }
+
+  Future<void> _deleteAccount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => _deletingAccount = true);
+
+    try {
+      // User-doc verwijderen
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .delete();
+
+      // Auth-account verwijderen
+      await user.delete();
+
+      if (!mounted) return;
+      // Naar login scherm
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginRegisterView()),
+        (route) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      // Bijv. recent login vereist
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.code == 'requires-recent-login'
+                ? 'Log opnieuw in en probeer het nog eens om je account te verwijderen.'
+                : 'Verwijderen mislukt: ${e.message ?? e.code}',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Verwijderen mislukt: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _deletingAccount = false);
+    }
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = colorScheme.brightness == Brightness.dark;
+
+    final code = _generateDeletionCode();
+    final TextEditingController codeController = TextEditingController();
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: !_deletingAccount,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            'Account verwijderen',
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Weet je zeker dat je je account wilt verwijderen? '
+                'Dit kan niet ongedaan worden gemaakt.',
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Typ onderstaande code over om te bevestigen:',
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  code,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+                            TextField(
+                controller: codeController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+                cursorColor: isDark ? Colors.white : Colors.black,
+                decoration: InputDecoration(
+                  labelText: 'Voer de 6-cijferige code in',
+                  labelStyle: TextStyle(
+                    color: isDark ? Colors.grey[300] : Colors.grey[700],
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: isDark ? Colors.grey[500]! : Colors.grey,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                      color: isDark ? Colors.white : Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: _deletingAccount
+                  ? null
+                  : () => Navigator.of(context).pop(false),
+              child: const Text('Annuleren'),
+            ),
+            TextButton(
+              onPressed: _deletingAccount
+                  ? null
+                  : () {
+                      if (codeController.text.trim() == code) {
+                        Navigator.of(context).pop(true);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content:
+                                Text('Code klopt niet, probeer het opnieuw.'),
+                          ),
+                        );
+                      }
+                    },
+              child: Text(
+                'Verwijderen',
+                style: TextStyle(color: colorScheme.error),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await _deleteAccount();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -669,6 +836,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         foregroundColor: colorScheme.error,
                       ),
                       onPressed: _confirmSignOut,
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      icon: Icon(
+                        Icons.delete_forever,
+                        color: Colors.red.shade700,
+                      ),
+                      label: Text(
+                        _deletingAccount
+                            ? 'Account verwijderen...'
+                            : 'Account verwijderen',
+                        style: TextStyle(color: Colors.red.shade700),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.red.shade700),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        foregroundColor: Colors.red.shade700,
+                      ),
+                      onPressed:
+                          _deletingAccount ? null : _confirmDeleteAccount,
                     ),
                   ],
                 ),
