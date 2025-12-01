@@ -340,14 +340,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
     });
 
     try {
-final url = Uri.parse(
-  "https://nl.openfoodfacts.org/cgi/search.pl"
-  "?search_terms=${Uri.encodeComponent(trimmed)}"
-  "&search_simple=1"
-  "&json=1"
-  "&action=process"
-);
-
+      final url = Uri.parse(
+        "https://nl.openfoodfacts.org/cgi/search.pl"
+        "?search_terms=${Uri.encodeComponent(trimmed)}"
+        "&search_simple=1"
+        "&json=1"
+        "&action=process",
+      );
 
       final response = await http.get(url);
       if (response.statusCode != 200) {
@@ -421,12 +420,10 @@ final url = Uri.parse(
       _errorMessage = null;
     });
     // hij opent de barcode scanner en wacht totdat hij klaar is
-var res = await Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => const SimpleBarcodeScannerPage(),
-  ),
-);
+    var res = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SimpleBarcodeScannerPage()),
+    );
 
     // als er een geldige barcode is gescand en niet -1
     if (res is String && res != '-1') {
@@ -2777,9 +2774,9 @@ var res = await Navigator.push(
     } else if (hour >= 15 && hour < 22) {
       selectedMeal = 'Avondeten';
     } else {
-      selectedMeal = 'Snacks';
+      selectedMeal = 'Tussendoor';
     }
-    final List<String> mealTypes = ['Ontbijt', 'Lunch', 'Avondeten', 'Snacks'];
+    final List<String> mealTypes = ['Ontbijt', 'Lunch', 'Avondeten', 'Tussendoor'];
 
     return showDialog<String>(
       // toon dialoog
@@ -3561,9 +3558,9 @@ var res = await Navigator.push(
     } else if (hour >= 15 && hour < 22) {
       selectedMeal = 'Avondeten';
     } else {
-      selectedMeal = 'Snacks';
+      selectedMeal = 'Tussendoor';
     }
-    final List<String> mealTypes = ['Ontbijt', 'Lunch', 'Avondeten', 'Snacks'];
+    final List<String> mealTypes = ['Ontbijt', 'Lunch', 'Avondeten', 'Tussendoor'];
 
     return showDialog<bool>(
       context: context,
@@ -3748,4 +3745,3 @@ var res = await Navigator.push(
     );
   }
 }
-

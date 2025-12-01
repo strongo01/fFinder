@@ -407,18 +407,19 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration: const InputDecoration(
+                          style: TextStyle(color: textColor),
+          cursorColor: textColor, 
+                      decoration: InputDecoration(
                         labelText: 'Hoeveelheid voor maaltijd',
                         suffixText: 'g',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
+                        labelStyle: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                        suffixStyle: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Hoeveelheid is verplicht';
-                        if (double.tryParse(value.replaceAll(',', '.')) == null)
-                          return 'Ongeldig getal';
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(

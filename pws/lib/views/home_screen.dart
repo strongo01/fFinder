@@ -374,30 +374,34 @@ final GlobalKey _recipesKey = GlobalKey();
         ),
       );
     } else {
-      final DateTime? picked = await showDatePicker(
+       final DateTime? picked = await showDatePicker(
         context: context,
         initialDate: _selectedDate,
         firstDate: DateTime(2020),
         lastDate: today,
         builder: (context, child) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Expanded(child: child!),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: ElevatedButton(
-                  child: const Text('Vandaag'),
-                  onPressed: () {
-                    setState(() {
-                      _selectedDate = todayWithoutTime;
-                      _pageController.jumpToPage(_initialPage);
-                    });
-                    Navigator.of(context).pop();
-                  },
+          final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        return Theme(
+            data: isDarkMode ? ThemeData.dark() : ThemeData.light(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(child: child!),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: ElevatedButton(
+                    child: const Text('Vandaag'),
+                    onPressed: () {
+                      setState(() {
+                        _selectedDate = todayWithoutTime;
+                        _pageController.jumpToPage(_initialPage);
+                      });
+                      Navigator.of(context).pop();
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       );
@@ -857,7 +861,7 @@ final GlobalKey _recipesKey = GlobalKey();
           'Ontbijt': [],
           'Lunch': [],
           'Avondeten': [],
-          'Snacks': [],
+          'Tussendoor': [],
         };
 
         for (var entry in entries) {
@@ -883,7 +887,7 @@ final GlobalKey _recipesKey = GlobalKey();
             } else if (hour >= 15 && hour < 22) {
               meals['Avondeten']!.add(entry);
             } else {
-              meals['Snacks']!.add(entry);
+              meals['Tussendoor']!.add(entry);
             }
           }
         }
@@ -1321,7 +1325,7 @@ final GlobalKey _recipesKey = GlobalKey();
             ),
             const SizedBox(height: 8),
             Text(
-              'Drankinname / Doel: ${goal.round()} ml', // Toon doel
+              'Doel: ${goal.round()} ml', // Toon doel
               style: TextStyle(
                 fontSize: 14,
                 color: isDarkMode ? Colors.white70 : Colors.black87,

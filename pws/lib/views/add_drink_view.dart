@@ -15,11 +15,12 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
 
   @override
   void initState() {
-    super.initState(); 
+    super.initState();
     _loadDrinkPresets();
   }
 
-  Future<void> _loadDrinkPresets() async { // laadt de drank standaarden van firestore
+  Future<void> _loadDrinkPresets() async {
+    // laadt de drank standaarden van firestore
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       setState(() {
@@ -36,7 +37,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
           .collection('users')
           .doc(user.uid)
           .get();
-      if (doc.exists && doc.data()!.containsKey('drinkPresets')) { // als er standaarden zijn opgeslagen
+      if (doc.exists && doc.data()!.containsKey('drinkPresets')) {
+        // als er standaarden zijn opgeslagen
         final presets = List<Map<String, dynamic>>.from(
           doc.data()!['drinkPresets'], // haal de lijst op
         );
@@ -63,7 +65,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     }
   }
 
-  Future<void> _saveDrinkPresets() async { // slaat de drank standaarden op in firestore
+  Future<void> _saveDrinkPresets() async {
+    // slaat de drank standaarden op in firestore
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -72,7 +75,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     }, SetOptions(merge: true)); // voeg toe zonder te overschrijven
   }
 
-  Future<void> _logDrink(String name, int amount) async { // logt het drinken van een drankje
+  Future<void> _logDrink(String name, int amount, String drinkTime) async {
+    // logt het drinken van een drankje
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -85,10 +89,12 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     final todayDocId =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
-    final logEntry = { // maak een log entry aan 
-      'product_name': name, 
+    final logEntry = {
+      // maak een log entry aan
+      'product_name': name,
       'quantity': '$amount ml',
-      'meal_type': 'Drinken',
+      'meal_type': drinkTime,
+      'drinkTime': drinkTime,
       'timestamp': DateTime.now(),
       'nutriments': {
         'energy-kcal': 0,
@@ -118,7 +124,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     }
   }
 
-  void _showAddPresetDialog() { // toont dialoog om nieuwe drank standaard toe te voegen
+  void _showAddPresetDialog() {
+    // toont dialoog om nieuwe drank standaard toe te voegen
     //final nameController = TextEditingController();
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -131,11 +138,14 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       context: context,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setStateDialog) { // gebruik StatefulBuilder om de diaaloog te updaten
+          builder: (context, setStateDialog) {
+            // gebruik StatefulBuilder om de diaaloog te updaten
             return AlertDialog(
               title: Text(
                 'Nieuw Drankje Toevoegen',
-                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
               ),
               content: Form(
                 key: formKey,
@@ -145,16 +155,26 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                     DropdownButtonFormField<String>(
                       value: selectedDrink,
                       hint: const Text('Kies een drankje'),
-                      onChanged: (value) { // update geselecteerde drank
-                        setStateDialog(() { // updat de dialoog
+                      onChanged: (value) {
+                        // update geselecteerde drank
+                        setStateDialog(() {
+                          // updat de dialoog
                           selectedDrink = value;
                         });
                       },
                       items: drinkOptions
                           .map(
-                            (drink) => DropdownMenuItem( // maak een dropdown item voor elke optie
+                            (drink) => DropdownMenuItem(
+                              // maak een dropdown item voor elke optie
                               value: drink,
-                              child: Text(drink, style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
+                              child: Text(
+                                drink,
+                                style: TextStyle(
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                              ),
                             ),
                           )
                           .toList(),
@@ -177,13 +197,20 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       ),
                     TextFormField(
                       controller: amountController,
-                      decoration: const InputDecoration(
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                      cursorColor: isDarkMode ? Colors.white : Colors.black,
+                      decoration: InputDecoration(
                         labelText: 'Hoeveelheid (ml)',
+                        labelStyle: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
                       ),
                       keyboardType: TextInputType.number,
                       validator: (value) {
                         if (value!.isEmpty) return 'Hoeveelheid is verplicht';
-                        if (int.tryParse(value) == null) { // controleer of het een getal is
+                        if (int.tryParse(value) == null) {
                           return 'Voer een getal in';
                         }
                         return null;
@@ -194,7 +221,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(), // sluit de dialoog
+                  onPressed: () =>
+                      Navigator.of(context).pop(), // sluit de dialoog
                   child: const Text('Annuleren'),
                 ),
                 ElevatedButton(
@@ -234,7 +262,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
           : Padding(
               padding: const EdgeInsets.all(8.0),
               child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount( // rooster met vaste aantal kolommen
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  // rooster met vaste aantal kolommen
                   crossAxisCount: 3, // aantal kolommen
                   crossAxisSpacing: 8, // ruimte tussen kolommen
                   mainAxisSpacing: 8, // ruimte tussen rijen
@@ -260,11 +289,65 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                   }
 
                   final preset = _drinkPresets[index];
-                  final colors = _getColorsForDrink(preset['name'], isDarkMode); // bepaal kleuren op basis van dranknaam
+                  final colors = _getColorsForDrink(
+                    preset['name'],
+                    isDarkMode,
+                  ); // bepaal kleuren op basis van dranknaam
 
                   return ElevatedButton(
-                    onPressed: () =>
-                        _logDrink(preset['name'], preset['amount']),
+                    onPressed: () async {
+                      final mealOptions = [
+                        'Ontbijt',
+                        'Lunch',
+                        'Avondeten',
+                        'Tussendoor',
+                      ];
+                      final selected = await showDialog<String>(
+                        context: context,
+                        builder: (context) {
+                          final isDark =
+                              Theme.of(context).brightness == Brightness.dark;
+                          return AlertDialog(
+                            title: Text(
+                              'Wanneer gedronken?',
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: mealOptions.map((m) {
+                                return ListTile(
+                                  title: Text(
+                                    m,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                  onTap: () => Navigator.of(context).pop(m),
+                                );
+                              }).toList(),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('Annuleren'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (selected != null) {
+                        await _logDrink(
+                          preset['name'],
+                          preset['amount'],
+                          selected,
+                        );
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colors['background'],
                       foregroundColor: colors['foreground'],
@@ -302,7 +385,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     );
   }
 
-  IconData _getIconForDrink(String name) { // bepaalt icoon op basis van dranknaam
+  IconData _getIconForDrink(String name) {
+    // bepaalt icoon op basis van dranknaam
     final lowerCaseName = name.toLowerCase();
     if (lowerCaseName.contains('water')) return Icons.water_drop;
     if (lowerCaseName.contains('koffie')) return Icons.coffee;
@@ -313,7 +397,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     return Icons.local_drink;
   }
 
-  Map<String, Color> _getColorsForDrink(String name, bool isDarkMode) { // bepaalt kleuren op basis van dranknaam
+  Map<String, Color> _getColorsForDrink(String name, bool isDarkMode) {
+    // bepaalt kleuren op basis van dranknaam
     final lowerCaseName = name.toLowerCase();
 
     if (lowerCaseName.contains('water')) {
