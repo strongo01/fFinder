@@ -1426,7 +1426,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Color color,
   ) {
     final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
-    final percentage = (progress * 100).round();
+    //final percentage = (progress * 100).round();
 
     return TweenAnimationBuilder<double>(
       // animeert de voortgang
@@ -1602,8 +1602,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ...entries.map((entry) {
               // bouwt elke log entry
               final productName = entry['product_name'] ?? 'Onbekend';
-              final calories = (entry['nutriments']?['energy-kcal'] ?? 0.0)
-                  .round();
+              //final calories = (entry['nutriments']?['energy-kcal'] ?? 0.0)
+                //  .round();
               final timestamp = entry['timestamp'] as Timestamp?;
 
               String rightSideText;
@@ -1842,7 +1842,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   //hulpmethode om netjes een rij te maken met een label en de waarde
-  Widget _buildInfoRow(String label, String? value) {
+  /*Widget _buildInfoRow(String label, String? value) {
     return Padding(
       padding: const EdgeInsets.symmetric(
         vertical: 4.0,
@@ -1864,55 +1864,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-  }
+  }*/
 }
 
-class _ArrowPainter extends CustomPainter {
-  final bool isUp;
-  final Color color;
-
-  _ArrowPainter({required this.isUp, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 6.0
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path();
-
-    if (isUp) {
-      path.moveTo(size.width * 0.5, size.height);
-      path.quadraticBezierTo(
-        size.width * 0.5,
-        size.height * 0.4,
-        size.width * 0.5,
-        0,
-      );
-      path.moveTo(size.width * 0.1, size.height * 0.3);
-      path.lineTo(size.width * 0.5, 0);
-      path.lineTo(size.width * 0.9, size.height * 0.3);
-    } else {
-      path.moveTo(size.width * 0.5, 0);
-      path.quadraticBezierTo(
-        size.width * 0.5,
-        size.height * 0.6,
-        size.width * 0.5,
-        size.height,
-      );
-      path.moveTo(size.width * 0.1, size.height * 0.7);
-      path.lineTo(size.width * 0.5, size.height);
-      path.lineTo(size.width * 0.9, size.height * 0.7);
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
 
 class SegmentedArcPainter extends CustomPainter {
   // aangepaste kleuren voor segmenten in de cirkel

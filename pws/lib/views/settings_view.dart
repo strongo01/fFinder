@@ -243,9 +243,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmSignOut() async {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
