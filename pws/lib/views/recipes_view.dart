@@ -6,8 +6,15 @@ class RecipesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: const Center(
-        child: Text('Hier komen de recepten!'),
+      body: Center(
+        child: Text(
+          'Recepten dingen',
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
+          ),
+        ),
       ),
     );
   }

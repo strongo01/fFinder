@@ -22,17 +22,20 @@ class FeedbackButton extends StatelessWidget {
   }
 
   void _openFeedbackSheet(BuildContext context) {
+    final outerContext = context;
     final formKey = GlobalKey<FormState>();
     final messageController = TextEditingController();
     final emailController = TextEditingController();
 
     int rating = 0;
     bool isSending = false;
+    String selectedType = 'bug';
+
 
     showModalBottomSheet<void>(
-      context: context,
+      context: outerContext,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+backgroundColor: Theme.of(outerContext).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -47,7 +50,7 @@ class FeedbackButton extends StatelessWidget {
             bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
           ),
           child: StatefulBuilder(
-            builder: (context, setState) {
+            builder: (innerCtx, setState) {
               Future<void> send() async {
                 if (!formKey.currentState!.validate()) return;
 
@@ -56,21 +59,23 @@ class FeedbackButton extends StatelessWidget {
                 try {
                   final user = FirebaseAuth.instance.currentUser;
 
-                  await FirebaseFirestore.instance.collection('feedback').add({
+                  await FirebaseFirestore.instance
+                      .collection('feedback')
+                      .add({
                     'uid': user?.uid,
                     'email': emailController.text.trim().isEmpty
                         ? null
                         : emailController.text.trim(),
                     'message': messageController.text.trim(),
                     'rating': rating,
-  'page': ModalRoute.of(context)?.settings.name ?? '',
+                    'type': selectedType,
                     'timestamp': FieldValue.serverTimestamp(),
-                    'platform': Theme.of(context).platform.name,
+                    'platform': Theme.of(outerContext).platform.name,
                   });
 
                   if (ctx.mounted) {
                     Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(outerContext).showSnackBar(
                       const SnackBar(
                         content: Text('Bedankt voor je feedback!'),
                       ),
@@ -78,13 +83,26 @@ class FeedbackButton extends StatelessWidget {
                   }
                 } catch (e) {
                   if (ctx.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Fout bij verzenden: $e')),
+                    ScaffoldMessenger.of(outerContext).showSnackBar(
+                      SnackBar(
+                        content: Text('Fout bij verzenden: $e'),
+                      ),
                     );
                   }
                 } finally {
                   if (ctx.mounted) setState(() => isSending = false);
                 }
+              }
+
+                            Widget buildTypeChip(String value, String label) {
+                final bool selected = selectedType == value;
+                return ChoiceChip(
+                  label: Text(label),
+                  selected: selected,
+                  onSelected: (_) {
+                    setState(() => selectedType = value);
+                  },
+                );
               }
 
               return SingleChildScrollView(
@@ -98,7 +116,9 @@ class FeedbackButton extends StatelessWidget {
                         height: 5,
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: isDarkMode ? Colors.grey[500] : Colors.grey[300],
+                          color: isDarkMode
+                              ? Colors.grey[500]
+                              : Colors.grey[300],
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
@@ -127,6 +147,21 @@ class FeedbackButton extends StatelessWidget {
                         );
                       }),
                     ),
+
+                                        const SizedBox(height: 8),
+
+                    // 4 opties op een rij
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        buildTypeChip('bug', 'Bug'),
+                        buildTypeChip('feature', 'Nieuwe functie'),
+                        buildTypeChip('layout', 'Layout'),
+                        buildTypeChip('other', 'Anders'),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
 
                     Form(
                       key: formKey,
@@ -179,12 +214,14 @@ class FeedbackButton extends StatelessWidget {
                         ElevatedButton(
                           onPressed: isSending ? null : send,
                           child: isSending
-                              ?  SizedBox(
+                              ? SizedBox(
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: isDarkMode ? Colors.white : Colors.black,
+                                    color: isDarkMode
+                                        ? Colors.white
+                                        : Colors.black,
                                   ),
                                 )
                               : const Text('Versturen'),
