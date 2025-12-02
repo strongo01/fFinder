@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fFinder/views/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -9,10 +10,13 @@ import 'views/login_register_view.dart';
 import 'views/onboarding_view.dart';
 import 'package:openfoodfacts/openfoodfacts.dart' hide User;
 import 'package:google_fonts/google_fonts.dart';
+import 'package:timezone/data/latest.dart' as tz;
 
 //start van de app
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // flutter engine inisializeren
+
+  tz.initializeTimeZones();
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -30,6 +34,9 @@ Future<void> main() async {
   ];
   //standaard land voor openfoodfacts
   OpenFoodAPIConfiguration.globalCountry = OpenFoodFactsCountry.NETHERLANDS;
+
+  await NotificationService().initialize(); //initialiseer notificatie service
+
   //start de app
   runApp(const MyApp());
 }
@@ -126,7 +133,7 @@ class MyApp extends StatelessWidget {
                   }
                 }
 
-                // Als het document niet bestaat, stuur naar onboarding (veiligheidshalve)
+                // Als het document niet bestaat, stuur naar onboarding
                 return const OnboardingView();
               },
             );

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_register_view.dart';
+import 'notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -13,7 +16,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
 
-//fallback
+  //fallback
   double _currentWeight = 72;
   double _targetWeight = 68;
   double _height = 180;
@@ -21,13 +24,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _activityLevel = 'Weinig actief';
   String _goal = 'Afvallen';
 
+  bool _mealNotificationsEnabled = false;
+  TimeOfDay _breakfastTime = const TimeOfDay(hour: 7, minute: 0);
+  TimeOfDay _lunchTime = const TimeOfDay(hour: 12, minute: 0);
+  TimeOfDay _dinnerTime = const TimeOfDay(hour: 19, minute: 0);
+  final NotificationService _notificationService = NotificationService();
+
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _targetWeightController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
-  bool _deletingAccount = false; 
+  bool _deletingAccount = false;
+  bool _isAdmin = false;
 
   final List<String> _activityOptions = [
     // opties voor activiteitenniveau
@@ -49,7 +59,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _loadSettings();
     _loadProfile();
+  }
+
+  Future<void> _loadSettings() async { // Laad instellingen uit SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _mealNotificationsEnabled =
+          prefs.getBool('mealNotificationsEnabled') ?? false;
+      _breakfastTime = TimeOfDay(
+        hour: prefs.getInt('breakfastHour') ?? 7,
+        minute: prefs.getInt('breakfastMinute') ?? 0,
+      );
+      _lunchTime = TimeOfDay(
+        hour: prefs.getInt('lunchHour') ?? 12,
+        minute: prefs.getInt('lunchMinute') ?? 0,
+      );
+      _dinnerTime = TimeOfDay(
+        hour: prefs.getInt('dinnerHour') ?? 19,
+        minute: prefs.getInt('dinnerMinute') ?? 0,
+      );
+    });
+  }
+
+  Future<void> _updateNotificationSchedule() async {
+    await _notificationService.scheduleMealReminders(
+      areEnabled: _mealNotificationsEnabled,
+      breakfastTime: _breakfastTime,
+      lunchTime: _lunchTime,
+      dinnerTime: _dinnerTime,
+    );
+  }
+
+  Future<void> _pickTime(
+    BuildContext context,
+    TimeOfDay initialTime,
+    Function(TimeOfDay) onTimePicked,
+  ) async {
+    final newTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+    if (newTime != null) {
+      onTimePicked(newTime);
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -68,20 +122,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (doc.exists) {
         final data = doc.data() ?? {};
 
-        _currentWeight = (data['weight'] as num?)?.toDouble() ?? _currentWeight;
-        _targetWeight =
-            (data['targetWeight'] as num?)?.toDouble() ?? _targetWeight;
-        _height = (data['height'] as num?)?.toDouble() ?? _height;
-        _sleepHours = (data['sleepHours'] as num?)?.toDouble() ?? _sleepHours;
+        setState(() {
+          _isAdmin = data['admin'] ?? false;
+          _currentWeight =
+              (data['weight'] as num?)?.toDouble() ?? _currentWeight;
+          _targetWeight =
+              (data['targetWeight'] as num?)?.toDouble() ?? _targetWeight;
+          _height = (data['height'] as num?)?.toDouble() ?? _height;
+          _sleepHours = (data['sleepHours'] as num?)?.toDouble() ?? _sleepHours;
+          _activityLevel = (data['activityLevel'] as String?) ?? _activityLevel;
+          _goal = (data['goal'] as String?) ?? _goal;
 
-        _activityLevel = (data['activityLevel'] as String?) ?? _activityLevel;
-        _goal = (data['goal'] as String?) ?? _goal;
+          // Werk ook de controllers hier bij
+          _weightController.text = _currentWeight.toStringAsFixed(1);
+          _targetWeightController.text = _targetWeight.toStringAsFixed(1);
+          _heightController.text = _height.toStringAsFixed(0);
+        });
       }
-
-      // controllers 
-      _weightController.text = _currentWeight.toStringAsFixed(1);
-      _targetWeightController.text = _targetWeight.toStringAsFixed(1);
-      _heightController.text = _height.toStringAsFixed(0);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -102,7 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  Future<void> _saveProfile() async {
+  Future<void> _saveProfile() async { // Validatie en opslaan
     if (!_formKey.currentState!.validate()) return;
 
     final user = FirebaseAuth.instance.currentUser;
@@ -111,7 +168,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _saving = true);
 
     try {
-     
       _currentWeight = double.parse(
         _weightController.text.replaceAll(',', '.'),
       );
@@ -140,7 +196,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       double? fatGoal;
       double? carbGoal;
 
-      if (_height > 0 && _currentWeight > 0 && birthDate != null) {
+      if (_height > 0 && _currentWeight > 0 && birthDate != null) { //  Berekeningen
         final heightCm = _height;
         final weightKg = _currentWeight;
 
@@ -205,7 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         carbGoal = carbCalories / 4;
       }
 
-      // 4. Alles wegschrijven naar Firestore
+      // Alles naar Firestore
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'weight': _currentWeight,
         'targetWeight': _targetWeight,
@@ -251,7 +307,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final colorScheme = theme.colorScheme;
         final isDark = colorScheme.brightness == Brightness.dark;
         return AlertDialog(
-          title: Text('Uitloggen', style: TextStyle(color: isDark ? Colors.white: Colors.black),),
+          title: Text(
+            'Uitloggen',
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          ),
           content: Text(
             'Weet je zeker dat je wilt uitloggen?',
             style: TextStyle(color: isDark ? Colors.white : Colors.black),
@@ -278,7 +337,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-String _generateDeletionCode() {
+  String _generateDeletionCode() { // Genereer een eenvoudige 6-cijferige code
     final random = DateTime.now().millisecondsSinceEpoch.remainder(1000000);
     return random.toString().padLeft(6, '0');
   }
@@ -319,9 +378,9 @@ String _generateDeletionCode() {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Verwijderen mislukt: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Verwijderen mislukt: $e')));
     } finally {
       if (mounted) setState(() => _deletingAccount = false);
     }
@@ -363,8 +422,10 @@ String _generateDeletionCode() {
               ),
               const SizedBox(height: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: isDark
                       ? Colors.white.withOpacity(0.1)
@@ -381,12 +442,10 @@ String _generateDeletionCode() {
                 ),
               ),
               const SizedBox(height: 12),
-                            TextField(
+              TextField(
                 controller: codeController,
                 keyboardType: TextInputType.number,
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black,
-                ),
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 cursorColor: isDark ? Colors.white : Colors.black,
                 decoration: InputDecoration(
                   labelText: 'Voer de 6-cijferige code in',
@@ -400,7 +459,9 @@ String _generateDeletionCode() {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide(
-                      color: isDark ? Colors.white : Theme.of(context).colorScheme.primary,
+                      color: isDark
+                          ? Colors.white
+                          : Theme.of(context).colorScheme.primary,
                       width: 2,
                     ),
                   ),
@@ -424,8 +485,9 @@ String _generateDeletionCode() {
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content:
-                                Text('Code klopt niet, probeer het opnieuw.'),
+                            content: Text(
+                              'Code klopt niet, probeer het opnieuw.',
+                            ),
                           ),
                         );
                       }
@@ -445,6 +507,138 @@ String _generateDeletionCode() {
     }
   }
 
+  Future<void> _showCreateAnnouncementDialog() async {
+    final titleController = TextEditingController(); // Controller voor de titel
+    final messageController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            'Nieuw bericht publiceren',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black,
+            ),
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: titleController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Titel',
+                    border: const OutlineInputBorder(),
+                    labelStyle: TextStyle(
+                      color:
+                          Theme.of(context).colorScheme.brightness ==
+                              Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
+                    ),
+                  ),
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).colorScheme.brightness ==
+                            Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                  cursorColor:
+                      Theme.of(context).colorScheme.brightness ==
+                          Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Titel mag niet leeg zijn.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: messageController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Bericht',
+                    border: const OutlineInputBorder(),
+                    labelStyle: TextStyle(
+                      color:
+                          Theme.of(context).colorScheme.brightness ==
+                              Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
+                    ),
+                  ),
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).colorScheme.brightness ==
+                            Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                  cursorColor:
+                      Theme.of(context).colorScheme.brightness ==
+                          Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Bericht mag niet leeg zijn.';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Annuleren'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final title = titleController.text.trim();
+                  final message = messageController.text.trim();
+                  try {
+                    await FirebaseFirestore.instance
+                        .collection('announcements')
+                        .add({
+                          'title': title,
+                          'message': message,
+                          'createdAt': FieldValue.serverTimestamp(),
+                          'isActive': true,
+                        });
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Bericht succesvol gepubliceerd!'),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    
+                  }
+                }
+              },
+              child: const Text('Publiceren'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -454,9 +648,7 @@ String _generateDeletionCode() {
     final isDark = colorScheme.brightness == Brightness.dark;
 
     final primaryTextColor = isDark ? Colors.white : Colors.black;
-    final secondaryTextColor = isDark
-        ? Colors.grey[300]
-        : Colors.grey[700];
+    final secondaryTextColor = isDark ? Colors.grey[300] : Colors.grey[700];
     final cardColor = theme.cardColor;
 
     return Scaffold(
@@ -521,6 +713,97 @@ String _generateDeletionCode() {
                       ),
                     ),
                     const SizedBox(height: 24),
+
+                    Card(
+                      margin: const EdgeInsets.all(16.0),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Maaltijdherinneringen',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                            ),
+                            SwitchListTile(
+                              title: const Text('Herinneringen inschakelen'),
+                              value: _mealNotificationsEnabled,
+                              onChanged: (bool value) async {
+                                final prefs =
+                                    await SharedPreferences.getInstance();
+                                await prefs.setBool(
+                                  'mealNotificationsEnabled',
+                                  value,
+                                );
+                                setState(() {
+                                  _mealNotificationsEnabled = value;
+                                });
+                                await _updateNotificationSchedule();
+                              },
+                            ),
+                            const Divider(),
+                            ListTile(
+                              title: const Text('Ontbijt'),
+                              trailing: Text(_breakfastTime.format(context)),
+                              onTap: () => _pickTime(context, _breakfastTime, (
+                                newTime,
+                              ) async {
+                                final prefs =
+                                    await SharedPreferences.getInstance();
+                                await prefs.setInt(
+                                  'breakfastHour',
+                                  newTime.hour,
+                                );
+                                await prefs.setInt(
+                                  'breakfastMinute',
+                                  newTime.minute,
+                                );
+                                setState(() => _breakfastTime = newTime);
+                                await _updateNotificationSchedule();
+                              }),
+                            ),
+                            ListTile(
+                              title: const Text('Lunch'),
+                              trailing: Text(_lunchTime.format(context)),
+                              onTap: () => _pickTime(context, _lunchTime, (
+                                newTime,
+                              ) async {
+                                final prefs =
+                                    await SharedPreferences.getInstance();
+                                await prefs.setInt('lunchHour', newTime.hour);
+                                await prefs.setInt(
+                                  'lunchMinute',
+                                  newTime.minute,
+                                );
+                                setState(() => _lunchTime = newTime);
+                                await _updateNotificationSchedule();
+                              }),
+                            ),
+                            ListTile(
+                              title: const Text('Avondeten'),
+                              trailing: Text(_dinnerTime.format(context)),
+                              onTap: () => _pickTime(context, _dinnerTime, (
+                                newTime,
+                              ) async {
+                                final prefs =
+                                    await SharedPreferences.getInstance();
+                                await prefs.setInt('dinnerHour', newTime.hour);
+                                await prefs.setInt(
+                                  'dinnerMinute',
+                                  newTime.minute,
+                                );
+                                setState(() => _dinnerTime = newTime);
+                                await _updateNotificationSchedule();
+                              }),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
                     Text(
                       'Persoonlijke gegevens',
@@ -731,7 +1014,7 @@ String _generateDeletionCode() {
                                         value: e,
                                         child: Text(
                                           e,
-                                          overflow: TextOverflow.ellipsis, 
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     )
@@ -812,6 +1095,55 @@ String _generateDeletionCode() {
                       ),
                     ),
 
+                    const SizedBox(height: 24),
+
+                    if (_isAdmin)
+                      Card(
+                        elevation: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Admin Acties',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                              ),
+                              const SizedBox(height: 16),
+                              ListTile(
+                                leading: const Icon(Icons.campaign),
+                                title: const Text('Nieuw bericht maken'),
+                                subtitle: const Text(
+                                  'Publiceer een bericht voor alle gebruikers.',
+                                ),
+                                onTap: _showCreateAnnouncementDialog,
+                              ),
+                              const Divider(),
+                              ListTile(
+                                leading: const Icon(Icons.edit_note),
+                                title: const Text('Berichten beheren'),
+                                subtitle: const Text(
+                                  'Bekijk, deactiveer of verwijder berichten.',
+                                ),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const ManageAnnouncementsView(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     const SizedBox(height: 32),
 
                     // Account / uitloggen
@@ -864,13 +1196,146 @@ String _generateDeletionCode() {
                         ),
                         foregroundColor: Colors.red.shade700,
                       ),
-                      onPressed:
-                          _deletingAccount ? null : _confirmDeleteAccount,
+                      onPressed: _deletingAccount
+                          ? null
+                          : _confirmDeleteAccount,
                     ),
                   ],
                 ),
               ),
             ),
+    );
+  }
+}
+
+class ManageAnnouncementsView extends StatefulWidget {
+  const ManageAnnouncementsView({super.key});
+
+  @override
+  State<ManageAnnouncementsView> createState() =>
+      _ManageAnnouncementsViewState();
+}
+
+class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
+  final CollectionReference _announcements = FirebaseFirestore.instance
+      .collection('announcements');
+
+  Future<void> _toggleActive(DocumentSnapshot doc) async {
+    await _announcements.doc(doc.id).update({'isActive': !doc['isActive']}); // Toggle the isActive field
+  }
+
+  Future<void> _deleteAnnouncement(String docId) async {
+    await _announcements.doc(docId).delete();
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Bericht verwijderd.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Berichten Beheren')),
+      body: StreamBuilder(
+        stream: _announcements
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.hasError) {
+            return const Center(child: Text('Er is een fout opgetreden.'));
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.data!.docs.isEmpty) {
+            return Center(
+              child: Text(
+                'Geen berichten gevonden.',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
+                ),
+              ),
+            );
+          }
+
+          return ListView(
+            padding: const EdgeInsets.all(8.0),
+            children: snapshot.data!.docs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final title = data['title'] ?? 'Geen titel';
+              final message = data['message'] ?? '';
+              final isActive = data['isActive'] ?? false;
+              final timestamp = data['createdAt'] as Timestamp?;
+              final date = timestamp != null
+                  ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate())
+                  : 'Onbekende datum';
+
+              return Card(
+                margin: const EdgeInsets.symmetric(
+                  vertical: 8.0,
+                  horizontal: 4.0,
+                ),
+                child: ListTile(
+                  title: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(message),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Gemaakt op: $date',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[300]
+                              : Colors.grey[700],
+                        ),
+                      ),
+                      Chip(
+                        label: Text(isActive ? 'Actief' : 'Inactief'),
+                        backgroundColor: isActive
+                            ? Colors.green.shade100
+                            : Colors.grey.shade300,
+                        labelStyle: TextStyle(
+                          color: isActive
+                              ? Colors.green.shade800
+                              : Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          isActive ? Icons.toggle_on : Icons.toggle_off,
+                          color: isActive ? Colors.green : Colors.grey,
+                        ),
+                        tooltip: isActive ? 'Deactiveren' : 'Activeren',
+                        onPressed: () => _toggleActive(doc),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
+                        tooltip: 'Verwijderen',
+                        onPressed: () => _deleteAnnouncement(doc.id),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        },
+      ),
     );
   }
 }

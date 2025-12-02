@@ -48,7 +48,7 @@ class _SimpleBarcodeScannerPageState extends State<SimpleBarcodeScannerPage> {
               icon: const Icon(Icons.flash_on),
               color: Colors.white,
               onPressed: () {
-                cameraController.toggleTorch();
+                cameraController.toggleTorch(); // schakelt de zaklamp aan/uit
               },
             ),
           ),

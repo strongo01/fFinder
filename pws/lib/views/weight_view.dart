@@ -36,7 +36,7 @@ class _WeightViewState extends State<WeightView> {
   }
 
   final TextEditingController _weightController = TextEditingController();
-  final FocusNode _weightFocusNode = FocusNode(); // <-- Voeg deze toe
+  final FocusNode _weightFocusNode = FocusNode(); // FocusNode voor het gewicht invoerveld
 
   @override
   void initState() {
@@ -70,8 +70,8 @@ class _WeightViewState extends State<WeightView> {
 
       final weightsRaw = data['weights'] as List<dynamic>? ?? [];
       _entries =
-          weightsRaw
-              .map((e) => WeightEntry.fromMap(e as Map<String, dynamic>))
+          weightsRaw 
+              .map((e) => WeightEntry.fromMap(e as Map<String, dynamic>)) 
               .toList()
             ..sort((a, b) => a.date.compareTo(b.date));
       _currentMonthIndex = 0;
@@ -87,8 +87,8 @@ class _WeightViewState extends State<WeightView> {
     }
   }
 
-  double? _parseDouble(dynamic value) {
-    if (value == null) return null;
+  double? _parseDouble(dynamic value) { // Hulpmethode om double te parsen. parsen betekent omzetten van tekst naar een getal
+    if (value == null) return null; 
     if (value is num) return value.toDouble();
     if (value is String) {
       return double.tryParse(value.replaceAll(',', '.'));
@@ -152,7 +152,7 @@ class _WeightViewState extends State<WeightView> {
       double? fatGoal;
       double? carbGoal;
 
-      if (height > 0 && _weight > 0 && birthDate != null) {
+      if (height > 0 && _weight > 0 && birthDate != null) { // Berekeningen
         final heightCm = height;
         final weightKg = _weight;
 
@@ -233,7 +233,7 @@ class _WeightViewState extends State<WeightView> {
       });
 
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gewicht + doelen opgeslagen')),
       );
@@ -245,10 +245,10 @@ class _WeightViewState extends State<WeightView> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-    _weightFocusNode.unfocus();
+    _weightFocusNode.unfocus(); // Verberg het toetsenbord na het opslaan
   }
 
-  List<_MonthGroup> _groupEntriesByMonth() {
+  List<_MonthGroup> _groupEntriesByMonth() { // groepeer entries per maand
     if (_entries.isEmpty) return [];
 
     final Map<String, List<WeightEntry>> byMonth = {};
@@ -257,7 +257,7 @@ class _WeightViewState extends State<WeightView> {
       byMonth.putIfAbsent(key, () => []).add(e);
     }
 
-    final groups = <_MonthGroup>[];
+    final groups = <_MonthGroup>[]; // lijst van maandgroepen
     byMonth.forEach((key, list) {
       list.sort((a, b) => a.date.compareTo(b.date));
       final parts = key.split('-');
@@ -545,15 +545,17 @@ class _WeightViewState extends State<WeightView> {
               ),
             ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 80.0), // <-- Pas deze waarde aan indien nodig
+        padding: const EdgeInsets.only(
+          bottom: 80.0,
+        ), 
         child: const FeedbackButton(),
       ),
     );
   }
 
-  Widget _buildBmiBar(ThemeData theme, bool isDark) {
+  Widget _buildBmiBar(ThemeData theme, bool isDark) { //  BMI-balk bouwen
     if (_bmi == null) return const SizedBox.shrink();
-    final bmi = _clampBmi(_bmi!);
+    final bmi = _clampBmi(_bmi!); // clamp de BMI binnen het bereik
 
     const totalRange = _bmiMax - _bmiMin;
     final veryLowWidth = _bmiVeryLowEnd - _bmiMin; // 10–16
@@ -725,7 +727,7 @@ class _WeightViewState extends State<WeightView> {
       );
     }
 
-    // zorg dat index binnen bereik blijft (kan na laden/opslaan veranderen)
+    // zorg dat index binnen bereik blijft
     if (_currentMonthIndex >= monthGroups.length) {
       _currentMonthIndex = 0;
     }

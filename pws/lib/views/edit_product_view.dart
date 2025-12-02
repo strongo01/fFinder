@@ -48,7 +48,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     fatController = TextEditingController();
     amountController = TextEditingController(
       text: widget.initialAmount?.toString() ?? '',
-    );
+    ); // Voor maaltijd hoeveelheid
     saturatedFatController = TextEditingController();
     carbsController = TextEditingController();
     sugarsController = TextEditingController();
@@ -77,7 +77,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
   }
 
   Future<void> _fetchDetails() async {
-    // 1. Check of lokale data is meegegeven
+    // Haal productdetails op van OpenFoodFacts of gebruik lokale data
     if (widget.productData != null) {
       try {
         final isFav = await _isFavorite(
@@ -91,6 +91,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
         _fillControllers(nutriments);
 
         final loadedProduct = Product(
+          // Maak een Product object aan
           barcode: widget.barcode,
           productName: widget.productData!['product_name'],
           brands: widget.productData!['brands'],
@@ -129,8 +130,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       }
       return;
     }
-
-    // 2. Anders ophalen via API
+    // Haal van OpenFoodFacts
     try {
       final isFav = await _isFavorite(widget.barcode);
       final config = ProductQueryConfiguration(
@@ -305,7 +305,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                               setState(() => isFavorite = !isFavorite);
                           } else {
                             if (_formKey.currentState!.validate()) {
-                              final nutrimentsData =
+                              final nutrimentsData = // haal bewerkte voedingswaarden op
                                   _getNutrimentsFromControllers();
                               await _addFavoriteProduct(
                                 product!,
@@ -400,6 +400,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                   ),
 
                   if (widget.isForMeal) ...[
+                    // Alleen tonen als voor maaltijd
                     const SizedBox(height: 24),
                     TextFormField(
                       controller: amountController,
@@ -458,6 +459,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
   }
 
   Map<String, double?> _getNutrimentsFromControllers() {
+    // haal bewerkte voedingswaarden op
     double? parse(TextEditingController c) =>
         double.tryParse(c.text.replaceAll(',', '.'));
     return {
@@ -591,7 +593,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
           {
             'energy-kcal': nutriments?.getValue(
               Nutrient.energyKCal,
-              PerSize.oneHundredGrams,
+              PerSize.oneHundredGrams, //PerSize omdat dit per 100g is
             ),
             'fat': nutriments?.getValue(Nutrient.fat, PerSize.oneHundredGrams),
             'saturated-fat': nutriments?.getValue(
@@ -633,28 +635,6 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     await docRef.set(productData, SetOptions(merge: true));
   }
 
-  /*
-  Future<void> _addRecentMyProduct(
-    // voeg recent eigen product toe
-    Map<String, dynamic> productData,
-    String docId,
-  ) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final docRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('recents')
-        .doc(docId);
-
-    final dataToSave = Map<String, dynamic>.from(productData);
-    dataToSave['timestamp'] = FieldValue.serverTimestamp();
-    dataToSave['isMyProduct'] = true; // markeer als eigen product
-
-    await docRef.set(dataToSave, SetOptions(merge: true)); // sla op met merge
-  }
-*/
   Future<void> _addFavoriteProduct(
     // voeg favoriet product toe
     Product product, {
@@ -769,7 +749,12 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     } else {
       selectedMeal = 'Tussendoor';
     }
-    final List<String> mealTypes = ['Ontbijt', 'Lunch', 'Avondeten', 'Tussendoor'];
+    final List<String> mealTypes = [
+      'Ontbijt',
+      'Lunch',
+      'Avondeten',
+      'Tussendoor',
+    ];
 
     return showDialog<bool>(
       context: context,
@@ -792,7 +777,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                   children: [
                     TextFormField(
                       controller: amountController,
-                      autofocus: true,
+                      autofocus: true, // focus op dit veld
                       style: TextStyle(color: textColor),
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,

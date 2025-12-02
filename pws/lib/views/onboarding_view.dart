@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fFinder/views/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fFinder/views/home_screen.dart';
@@ -9,6 +10,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingView extends StatefulWidget {
   const OnboardingView({super.key});
@@ -935,54 +937,110 @@ class _OnboardingViewState extends State<OnboardingView> {
                     // Vraag 10: Meldingen
                     _buildQuestionPage(
                       title: 'Wil je meldingen ontvangen?',
-                      content: SwitchListTile(
-                        title: Text(
-                          'Meldingen inschakelen',
-                          style: inputTextStyle,
-                        ),
-                        value: _notificationsEnabled,
-                        onChanged: (val) async {
-                          if (val) {
-                            // Als de gebruiker het aan zet, vraag om toestemming
-                            FirebaseMessaging messaging =
-                                FirebaseMessaging.instance;
+                      content: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12.0),
+                            child: Text(
+                              'Je kunt meldingen inschakelen voor maaltijdherinneringen, zodat je nooit vergeet te eten en je eten toe te voegen aan de logs.',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: inputTextStyle.color,
+                              ),
+                            ),
+                          ),
+                          SwitchListTile(
+                            title: Text(
+                              'Meldingen inschakelen',
+                              style: inputTextStyle,
+                            ),
+                            value: _notificationsEnabled,
+                            onChanged: (val) async {
+                              final prefs =
+                                  await SharedPreferences.getInstance();
+                              final notificationService = NotificationService();
 
-                            // Vraagt toestemming op iOS, Android 13+ en Web
-                            NotificationSettings settings = await messaging
-                                .requestPermission(
-                                  alert: true,
-                                  announcement: false,
-                                  badge: true,
-                                  carPlay: false,
-                                  criticalAlert: false,
-                                  provisional: false,
-                                  sound: true,
+                              if (val) {
+                                // Als de gebruiker het aan zet, vraag om toestemming
+                                FirebaseMessaging messaging =
+                                    FirebaseMessaging.instance;
+
+                                // Vraagt toestemming op iOS, Android 13+ en Web
+                                NotificationSettings settings = await messaging
+                                    .requestPermission(
+                                      alert: true,
+                                      badge: true,
+                                      sound: true,
+                                    );
+
+                                if (settings.authorizationStatus ==
+                                        AuthorizationStatus.authorized ||
+                                    settings.authorizationStatus ==
+                                        AuthorizationStatus.provisional) {
+                                  // Toestemming gekregen, meldingen inschakelen en plannen
+                                  setState(() => _notificationsEnabled = true);
+                                  await prefs.setBool(
+                                    'mealNotificationsEnabled',
+                                    true,
+                                  );
+
+                                  // Plan standaard meldingen in
+                                  await notificationService
+                                      .scheduleMealReminders(
+                                        areEnabled: true,
+                                        breakfastTime: const TimeOfDay(
+                                          hour: 7,
+                                          minute: 0,
+                                        ),
+                                        lunchTime: const TimeOfDay(
+                                          hour: 12,
+                                          minute: 0,
+                                        ),
+                                        dinnerTime: const TimeOfDay(
+                                          hour: 19,
+                                          minute: 0,
+                                        ),
+                                      );
+                                } else {
+                                  // Toestemming geweigerd
+                                  setState(() => _notificationsEnabled = false);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Toestemming voor meldingen is geweigerd.',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              } else {
+                                // Gebruiker zet het uit, annuleer alle meldingen
+                                setState(() => _notificationsEnabled = false);
+                                await prefs.setBool(
+                                  'mealNotificationsEnabled',
+                                  false,
                                 );
-
-                            if (settings.authorizationStatus ==
-                                    AuthorizationStatus.authorized ||
-                                settings.authorizationStatus ==
-                                    AuthorizationStatus.provisional) {
-                              // Toestemming gekregen
-                              setState(() => _notificationsEnabled = true);
-                            } else {
-                              // Toestemming geweigerd
-                              setState(() => _notificationsEnabled = false);
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Toestemming voor meldingen is geweigerd.',
-                                    ),
+                                await notificationService.scheduleMealReminders(
+                                  areEnabled: false,
+                                  breakfastTime: const TimeOfDay(
+                                    hour: 7,
+                                    minute: 0,
+                                  ), // Tijd is niet relevant
+                                  lunchTime: const TimeOfDay(
+                                    hour: 12,
+                                    minute: 0,
+                                  ),
+                                  dinnerTime: const TimeOfDay(
+                                    hour: 19,
+                                    minute: 0,
                                   ),
                                 );
                               }
-                            }
-                          } else {
-                            // Gewoon uitzetten
-                            setState(() => _notificationsEnabled = false);
-                          }
-                        },
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ],

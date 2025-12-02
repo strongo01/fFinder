@@ -89,7 +89,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     final now = DateTime.now();
     final todayDocId =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-
+    // document ID voor vandaag
     final logEntry = {
       // maak een log entry aan
       'product_name': name,
@@ -114,14 +114,16 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
         .collection('logs')
         .doc(todayDocId)
         .set({
-          'entries': FieldValue.arrayUnion([logEntry]),
+          'entries': FieldValue.arrayUnion([
+            logEntry,
+          ]), // voeg entry toe aan entries array
         }, SetOptions(merge: true));
 
     if (mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('$name ($amount ml) toegevoegd!')));
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(); // ga terug naar vorige scherm
     }
   }
 
@@ -154,7 +156,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      value: selectedDrink,
+                      value: selectedDrink, // huidige geselecteerde drank
                       hint: const Text('Kies een drankje'),
                       onChanged: (value) {
                         // update geselecteerde drank
@@ -317,7 +319,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                             ),
                             content: Column(
                               mainAxisSize: MainAxisSize.min,
-                              children: mealOptions.map((m) {
+                              children: mealOptions.map((m) { // maak een lijstitem voor elke maaltijdoptie
                                 return ListTile(
                                   title: Text(
                                     m,
@@ -341,7 +343,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                         },
                       );
 
-                      if (selected != null) {
+                      if (selected != null) { // als er een optie is geselecteerd
                         await _logDrink(
                           preset['name'],
                           preset['amount'],
@@ -383,7 +385,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                 },
               ),
             ),
-            floatingActionButton: const FeedbackButton(),
+      floatingActionButton: const FeedbackButton(),
     );
   }
 

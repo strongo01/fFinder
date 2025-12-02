@@ -1,9 +1,9 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:fFinder/views/settings_view.dart';
 import 'package:flutter/cupertino.dart'; //voor ios stijl widgets
 import 'package:flutter/foundation.dart'; // Voor platform check
@@ -28,7 +28,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   //variabelen om de status van het scherm bij te houden
-  Product? _scannedProduct; //het gevonden product
   bool _isLoading = false; // of hi jaan het laden is
   String? _errorMessage; // eventuele foutmelding
   String? _motivationalMessage;
@@ -37,6 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _userData;
   double? _calorieAllowance;
   DateTime _selectedDate = DateTime.now();
+  List<Map<String, dynamic>> _activeAnnouncements = [];
+  StreamSubscription? _announcementSubscription;
+  final ScrollController _scrollController = ScrollController();
 
   final GlobalKey _dateKey = GlobalKey();
   final GlobalKey _calorieInfoRowKey = GlobalKey();
@@ -64,10 +66,11 @@ class _HomeScreenState extends State<HomeScreen> {
       initialPage: _initialPage,
     ); // de pagina controller initializeren
     _fetchUserData();
+    _listenToAnnouncements();
   }
 
   @override
-  void didChangeDependencies() {
+  void didChangeDependencies() { // wordt aangeroepen nadat initState is voltooid
     super.didChangeDependencies();
     _createTutorial();
     _showTutorial();
@@ -77,7 +80,139 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _pageController
         .dispose(); // de controller opruimen bij het verwijderen van de widget
+    _scrollController.dispose();
+    _announcementSubscription?.cancel();
     super.dispose();
+  }
+
+  void _listenToAnnouncements() { //luister naar actieve admin-berichten
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Annuleer een eventuele bestaande listener
+    _announcementSubscription?.cancel(); // voorkom dubbele listeners
+
+    // Start de nieuwe listener
+    _announcementSubscription = FirebaseFirestore.instance 
+        .collection('announcements')
+        .where('isActive', isEqualTo: true)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen(
+          (querySnapshot) async {
+            // Deze code wordt elke keer uitgevoerd als er een wijziging is
+
+            if (querySnapshot.docs.isEmpty) {
+              if (mounted) setState(() => _activeAnnouncements = []);
+              return;
+            }
+
+            // Haal de lijst met gesloten berichten van de gebruiker op
+            final userDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get();
+            final dismissed = List<String>.from(
+              userDoc.data()?['dismissedAnnouncements'] ?? [],
+            );
+
+            // Filter de berichten die de gebruiker nog niet heeft gesloten
+            final announcementsToShow = <Map<String, dynamic>>[];
+            for (var doc in querySnapshot.docs) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              if (!dismissed.contains(data['id'])) {
+                announcementsToShow.add(data);
+              }
+            }
+
+            // Werk de UI bij als de widget nog bestaat
+            if (mounted) {
+              setState(() {
+                _activeAnnouncements = announcementsToShow;
+              });
+            }
+          },
+          onError: (error) {
+            print("Fout bij luisteren naar admin-berichten: $error");
+          },
+        );
+  }
+
+  Future<void> _dismissAnnouncement(String announcementId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Verberg de kaart direct in de UI door hem uit de lijst te verwijderen
+    setState(() {
+      _activeAnnouncements.removeWhere((ann) => ann['id'] == announcementId);
+    });
+
+    // Voeg de ID toe aan de lijst van de gebruiker in Firestore
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {
+          'dismissedAnnouncements': FieldValue.arrayUnion([announcementId]),
+        },
+      );
+    } catch (e) {
+      print("Fout bij opslaan van gesloten bericht: $e");
+    }
+  }
+
+  Widget _buildAnnouncementsList(bool isDarkMode) { //bouw de lijst met admin-berichten
+    if (_activeAnnouncements.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      children: _activeAnnouncements.map((announcement) {
+        return Card(
+          color: isDarkMode ? Colors.blue[900] : Colors.blue[100],
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 40, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      announcement['title'] ?? 'Mededeling',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      announcement['message'],
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white70 : Colors.black87,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 4,
+                right: 4,
+                child: IconButton(
+                  icon: Icon(
+                    Icons.close,
+                    size: 20,
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                  onPressed: () => _dismissAnnouncement(announcement['id']),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
   }
 
   void _showTutorial() async {
@@ -107,6 +242,15 @@ class _HomeScreenState extends State<HomeScreen> {
       paddingFocus: 10,
       opacityShadow: 0.8,
       hideSkip: true,
+      onClickTarget: (target) {
+        if (target.identify == "add-fab-key") {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOut,
+          );
+        }
+      },
       onFinish: () {
         print("Tutorial voltooid");
         prefs.setBool('home_tutorial_shown', true);
@@ -116,9 +260,6 @@ class _HomeScreenState extends State<HomeScreen> {
             'tutorialHomeAf': true,
           });
         }
-      },
-      onClickTarget: (target) {
-        print('Target geklikt: $target');
       },
     );
   }
@@ -166,7 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
-        //Weight
+    //Weight
     targets.add(
       TargetFocus(
         identify: "weight-key",
@@ -204,7 +345,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-        //Settings
+    //Settings
     targets.add(
       TargetFocus(
         identify: "settings-key",
@@ -214,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
               'Instellingen',
-              'Tik hier om uw gegevens aan te passen of andere instellingen te wijzigen.',
+              'Tik hier om uw gegevens aan te passen, de tijd van de meldingen of andere instellingen te wijzigen.',
               isDarkMode,
             ),
           ),
@@ -267,10 +408,10 @@ class _HomeScreenState extends State<HomeScreen> {
         keyTarget: _mascotteKey,
         contents: [
           TargetContent(
-            align: ContentAlign.bottom,
+            align: ContentAlign.top,
             child: _buildTutorialContent(
-              'Reppy', //TODO: verander titel
-              'Reppy geeft persoonlijke motivatie en tips!', //TODO: verander tekst
+              'Reppy', 
+              'Reppy geeft persoonlijke motivatie en tips!', 
               isDarkMode,
             ),
           ),
@@ -327,7 +468,7 @@ class _HomeScreenState extends State<HomeScreen> {
             align: ContentAlign.top,
             child: _buildTutorialContent(
               'Logs', //TODO: verander titel
-              'Hier verschijnen al het voedsel en alle drankjes die je toevoegt.',
+              'Hier onderaan het scherm verschijnen al het voedsel en alle drankjes die je toevoegt.',
               isDarkMode,
             ),
           ),
@@ -389,7 +530,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final today = DateTime.now();
     final todayWithoutTime = DateTime(today.year, today.month, today.day);
 
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) { // iOS datumkiezer
       showCupertinoModalPopup(
         context: context,
         builder: (_) => Container(
@@ -408,7 +549,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onDateTimeChanged: (val) {
                     setState(() {
                       _selectedDate = val;
-                      final pickedWithoutTime = DateTime(
+                      final pickedWithoutTime = DateTime( // update de pagina
                         val.year,
                         val.month,
                         val.day,
@@ -585,7 +726,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // iOS layout
-Widget _buildIOSLayout() {
+  Widget _buildIOSLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return CupertinoTabScaffold(
       // Tab scaffold voor iOS stijl tabs
@@ -642,7 +783,10 @@ Widget _buildIOSLayout() {
                   CupertinoButton(
                     padding: EdgeInsets.zero,
                     key: _barcodeKey,
-                    child: const Icon(CupertinoIcons.barcode_viewfinder, size: 28),
+                    child: const Icon(
+                      CupertinoIcons.barcode_viewfinder,
+                      size: 28,
+                    ),
                     onPressed: _scanBarcode,
                   ),
                   CupertinoButton(
@@ -650,7 +794,7 @@ Widget _buildIOSLayout() {
                     key: _settingsKey,
                     child: const Icon(CupertinoIcons.settings, size: 26),
                     onPressed: () {
-                       Navigator.of(context).push(
+                      Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => const SettingsScreen(),
                         ),
@@ -693,7 +837,7 @@ Widget _buildIOSLayout() {
             navigationBar: const CupertinoNavigationBar(
               middle: Text('Gewicht'),
             ),
-            child: const WeightView(), // <-- jouw gewichtspagina
+            child: const WeightView(), 
           );
         }
       },
@@ -917,6 +1061,23 @@ Widget _buildIOSLayout() {
   }
 
   Widget _buildHomeContent() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'Fout: $_errorMessage',
+            style: const TextStyle(color: Colors.red, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
     // bouwt de inhoud van het homescreen
     return PageView.builder(
       controller: _pageController,
@@ -966,6 +1127,7 @@ Widget _buildIOSLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return SingleChildScrollView(
+      controller: _scrollController,
       physics: const BouncingScrollPhysics(),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -1069,7 +1231,7 @@ Widget _buildIOSLayout() {
         final weight = _userData?['weight'] as num? ?? 70;
         final waterGoal = weight * 32.5;
 
-        final motivationalMessage = _getMotivationalMessage(
+        final motivationalMessage = _getMotivationalMessage( // haal motivatiebericht op
           totalCalories,
           calorieGoal,
           totalWater,
@@ -1083,6 +1245,7 @@ Widget _buildIOSLayout() {
 
         return Column(
           children: [
+            _buildAnnouncementsList(isDarkMode),
             Card(
               color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
               child: Padding(
@@ -1104,6 +1267,7 @@ Widget _buildIOSLayout() {
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 15),
                     LinearProgressIndicator(
                       // Calorie voortgangsbalk
@@ -1269,7 +1433,7 @@ Widget _buildIOSLayout() {
                         ),
                         const SizedBox(width: 30),
                         Flexible(
-                          flex: 1,
+                          flex: 1, // waterinname cirkel
                           child: Container(
                             key: _waterCircleKey,
                             child: _buildWaterCircle(
@@ -1907,31 +2071,6 @@ Widget _buildIOSLayout() {
       ).showSnackBar(SnackBar(content: Text('Fout bij bijwerken: $e')));
     }
   }
-
-  //hulpmethode om netjes een rij te maken met een label en de waarde
-  /*Widget _buildInfoRow(String label, String? value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: 4.0,
-      ), // ruimte tussen de rijen
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment
-            .start, // zorgt dat de tekst bovenaan uitgelijnd is
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            child: Text(value ?? 'Onbekend / Niet opgegeven'),
-          ), // vult de rest van de rij op met de waarde
-        ],
-      ),
-    );
-  }*/
 }
 
 class SegmentedArcPainter extends CustomPainter {
