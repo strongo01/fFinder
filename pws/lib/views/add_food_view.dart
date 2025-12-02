@@ -518,20 +518,72 @@ class _AddFoodPageState extends State<AddFoodPage> {
             _searchProducts(value);
           },
         ),
-        actions: [
+         actions: [
           if (_searchController.text.isEmpty &&
               (_selectedTabIndex == 2 || _selectedTabIndex == 3))
             IconButton(
-              key: _selectedTabIndex == 2
-                  ? _myproductsAddKey
-                  : _maaltijdenAddKey,
+              key: _selectedTabIndex == 2 ? _myproductsAddKey : _maaltijdenAddKey,
               icon: const Icon(Icons.add),
-              tooltip: _selectedTabIndex == 2
-                  ? 'Product toevoegen'
-                  : 'Maaltijd toevoegen',
-              onPressed: _selectedTabIndex == 2
-                  ? _showAddMyProductSheet
-                  : _showAddMealSheet,
+              tooltip: 'Toevoegen',
+              onPressed: () async {
+                final choice = await showModalBottomSheet<String>(
+                  context: context,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                  ),
+                  builder: (ctx) {
+                    final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                    return SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            title: Text(
+                              'Wat wil je toevoegen?',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.fastfood),
+                            title: Text('Product toevoegen',
+                                style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                            onTap: () => Navigator.of(ctx).pop('product'),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.restaurant_menu),
+                            title: Text('Maaltijd toevoegen',
+                                style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                            onTap: () => Navigator.of(ctx).pop('meal'),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    );
+                  },
+                );
+
+                if (choice == 'product') {
+                  setState(() {
+                    _selectedTabIndex = 2;
+                    for (int i = 0; i < _selectedToggle.length; i++) {
+                      _selectedToggle[i] = i == 2;
+                    }
+                  });
+                  _showAddMyProductSheet();
+                } else if (choice == 'meal') {
+                  setState(() {
+                    _selectedTabIndex = 3;
+                    for (int i = 0; i < _selectedToggle.length; i++) {
+                      _selectedToggle[i] = i == 3;
+                    }
+                  });
+                  _showAddMealSheet();
+                }
+              },
             ),
           IconButton(
             key: _barcodeKey,
