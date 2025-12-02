@@ -767,9 +767,9 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     } else if (hour >= 15 && hour < 22) {
       selectedMeal = 'Avondeten';
     } else {
-      selectedMeal = 'Snacks';
+      selectedMeal = 'Tussendoor';
     }
-    final List<String> mealTypes = ['Ontbijt', 'Lunch', 'Avondeten', 'Snacks'];
+    final List<String> mealTypes = ['Ontbijt', 'Lunch', 'Avondeten', 'Tussendoor'];
 
     return showDialog<bool>(
       context: context,

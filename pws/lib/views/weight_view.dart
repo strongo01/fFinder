@@ -36,6 +36,7 @@ class _WeightViewState extends State<WeightView> {
   }
 
   final TextEditingController _weightController = TextEditingController();
+  final FocusNode _weightFocusNode = FocusNode(); // <-- Voeg deze toe
 
   @override
   void initState() {
@@ -46,6 +47,7 @@ class _WeightViewState extends State<WeightView> {
   @override
   void dispose() {
     _weightController.dispose();
+    _weightFocusNode.dispose();
     super.dispose();
   }
 
@@ -107,6 +109,8 @@ class _WeightViewState extends State<WeightView> {
   Future<void> _saveWeight() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
+
+    _weightFocusNode.unfocus();
 
     setState(() => _saving = true);
     try {
@@ -229,6 +233,7 @@ class _WeightViewState extends State<WeightView> {
       });
 
       if (!mounted) return;
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gewicht + doelen opgeslagen')),
       );
@@ -240,6 +245,7 @@ class _WeightViewState extends State<WeightView> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+    _weightFocusNode.unfocus();
   }
 
   List<_MonthGroup> _groupEntriesByMonth() {
@@ -306,230 +312,242 @@ class _WeightViewState extends State<WeightView> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Je gewicht',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: primaryTextColor,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Pas je gewicht aan en bekijk je BMI.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: secondaryTextColor,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    Card(
-                      color: cardColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: isDark ? 0 : 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            TextField(
-                              controller: _weightController,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: primaryTextColor,
-                              ),
-                              decoration: InputDecoration(
-                                labelText: 'Gewicht (kg)',
-                                labelStyle: TextStyle(
-                                  color: secondaryTextColor,
-                                ),
-                                prefixIcon: Icon(
-                                  Icons.monitor_weight,
-                                  color: secondaryTextColor,
-                                ),
-                                border: const OutlineInputBorder(),
-                              ),
-                              onChanged: (value) {
-                                final v = double.tryParse(
-                                  value.replaceAll(',', '.'),
-                                );
-                                if (v != null && v > 0) {
-                                  setState(() => _weight = v);
-                                  _recalculateBMI();
-                                }
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Gewicht slider',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: primaryTextColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                SliderTheme(
-                                  data: SliderTheme.of(context).copyWith(
-                                    activeTrackColor: colorScheme.primary,
-                                    inactiveTrackColor: colorScheme.primary
-                                        .withOpacity(0.3),
-                                    thumbColor: colorScheme.primary,
-                                    overlayColor: colorScheme.primary
-                                        .withOpacity(0.2),
-                                  ),
-                                  child: Slider(
-                                    value: _weight.clamp(30, 200),
-                                    min: 30,
-                                    max: 200,
-                                    divisions: 170,
-                                    label: _weight.toStringAsFixed(1),
-                                    onChanged: (v) {
-                                      setState(() {
-                                        _weight = v;
-                                        _weightController.text = _weight
-                                            .toStringAsFixed(1);
-                                      });
-                                      _recalculateBMI();
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isDark
-                                      ? Colors.black
-                                      : colorScheme.primary,
-                                  foregroundColor: Colors.white,
-                                ),
-                                icon: _saving
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Icon(Icons.save),
-                                label: Text(
-                                  _saving ? 'Opslaan...' : 'Gewicht opslaan',
-                                ),
-                                onPressed: _saving ? null : _saveWeight,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    Card(
-                      color: cardColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: isDark ? 0 : 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'BMI',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: primaryTextColor,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            if (_bmi == null)
-                              Text(
-                                'Onvoldoende gegevens om BMI te berekenen. Vul je lengte en gewicht in.',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: secondaryTextColor,
-                                ),
-                              )
-                            else ...[
-                              Text(
-                                'Jouw BMI: ${_bmi!.toStringAsFixed(1)} (${_bmiCategory(_bmi!)})',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: _bmiCategoryColor(_bmi!, isDark),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              _buildBmiBar(theme, isDark),
-                              const SizedBox(height: 12),
-                              _buildBmiLegend(theme, isDark),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Tabel'),
-                          selected: _viewMode == 'table',
-                          onSelected: (_) {
-                            setState(() => _viewMode = 'table');
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        ChoiceChip(
-                          label: const Text('Grafiek (per maand)'),
-                          selected: _viewMode == 'chart',
-                          onSelected: (_) {
-                            setState(() => _viewMode = 'chart');
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    if (_entries.isEmpty)
+          : GestureDetector(
+              onTap: () {
+                if (_weightFocusNode.hasFocus) {
+                  _weightFocusNode.unfocus();
+                } else {
+                  FocusScope.of(context).unfocus();
+                }
+              },
+              child: SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                       Text(
-                        'Nog geen metingen opgeslagen.',
-                        textAlign: TextAlign.center,
+                        'Je gewicht',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: primaryTextColor,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Pas je gewicht aan en bekijk je BMI.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: secondaryTextColor,
                         ),
-                      )
-                    else if (_viewMode == 'table')
-                      _buildTableView(
-                        theme,
-                        primaryTextColor,
-                        secondaryTextColor,
-                      )
-                    else
-                      _buildChartView(
-                        theme,
-                        primaryTextColor,
-                        secondaryTextColor,
                       ),
-                    
-                  ],
+                      const SizedBox(height: 16),
+
+                      Card(
+                        color: cardColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: isDark ? 0 : 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              TextField(
+                                controller: _weightController,
+                                focusNode: _weightFocusNode,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: primaryTextColor,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: 'Gewicht (kg)',
+                                  labelStyle: TextStyle(
+                                    color: secondaryTextColor,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.monitor_weight,
+                                    color: secondaryTextColor,
+                                  ),
+                                  border: const OutlineInputBorder(),
+                                ),
+                                onChanged: (value) {
+                                  final v = double.tryParse(
+                                    value.replaceAll(',', '.'),
+                                  );
+                                  if (v != null && v > 0) {
+                                    setState(() => _weight = v);
+                                    _recalculateBMI();
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Gewicht slider',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: primaryTextColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  SliderTheme(
+                                    data: SliderTheme.of(context).copyWith(
+                                      activeTrackColor: colorScheme.primary,
+                                      inactiveTrackColor: colorScheme.primary
+                                          .withOpacity(0.3),
+                                      thumbColor: colorScheme.primary,
+                                      overlayColor: colorScheme.primary
+                                          .withOpacity(0.2),
+                                    ),
+                                    child: Slider(
+                                      value: _weight.clamp(30, 200),
+                                      min: 30,
+                                      max: 200,
+                                      divisions: 170,
+                                      label: _weight.toStringAsFixed(1),
+                                      onChanged: (v) {
+                                        setState(() {
+                                          _weight = v;
+                                          _weightController.text = _weight
+                                              .toStringAsFixed(1);
+                                        });
+                                        _recalculateBMI();
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isDark
+                                        ? Colors.black
+                                        : colorScheme.primary,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  icon: _saving
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.save),
+                                  label: Text(
+                                    _saving ? 'Opslaan...' : 'Gewicht opslaan',
+                                  ),
+                                  onPressed: _saving ? null : _saveWeight,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      Card(
+                        color: cardColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: isDark ? 0 : 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'BMI',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: primaryTextColor,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              if (_bmi == null)
+                                Text(
+                                  'Onvoldoende gegevens om BMI te berekenen. Vul je lengte en gewicht in.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: secondaryTextColor,
+                                  ),
+                                )
+                              else ...[
+                                Text(
+                                  'Jouw BMI: ${_bmi!.toStringAsFixed(1)} (${_bmiCategory(_bmi!)})',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: _bmiCategoryColor(_bmi!, isDark),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                _buildBmiBar(theme, isDark),
+                                const SizedBox(height: 12),
+                                _buildBmiLegend(theme, isDark),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Tabel'),
+                            selected: _viewMode == 'table',
+                            onSelected: (_) {
+                              setState(() => _viewMode = 'table');
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Grafiek (per maand)'),
+                            selected: _viewMode == 'chart',
+                            onSelected: (_) {
+                              setState(() => _viewMode = 'chart');
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      if (_entries.isEmpty)
+                        Text(
+                          'Nog geen metingen opgeslagen.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: secondaryTextColor,
+                          ),
+                        )
+                      else if (_viewMode == 'table')
+                        _buildTableView(
+                          theme,
+                          primaryTextColor,
+                          secondaryTextColor,
+                        )
+                      else
+                        _buildChartView(
+                          theme,
+                          primaryTextColor,
+                          secondaryTextColor,
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            floatingActionButton: const FeedbackButton(),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80.0), // <-- Pas deze waarde aan indien nodig
+        child: const FeedbackButton(),
+      ),
     );
   }
 

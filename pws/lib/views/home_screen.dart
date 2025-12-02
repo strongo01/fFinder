@@ -585,24 +585,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // iOS layout
-  Widget _buildIOSLayout() {
+Widget _buildIOSLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return CupertinoTabScaffold(
       // Tab scaffold voor iOS stijl tabs
       tabBar: CupertinoTabBar(
         items: [
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.home),
             label: 'Vandaag',
           ),
           BottomNavigationBarItem(
-            key: _settingsKey,
-            icon: Icon(CupertinoIcons.settings),
-            label: 'Instellingen',
+            key: _recipesKey,
+            icon: const Icon(CupertinoIcons.book),
+            label: 'Recepten',
           ),
           BottomNavigationBarItem(
             key: _weightKey,
-            icon: Icon(CupertinoIcons.chart_bar),
+            icon: const Icon(CupertinoIcons.chart_bar),
             label: 'Gewicht',
           ),
         ],
@@ -612,25 +612,6 @@ class _HomeScreenState extends State<HomeScreen> {
         if (index == 0) {
           return CupertinoPageScaffold(
             navigationBar: CupertinoNavigationBar(
-              leading: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                key: _recipesKey,
-                child: const Text(
-                  'Recepten',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: CupertinoColors.activeBlue,
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const RecipesScreen(),
-                    ),
-                  );
-                },
-              ),
               middle: GestureDetector(
                 key: _dateKey,
                 onTap: () => _selectDate(context),
@@ -655,11 +636,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              trailing: CupertinoButton(
-                padding: EdgeInsets.zero,
-                key: _barcodeKey,
-                child: const Icon(CupertinoIcons.barcode_viewfinder, size: 32),
-                onPressed: _scanBarcode,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    key: _barcodeKey,
+                    child: const Icon(CupertinoIcons.barcode_viewfinder, size: 28),
+                    onPressed: _scanBarcode,
+                  ),
+                  CupertinoButton(
+                    padding: const EdgeInsets.only(left: 8),
+                    key: _settingsKey,
+                    child: const Icon(CupertinoIcons.settings, size: 26),
+                    onPressed: () {
+                       Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
             child: SafeArea(
@@ -682,10 +680,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
         } else if (index == 1) {
-          // Tab 2: Instellingen
+          // Tab 2: Recepten
           return CupertinoPageScaffold(
-            navigationBar: const CupertinoNavigationBar(),
-            child: const SettingsScreen(),
+            navigationBar: const CupertinoNavigationBar(
+              middle: Text('Recepten'),
+            ),
+            child: const RecipesScreen(),
           );
         } else {
           // Tab 3: Gewicht

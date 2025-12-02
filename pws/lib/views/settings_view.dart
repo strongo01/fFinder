@@ -708,6 +708,7 @@ String _generateDeletionCode() {
 
                               // Activiteitsniveau (dropdown)
                               DropdownButtonFormField<String>(
+                                isExpanded: true,
                                 value: _activityLevel,
                                 decoration: InputDecoration(
                                   labelText: 'Activiteitsniveau',
@@ -728,7 +729,10 @@ String _generateDeletionCode() {
                                     .map(
                                       (e) => DropdownMenuItem(
                                         value: e,
-                                        child: Text(e),
+                                        child: Text(
+                                          e,
+                                          overflow: TextOverflow.ellipsis, 
+                                        ),
                                       ),
                                     )
                                     .toList(),
