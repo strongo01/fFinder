@@ -11,6 +11,7 @@ import 'views/onboarding_view.dart';
 import 'package:openfoodfacts/openfoodfacts.dart' hide User;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 //start van de app
 Future<void> main() async {
@@ -36,6 +37,7 @@ Future<void> main() async {
   OpenFoodAPIConfiguration.globalCountry = OpenFoodFactsCountry.NETHERLANDS;
 
   await NotificationService().initialize(); //initialiseer notificatie service
+  await dotenv.load(fileName: "assets/env/.env");
 
   //start de app
   runApp(const MyApp());

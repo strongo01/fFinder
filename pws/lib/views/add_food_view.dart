@@ -2,6 +2,7 @@ import 'package:fFinder/views/feedback_view.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -69,13 +70,16 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
   void _handleInitialAction() async {
     final user = FirebaseAuth.instance.currentUser;
-    
+
     // Standaard is de tutorial niet afgerond als er geen gebruiker is
-    bool tutorialCompleted = false; 
+    bool tutorialCompleted = false;
 
     if (user != null) {
       try {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
         tutorialCompleted = userDoc.data()?['tutorialFoodAf'] ?? false;
       } catch (e) {
         // Fout bij ophalen, ga er voor de veiligheid van uit dat de tutorial niet is voltooid
@@ -107,25 +111,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
-  void _showTutorial() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-    final bool tutorialHomeAf = userDoc.data()?['tutorialFoodAf'] ?? false;
-
-    if (!tutorialHomeAf) {
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          tutorialCoachMark.show(context: context);
-        }
-      });
-    }
-  }
-
   void _createTutorial() async {
     final prefs = await SharedPreferences.getInstance();
     tutorialCoachMark = TutorialCoachMark(
@@ -144,7 +129,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           });
         }
       },
-      onClickTarget: (target) { // wanneer een target wordt aangeklikt
+      onClickTarget: (target) {
+        // wanneer een target wordt aangeklikt
         print('Target geklikt: $target');
         final String? identify = target.identify;
         int? targetIndex;
@@ -167,7 +153,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
         if (targetIndex != null) {
           setState(() {
             _selectedTabIndex = targetIndex!;
-            for (int i = 0; i < _selectedToggle.length; i++) { // update toggle state
+            for (int i = 0; i < _selectedToggle.length; i++) {
+              // update toggle state
               _selectedToggle[i] = i == targetIndex;
             }
           });
@@ -338,7 +325,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[ //<Widget> omdat anders error geeft
+        children: <Widget>[
+          //<Widget> omdat anders error geeft
           Text(
             title,
             style: TextStyle(
@@ -387,21 +375,71 @@ class _AddFoodPageState extends State<AddFoodPage> {
     });
 
     try {
-      final url = Uri.parse(
-        "https://nl.openfoodfacts.org/cgi/search.pl"
-        "?search_terms=${Uri.encodeComponent(trimmed)}"
-        "&search_simple=1"
-        "&json=1"
-        "&action=process",
-      );
+      List all = []; // Lege lijst om producten op te slaan
 
-      final response = await http.get(url);
-      if (response.statusCode != 200) {
-        throw Exception("HTTP ${response.statusCode}");
+      try {
+        print("--- Poging 1: ffinder.nl endpoint ---");
+        final ffinderUrl = Uri.parse(
+          "http://ffinder.nl/search?query=${Uri.encodeComponent(trimmed)}",
+        );
+        print("URL: $ffinderUrl");
+        final appKey = dotenv.env["APP_KEY"];
+
+        final response = await http.get(
+          ffinderUrl,
+          headers: {"x-app-key": appKey ?? ""},
+        );
+
+        print("ffinder.nl Status Code: ${response.statusCode}");
+        print("ffinder.nl Response Body: ${response.body}");
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final foodsObject = data["foods"];
+          if (foodsObject != null && foodsObject["food"] is List) {
+            final products = foodsObject["food"] as List;
+
+            if (products.isNotEmpty) {
+              print(
+                "Succes: ${products.length} producten gevonden via ffinder.nl",
+              );
+              all = products;
+            } else {
+              print("ffinder.nl gaf een leeg resultaat.");
+            }
+          }
+        } else {
+          print("ffinder.nl gaf een error status: ${response.statusCode}");
+        }
+      } catch (e) {
+        print("Fout bij het aanroepen van ffinder.nl: $e");
+        // De 'all' lijst is nog steeds leeg, dus de fallback wordt automatisch gebruikt.
       }
 
-      final data = jsonDecode(response.body);
-      final List all = (data["products"] as List?) ?? []; // alle producten
+      // Fallback naar Open Food Facts
+      if (all.isEmpty) {
+        print("\n--- Poging 2: Open Food Facts (Fallback) ---");
+        final openFoodFactsUrl = Uri.parse(
+          "https://nl.openfoodfacts.org/cgi/search.pl"
+          "?search_terms=${Uri.encodeComponent(trimmed)}"
+          "&search_simple=1"
+          "&json=1"
+          "&action=process",
+        );
+        print("URL: $openFoodFactsUrl");
+
+        final response = await http.get(openFoodFactsUrl);
+        print("OpenFoodFacts Status Code: ${response.statusCode}");
+        //print("OpenFoodFacts Response Body: ${response.body}"); // Kan erg lang zijn
+
+        if (response.statusCode != 200) {
+          throw Exception("HTTP ${response.statusCode}");
+        }
+
+        final data = jsonDecode(response.body);
+        all = (data["products"] as List?) ?? []; // alle producten
+        print("Succes: ${all.length} producten gevonden via Open Food Facts.");
+      }
 
       final escaped = RegExp.escape(trimmed); // escape speciale tekens
       final wholeWord = RegExp(
@@ -451,6 +489,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         });
       }
     } catch (e) {
+      print("Algemene fout in _searchProducts: $e");
       setState(() {
         _errorMessage = 'Fout bij ophalen: $e';
       });
@@ -566,7 +605,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
         ),
         actions: [
           if (_searchController.text.isEmpty &&
-              (_selectedTabIndex == 2 || _selectedTabIndex == 3)) // alleen tonen bij mijn producten of maaltijden
+              (_selectedTabIndex == 2 ||
+                  _selectedTabIndex ==
+                      3)) // alleen tonen bij mijn producten of maaltijden
             IconButton(
               key: _selectedTabIndex == 2
                   ? _myproductsAddKey
@@ -624,7 +665,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   },
                 );
 
-                if (choice == 'product') { // toon sheet om eigen product toe te voegen
+                if (choice == 'product') {
+                  // toon sheet om eigen product toe te voegen
                   setState(() {
                     _selectedTabIndex = 2;
                     for (int i = 0; i < _selectedToggle.length; i++) {
@@ -632,7 +674,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     }
                   });
                   _showAddMyProductSheet();
-                } else if (choice == 'meal') { // toon sheet om maaltijd toe te voegen
+                } else if (choice == 'meal') {
+                  // toon sheet om maaltijd toe te voegen
                   setState(() {
                     _selectedTabIndex = 3;
                     for (int i = 0; i < _selectedToggle.length; i++) {
@@ -668,7 +711,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 onPressed: (int index) {
                   setState(() {
                     _selectedTabIndex = index;
-                    for (int i = 0; i < _selectedToggle.length; i++) { 
+                    for (int i = 0; i < _selectedToggle.length; i++) {
                       // update toggle state
                       _selectedToggle[i] = i == index;
                     }
@@ -742,7 +785,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
 
     return ListView.builder(
-      itemCount: _searchResults!.length + 1, // +1 voor de knop om eigen product toe te voegen
+      itemCount:
+          _searchResults!.length +
+          1, // +1 voor de knop om eigen product toe te voegen
       itemBuilder: (context, index) {
         if (index == _searchResults!.length) {
           return Padding(
@@ -975,7 +1020,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
       },
     );
   }
-  
 
   Future<void> _addRecentMyProduct(
     // voeg recent eigen product toe
@@ -997,7 +1041,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
     await docRef.set(dataToSave, SetOptions(merge: true)); // sla op met merge
   }
-  
+
   Future<Map<String, dynamic>?> _showProductDetails(
     String barcode, {
     Map<String, dynamic>? productData,
@@ -1008,7 +1052,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       context: context,
       isScrollControlled: true,
       builder: (context) {
- // toon de product bewerk sheet
+        // toon de product bewerk sheet
         return ProductEditSheet(
           barcode: barcode,
           productData: productData,
@@ -1525,7 +1569,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     };
     double totalAmount = 0;
 
-    for (final ingredient in ingredients) { //  loop door ingrediënten
+    for (final ingredient in ingredients) {
+      //  loop door ingrediënten
       // bereken de totale voedingswaarden
       final amount = (ingredient['amount'] as num?)?.toDouble() ?? 0;
       final nutrimentsPer100g =
@@ -1533,7 +1578,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
       final factor = amount / 100.0;
       totalAmount += amount;
 
-      totalNutriments.forEach((key, value) { // loop door elke voedingswaarde
+      totalNutriments.forEach((key, value) {
+        // loop door elke voedingswaarde
         final nutrientValue =
             (nutrimentsPer100g[key] as num?)?.toDouble() ?? 0.0;
         totalNutriments[key] =
@@ -1669,13 +1715,15 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
     List<Map<String, dynamic>> ingredientEntries = [];
 
-    if (existingMeal != null) { // als er een bestaande maaltijd is
+    if (existingMeal != null) {
+      // als er een bestaande maaltijd is
       _mealNameController.text = existingMeal['name'] ?? '';
       final ingredients =
           (existingMeal['ingredients'] as List<dynamic>?)
               ?.cast<Map<String, dynamic>>() ??
           [];
-      for (var ingredient in ingredients) { // loop door elk ingrediënt
+      for (var ingredient in ingredients) {
+        // loop door elk ingrediënt
         // vul de ingrediënten in
         ingredientEntries.add({
           'searchController': TextEditingController(),
@@ -1717,29 +1765,77 @@ class _AddFoodPageState extends State<AddFoodPage> {
               String query,
               int index,
             ) async {
-              if (query.length < 2) { // minimale lengte voor zoeken
+              if (query.length < 2) {
+                // minimale lengte voor zoeken
                 setModalState(() {
                   ingredientEntries[index]['searchResults'] = null;
                 });
                 return;
               }
+
               setModalState(() {
                 ingredientEntries[index]['isSearching'] = true;
               });
 
-              final url = Uri.parse(
-                "https://nl.openfoodfacts.org/cgi/search.pl?search_terms=${Uri.encodeComponent(query)}&search_simple=1&json=1&action=process",
-              );
-              final response = await http.get(url);
-              if (response.statusCode == 200) {
-                final data = jsonDecode(response.body);
+              List all = [];
+              final appKey = dotenv.env["APP_KEY"] ?? "";
+
+              try {
+                //Probeer eerst ffinder.nl (jouw backend)
+                try {
+                  final ffinderUrl = Uri.parse(
+                    "http://ffinder.nl/search?query=${Uri.encodeComponent(query)}",
+                  );
+
+                  final ffinderResponse = await http.get(
+                    ffinderUrl,
+                    headers: {"x-app-key": appKey},
+                  );
+
+                  if (ffinderResponse.statusCode == 200) {
+                    final data = jsonDecode(ffinderResponse.body);
+                    final foodsObject = data["foods"];
+                    if (foodsObject != null && foodsObject["food"] is List) {
+                      all = foodsObject["food"] as List;
+                    }
+                  } else {
+                    print(
+                      "ffinder.nl gaf status ${ffinderResponse.statusCode}",
+                    );
+                  }
+                } catch (e) {
+                  print("Fout bij zoeken op ffinder.nl: $e");
+                  // laat 'all' leeg zodat fallback wordt gebruikt
+                }
+
+                // Fallback naar OpenFoodFacts als ffinder niets teruggeeft of error
+                if (all.isEmpty) {
+                  final offUrl = Uri.parse(
+                    "https://nl.openfoodfacts.org/cgi/search.pl"
+                    "?search_terms=${Uri.encodeComponent(query)}"
+                    "&search_simple=1"
+                    "&json=1"
+                    "&action=process",
+                  );
+
+                  final offResponse = await http.get(offUrl);
+                  if (offResponse.statusCode == 200) {
+                    final data = jsonDecode(offResponse.body);
+                    all = (data["products"] as List?) ?? [];
+                  } else {
+                    print("OpenFoodFacts gaf status ${offResponse.statusCode}");
+                  }
+                }
+
+                //Resultaten in state zetten
                 setModalState(() {
-                  ingredientEntries[index]['searchResults'] =
-                      (data["products"] as List?) ?? [];
+                  ingredientEntries[index]['searchResults'] = all;
                   ingredientEntries[index]['isSearching'] = false;
                 });
-              } else {
+              } catch (e) {
+                print("Algemene fout bij zoeken: $e");
                 setModalState(() {
+                  ingredientEntries[index]['searchResults'] = [];
                   ingredientEntries[index]['isSearching'] = false;
                 });
               }
@@ -1787,7 +1883,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       ListView.builder(
                         shrinkWrap: true,
                         physics:
-                            const NeverScrollableScrollPhysics(), // in een scrollview 
+                            const NeverScrollableScrollPhysics(), // in een scrollview
                         itemCount: ingredientEntries.length,
                         itemBuilder: (context, index) {
                           final entry = ingredientEntries[index];
@@ -1800,7 +1896,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           final selectedProduct =
                               entry['selectedProduct'] as Map<String, dynamic>?;
 
-                          if (selectedProduct != null) { // toon geselecteerd product
+                          if (selectedProduct != null) {
+                            // toon geselecteerd product
                             return Card(
                               margin: const EdgeInsets.symmetric(vertical: 4.0),
                               child: ListTile(
@@ -1826,7 +1923,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                   );
 
                                   if (result != null &&
-                                      result['amount'] != null) { // update hoeveelheid
+                                      result['amount'] != null) {
+                                    // update hoeveelheid
                                     setModalState(() {
                                       amountController.text = result['amount']
                                           .toString();
@@ -1896,7 +1994,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     child: CircularProgressIndicator(),
                                   ),
                                 ),
-                              if (entry['searchResults'] != null) // toon zoekresultaten
+                              if (entry['searchResults'] !=
+                                  null) // toon zoekresultaten
                                 SizedBox(
                                   height: 150,
                                   child: ListView.builder(
@@ -1969,12 +2068,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       const SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: () async {
-                          if (_formKey.currentState!.validate()) { // valideer formulier
+                          if (_formKey.currentState!.validate()) {
+                            // valideer formulier
                             final user = FirebaseAuth.instance.currentUser;
                             if (user == null) return;
 
                             List<Map<String, dynamic>> finalProducts = [];
-                            for (var entry in ingredientEntries) { // verzamel producten
+                            for (var entry in ingredientEntries) {
+                              // verzamel producten
                               if (entry['selectedProduct'] != null &&
                                   (entry['amountController']
                                           as TextEditingController)
@@ -1988,7 +2089,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                           as TextEditingController)
                                       .text,
                                 );
-                                if (amount != null) { // voeg product toe aan lijst
+                                if (amount != null) {
+                                  // voeg product toe aan lijst
                                   finalProducts.add({
                                     'product_id': product['_id'],
                                     'product_name': product['product_name'],
@@ -2281,7 +2383,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
         final nutriments =
             productData['nutriments_per_100g'] as Map<String, dynamic>? ?? {};
 
-        return DraggableScrollableSheet( // maak de sheet sleepbaar
+        return DraggableScrollableSheet(
+          // maak de sheet sleepbaar
           expand: false, // niet volledig uitvouwen
           initialChildSize: 0.8,
           maxChildSize: 0.9,
@@ -2440,7 +2543,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<String>( // dropdown voor maaltijdtype
+                    DropdownButtonFormField<String>(
+                      // dropdown voor maaltijdtype
                       value: selectedMeal,
                       style: TextStyle(color: textColor),
                       decoration: const InputDecoration(labelText: 'Sectie'),
@@ -2450,7 +2554,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           child: Text(value),
                         );
                       }).toList(),
-                      onChanged: (newValue) { // update geselecteerd maaltijdtype
+                      onChanged: (newValue) {
+                        // update geselecteerd maaltijdtype
                         setDialogState(() {
                           selectedMeal = newValue!;
                         });
