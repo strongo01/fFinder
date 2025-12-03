@@ -383,7 +383,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
           }
         }
       } else {
-                final errors = <String>[];
+        final errors = <String>[];
         if (password.length < 6) {
           errors.add('minimaal 6 tekens');
         }
@@ -399,8 +399,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
 
         if (errors.isNotEmpty) {
           final message = 'Je wachtwoord mist: ${errors.join(', ')}.';
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(message)));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
           setState(() => _loading = false); // Stop laadindicator
           return; // Stop de functie
         }
