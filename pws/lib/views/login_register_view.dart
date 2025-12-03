@@ -447,6 +447,61 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
     }
   }
 
+  Future<void> _resetPassword() async {
+    if (_emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Voer je e-mailadres in om je wachtwoord te resetten.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      await _auth.sendPasswordResetEmail(email: _emailController.text.trim());
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(
+            'E-mail verzonden',
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black,
+            ),
+          ),
+          content: Text(
+            'Er is een e-mail verzonden om je wachtwoord te resetten. Let op: deze e-mail kan in je spamfolder terechtkomen. Afzender: noreply@pwsmt-fd851.firebaseapp.com',
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      String message = 'Er is een fout opgetreden.';
+      if (e.code == 'user-not-found') {
+        message = 'Geen account gevonden voor dit e-mailadres.';
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   void dispose() {
     //ruimt de controllers o pals het scherm sluit
@@ -578,6 +633,19 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+
+                if (_isLogin)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _resetPassword,
+                        child: const Text('Wachtwoord vergeten?'),
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 24),
 
                 //laadicoon

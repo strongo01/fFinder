@@ -1214,7 +1214,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final Map<String, double> drinkBreakdown = {}; // voor waterinname
         double totalWater = 0;
         for (var entry in entries) {
-          if (entry['meal_type'] == 'Drinken') {
+          if (entry.containsKey('quantity')) {
             final quantityString = entry['quantity'] as String? ?? '0 ml';
             final amount =
                 double.tryParse(quantityString.replaceAll(' ml', '')) ?? 0.0;
@@ -1839,7 +1839,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               String rightSideText;
 
-              if (entry['meal_type'] == 'Drinken') {
+              if (entry.containsKey('quantity')) {
                 // Als het drinken is, toon ml anders kcal
                 rightSideText = entry['quantity'] as String? ?? '0 ml';
               } else {

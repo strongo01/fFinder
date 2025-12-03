@@ -1184,7 +1184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       onPressed: _confirmSignOut,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 50),
                     OutlinedButton.icon(
                       icon: Icon(
                         Icons.delete_forever,
