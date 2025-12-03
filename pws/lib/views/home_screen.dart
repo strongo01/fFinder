@@ -243,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
       opacityShadow: 0.8,
       hideSkip: true,
       onClickTarget: (target) {
-        if (target.identify == "add-fab-key") {
+        if (target.identify == "calorie-info-row-key") {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
             duration: const Duration(milliseconds: 400),
@@ -278,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
               'Datum wisselen',
-              'Tik hier om naar een andere dag te gaan.',
+              'Hier kan je naar een andere dag gaan.',
               isDarkMode,
             ),
           ),
@@ -299,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
             align: ContentAlign.top,
             child: _buildTutorialContent(
               'Recepten',
-              'Tik hier om naar recepten te zoeken.',
+              'Deze pagina is om naar recepten te zoeken.',
               isDarkMode,
             ),
           ),
@@ -320,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
             align: ContentAlign.top,
             child: _buildTutorialContent(
               'Gewicht',
-              'Tik hier om je gewicht toe te voegen en je bmi te bekijken. Door grafieken en tabellen kan je je gewicht bijhouden.',
+              'Deze pagina is om je gewicht toe te voegen en je bmi te bekijken. Door grafieken en tabellen kan je je gewicht bijhouden.',
               isDarkMode,
             ),
           ),
@@ -355,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
               'Instellingen',
-              'Tik hier om uw gegevens aan te passen, de tijd van de meldingen of andere instellingen te wijzigen.',
+              'Deze pagina is om uw gegevens aan te passen, de tijd van de meldingen of andere instellingen te wijzigen.',
               isDarkMode,
             ),
           ),
@@ -657,7 +657,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final goal = data['goal'] ?? 'Op gewicht blijven';
     final activityFull =
         data['activityLevel'] ??
-        'Weinig actief: je zit veel, weinig beweging per dag';
+        'Weinig actief: zittend werk, nauwelijks beweging, geen sport';
 
     final birthDate = DateTime.tryParse(birthDateString) ?? DateTime(2000);
     final age = DateTime.now().year - birthDate.year;

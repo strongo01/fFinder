@@ -40,13 +40,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isAdmin = false;
 
   final List<String> _activityOptions = [
-    // opties voor activiteitenniveau
-    'Weinig actief: je zit veel, weinig beweging per dag',
-    'Licht actief: je wandelt kort (10–20 min) of lichte beweging',
-    'Gemiddeld actief: 3–4x per week sporten of veel wandelen',
-    'Zeer actief: elke dag intensieve training of zwaar werk',
-    'Extreem actief: topsport niveau of fysiek zwaar dagelijks werk',
-  ];
+  'Weinig actief: zittend werk, nauwelijks beweging, geen sport',
+  'Licht actief: 1–3x per week lichte training of dagelijks 30–45 min wandelen',
+  'Gemiddeld actief: 3–5x per week sporten of een actief beroep (horeca, zorg, postbezorger)',
+  'Zeer actief: 6–7x per week intensieve training of fysiek zwaar werk (bouw, magazijn)',
+  'Extreem actief: topsporttraining 2× per dag of extreem fysiek zwaar werk (militair, bosbouw)',
+];
 
   final List<String> _goalOptions = [
     // opties voor doelen
@@ -122,6 +121,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (doc.exists) {
         final data = doc.data() ?? {};
 
+                final savedActivityLevel = data['activityLevel'] as String?;
+        final savedGoal = data['goal'] as String?;
+
+        // Controleer of de opgeslagen waarden nog geldig zijn. Zo niet, gebruik de eerste optie als fallback.
+        final validActivityLevel = savedActivityLevel != null && _activityOptions.contains(savedActivityLevel)
+            ? savedActivityLevel
+            : _activityOptions.first;
+        
+        final validGoal = savedGoal != null && _goalOptions.contains(savedGoal)
+            ? savedGoal
+            : _goalOptions.first;
+
         setState(() {
           _isAdmin = data['admin'] ?? false;
           _currentWeight =
@@ -130,8 +141,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               (data['targetWeight'] as num?)?.toDouble() ?? _targetWeight;
           _height = (data['height'] as num?)?.toDouble() ?? _height;
           _sleepHours = (data['sleepHours'] as num?)?.toDouble() ?? _sleepHours;
-          _activityLevel = (data['activityLevel'] as String?) ?? _activityLevel;
-          _goal = (data['goal'] as String?) ?? _goal;
+          _activityLevel = validActivityLevel;
+          _goal = validGoal;
 
           // Werk ook de controllers hier bij
           _weightController.text = _currentWeight.toStringAsFixed(1);

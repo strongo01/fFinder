@@ -46,7 +46,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.scannedBarcode != null) {
+    /*if (widget.scannedBarcode != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // wacht totdat de build klaar is
         if (mounted) {
@@ -56,14 +56,55 @@ class _AddFoodPageState extends State<AddFoodPage> {
           );
         }
       });
-    }
+    }*/
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _createTutorial();
-    _showTutorial();
+    //_showTutorial();
+    _handleInitialAction();
+  }
+
+  void _handleInitialAction() async {
+    final user = FirebaseAuth.instance.currentUser;
+    
+    // Standaard is de tutorial niet afgerond als er geen gebruiker is
+    bool tutorialCompleted = false; 
+
+    if (user != null) {
+      try {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        tutorialCompleted = userDoc.data()?['tutorialFoodAf'] ?? false;
+      } catch (e) {
+        // Fout bij ophalen, ga er voor de veiligheid van uit dat de tutorial niet is voltooid
+        print("Kon tutorial status niet ophalen: $e");
+        tutorialCompleted = false;
+      }
+    }
+
+    if (tutorialCompleted) {
+      // Tutorial is afgerond, open de productdetails als er een barcode is
+      if (widget.scannedBarcode != null && mounted) {
+        // Gebruik addPostFrameCallback om zeker te weten dat de build klaar is
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showProductDetails(
+              widget.scannedBarcode!,
+              productData: widget.initialProductData,
+            );
+          }
+        });
+      }
+    } else {
+      // Tutorial is nog niet afgerond, start de tutorial
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          tutorialCoachMark.show(context: context);
+        }
+      });
+    }
   }
 
   void _showTutorial() async {

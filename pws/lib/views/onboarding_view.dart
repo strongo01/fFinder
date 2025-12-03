@@ -52,13 +52,21 @@ class _OnboardingViewState extends State<OnboardingView> {
     '2': {}, // vrouw
   };
 
-  final List<String> activityOptions = [
+  /*final List<String> activityOptions = [
     // opties voor activiteitenniveau
     'Weinig actief: je zit veel, weinig beweging per dag',
     'Licht actief: je wandelt kort (10–20 min) of lichte beweging',
     'Gemiddeld actief: 3–4x per week sporten of veel wandelen',
     'Zeer actief: elke dag intensieve training of zwaar werk',
     'Extreem actief: topsport niveau of fysiek zwaar dagelijks werk',
+  ];*/
+
+  final List<String> activityOptions = [
+    'Weinig actief: zittend werk, nauwelijks beweging, geen sport',
+    'Licht actief: 1–3x per week lichte training of dagelijks 30–45 min wandelen',
+    'Gemiddeld actief: 3–5x per week sporten of een actief beroep (horeca, zorg, postbezorger)',
+    'Zeer actief: 6–7x per week intensieve training of fysiek zwaar werk (bouw, magazijn)',
+    'Extreem actief: topsporttraining 2× per dag of extreem fysiek zwaar werk (militair, bosbouw)',
   ];
 
   final List<String> goalOptions = [
@@ -792,6 +800,10 @@ class _OnboardingViewState extends State<OnboardingView> {
                       content: TextField(
                         controller: _heightController,
                         keyboardType: TextInputType.number,
+                                                inputFormatters: [
+                          CommaToPeriodTextInputFormatter(), // Vervangt ',' door '.'
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')), // Sta alleen cijfers en één punt toe
+                        ],
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => _nextPage(),
                         style: inputTextStyle,
@@ -810,6 +822,10 @@ class _OnboardingViewState extends State<OnboardingView> {
                       content: TextField(
                         controller: _weightController,
                         keyboardType: TextInputType.number,
+                                                inputFormatters: [
+                          CommaToPeriodTextInputFormatter(), // Vervangt ',' door '.'
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')), // Sta alleen cijfers en één punt toe
+                        ],
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => _nextPage(),
                         style: inputTextStyle,
@@ -872,6 +888,10 @@ class _OnboardingViewState extends State<OnboardingView> {
                           TextField(
                             controller: _targetWeightController,
                             keyboardType: TextInputType.number,
+                                                    inputFormatters: [
+                          CommaToPeriodTextInputFormatter(), // Vervangt ',' door '.'
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')), // Sta alleen cijfers en één punt toe
+                        ],
                             textInputAction: TextInputAction.next,
                             onSubmitted: (_) => _nextPage(),
                             style: inputTextStyle,
@@ -1129,6 +1149,23 @@ class _OnboardingViewState extends State<OnboardingView> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class CommaToPeriodTextInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Vervang de komma door een punt in de nieuwe tekst
+    final newText = newValue.text.replaceAll(',', '.');
+
+    return TextEditingValue(
+      text: newText,
+      // Behoud de cursorpositie
+      selection: newValue.selection,
     );
   }
 }
