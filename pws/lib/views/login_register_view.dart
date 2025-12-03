@@ -383,6 +383,27 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
           }
         }
       } else {
+                final errors = <String>[];
+        if (password.length < 6) {
+          errors.add('minimaal 6 tekens');
+        }
+        if (!password.contains(RegExp(r'[A-Z]'))) {
+          errors.add('één hoofdletter');
+        }
+        if (!password.contains(RegExp(r'[a-z]'))) {
+          errors.add('één kleine letter');
+        }
+        if (!password.contains(RegExp(r'[0-9]'))) {
+          errors.add('één cijfer');
+        }
+
+        if (errors.isNotEmpty) {
+          final message = 'Je wachtwoord mist: ${errors.join(', ')}.';
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(message)));
+          setState(() => _loading = false); // Stop laadindicator
+          return; // Stop de functie
+        }
         //registreren
         final cred = await _auth.createUserWithEmailAndPassword(
           //maak nieuwe gebruiker aan in firebase auth
