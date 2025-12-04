@@ -380,7 +380,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       try {
         print("--- Poging 1: ffinder.nl endpoint ---");
         final ffinderUrl = Uri.parse(
-          "http://ffinder.nl/search?query=${Uri.encodeComponent(trimmed)}",
+          "https://ffinder.nl/search?query=${Uri.encodeComponent(trimmed)}",
         );
         print("URL: $ffinderUrl");
         final appKey = dotenv.env["APP_KEY"];
@@ -1784,7 +1784,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 //Probeer eerst ffinder.nl (jouw backend)
                 try {
                   final ffinderUrl = Uri.parse(
-                    "http://ffinder.nl/search?query=${Uri.encodeComponent(query)}",
+                    "https://ffinder.nl/search?query=${Uri.encodeComponent(query)}",
                   );
 
                   final ffinderResponse = await http.get(

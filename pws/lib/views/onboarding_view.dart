@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cryptography/cryptography.dart';
+import 'package:fFinder/views/crypto_class.dart';
 import 'package:fFinder/views/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:fFinder/views/home_screen.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
@@ -52,14 +55,6 @@ class _OnboardingViewState extends State<OnboardingView> {
     '2': {}, // vrouw
   };
 
-  /*final List<String> activityOptions = [
-    // opties voor activiteitenniveau
-    'Weinig actief: je zit veel, weinig beweging per dag',
-    'Licht actief: je wandelt kort (10–20 min) of lichte beweging',
-    'Gemiddeld actief: 3–4x per week sporten of veel wandelen',
-    'Zeer actief: elke dag intensieve training of zwaar werk',
-    'Extreem actief: topsport niveau of fysiek zwaar dagelijks werk',
-  ];*/
 
   final List<String> activityOptions = [
     'Weinig actief: zittend werk, nauwelijks beweging, geen sport',
@@ -242,6 +237,15 @@ class _OnboardingViewState extends State<OnboardingView> {
     final user = FirebaseAuth.instance.currentUser; // Huidige gebruiker ophalen
     if (user == null) return; // Als er geen gebruiker is, stop
 
+      // 1️⃣ Global DEK ophalen (Remote Config)
+  final globalDEKString =
+      FirebaseRemoteConfig.instance.getString('GLOBAL_DEK'); // Base64
+  final globalDEK = SecretKey(base64Decode(globalDEKString));
+
+  // 2️⃣ User-specifieke DEK afleiden
+  final userDEK = await deriveUserKey(globalDEK, user.uid);
+
+
     final heightCm = double.tryParse(_heightController.text);
     final weightKg = double.tryParse(_weightController.text);
     final birthDate = _birthDate;
@@ -322,38 +326,39 @@ class _OnboardingViewState extends State<OnboardingView> {
     }
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'firstName': _firstNameController.text.trim(),
-        'gender': _gender,
-        'birthDate': _birthDate?.toIso8601String(),
-        'height': double.tryParse(_heightController.text) ?? 0,
-        'weight': double.tryParse(_weightController.text) ?? 0,
-        'calorieGoal': calorieGoal,
-        'proteinGoal': proteinGoal,
-        'fatGoal': fatGoal,
-        'carbGoal': carbGoal,
-        'bmi': bmi,
-        'sleepHours': _sleepHours,
-        'targetWeight': double.tryParse(_targetWeightController.text) ?? 0,
-        'notificationsEnabled': _notificationsEnabled,
-        'onboardingaf': true,
-        'activityLevel': _activityLevel,
-        'goal': _goal,
-      }, SetOptions(merge: true));
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set({
+      'firstName': await encryptValue(_firstNameController.text.trim(), userDEK),
+      'gender': await encryptValue(_gender, userDEK),
+      'birthDate': await encryptValue(birthDate?.toIso8601String() ?? '', userDEK),
+      'height': await encryptDouble(heightCm ?? 0, userDEK),
+      'weight': await encryptDouble(weightKg ?? 0, userDEK),
+      'calorieGoal': await encryptDouble(calorieGoal ?? 0, userDEK),
+      'proteinGoal': await encryptDouble(proteinGoal ?? 0, userDEK),
+      'fatGoal': await encryptDouble(fatGoal ?? 0, userDEK),
+      'carbGoal': await encryptDouble(carbGoal ?? 0, userDEK),
+      'bmi': await encryptDouble(bmi ?? 0, userDEK),
+      'sleepHours': await encryptDouble(_sleepHours, userDEK),
+      'targetWeight': await encryptDouble(
+          double.tryParse(_targetWeightController.text) ?? 0, userDEK),
+      'notificationsEnabled': _notificationsEnabled,
+      'onboardingaf': true,
+      'activityLevel': await encryptValue(_activityLevel, userDEK),
+      'goal': await encryptValue(_goal, userDEK),
+    }, SetOptions(merge: true));
 
-      if (mounted) {
-        //controleer of de widget nog bestaat
-        Navigator.of(context).pushReplacement(
-          // Ga naar home scherm
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Er ging iets mis: $e')));
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomeScreen()));
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Er ging iets mis: $e')));
   }
+}
+
 
   // Widget voor de bolletjes voortgangs dingetje
   Widget _buildProgressIndicator() {

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:flutter_native_timezone/flutter_native_timezone.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 // Deze handler moet een top-level functie zijn (buiten een class).
 // Het wordt aangeroepen wanneer een notificatie binnenkomt terwijl de app op de achtergrond of gesloten is.
@@ -33,15 +33,14 @@ class NotificationService {
     if (kIsWeb) {
       return;
     }
-  //Vraag permissie voor notificaties.
-    await _firebaseMessaging.requestPermission();
+//Vraag permissie voor notificaties.
+  await _firebaseMessaging.requestPermission();
 
-    final String currentTimeZone =
-        await FlutterNativeTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(currentTimeZone));
+  final dynamic currentTimeZone = await FlutterTimezone.getLocalTimezone();
+  tz.setLocalLocation(tz.getLocation(currentTimeZone));
 
-    // Voor iOS: stel presentatie-opties in voor voorgrondnotificaties.
-    await _firebaseMessaging.setForegroundNotificationPresentationOptions(
+  // Voor iOS: stel presentatie-opties in voor voorgrondnotificaties.
+  await _firebaseMessaging.setForegroundNotificationPresentationOptions(
       alert: true, // Toon een alert.
       badge: true, // Update de app-badge.
       sound: true, // Speel een geluid af.

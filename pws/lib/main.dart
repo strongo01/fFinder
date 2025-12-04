@@ -12,6 +12,8 @@ import 'package:openfoodfacts/openfoodfacts.dart' hide User;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
+
 
 //start van de app
 Future<void> main() async {
@@ -22,6 +24,12 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   ); // initialiseerd firebase voor het platform
+
+    await FirebaseAppCheck.instance.activate(
+    webProvider: null, // alleen voor Android
+    androidProvider: AndroidProvider.playIntegrity,
+  );
+
   await GoogleSignIn.instance
       .initialize(); // de sign in voor google wordt geinitialiseerd
 

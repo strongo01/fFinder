@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cryptography/cryptography.dart';
+import 'package:fFinder/views/crypto_class.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -628,23 +632,59 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _fetchUserData() async {
-    // haalt de gebruikersgegevens op uit Firestore
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+Future<void> _fetchUserData() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
 
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
+  // 1️⃣ Global DEK ophalen (Remote Config)
+  final remoteConfig = FirebaseRemoteConfig.instance;
+  await remoteConfig.fetchAndActivate(); // haal nieuwste config op
+  final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
+  final globalDEK = SecretKey(base64Decode(globalDEKString));
 
-    if (doc.exists) {
-      setState(() {
-        _userData = doc.data();
-        _calorieAllowance = _calculateCalories(_userData!);
-      });
-    }
-  }
+  // 2️⃣ User-specifieke DEK afleiden
+  final userDEK = await deriveUserKey(globalDEK, user.uid);
+
+  // 3️⃣ Haal data op
+  final doc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .get();
+
+  if (!doc.exists) return;
+
+  final data = doc.data()!;
+
+  // 4️⃣ Decrypt alle geëncryptte velden
+  final decryptedData = {
+    'firstName': await decryptValue(data['firstName'], userDEK),
+    'gender': await decryptValue(data['gender'], userDEK),
+    'birthDate': await decryptValue(data['birthDate'], userDEK),
+    'height': double.tryParse(await decryptValue(data['height'], userDEK)) ?? 0,
+    'weight': double.tryParse(await decryptValue(data['weight'], userDEK)) ?? 0,
+    'calorieGoal': double.tryParse(await decryptValue(data['calorieGoal'], userDEK)) ?? 0,
+    'proteinGoal': double.tryParse(await decryptValue(data['proteinGoal'], userDEK)) ?? 0,
+    'fatGoal': double.tryParse(await decryptValue(data['fatGoal'], userDEK)) ?? 0,
+    'carbGoal': double.tryParse(await decryptValue(data['carbGoal'], userDEK)) ?? 0,
+    'bmi': double.tryParse(await decryptValue(data['bmi'], userDEK)) ?? 0,
+    'sleepHours': double.tryParse(await decryptValue(data['sleepHours'], userDEK)) ?? 0,
+    'targetWeight': double.tryParse(await decryptValue(data['targetWeight'], userDEK)) ?? 0,
+    'notificationsEnabled': data['notificationsEnabled'],
+    'onboardingaf': data['onboardingaf'],
+    'activityLevel': await decryptValue(data['activityLevel'], userDEK),
+    'goal': await decryptValue(data['goal'], userDEK),
+  };
+
+  // ✅ Alles printen
+  print('Decrypted user data: $decryptedData');
+
+  // 5️⃣ Update state
+  setState(() {
+    _userData = decryptedData;
+    _calorieAllowance = _calculateCalories(_userData!);
+  });
+}
+
 
   double _calculateCalories(Map<String, dynamic> data) {
     //berekent de aanbevolen dagelijkse hoeveelheid calorieen

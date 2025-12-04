@@ -3,6 +3,8 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  dargon2_flutter_desktop
+  flutter_timezone
   url_launcher_linux
 )
 

@@ -19,6 +19,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -36,23 +37,16 @@ android {
         versionName = flutter.versionName
     }
 
-    val keystoreProperties = Properties()
-    val keystoreFile = rootProject.file("key.properties")
-    if (keystoreFile.exists()) {
-        keystoreProperties.load(FileInputStream(keystoreFile))
-    }
-
-
     signingConfigs {
         create("release") {
-            if (keystoreFile.exists()) {
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-            }
+            // Waarden uit gradle.properties halen
+            storeFile = file(project.property("RELEASE_KEYSTORE") as String)
+            storePassword = project.property("RELEASE_KEYSTORE_PASSWORD") as String
+            keyAlias = project.property("RELEASE_KEY_ALIAS") as String
+            keyPassword = project.property("RELEASE_KEY_PASSWORD") as String
         }
     }
+
 
     buildTypes {
         getByName("release") {
@@ -68,4 +62,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
