@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cryptography/cryptography.dart';
+import 'package:fFinder/views/crypto_class.dart';
 import 'package:fFinder/views/feedback_view.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -36,7 +40,8 @@ class _WeightViewState extends State<WeightView> {
   }
 
   final TextEditingController _weightController = TextEditingController();
-  final FocusNode _weightFocusNode = FocusNode(); // FocusNode voor het gewicht invoerveld
+  final FocusNode _weightFocusNode =
+      FocusNode(); // FocusNode voor het gewicht invoerveld
 
   @override
   void initState() {
@@ -58,6 +63,13 @@ class _WeightViewState extends State<WeightView> {
       return;
     }
 
+    SecretKey? userDEK;
+    try {
+      userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    } catch (_) {
+      userDEK = null;
+    }
+
     try {
       final doc = await FirebaseFirestore.instance
           .collection('users')
@@ -65,15 +77,81 @@ class _WeightViewState extends State<WeightView> {
           .get();
       final data = doc.data() ?? {};
 
-      _weight = _parseDouble(data['weight']) ?? _weight;
-      _height = _parseDouble(data['height']) ?? _height;
+      if (userDEK != null && data['weight'] is String) {
+        try {
+          final dec = await decryptValue(data['weight'] as String, userDEK);
+          _weight = double.tryParse(dec.replaceAll(',', '.')) ?? _weight;
+        } catch (_) {
+          _weight = _parseDouble(data['weight']) ?? _weight;
+        }
+      } else {
+        _weight = _parseDouble(data['weight']) ?? _weight;
+      }
+
+      if (userDEK != null && data['height'] is String) {
+        try {
+          final dec = await decryptValue(data['height'] as String, userDEK);
+          _height = double.tryParse(dec.replaceAll(',', '.')) ?? _height;
+        } catch (_) {
+          _height = _parseDouble(data['height']) ?? _height;
+        }
+      } else {
+        _height = _parseDouble(data['height']) ?? _height;
+      }
 
       final weightsRaw = data['weights'] as List<dynamic>? ?? [];
-      _entries =
-          weightsRaw 
-              .map((e) => WeightEntry.fromMap(e as Map<String, dynamic>)) 
-              .toList()
-            ..sort((a, b) => a.date.compareTo(b.date));
+      final List<WeightEntry> loaded = [];
+      for (final item in weightsRaw) {
+        try {
+          if (item is String && userDEK != null) {
+            final dec = await decryptValue(item, userDEK);
+            final Map<String, dynamic> m = Map<String, dynamic>.from(
+              jsonDecode(dec),
+            );
+            final date =
+                DateTime.tryParse(m['date'] as String? ?? '') ?? DateTime.now();
+            final w = _parseDouble(m['weight']) ?? 0.0;
+            loaded.add(WeightEntry(date: date, weight: w));
+          } else if (item is Map<String, dynamic>) {
+            final dateField = item['date'];
+            DateTime date;
+            if (dateField is String) {
+              if (userDEK != null) {
+                try {
+                  final decDate = await decryptValue(dateField, userDEK);
+                  date = DateTime.parse(decDate);
+                } catch (_) {
+                  date = DateTime.tryParse(dateField) ?? DateTime.now();
+                }
+              } else {
+                date = DateTime.tryParse(dateField) ?? DateTime.now();
+              }
+            } else {
+              date = DateTime.now();
+            }
+
+            final weightField = item['weight'];
+            double weightVal = 0.0;
+            if (weightField is String) {
+              if (userDEK != null) {
+                try {
+                  final decW = await decryptValue(weightField, userDEK);
+                  weightVal = double.tryParse(decW.replaceAll(',', '.')) ?? 0.0;
+                } catch (_) {
+                  weightVal = _parseDouble(weightField) ?? 0.0;
+                }
+              } else {
+                weightVal = _parseDouble(weightField) ?? 0.0;
+              }
+            } else if (weightField is num) {
+              weightVal = weightField.toDouble();
+            }
+            loaded.add(WeightEntry(date: date, weight: weightVal));
+          }
+        } catch (_) {}
+      }
+
+      _entries = loaded..sort((a, b) => a.date.compareTo(b.date));
       _currentMonthIndex = 0;
       _weightController.text = _weight.toStringAsFixed(1);
       _recalculateBMI();
@@ -87,8 +165,9 @@ class _WeightViewState extends State<WeightView> {
     }
   }
 
-  double? _parseDouble(dynamic value) { // Hulpmethode om double te parsen. parsen betekent omzetten van tekst naar een getal
-    if (value == null) return null; 
+  double? _parseDouble(dynamic value) {
+    // Hulpmethode om double te parsen. parsen betekent omzetten van tekst naar een getal
+    if (value == null) return null;
     if (value is num) return value.toDouble();
     if (value is String) {
       return double.tryParse(value.replaceAll(',', '.'));
@@ -113,6 +192,12 @@ class _WeightViewState extends State<WeightView> {
     _weightFocusNode.unfocus();
 
     setState(() => _saving = true);
+    SecretKey? userDEK;
+    try {
+      userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    } catch (_) {
+      userDEK = null;
+    }
     try {
       final now = DateTime.now();
       final newEntry = WeightEntry(
@@ -132,30 +217,86 @@ class _WeightViewState extends State<WeightView> {
       final doc = await docRef.get();
       final data = doc.data() ?? {};
 
-      final String gender = (data['gender'] as String?) ?? 'Man';
-      final String? birthDateStr = data['birthDate'] as String?;
-      DateTime? birthDate;
-      if (birthDateStr != null && birthDateStr.isNotEmpty) {
-        birthDate = DateTime.tryParse(birthDateStr);
+      String activityLevel =
+          (data['activityLevel'] as String?) ?? 'Weinig actief';
+      String goal = (data['goal'] as String?) ?? 'Op gewicht blijven';
+      if (userDEK != null) {
+        try {
+          if (data['activityLevel'] is String) {
+            final dec = await decryptValue(
+              data['activityLevel'] as String,
+              userDEK,
+            );
+            activityLevel = dec;
+          }
+        } catch (_) {}
+        try {
+          if (data['goal'] is String) {
+            final dec = await decryptValue(data['goal'] as String, userDEK);
+            goal = dec;
+          }
+        } catch (_) {}
       }
 
-      final String activityLevel =
-          (data['activityLevel'] as String?) ?? 'Weinig actief';
-      final String goal = (data['goal'] as String?) ?? 'Op gewicht blijven';
-      final double height = (data['height'] as num?)?.toDouble() ?? _height;
-      final double targetWeight =
-          (data['targetWeight'] as num?)?.toDouble() ?? _weight;
+      String gender = 'Man';
+      if (data['gender'] is String) {
+        if (userDEK != null) {
+          try {
+            gender = await decryptValue(data['gender'] as String, userDEK);
+          } catch (_) {
+            gender = data['gender'] as String;
+          }
+        } else {
+          gender = data['gender'] as String;
+        }
+      }
+      final String? birthDateStrEnc = data['birthDate'] as String?;
+      DateTime? birthDate;
+      if (birthDateStrEnc != null) {
+        String birthDecoded = birthDateStrEnc;
+        if (userDEK != null) {
+          try {
+            birthDecoded = await decryptValue(birthDateStrEnc, userDEK);
+          } catch (_) {}
+        }
+        birthDate = birthDecoded.isNotEmpty
+            ? DateTime.tryParse(birthDecoded)
+            : null;
+      }
 
+      double heightVal;
+      if (userDEK != null && data['height'] is String) {
+        String heightDec = data['height'] as String;
+        try {
+          heightDec = await decryptValue(data['height'] as String, userDEK);
+        } catch (_) {}
+        heightVal = double.tryParse(heightDec.replaceAll(',', '.')) ?? _height;
+      } else {
+        heightVal = _parseDouble(data['height']) ?? _height;
+      }
+      double targetWeightVal;
+      if (userDEK != null && data['targetWeight'] is String) {
+        String targDec = data['targetWeight'] as String;
+        try {
+          targDec = await decryptValue(data['targetWeight'] as String, userDEK);
+        } catch (_) {}
+        targetWeightVal =
+            double.tryParse(targDec.replaceAll(',', '.')) ?? _weight;
+      } else {
+        targetWeightVal = (data['targetWeight'] is num)
+            ? (data['targetWeight'] as num).toDouble()
+            : _weight;
+      }
+      // Recompute goals if possible
       double? bmi;
       double? calorieGoal;
       double? proteinGoal;
       double? fatGoal;
       double? carbGoal;
 
-      if (height > 0 && _weight > 0 && birthDate != null) { // Berekeningen
-        final heightCm = height;
+      if (heightVal > 0 && _weight > 0 && birthDate != null) {
+        final heightCm = heightVal;
         final weightKg = _weight;
-
         final heightM = heightCm / 100;
         bmi = weightKg / (heightM * heightM);
 
@@ -190,7 +331,6 @@ class _WeightViewState extends State<WeightView> {
         }
 
         double calories = bmr * activityFactor;
-
         switch (goal) {
           case 'Afvallen':
             calories -= 500;
@@ -204,36 +344,69 @@ class _WeightViewState extends State<WeightView> {
             break;
         }
         calorieGoal = calories;
-
         proteinGoal = weightKg;
         final fatCalories = calorieGoal * 0.30;
         fatGoal = fatCalories / 9;
         final proteinCalories = proteinGoal * 4;
         final carbCalories = calorieGoal - fatCalories - proteinCalories;
-        carbGoal = carbGoal = carbCalories / 4;
+        carbGoal = carbCalories / 4;
       }
 
-      await docRef.set({
-        'weight': _weight,
-        'targetWeight': targetWeight,
-        'height': height,
-        'bmi': bmi,
-        'calorieGoal': calorieGoal,
-        'proteinGoal': proteinGoal,
-        'fatGoal': fatGoal,
-        'carbGoal': carbGoal,
-        'activityLevel': activityLevel,
-        'goal': goal,
-        'weights': _entries.map((e) => e.toMap()).toList(),
-      }, SetOptions(merge: true));
+      // Build save map with optional encryption
+      final Map<String, dynamic> saveMap = {};
+
+      if (userDEK != null) {
+        saveMap['weight'] = await encryptDouble(_weight, userDEK);
+        saveMap['height'] = await encryptDouble(heightVal, userDEK);
+        saveMap['bmi'] = await encryptDouble(bmi ?? 0, userDEK);
+        saveMap['calorieGoal'] = await encryptDouble(calorieGoal ?? 0, userDEK);
+        saveMap['proteinGoal'] = await encryptDouble(proteinGoal ?? 0, userDEK);
+        saveMap['fatGoal'] = await encryptDouble(fatGoal ?? 0, userDEK);
+        saveMap['carbGoal'] = await encryptDouble(carbGoal ?? 0, userDEK);
+        saveMap['activityLevel'] = await encryptValue(activityLevel, userDEK);
+        saveMap['goal'] = await encryptValue(goal, userDEK);
+        saveMap['targetWeight'] = await encryptDouble(targetWeightVal, userDEK);
+        // weights list: encrypt each entry
+        final List<dynamic> weightsToSave = [];
+        for (final e in _entries) {
+          final m = e.toMap();
+          // encrypt both date and weight
+          final encDate = await encryptValue(m['date'] as String, userDEK);
+          final encWeight = await encryptDouble(
+            (m['weight'] as num).toDouble(),
+            userDEK,
+          );
+          weightsToSave.add({'date': encDate, 'weight': encWeight});
+        }
+        saveMap['weights'] = weightsToSave;
+      } else {
+        // store plaintext
+        saveMap['weight'] = _weight;
+        saveMap['height'] = heightVal;
+        saveMap['bmi'] = bmi;
+        saveMap['calorieGoal'] = calorieGoal;
+        saveMap['proteinGoal'] = proteinGoal;
+        saveMap['fatGoal'] = fatGoal;
+        saveMap['carbGoal'] = carbGoal;
+        saveMap['activityLevel'] = activityLevel;
+        saveMap['goal'] = goal;
+        saveMap['targetWeight'] = targetWeightVal;
+        saveMap['weights'] = _entries.map((e) => e.toMap()).toList();
+      }
+
+      // keep notificationsEnabled and other booleans untouched if present
+      if (data.containsKey('notificationsEnabled')) {
+        saveMap['notificationsEnabled'] = data['notificationsEnabled'];
+      }
+
+      await docRef.set(saveMap, SetOptions(merge: true));
 
       setState(() {
         _bmi = bmi;
-        _height = height;
+        _height = heightVal;
       });
 
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gewicht + doelen opgeslagen')),
       );
@@ -248,7 +421,8 @@ class _WeightViewState extends State<WeightView> {
     _weightFocusNode.unfocus(); // Verberg het toetsenbord na het opslaan
   }
 
-  List<_MonthGroup> _groupEntriesByMonth() { // groepeer entries per maand
+  List<_MonthGroup> _groupEntriesByMonth() {
+    // groepeer entries per maand
     if (_entries.isEmpty) return [];
 
     final Map<String, List<WeightEntry>> byMonth = {};
@@ -545,15 +719,14 @@ class _WeightViewState extends State<WeightView> {
               ),
             ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(
-          bottom: 80.0,
-        ), 
+        padding: const EdgeInsets.only(bottom: 80.0),
         child: const FeedbackButton(),
       ),
     );
   }
 
-  Widget _buildBmiBar(ThemeData theme, bool isDark) { //  BMI-balk bouwen
+  Widget _buildBmiBar(ThemeData theme, bool isDark) {
+    //  BMI-balk bouwen
     if (_bmi == null) return const SizedBox.shrink();
     final bmi = _clampBmi(_bmi!); // clamp de BMI binnen het bereik
 
