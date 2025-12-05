@@ -26,10 +26,15 @@ Future<void> main() async {
   ); // initialiseerd firebase voor het platform
 
   if (!kIsWeb) {
-    await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.playIntegrity,
-      appleProvider: AppleProvider.appAttest,
-    );
+    try {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.playIntegrity,
+        appleProvider: AppleProvider.appAttest,
+      );
+      print('Firebase App Check is succesvol geactiveerd.');
+    } catch (e) {
+      print('Fout bij het activeren van Firebase App Check: $e');
+    }
   }
 
   await GoogleSignIn.instance

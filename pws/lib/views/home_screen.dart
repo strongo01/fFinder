@@ -74,7 +74,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
-  void didChangeDependencies() { // wordt aangeroepen nadat initState is voltooid
+  void didChangeDependencies() {
+    // wordt aangeroepen nadat initState is voltooid
     super.didChangeDependencies();
     _createTutorial();
     _showTutorial();
@@ -89,7 +90,8 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _listenToAnnouncements() { //luister naar actieve admin-berichten
+  void _listenToAnnouncements() {
+    //luister naar actieve admin-berichten
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -97,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _announcementSubscription?.cancel(); // voorkom dubbele listeners
 
     // Start de nieuwe listener
-    _announcementSubscription = FirebaseFirestore.instance 
+    _announcementSubscription = FirebaseFirestore.instance
         .collection('announcements')
         .where('isActive', isEqualTo: true)
         .orderBy('createdAt', descending: true)
@@ -164,7 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildAnnouncementsList(bool isDarkMode) { //bouw de lijst met admin-berichten
+  Widget _buildAnnouncementsList(bool isDarkMode) {
+    //bouw de lijst met admin-berichten
     if (_activeAnnouncements.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -414,8 +417,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TargetContent(
             align: ContentAlign.top,
             child: _buildTutorialContent(
-              'Reppy', 
-              'Reppy geeft persoonlijke motivatie en tips!', 
+              'Reppy',
+              'Reppy geeft persoonlijke motivatie en tips!',
               isDarkMode,
             ),
           ),
@@ -534,7 +537,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final today = DateTime.now();
     final todayWithoutTime = DateTime(today.year, today.month, today.day);
 
-    if (defaultTargetPlatform == TargetPlatform.iOS) { // iOS datumkiezer
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      // iOS datumkiezer
       showCupertinoModalPopup(
         context: context,
         builder: (_) => Container(
@@ -553,7 +557,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   onDateTimeChanged: (val) {
                     setState(() {
                       _selectedDate = val;
-                      final pickedWithoutTime = DateTime( // update de pagina
+                      final pickedWithoutTime = DateTime(
+                        // update de pagina
                         val.year,
                         val.month,
                         val.day,
@@ -632,59 +637,69 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-Future<void> _fetchUserData() async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
+  Future<void> _fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  // 1️⃣ Global DEK ophalen (Remote Config)
-  final remoteConfig = FirebaseRemoteConfig.instance;
-  await remoteConfig.fetchAndActivate(); // haal nieuwste config op
-  final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
-  final globalDEK = SecretKey(base64Decode(globalDEKString));
+    // 1️⃣ Global DEK ophalen (Remote Config)
+    final remoteConfig = FirebaseRemoteConfig.instance;
+    await remoteConfig.fetchAndActivate(); // haal nieuwste config op
+    final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
+    final globalDEK = SecretKey(base64Decode(globalDEKString));
 
-  // 2️⃣ User-specifieke DEK afleiden
-  final userDEK = await deriveUserKey(globalDEK, user.uid);
+    // 2️⃣ User-specifieke DEK afleiden
+    final userDEK = await deriveUserKey(globalDEK, user.uid);
 
-  // 3️⃣ Haal data op
-  final doc = await FirebaseFirestore.instance
-      .collection('users')
-      .doc(user.uid)
-      .get();
+    // 3️⃣ Haal data op
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
 
-  if (!doc.exists) return;
+    if (!doc.exists) return;
 
-  final data = doc.data()!;
+    final data = doc.data()!;
 
-  // 4️⃣ Decrypt alle geëncryptte velden
-  final decryptedData = {
-    'firstName': await decryptValue(data['firstName'], userDEK),
-    'gender': await decryptValue(data['gender'], userDEK),
-    'birthDate': await decryptValue(data['birthDate'], userDEK),
-    'height': double.tryParse(await decryptValue(data['height'], userDEK)) ?? 0,
-    'weight': double.tryParse(await decryptValue(data['weight'], userDEK)) ?? 0,
-    'calorieGoal': double.tryParse(await decryptValue(data['calorieGoal'], userDEK)) ?? 0,
-    'proteinGoal': double.tryParse(await decryptValue(data['proteinGoal'], userDEK)) ?? 0,
-    'fatGoal': double.tryParse(await decryptValue(data['fatGoal'], userDEK)) ?? 0,
-    'carbGoal': double.tryParse(await decryptValue(data['carbGoal'], userDEK)) ?? 0,
-    'bmi': double.tryParse(await decryptValue(data['bmi'], userDEK)) ?? 0,
-    'sleepHours': double.tryParse(await decryptValue(data['sleepHours'], userDEK)) ?? 0,
-    'targetWeight': double.tryParse(await decryptValue(data['targetWeight'], userDEK)) ?? 0,
-    'notificationsEnabled': data['notificationsEnabled'],
-    'onboardingaf': data['onboardingaf'],
-    'activityLevel': await decryptValue(data['activityLevel'], userDEK),
-    'goal': await decryptValue(data['goal'], userDEK),
-  };
+    // 4️⃣ Decrypt alle geëncryptte velden
+    final decryptedData = {
+      'firstName': await decryptValue(data['firstName'], userDEK),
+      'gender': await decryptValue(data['gender'], userDEK),
+      'birthDate': await decryptValue(data['birthDate'], userDEK),
+      'height':
+          double.tryParse(await decryptValue(data['height'], userDEK)) ?? 0,
+      'weight':
+          double.tryParse(await decryptValue(data['weight'], userDEK)) ?? 0,
+      'calorieGoal':
+          double.tryParse(await decryptValue(data['calorieGoal'], userDEK)) ??
+          0,
+      'proteinGoal':
+          double.tryParse(await decryptValue(data['proteinGoal'], userDEK)) ??
+          0,
+      'fatGoal':
+          double.tryParse(await decryptValue(data['fatGoal'], userDEK)) ?? 0,
+      'carbGoal':
+          double.tryParse(await decryptValue(data['carbGoal'], userDEK)) ?? 0,
+      'bmi': double.tryParse(await decryptValue(data['bmi'], userDEK)) ?? 0,
+      'sleepHours':
+          double.tryParse(await decryptValue(data['sleepHours'], userDEK)) ?? 0,
+      'targetWeight':
+          double.tryParse(await decryptValue(data['targetWeight'], userDEK)) ??
+          0,
+      'notificationsEnabled': data['notificationsEnabled'],
+      'onboardingaf': data['onboardingaf'],
+      'activityLevel': await decryptValue(data['activityLevel'], userDEK),
+      'goal': await decryptValue(data['goal'], userDEK),
+    };
 
-  // ✅ Alles printen
-  print('Decrypted user data: $decryptedData');
+    // ✅ Alles printen
+    print('Decrypted user data: $decryptedData');
 
-  // 5️⃣ Update state
-  setState(() {
-    _userData = decryptedData;
-    _calorieAllowance = _calculateCalories(_userData!);
-  });
-}
-
+    // 5️⃣ Update state
+    setState(() {
+      _userData = decryptedData;
+      _calorieAllowance = _calculateCalories(_userData!);
+    });
+  }
 
   double _calculateCalories(Map<String, dynamic> data) {
     //berekent de aanbevolen dagelijkse hoeveelheid calorieen
@@ -877,7 +892,7 @@ Future<void> _fetchUserData() async {
             navigationBar: const CupertinoNavigationBar(
               middle: Text('Gewicht'),
             ),
-            child: const WeightView(), 
+            child: const WeightView(),
           );
         }
       },
@@ -1198,334 +1213,399 @@ Future<void> _fetchUserData() async {
         final data = (snapshot.hasData && snapshot.data!.exists)
             ? snapshot.data!.data() as Map<String, dynamic>
             : null;
-        final entries = data?['entries'] as List<dynamic>? ?? [];
+        final entriesRaw = data?['entries'] as List<dynamic>? ?? [];
 
-        double totalCalories = 0;
-        double totalProteins = 0;
-        double totalFats = 0;
-        double totalCarbs = 0;
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) return const Center(child: Text("Niet ingelogd."));
 
-        final Map<String, List<dynamic>> meals = {
-          // Maaltijdcategorieën
-          'Ontbijt': [],
-          'Lunch': [],
-          'Avondeten': [],
-          'Tussendoor': [],
-        };
-
-        for (var entry in entries) {
-          // berekent de totale macro's en verdeelt de maaltijden
-          totalCalories += (entry['nutriments']?['energy-kcal'] ?? 0.0);
-          totalProteins += (entry['nutriments']?['proteins'] ?? 0.0);
-          totalFats += (entry['nutriments']?['fat'] ?? 0.0);
-          totalCarbs += (entry['nutriments']?['carbohydrates'] ?? 0.0);
-          final mealType = entry['meal_type'] as String?;
-
-          if (mealType != null && meals.containsKey(mealType)) {
-            //als maaltijdtype bekend is
-            meals[mealType]!.add(entry);
-          } else {
-            // Fallback
-            final timestamp =
-                (entry['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
-            final hour = timestamp.hour;
-            if (hour >= 5 && hour < 11) {
-              meals['Ontbijt']!.add(entry);
-            } else if (hour >= 11 && hour < 15) {
-              meals['Lunch']!.add(entry);
-            } else if (hour >= 15 && hour < 22) {
-              meals['Avondeten']!.add(entry);
-            } else {
-              meals['Tussendoor']!.add(entry);
+        // Haal de userDEK op
+        return FutureBuilder<SecretKey?>(
+          future: getUserDEKFromRemoteConfig(user.uid),
+          builder: (context, dekSnapshot) {
+            if (dekSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
             }
-          }
-        }
+            if (!dekSnapshot.hasData || dekSnapshot.data == null) {
+              return const Center(child: Text("Encryptiesleutel niet gevonden."));
+            }
+            final userDEK = dekSnapshot.data!;
 
-        final calorieGoal = _calorieAllowance ?? 0.0;
-        final proteinGoal = _userData?['proteinGoal'] as num? ?? 0.0;
-        final fatGoal = _userData?['fatGoal'] as num? ?? 0.0;
-        final carbGoal = _userData?['carbGoal'] as num? ?? 0.0;
+            // Decrypt alle entries
+            return FutureBuilder<List<Map<String, dynamic>>>(
+              future: () async {
+                final decryptedEntries = <Map<String, dynamic>>[];
+                for (final entry in entriesRaw) {
+                  final decryptedEntry =
+                      Map<String, dynamic>.from(entry); // Kopieer de entry
 
-        final remainingCalories = calorieGoal - totalCalories;
-        final progress = calorieGoal > 0
-            ? (totalCalories / calorieGoal).clamp(0.0, 1.0)
-            : 0.0;
+                  decryptedEntry['product_name'] =
+                      await decryptValue(entry['product_name'], userDEK);
+                  decryptedEntry['meal_type'] =
+                      await decryptValue(entry['meal_type'], userDEK);
 
-        final Map<String, double> drinkBreakdown = {}; // voor waterinname
-        double totalWater = 0;
-        for (var entry in entries) {
-          if (entry.containsKey('quantity')) {
-            final quantityString = entry['quantity'] as String? ?? '0 ml';
-            final amount =
-                double.tryParse(quantityString.replaceAll(' ml', '')) ?? 0.0;
-            final drinkName = entry['product_name'] as String? ?? 'Onbekend';
-            drinkBreakdown.update(
-              // waterinname per drankje bijhouden
-              drinkName,
-              (value) => value + amount, // optellen als al aanwezig
-              ifAbsent: () => amount, // nieuw drankje toevoegen
-            );
-            totalWater += amount;
-          }
-        }
-        final weight = _userData?['weight'] as num? ?? 70;
-        final waterGoal = weight * 32.5;
+                  if (entry.containsKey('nutrients')) {
+                    final nutrients =
+                        entry['nutrients'] as Map<String, dynamic>? ?? {};
+                    final decryptedNutrients = <String, dynamic>{};
+                    for (final key in nutrients.keys) {
+                      decryptedNutrients[key] =
+                          await decryptDouble(nutrients[key], userDEK);
+                    }
+                    decryptedEntry['nutrients'] = decryptedNutrients;
+                  }
 
-        final motivationalMessage = _getMotivationalMessage( // haal motivatiebericht op
-          totalCalories,
-          calorieGoal,
-          totalWater,
-          waterGoal,
-          entries.isNotEmpty,
-        );
+                  if (entry.containsKey('amount_g')) {
+                     decryptedEntry['amount_g'] =
+                        await decryptDouble(entry['amount_g'], userDEK);
+                  }
 
-        if (_motivationalMessage == null) {
-          _motivationalMessage = motivationalMessage;
-        }
+                  if (entry.containsKey('quantity')) {
+                    decryptedEntry['quantity'] =
+                        await decryptValue(entry['quantity'], userDEK);
+                  }
 
-        return Column(
-          children: [
-            _buildAnnouncementsList(isDarkMode),
-            Card(
-              color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
+                  decryptedEntries.add(decryptedEntry);
+                }
+                return decryptedEntries;
+              }(),
+              builder: (context, entriesSnapshot) {
+                if (entriesSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!entriesSnapshot.hasData) {
+                  return const Center(child: Text("Geen log data gevonden."));
+                }
+
+                final entries = entriesSnapshot.data!;
+
+                // Vanaf hier wordt de bestaande logica uitgevoerd met de gedecrypteerde 'entries'
+                double totalCalories = 0;
+                double totalProteins = 0;
+                double totalFats = 0;
+                double totalCarbs = 0;
+
+                final Map<String, List<dynamic>> meals = {
+                  'Ontbijt': [],
+                  'Lunch': [],
+                  'Avondeten': [],
+                  'Tussendoor': [],
+                };
+
+                for (var entry in entries) {
+                  totalCalories += (entry['nutrients']?['energy-kcal'] ?? 0.0);
+                  totalProteins += (entry['nutrients']?['proteins'] ?? 0.0);
+                  totalFats += (entry['nutrients']?['fat'] ?? 0.0);
+                  totalCarbs += (entry['nutrients']?['carbohydrates'] ?? 0.0);
+                  final mealType = entry['meal_type'] as String?;
+
+                  if (mealType != null && meals.containsKey(mealType)) {
+                    meals[mealType]!.add(entry);
+                  } else {
+                    final timestamp = (entry['timestamp'] as Timestamp?)?.toDate() ??
+                        DateTime.now();
+                    final hour = timestamp.hour;
+                    if (hour >= 5 && hour < 11) {
+                      meals['Ontbijt']!.add(entry);
+                    } else if (hour >= 11 && hour < 15) {
+                      meals['Lunch']!.add(entry);
+                    } else if (hour >= 15 && hour < 22) {
+                      meals['Avondeten']!.add(entry);
+                    } else {
+                      meals['Tussendoor']!.add(entry);
+                    }
+                  }
+                }
+
+                final calorieGoal = _calorieAllowance ?? 0.0;
+                final proteinGoal = _userData?['proteinGoal'] as num? ?? 0.0;
+                final fatGoal = _userData?['fatGoal'] as num? ?? 0.0;
+                final carbGoal = _userData?['carbGoal'] as num? ?? 0.0;
+
+                final remainingCalories = calorieGoal - totalCalories;
+                final progress = calorieGoal > 0
+                    ? (totalCalories / calorieGoal).clamp(0.0, 1.0)
+                    : 0.0;
+
+                final Map<String, double> drinkBreakdown = {};
+                double totalWater = 0;
+                for (var entry in entries) {
+                  if (entry.containsKey('quantity')) {
+                    final quantityString =
+                        entry['quantity'] as String? ?? '0 ml';
+                    final amount =
+                        double.tryParse(quantityString.replaceAll(' ml', '')) ??
+                            0.0;
+                    final drinkName =
+                        entry['product_name'] as String? ?? 'Onbekend';
+                    drinkBreakdown.update(
+                      drinkName,
+                      (value) => value + amount,
+                      ifAbsent: () => amount,
+                    );
+                    totalWater += amount;
+                  }
+                }
+                final weight = _userData?['weight'] as num? ?? 70;
+                final waterGoal = weight * 32.5;
+
+                final motivationalMessage = _getMotivationalMessage(
+                  totalCalories,
+                  calorieGoal,
+                  totalWater,
+                  waterGoal,
+                  entries.isNotEmpty,
+                );
+
+                if (_motivationalMessage == null) {
+                  _motivationalMessage = motivationalMessage;
+                }
+
+                return Column(
                   children: [
-                    Row(
-                      key: _calorieInfoRowKey,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Calorie-informatie
-                        _buildCalorieInfo('Gegeten', totalCalories, isDarkMode),
-                        _buildCalorieInfo('Doel', calorieGoal, isDarkMode),
-                        _buildCalorieInfo(
-                          'Over',
-                          remainingCalories,
-                          isDarkMode,
-                          isRemaining: true,
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 15),
-                    LinearProgressIndicator(
-                      // Calorie voortgangsbalk
-                      value: progress,
-                      minHeight: 10,
-                      borderRadius: BorderRadius.circular(5),
-                      backgroundColor: isDarkMode
-                          ? Colors.grey[700]
-                          : Colors.grey[300],
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        // kleur op basis van voortgang
-                        progress > 1.0
-                            ? Colors.red
-                            : (isDarkMode ? Colors.green[300]! : Colors.green),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      // Macro-cirkels
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildMacroCircle(
-                          'Koolhydraten',
-                          totalCarbs,
-                          carbGoal.toDouble(),
-                          isDarkMode,
-                          Colors.orange,
-                        ),
-                        _buildMacroCircle(
-                          'Eiwitten',
-                          totalProteins,
-                          proteinGoal.toDouble(),
-                          isDarkMode,
-                          const Color.fromARGB(255, 0, 140, 255),
-                        ),
-                        _buildMacroCircle(
-                          'Vetten',
-                          totalFats,
-                          fatGoal.toDouble(),
-                          isDarkMode,
-                          const Color.fromARGB(255, 0, 213, 255),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth < 400) {
-                    return Column(
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          key: _mascotteKey,
+                    _buildAnnouncementsList(isDarkMode),
+                    Card(
+                      color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 80),
-                                child: BubbleSpecialThree(
-                                  text:
-                                      _motivationalMessage ??
-                                      motivationalMessage,
-                                  color: isDarkMode
-                                      ? const Color(0xFF1B97F3)
-                                      : Colors.blueAccent,
-                                  tail: true,
-                                  isSender: true,
-                                  textStyle: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
+                            Row(
+                              key: _calorieInfoRowKey,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildCalorieInfo(
+                                    'Gegeten', totalCalories, isDarkMode),
+                                _buildCalorieInfo(
+                                    'Doel', calorieGoal, isDarkMode),
+                                _buildCalorieInfo(
+                                  'Over',
+                                  remainingCalories,
+                                  isDarkMode,
+                                  isRemaining: true,
                                 ),
+                              ],
+                            ),
+                            const SizedBox(height: 15),
+                            LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 10,
+                              borderRadius: BorderRadius.circular(5),
+                              backgroundColor: isDarkMode
+                                  ? Colors.grey[700]
+                                  : Colors.grey[300],
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                progress > 1.0
+                                    ? Colors.red
+                                    : (isDarkMode
+                                        ? Colors.green[300]!
+                                        : Colors.green),
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _motivationalMessage =
-                                      _getMotivationalMessage(
-                                        totalCalories,
-                                        calorieGoal,
-                                        totalWater,
-                                        waterGoal,
-                                        entries.isNotEmpty,
-                                      );
-                                });
-                              },
-                              child: Image.asset(
-                                'assets/mascotte/mascottelangzaam.gif',
-                                height: 120,
-                              ),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildMacroCircle(
+                                  'Koolhydraten',
+                                  totalCarbs,
+                                  carbGoal.toDouble(),
+                                  isDarkMode,
+                                  Colors.orange,
+                                ),
+                                _buildMacroCircle(
+                                  'Eiwitten',
+                                  totalProteins,
+                                  proteinGoal.toDouble(),
+                                  isDarkMode,
+                                  const Color.fromARGB(255, 0, 140, 255),
+                                ),
+                                _buildMacroCircle(
+                                  'Vetten',
+                                  totalFats,
+                                  fatGoal.toDouble(),
+                                  isDarkMode,
+                                  const Color.fromARGB(255, 0, 213, 255),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
-                        Container(
-                          key: _waterCircleKey,
-                          child: _buildWaterCircle(
-                            totalWater,
-                            waterGoal.toDouble(),
-                            drinkBreakdown,
-                            isDarkMode,
-                          ),
-                        ),
-                      ],
-                    );
-                  } else {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Flexible(
-                          flex: 1,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            key: _mascotteKey,
-                            children: [
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(bottom: 80),
-                                  child: BubbleSpecialThree(
-                                    text:
-                                        _motivationalMessage ??
-                                        motivationalMessage,
-                                    color: isDarkMode
-                                        ? const Color(0xFF1B97F3)
-                                        : Colors.blueAccent,
-                                    tail: true,
-                                    isSender: true,
-                                    textStyle: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          if (constraints.maxWidth < 400) {
+                            return Column(
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  key: _mascotteKey,
+                                  children: [
+                                    Expanded(
+                                      child: Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 80),
+                                        child: BubbleSpecialThree(
+                                          text: _motivationalMessage ??
+                                              motivationalMessage,
+                                          color: isDarkMode
+                                              ? const Color(0xFF1B97F3)
+                                              : Colors.blueAccent,
+                                          tail: true,
+                                          isSender: true,
+                                          textStyle: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _motivationalMessage =
+                                              _getMotivationalMessage(
+                                            totalCalories,
+                                            calorieGoal,
+                                            totalWater,
+                                            waterGoal,
+                                            entries.isNotEmpty,
+                                          );
+                                        });
+                                      },
+                                      child: Image.asset(
+                                        'assets/mascotte/mascottelangzaam.gif',
+                                        height: 120,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+                                Container(
+                                  key: _waterCircleKey,
+                                  child: _buildWaterCircle(
+                                    totalWater,
+                                    waterGoal.toDouble(),
+                                    drinkBreakdown,
+                                    isDarkMode,
+                                  ),
+                                ),
+                              ],
+                            );
+                          } else {
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  flex: 1,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    key: _mascotteKey,
+                                    children: [
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(
+                                              bottom: 80),
+                                          child: BubbleSpecialThree(
+                                            text: _motivationalMessage ??
+                                                motivationalMessage,
+                                            color: isDarkMode
+                                                ? const Color(0xFF1B97F3)
+                                                : Colors.blueAccent,
+                                            tail: true,
+                                            isSender: true,
+                                            textStyle: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _motivationalMessage =
+                                                _getMotivationalMessage(
+                                              totalCalories,
+                                              calorieGoal,
+                                              totalWater,
+                                              waterGoal,
+                                              entries.isNotEmpty,
+                                            );
+                                          });
+                                        },
+                                        child: Image.asset(
+                                          'assets/mascotte/mascottelangzaam.gif',
+                                          height: 120,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 30),
+                                Flexible(
+                                  flex: 1,
+                                  child: Container(
+                                    key: _waterCircleKey,
+                                    child: _buildWaterCircle(
+                                      totalWater,
+                                      waterGoal.toDouble(),
+                                      drinkBreakdown,
+                                      isDarkMode,
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _motivationalMessage =
-                                        _getMotivationalMessage(
-                                          totalCalories,
-                                          calorieGoal,
-                                          totalWater,
-                                          waterGoal,
-                                          entries.isNotEmpty,
-                                        );
-                                  });
-                                },
-                                child: Image.asset(
-                                  'assets/mascotte/mascottelangzaam.gif',
-                                  height: 120,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 30),
-                        Flexible(
-                          flex: 1, // waterinname cirkel
-                          child: Container(
-                            key: _waterCircleKey,
-                            child: _buildWaterCircle(
-                              totalWater,
-                              waterGoal.toDouble(),
-                              drinkBreakdown,
-                              isDarkMode,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-            ...() {
-              bool mealKeyAssigned = false;
-              return meals.entries.map((mealEntry) {
-                Key? currentKey;
-                if (!mealKeyAssigned) {
-                  currentKey = _mealKey;
-                  mealKeyAssigned = true;
-                }
-
-                // Maak de sectie onzichtbaar als hij leeg is
-                if (mealEntry.value.isEmpty) {
-                  return SizedBox(
-                    width: double.infinity,
-                    child: Offstage(
-                      offstage: true,
-                      child: _buildMealSection(
-                        key: currentKey,
-                        title: mealEntry.key,
-                        entries: const [],
-                        isDarkMode: isDarkMode,
+                              ],
+                            );
+                          }
+                        },
                       ),
                     ),
-                  );
-                }
+                    const SizedBox(height: 20),
+                    ...() {
+                      bool mealKeyAssigned = false;
+                      return meals.entries.map((mealEntry) {
+                        Key? currentKey;
+                        if (!mealKeyAssigned) {
+                          currentKey = _mealKey;
+                          mealKeyAssigned = true;
+                        }
 
-                return _buildMealSection(
-                  key: currentKey, // Geef de sleutel hier door
-                  title: mealEntry.key,
-                  entries: mealEntry.value,
-                  isDarkMode: isDarkMode,
+                        if (mealEntry.value.isEmpty) {
+                          return SizedBox(
+                            width: double.infinity,
+                            child: Offstage(
+                              offstage: true,
+                              child: _buildMealSection(
+                                key: currentKey,
+                                title: mealEntry.key,
+                                entries: const [],
+                                isDarkMode: isDarkMode,
+                              ),
+                            ),
+                          );
+                        }
+
+                        return _buildMealSection(
+                          key: currentKey,
+                          title: mealEntry.key,
+                          entries: mealEntry.value,
+                          isDarkMode: isDarkMode,
+                        );
+                      }).toList();
+                    }(),
+                    const SizedBox(height: 80),
+                  ],
                 );
-              }).toList();
-            }(),
-            const SizedBox(height: 80),
-          ],
+              },
+            );
+          },
         );
       },
     );
@@ -2071,16 +2151,28 @@ Future<void> _fetchUserData() async {
       );
       return;
     }
+    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    if (userDEK == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kon encryptiesleutel niet ophalen.')),
+      );
+      return;
+    }
+
     final factor =
         newAmount / originalAmount.toDouble(); // bereken de schaalfactor
 
-    final newNutriments = originalNutriments.map(
-      (key, value) => MapEntry(key, (value is num ? value * factor : value)),
-    ); // herbereken de nutriments
+    final newNutriments = <String, dynamic>{};
+    for (final key in originalNutriments.keys) {
+      final value = originalNutriments[key];
+      final newValue = (value is num ? value * factor : value);
+      newNutriments[key] = await encryptDouble(newValue ?? 0, userDEK);
+    } // herbereken de nutriments
+    final encryptedAmount = await encryptDouble(newAmount, userDEK);
 
     final updatedEntry = {
       ...originalEntry,
-      'amount_g': newAmount,
+      'amount_g': encryptedAmount,
       'nutriments': newNutriments,
     };
 

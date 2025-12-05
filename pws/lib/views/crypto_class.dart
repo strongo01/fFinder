@@ -65,3 +65,14 @@ Future<String> encryptDouble(double value, SecretKey userDEK) =>
 /// Encrypt een int
 Future<String> encryptInt(int value, SecretKey userDEK) =>
     encryptValue(value.toString(), userDEK);
+
+/// Decrypt een double
+Future<double> decryptDouble(dynamic encrypted, SecretKey userDEK) async {
+  if (encrypted == null) return 0.0;
+  if (encrypted is num) return encrypted.toDouble();
+  if (encrypted is String) {
+    final decryptedStr = await decryptValue(encrypted, userDEK);
+    return double.tryParse(decryptedStr) ?? 0.0;
+  }
+  return 0.0;
+}

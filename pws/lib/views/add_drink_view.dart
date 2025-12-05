@@ -166,6 +166,9 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
 
     String productNameField = name;
     String quantityField = '$amount ml';
+        String mealTypeField = drinkTime;
+    String drinkTimeField = drinkTime;
+
 
     if (userDEK != null) {
       try {
@@ -178,13 +181,23 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       } catch (_) {
         quantityField = '$amount ml';
       }
+      try {
+        mealTypeField = await encryptValue(drinkTime, userDEK);
+      } catch (_) {
+        mealTypeField = drinkTime;
+      }
+      try {
+        drinkTimeField = await encryptValue(drinkTime, userDEK);
+      } catch (_) {
+        drinkTimeField = drinkTime;
+      }
     }
 
     final logEntry = {
       'product_name': productNameField,
       'quantity': quantityField,
-      'meal_type': drinkTime,
-      'drinkTime': drinkTime,
+      'meal_type': mealTypeField,
+      'drinkTime': drinkTimeField,
       'timestamp': now,
       'nutriments': {
         'energy-kcal': 0,

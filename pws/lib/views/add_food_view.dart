@@ -1,3 +1,5 @@
+import 'package:cryptography/cryptography.dart';
+import 'package:fFinder/views/crypto_class.dart';
 import 'package:fFinder/views/feedback_view.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -538,10 +540,33 @@ class _AddFoodPageState extends State<AddFoodPage> {
         final docSnapshot = await recentDocRef.get();
 
         if (docSnapshot.exists) {
-          // Product gevonden in recents, gebruik die data
-          final productData = docSnapshot.data() as Map<String, dynamic>;
-          // Roep de details sheet aan met de gevonden data
-          _showProductDetails(barcode, productData: productData);
+          // Product gevonden in recents, haal de data op
+          final encryptedData = docSnapshot.data() as Map<String, dynamic>;
+          final decryptedData = Map<String, dynamic>.from(encryptedData);
+          final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+
+          if (userDEK != null) {
+            // Decrypt de velden als de sleutel beschikbaar is
+            try {
+              if (encryptedData['product_name'] != null) {
+                decryptedData['product_name'] = await decryptValue(
+                  encryptedData['product_name'],
+                  userDEK,
+                );
+              }
+              if (encryptedData['brands'] != null) {
+                decryptedData['brands'] = await decryptValue(
+                  encryptedData['brands'],
+                  userDEK,
+                );
+              }
+            } catch (e) {
+              print("Fout bij decrypten van recente producten: $e");
+              // Ga door met versleutelde (of niet-versleutelde) data bij een fout
+            }
+          }
+          // Roep de details sheet aan met de (mogelijk) gedecrypteerde data
+          _showProductDetails(barcode, productData: decryptedData);
         } else {
           // Product niet in recents, haal op van API
           _showProductDetails(barcode);
@@ -976,36 +1001,76 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         final user = FirebaseAuth.instance.currentUser;
                         if (user == null) return;
 
+                        final userDEK = await getUserDEKFromRemoteConfig(
+                          user.uid,
+                        );
+                        if (userDEK == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Fout: Kon encryptiesleutel niet ophalen.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
+                        final dataToSave = {
+                          'product_name': await encryptValue(
+                            _nameController.text,
+                            userDEK,
+                          ),
+                          'brands': await encryptValue(
+                            _brandController.text,
+                            userDEK,
+                          ),
+                          'quantity': await encryptValue(
+                            _quantityController.text,
+                            userDEK,
+                          ),
+                          'timestamp': FieldValue.serverTimestamp(),
+                          'nutriments_per_100g': {
+                            'energy-kcal': await encryptDouble(
+                              double.tryParse(_caloriesController.text) ?? 0,
+                              userDEK,
+                            ),
+                            'fat': await encryptDouble(
+                              double.tryParse(_fatController.text) ?? 0,
+                              userDEK,
+                            ),
+                            'saturated-fat': await encryptDouble(
+                              double.tryParse(_saturatedFatController.text) ??
+                                  0,
+                              userDEK,
+                            ),
+                            'carbohydrates': await encryptDouble(
+                              double.tryParse(_carbsController.text) ?? 0,
+                              userDEK,
+                            ),
+                            'sugars': await encryptDouble(
+                              double.tryParse(_sugarsController.text) ?? 0,
+                              userDEK,
+                            ),
+                            'fiber': await encryptDouble(
+                              double.tryParse(_fiberController.text) ?? 0,
+                              userDEK,
+                            ),
+                            'proteins': await encryptDouble(
+                              double.tryParse(_proteinsController.text) ?? 0,
+                              userDEK,
+                            ),
+                            'salt': await encryptDouble(
+                              double.tryParse(_saltController.text) ?? 0,
+                              userDEK,
+                            ),
+                          },
+                        };
+
                         await FirebaseFirestore.instance
                             .collection('users')
                             .doc(user.uid)
                             .collection('my_products')
-                            .add({
-                              'product_name': _nameController.text,
-                              'brands': _brandController.text,
-                              'quantity': _quantityController.text,
-                              'timestamp': FieldValue.serverTimestamp(),
-                              'nutriments_per_100g': {
-                                'energy-kcal':
-                                    double.tryParse(_caloriesController.text) ??
-                                    0, // calorieën zijn verplicht
-                                'fat': double.tryParse(_fatController.text),
-                                'saturated-fat': double.tryParse(
-                                  _saturatedFatController.text,
-                                ),
-                                'carbohydrates': double.tryParse(
-                                  _carbsController.text,
-                                ),
-                                'sugars': double.tryParse(
-                                  _sugarsController.text,
-                                ),
-                                'fiber': double.tryParse(_fiberController.text),
-                                'proteins': double.tryParse(
-                                  _proteinsController.text,
-                                ),
-                                'salt': double.tryParse(_saltController.text),
-                              },
-                            });
+                            .add(dataToSave);
                         Navigator.pop(context); // sluit de sheet na opslaan
                       }
                     },
@@ -1029,15 +1094,31 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    if (userDEK == null) {
+      print("Fout: Kon encryptiesleutel niet ophalen voor recents.");
+      return;
+    }
+
     final docRef = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
         .collection('recents')
         .doc(docId);
 
-    final dataToSave = Map<String, dynamic>.from(productData);
-    dataToSave['timestamp'] = FieldValue.serverTimestamp();
-    dataToSave['isMyProduct'] = true; // markeer als eigen product
+    // Maak een kopie om te versleutelen en op te slaan
+    final dataToSave = {
+      'product_name': await encryptValue(
+        productData['product_name'] ?? '',
+        userDEK,
+      ),
+      'brands': await encryptValue(productData['brands'] ?? '', userDEK),
+      'quantity': await encryptValue(productData['quantity'] ?? '', userDEK),
+      'nutriments_per_100g':
+          productData['nutriments_per_100g'], // Deze data is al versleuteld
+      'timestamp': FieldValue.serverTimestamp(),
+      'isMyProduct': true, // markeer als eigen product
+    };
 
     await docRef.set(dataToSave, SetOptions(merge: true)); // sla op met merge
   }
@@ -1147,41 +1228,119 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
             final products = snapshot.data!.docs;
 
-            return ListView.builder(
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                final productDoc = products[index];
-                final product = productDoc.data() as Map<String, dynamic>;
-                final name = product['product_name'] ?? 'Onbekende naam';
-                final brand = product['brands'] ?? 'Onbekend merk';
-                final imageUrl = product['image_front_url'] as String?;
-                final isMyProduct = product['isMyProduct'] as bool? ?? false;
+            return FutureBuilder<SecretKey?>(
+              future: getUserDEKFromRemoteConfig(user.uid),
+              builder: (context, dekSnapshot) {
+                if (!dekSnapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final userDEK = dekSnapshot.data;
 
-                return ListTile(
-                  leading: imageUrl != null
-                      ? SizedBox(
-                          width: 50,
-                          height: 50,
-                          child: Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.image_not_supported),
-                          ),
-                        )
-                      : const SizedBox(
-                          width: 50,
-                          height: 50,
-                          child: Icon(Icons.fastfood),
-                        ),
-                  title: Text(name),
-                  subtitle: Text(brand),
-                  onTap: () {
-                    if (isMyProduct) {
-                      _showMyProductDetails(product, productDoc.id);
-                    } else {
-                      _showProductDetails(productDoc.id, productData: product);
-                    }
+                return ListView.builder(
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    final productDoc = products[index];
+                    final product = productDoc.data() as Map<String, dynamic>;
+                    final isMyProduct =
+                        product['isMyProduct'] as bool? ?? false;
+
+                    return FutureBuilder<Map<String, dynamic>>(
+                      future: () async {
+                        final decrypted = Map<String, dynamic>.from(product);
+                        if (userDEK != null) {
+                          try {
+                            if (product['product_name'] != null) {
+                              decrypted['product_name'] = await decryptValue(
+                                product['product_name'],
+                                userDEK,
+                              );
+                            }
+                            if (product['brands'] != null) {
+                              decrypted['brands'] = await decryptValue(
+                                product['brands'],
+                                userDEK,
+                              );
+                            }
+                            if (product['quantity'] != null) {
+                              decrypted['quantity'] = await decryptValue(
+                                product['quantity'],
+                                userDEK,
+                              );
+                            }
+                            // Optioneel: decrypt nutriments als ze encrypted zijn
+                            if (product['nutriments_per_100g'] != null) {
+                              final nutriments =
+                                  product['nutriments_per_100g']
+                                      as Map<String, dynamic>;
+                              final decryptedNutriments = <String, dynamic>{};
+                              for (final key in nutriments.keys) {
+                                decryptedNutriments[key] = await decryptDouble(
+                                  nutriments[key],
+                                  userDEK,
+                                );
+                              }
+                              decrypted['nutriments_per_100g'] =
+                                  decryptedNutriments;
+                            }
+                          } catch (e) {
+                            print("Fout bij decrypten: $e");
+                          }
+                        }
+                        return decrypted;
+                      }(),
+                      builder: (context, decryptedSnapshot) {
+                        if (!decryptedSnapshot.hasData) {
+                          return const ListTile(
+                            title: Text('Product wordt geladen...'),
+                          );
+                        }
+                        final decryptedProduct = decryptedSnapshot.data!;
+                        final name =
+                            decryptedProduct['product_name'] ??
+                            'Onbekende naam';
+                        final brand =
+                            decryptedProduct['brands'] ?? 'Onbekend merk';
+                        final imageUrl =
+                            decryptedProduct['image_front_url'] as String?;
+
+                        return ListTile(
+                          leading: imageUrl != null
+                              ? SizedBox(
+                                  width: 50,
+                                  height: 50,
+                                  child: Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Icon(
+                                              Icons.image_not_supported,
+                                            ),
+                                  ),
+                                )
+                              : const SizedBox(
+                                  width: 50,
+                                  height: 50,
+                                  child: Icon(Icons.fastfood),
+                                ),
+                          title: Text(name),
+                          subtitle: Text(brand),
+                          onTap: () {
+                            if (isMyProduct) {
+                              _showMyProductDetails(
+                                decryptedProduct,
+                                productDoc.id,
+                              );
+                            } else {
+                              _showProductDetails(
+                                productDoc.id,
+                                productData: decryptedProduct,
+                              );
+                            }
+                          },
+                        );
+                      },
+                    );
                   },
                 );
               },
@@ -1197,70 +1356,143 @@ class _AddFoodPageState extends State<AddFoodPage> {
             ),
           );
         }
-        return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('favorites')
-              .orderBy('timestamp', descending: true)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+        return FutureBuilder<SecretKey?>(
+          future: getUserDEKFromRemoteConfig(user.uid),
+          builder: (context, dekSnapshot) {
+            if (!dekSnapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Center(
-                child: Text(
-                  'Geen favoriete producten gevonden.',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-              );
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Er is een fout opgetreden.',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-              );
-            }
+            final userDEK = dekSnapshot.data;
 
-            final products = snapshot.data!.docs;
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('favorites')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'Geen favoriete producten gevonden.',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Er is een fout opgetreden.',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  );
+                }
 
-            return ListView.builder(
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                final productDoc = products[index];
-                final product = productDoc.data() as Map<String, dynamic>;
-                final name = product['product_name'] ?? 'Onbekende naam';
-                final brand = product['brands'] ?? 'Onbekend merk';
-                final imageUrl = product['image_front_url'] as String?;
+                final products = snapshot.data!.docs;
 
-                return ListTile(
-                  leading: imageUrl != null
-                      ? SizedBox(
-                          width: 50,
-                          height: 50,
-                          child: Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.image_not_supported),
-                          ),
-                        )
-                      : const SizedBox(
-                          width: 50,
-                          height: 50,
-                          child: Icon(Icons.fastfood),
-                        ),
-                  title: Text(name),
-                  subtitle: Text(brand),
-                  onTap: () {
-                    _showProductDetails(productDoc.id, productData: product);
+                return ListView.builder(
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    final productDoc = products[index];
+                    final product = productDoc.data() as Map<String, dynamic>;
+
+                    return FutureBuilder<Map<String, dynamic>>(
+                      future: () async {
+                        final decrypted = Map<String, dynamic>.from(product);
+                        if (userDEK != null) {
+                          try {
+                            if (product['product_name'] != null) {
+                              decrypted['product_name'] = await decryptValue(
+                                product['product_name'],
+                                userDEK,
+                              );
+                            }
+                            if (product['brands'] != null) {
+                              decrypted['brands'] = await decryptValue(
+                                product['brands'],
+                                userDEK,
+                              );
+                            }
+                            if (product['quantity'] != null) {
+                              decrypted['quantity'] = await decryptValue(
+                                product['quantity'],
+                                userDEK,
+                              );
+                            }
+                            if (product['nutriments_per_100g'] != null) {
+                              final nutriments =
+                                  product['nutriments_per_100g']
+                                      as Map<String, dynamic>;
+                              final decryptedNutriments = <String, dynamic>{};
+                              for (final key in nutriments.keys) {
+                                decryptedNutriments[key] = await decryptDouble(
+                                  nutriments[key],
+                                  userDEK,
+                                );
+                              }
+                              decrypted['nutriments_per_100g'] =
+                                  decryptedNutriments;
+                            }
+                          } catch (e) {
+                            print("Fout bij decrypten favoriet: $e");
+                          }
+                        }
+                        return decrypted;
+                      }(),
+                      builder: (context, decryptedSnapshot) {
+                        if (!decryptedSnapshot.hasData) {
+                          return const ListTile(
+                            title: Text('Product wordt geladen...'),
+                          );
+                        }
+                        final decryptedProduct = decryptedSnapshot.data!;
+                        final name =
+                            decryptedProduct['product_name'] ??
+                            'Onbekende naam';
+                        final brand =
+                            decryptedProduct['brands'] ?? 'Onbekend merk';
+                        final imageUrl =
+                            decryptedProduct['image_front_url'] as String?;
+
+                        return ListTile(
+                          leading: imageUrl != null
+                              ? SizedBox(
+                                  width: 50,
+                                  height: 50,
+                                  child: Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Icon(
+                                              Icons.image_not_supported,
+                                            ),
+                                  ),
+                                )
+                              : const SizedBox(
+                                  width: 50,
+                                  height: 50,
+                                  child: Icon(Icons.fastfood),
+                                ),
+                          title: Text(name),
+                          subtitle: Text(brand),
+                          onTap: () {
+                            _showProductDetails(
+                              productDoc.id,
+                              productData: decryptedProduct,
+                            );
+                          },
+                        );
+                      },
+                    );
                   },
                 );
               },
@@ -1276,116 +1508,194 @@ class _AddFoodPageState extends State<AddFoodPage> {
             ),
           );
         }
-        return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('my_products')
-              .orderBy('timestamp', descending: true)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+        return FutureBuilder<SecretKey?>(
+          future: getUserDEKFromRemoteConfig(user.uid),
+          builder: (context, dekSnapshot) {
+            if (!dekSnapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Center(
-                child: Text(
-                  'Je hebt nog geen producten aangemaakt.',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-              );
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Er is een fout opgetreden.',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-              );
-            }
+            final userDEK = dekSnapshot.data;
 
-            final products = snapshot.data!.docs;
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('my_products')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'Je hebt nog geen producten aangemaakt.',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Er is een fout opgetreden.',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  );
+                }
 
-            return ListView.builder(
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                final productDoc = products[index];
-                final product = productDoc.data() as Map<String, dynamic>;
-                final name = product['product_name'] ?? 'Onbekende naam';
-                final brand = product['brands'] ?? 'Geen merk';
-                final nutriments =
-                    product['nutriments_per_100g'] as Map<String, dynamic>?;
-                final calories = nutriments?['energy-kcal']?.toString() ?? '0';
+                final products = snapshot.data!.docs;
 
-                return Dismissible(
-                  key: Key(productDoc.id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  confirmDismiss: (direction) async {
-                    return await showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: Text(
-                            "Bevestig verwijdering",
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
+                return ListView.builder(
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    final productDoc = products[index];
+                    final product = productDoc.data() as Map<String, dynamic>;
+
+                    return FutureBuilder<Map<String, dynamic>>(
+                      future: () async {
+                        final decrypted = Map<String, dynamic>.from(product);
+                        if (userDEK != null) {
+                          try {
+                            if (product['product_name'] != null) {
+                              decrypted['product_name'] = await decryptValue(
+                                product['product_name'],
+                                userDEK,
+                              );
+                            }
+                            if (product['brands'] != null) {
+                              decrypted['brands'] = await decryptValue(
+                                product['brands'],
+                                userDEK,
+                              );
+                            }
+                            if (product['quantity'] != null) {
+                              decrypted['quantity'] = await decryptValue(
+                                product['quantity'],
+                                userDEK,
+                              );
+                            }
+                            if (product['nutriments_per_100g'] != null) {
+                              final nutriments =
+                                  product['nutriments_per_100g']
+                                      as Map<String, dynamic>;
+                              final decryptedNutriments = <String, dynamic>{};
+                              for (final key in nutriments.keys) {
+                                decryptedNutriments[key] = await decryptDouble(
+                                  nutriments[key],
+                                  userDEK,
+                                );
+                              }
+                              decrypted['nutriments_per_100g'] =
+                                  decryptedNutriments;
+                            }
+                          } catch (e) {
+                            print("Fout bij decrypten eigen product: $e");
+                          }
+                        }
+                        return decrypted;
+                      }(),
+                      builder: (context, decryptedSnapshot) {
+                        if (!decryptedSnapshot.hasData) {
+                          return const ListTile(
+                            title: Text('Product wordt geladen...'),
+                          );
+                        }
+                        final decryptedProduct = decryptedSnapshot.data!;
+                        final name =
+                            decryptedProduct['product_name'] ??
+                            'Onbekende naam';
+                        final brand = decryptedProduct['brands'] ?? 'Geen merk';
+                        final nutriments =
+                            decryptedProduct['nutriments_per_100g']
+                                as Map<String, dynamic>?;
+                        final calories =
+                            nutriments?['energy-kcal']?.toString() ?? '0';
+
+                        return Dismissible(
+                          key: Key(productDoc.id),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            color: Colors.red,
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20.0,
+                            ),
+                            child: const Icon(
+                              Icons.delete,
+                              color: Colors.white,
                             ),
                           ),
-                          content: Text(
-                            "Weet je zeker dat je '$name' wilt verwijderen?",
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
-                            ),
+                          confirmDismiss: (direction) async {
+                            return await showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text(
+                                    "Bevestig verwijdering",
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                  content: Text(
+                                    "Weet je zeker dat je '$name' wilt verwijderen?",
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                  actions: <Widget>[
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: const Text("Annuleren"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(true),
+                                      child: const Text(
+                                        "Verwijderen",
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          onDismissed: (direction) {
+                            FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .collection('my_products')
+                                .doc(productDoc.id)
+                                .delete();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("'$name' verwijderd")),
+                            );
+                          },
+                          child: ListTile(
+                            title: Text(name),
+                            subtitle: Text(brand),
+                            trailing: Text('$calories kcal'),
+                            onTap: () {
+                              _showMyProductDetails(
+                                decryptedProduct,
+                                productDoc.id,
+                              );
+                            },
                           ),
-                          actions: <Widget>[
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text("Annuleren"),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              child: const Text(
-                                "Verwijderen",
-                                style: TextStyle(color: Colors.red),
-                              ),
-                            ),
-                          ],
                         );
                       },
                     );
                   },
-                  onDismissed: (direction) {
-                    FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user.uid)
-                        .collection('my_products')
-                        .doc(productDoc.id)
-                        .delete();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("'$name' verwijderd")),
-                    );
-                  },
-                  child: ListTile(
-                    title: Text(name),
-                    subtitle: Text(brand),
-                    trailing: Text('$calories kcal'),
-                    onTap: () {
-                      _showMyProductDetails(
-                        product,
-                        productDoc.id,
-                      ); // Pass document ID
-                    },
-                  ),
                 );
               },
             );
@@ -1400,134 +1710,218 @@ class _AddFoodPageState extends State<AddFoodPage> {
             ),
           );
         }
-        return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('meals')
-              .orderBy('name')
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+        return FutureBuilder<SecretKey?>(
+          future: getUserDEKFromRemoteConfig(user.uid),
+          builder: (context, dekSnapshot) {
+            if (!dekSnapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
+            final userDEK = dekSnapshot.data;
 
-            if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Er is een fout opgetreden.',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-              );
-            }
-
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              // Toon een voorbeelditem voor de tutorial als er geen maaltijden zijn
-              return ListTile(
-                title: const Text('Voorbeeld Maaltijd'),
-                subtitle: const Text(
-                  'Klik op + om je eerste maaltijd te maken',
-                ),
-                trailing: IconButton(
-                  key: _maaltijdenLogKey, // Sleutel voor de tutorial
-                  icon: const Icon(Icons.add_shopping_cart),
-                  tooltip: 'Log maaltijd',
-                  onPressed: () {
-                    // Dit is een voorbeeld, dus doe niets of toon een bericht
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Dit is een voorbeeld. Maak eerst een eigen maaltijd aan.',
-                        ),
-                        backgroundColor: Colors.orange,
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('meals')
+                  .orderBy('name')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Er is een fout opgetreden.',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
                       ),
-                    );
-                  },
-                ),
-              );
-            }
+                    ),
+                  );
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return ListTile(
+                    title: const Text('Voorbeeld Maaltijd'),
+                    subtitle: const Text(
+                      'Klik op + om je eerste maaltijd te maken',
+                    ),
+                    trailing: IconButton(
+                      key: _maaltijdenLogKey,
+                      icon: const Icon(Icons.add_shopping_cart),
+                      tooltip: 'Log maaltijd',
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Dit is een voorbeeld. Maak eerst een eigen maaltijd aan.',
+                            ),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }
 
-            final meals = snapshot.data!.docs;
+                final meals = snapshot.data!.docs;
 
-            return ListView.builder(
-              itemCount: meals.length,
-              itemBuilder: (context, index) {
-                final mealDoc = meals[index];
-                final meal = mealDoc.data() as Map<String, dynamic>;
-                final name = meal['name'] ?? 'Onbekende maaltijd';
+                return ListView.builder(
+                  itemCount: meals.length,
+                  itemBuilder: (context, index) {
+                    final mealDoc = meals[index];
+                    final meal = mealDoc.data() as Map<String, dynamic>;
 
-                return Dismissible(
-                  key: Key(mealDoc.id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  confirmDismiss: (direction) async {
-                    return await showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: Text(
-                            "Bevestig verwijdering",
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
+                    return FutureBuilder<Map<String, dynamic>>(
+                      future: () async {
+                        final decryptedMeal = Map<String, dynamic>.from(meal);
+                        if (userDEK != null && meal['ingredients'] != null) {
+                          try {
+                            final decryptedIngredients =
+                                <Map<String, dynamic>>[];
+                            for (final ingredient
+                                in (meal['ingredients'] as List)) {
+                              final decryptedIngredient =
+                                  Map<String, dynamic>.from(ingredient);
+                              if (ingredient['product_name'] != null) {
+                                decryptedIngredient['product_name'] =
+                                    await decryptValue(
+                                      ingredient['product_name'],
+                                      userDEK,
+                                    );
+                              }
+                              if (ingredient['brands'] != null) {
+                                decryptedIngredient['brands'] =
+                                    await decryptValue(
+                                      ingredient['brands'],
+                                      userDEK,
+                                    );
+                              }
+                              if (ingredient['nutriments_per_100g'] != null) {
+                                final nutriments =
+                                    ingredient['nutriments_per_100g']
+                                        as Map<String, dynamic>;
+                                final decryptedNutriments = <String, dynamic>{};
+                                for (final key in nutriments.keys) {
+                                  decryptedNutriments[key] =
+                                      await decryptDouble(
+                                        nutriments[key],
+                                        userDEK,
+                                      );
+                                }
+                                decryptedIngredient['nutriments_per_100g'] =
+                                    decryptedNutriments;
+                              }
+                              decryptedIngredients.add(decryptedIngredient);
+                            }
+                            decryptedMeal['ingredients'] = decryptedIngredients;
+                          } catch (e) {
+                            print("Fout bij decrypten maaltijd: $e");
+                          }
+                        }
+                        return decryptedMeal;
+                      }(),
+                      builder: (context, decryptedSnapshot) {
+                        if (!decryptedSnapshot.hasData) {
+                          return const ListTile(
+                            title: Text('Maaltijd wordt geladen...'),
+                          );
+                        }
+                        final decryptedMeal = decryptedSnapshot.data!;
+                        final name =
+                            decryptedMeal['name'] ?? 'Onbekende maaltijd';
+
+                        return Dismissible(
+                          key: Key(mealDoc.id),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            color: Colors.red,
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20.0,
+                            ),
+                            child: const Icon(
+                              Icons.delete,
+                              color: Colors.white,
                             ),
                           ),
-                          content: Text(
-                            "Weet je zeker dat je maaltijd '$name' wilt verwijderen?",
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
-                            ),
-                          ),
-                          actions: <Widget>[
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text("Annuleren"),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              child: const Text(
-                                "Verwijderen",
-                                style: TextStyle(color: Colors.red),
+                          confirmDismiss: (direction) async {
+                            return await showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text(
+                                    "Bevestig verwijdering",
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                  content: Text(
+                                    "Weet je zeker dat je maaltijd '$name' wilt verwijderen?",
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                  actions: <Widget>[
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: const Text("Annuleren"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(true),
+                                      child: const Text(
+                                        "Verwijderen",
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          onDismissed: (direction) {
+                            FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .collection('meals')
+                                .doc(mealDoc.id)
+                                .delete();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Maaltijd '$name' verwijderd"),
                               ),
+                            );
+                          },
+                          child: ListTile(
+                            title: Text(name),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.add_shopping_cart),
+                              tooltip: 'Log maaltijd',
+                              key: index == 0 ? _maaltijdenLogKey : null,
+                              onPressed: () {
+                                final mealWithId = Map<String, dynamic>.from(
+                                  decryptedMeal,
+                                );
+                                mealWithId['id'] = mealDoc.id;
+                                _logMeal(context, mealWithId);
+                              },
                             ),
-                          ],
+                            onTap: () {
+                              _showAddMealSheet(
+                                existingMeal: decryptedMeal,
+                                mealId: mealDoc.id,
+                              );
+                            },
+                          ),
                         );
                       },
                     );
                   },
-                  onDismissed: (direction) {
-                    FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user.uid)
-                        .collection('meals')
-                        .doc(mealDoc.id)
-                        .delete();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Maaltijd '$name' verwijderd")),
-                    );
-                  },
-                  child: ListTile(
-                    title: Text(name),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.add_shopping_cart),
-                      tooltip: 'Log maaltijd',
-                      key: index == 0 ? _maaltijdenLogKey : null,
-                      onPressed: () {
-                        final mealWithId = Map<String, dynamic>.from(meal);
-                        mealWithId['id'] = mealDoc.id;
-                        _logMeal(context, mealWithId);
-                      },
-                    ),
-                    onTap: () {
-                      _showAddMealSheet(existingMeal: meal, mealId: mealDoc.id);
-                    },
-                  ),
                 );
               },
             );
@@ -1542,6 +1936,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
     // log een maaltijd naar de logs in firebase
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
+
+    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    if (userDEK == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kon encryptiesleutel niet ophalen.')),
+      );
+      return;
+    }
 
     final ingredients =
         (meal['ingredients'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
@@ -1570,8 +1972,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
     double totalAmount = 0;
 
     for (final ingredient in ingredients) {
-      //  loop door ingrediënten
-      // bereken de totale voedingswaarden
       final amount = (ingredient['amount'] as num?)?.toDouble() ?? 0;
       final nutrimentsPer100g =
           (ingredient['nutriments_per_100g'] as Map<String, dynamic>?) ?? {};
@@ -1579,7 +1979,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
       totalAmount += amount;
 
       totalNutriments.forEach((key, value) {
-        // loop door elke voedingswaarde
         final nutrientValue =
             (nutrimentsPer100g[key] as num?)?.toDouble() ?? 0.0;
         totalNutriments[key] =
@@ -1600,20 +1999,25 @@ class _AddFoodPageState extends State<AddFoodPage> {
         .collection('logs')
         .doc(todayDocId);
 
-    final logEntry = {
-      // logboek invoer
-      'product_name': meal['name'] ?? 'Onbekende maaltijd',
-      'amount_g': totalAmount,
+    final encryptedLogEntry = {
+      'product_name': await encryptValue(
+        meal['name'] ?? 'Onbekende maaltijd',
+        userDEK,
+      ),
+      'amount_g': await encryptDouble(totalAmount, userDEK),
       'timestamp': Timestamp.now(),
-      'nutriments': totalNutriments,
-      'meal_type': selectedMealType,
+      'nutrients': {
+        for (final key in totalNutriments.keys)
+          key: await encryptDouble(totalNutriments[key] ?? 0, userDEK),
+      },
+      'meal_type': await encryptValue(selectedMealType, userDEK),
       'is_meal': true,
     };
 
     try {
       // probeer de maaltijd op te slaan
       await dailyLogRef.set({
-        'entries': FieldValue.arrayUnion([logEntry]),
+        'entries': FieldValue.arrayUnion([encryptedLogEntry]),
       }, SetOptions(merge: true));
 
       if (mounted) {
@@ -2073,9 +2477,22 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             final user = FirebaseAuth.instance.currentUser;
                             if (user == null) return;
 
+                            final userDEK = await getUserDEKFromRemoteConfig(
+                              user.uid,
+                            );
+                            if (userDEK == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Kon encryptiesleutel niet ophalen.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+
                             List<Map<String, dynamic>> finalProducts = [];
                             for (var entry in ingredientEntries) {
-                              // verzamel producten
                               if (entry['selectedProduct'] != null &&
                                   (entry['amountController']
                                           as TextEditingController)
@@ -2090,21 +2507,36 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                       .text,
                                 );
                                 if (amount != null) {
-                                  // voeg product toe aan lijst
                                   finalProducts.add({
                                     'product_id': product['_id'],
-                                    'product_name': product['product_name'],
-                                    'brands': product['brands'],
+                                    'product_name': await encryptValue(
+                                      product['product_name'],
+                                      userDEK,
+                                    ),
+                                    'brands': await encryptValue(
+                                      product['brands'],
+                                      userDEK,
+                                    ),
                                     'image_front_small_url':
                                         product['image_front_small_url'],
                                     'amount': amount,
-                                    'nutriments_per_100g':
-                                        product['nutriments_per_100g'],
+                                    'nutriments_per_100g': {
+                                      for (final key
+                                          in (product['nutriments_per_100g']
+                                                  as Map<String, dynamic>)
+                                              .keys)
+                                        key: await encryptDouble(
+                                          (product['nutriments_per_100g'][key]
+                                                      as num?)
+                                                  ?.toDouble() ??
+                                              0,
+                                          userDEK,
+                                        ),
+                                    },
                                   });
                                 }
                               }
                             }
-
                             if (finalProducts.isEmpty) {
                               // controleer of er producten zijn toegevoegd
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -2318,27 +2750,68 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         final user = FirebaseAuth.instance.currentUser;
                         if (user == null) return;
 
+                        final userDEK = await getUserDEKFromRemoteConfig(
+                          user.uid,
+                        );
+                        if (userDEK == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Kon encryptiesleutel niet ophalen.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
                         final updatedData = {
-                          'product_name': _nameController.text,
-                          'brands': _brandController.text,
-                          'quantity': _quantityController.text,
+                          'product_name': await encryptValue(
+                            _nameController.text,
+                            userDEK,
+                          ),
+                          'brands': await encryptValue(
+                            _brandController.text,
+                            userDEK,
+                          ),
+                          'quantity': await encryptValue(
+                            _quantityController.text,
+                            userDEK,
+                          ),
                           'timestamp': FieldValue.serverTimestamp(),
                           'nutriments_per_100g': {
-                            'energy-kcal':
-                                double.tryParse(_caloriesController.text) ?? 0,
-                            'fat': double.tryParse(_fatController.text),
-                            'saturated-fat': double.tryParse(
-                              _saturatedFatController.text,
+                            'energy-kcal': await encryptDouble(
+                              double.tryParse(_caloriesController.text) ?? 0,
+                              userDEK,
                             ),
-                            'carbohydrates': double.tryParse(
-                              _carbsController.text,
+                            'fat': await encryptDouble(
+                              double.tryParse(_fatController.text) ?? 0,
+                              userDEK,
                             ),
-                            'sugars': double.tryParse(_sugarsController.text),
-                            'fiber': double.tryParse(_fiberController.text),
-                            'proteins': double.tryParse(
-                              _proteinsController.text,
+                            'saturated-fat': await encryptDouble(
+                              double.tryParse(_saturatedFatController.text) ??
+                                  0,
+                              userDEK,
                             ),
-                            'salt': double.tryParse(_saltController.text),
+                            'carbohydrates': await encryptDouble(
+                              double.tryParse(_carbsController.text) ?? 0,
+                              userDEK,
+                            ),
+                            'sugars': await encryptDouble(
+                              double.tryParse(_sugarsController.text) ?? 0,
+                              userDEK,
+                            ),
+                            'fiber': await encryptDouble(
+                              double.tryParse(_fiberController.text) ?? 0,
+                              userDEK,
+                            ),
+                            'proteins': await encryptDouble(
+                              double.tryParse(_proteinsController.text) ?? 0,
+                              userDEK,
+                            ),
+                            'salt': await encryptDouble(
+                              double.tryParse(_saltController.text) ?? 0,
+                              userDEK,
+                            ),
                           },
                         };
 
@@ -2581,8 +3054,20 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         return;
                       }
 
-                      final factor = amount / 100.0;
+                      final userDEK = await getUserDEKFromRemoteConfig(
+                        user.uid,
+                      );
+                      if (userDEK == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Kon encryptiesleutel niet ophalen.'),
+                          ),
+                        );
+                        Navigator.pop(dialogContext, false);
+                        return;
+                      }
 
+                      final factor = amount / 100.0;
                       final nutrimentsJson = nutriments;
 
                       final calculatedNutriments = {
@@ -2638,12 +3123,22 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           .collection('logs')
                           .doc(todayDocId);
 
+                      // Encrypt de waarden
                       final logEntry = {
-                        'product_name': productName,
-                        'amount_g': amount,
+                        'product_name': await encryptValue(
+                          productName,
+                          userDEK,
+                        ),
+                        'amount_g': await encryptDouble(amount, userDEK),
                         'timestamp': Timestamp.now(),
-                        'nutriments': calculatedNutriments,
-                        'meal_type': selectedMeal,
+                        'nutrients': {
+                          for (final key in calculatedNutriments.keys)
+                            key: await encryptDouble(
+                              calculatedNutriments[key] ?? 0,
+                              userDEK,
+                            ),
+                        },
+                        'meal_type': await encryptValue(selectedMeal, userDEK),
                       };
 
                       try {
@@ -2660,7 +3155,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             ),
                           );
                         }
-                        // Sluit de dialoog en geef 'true' terug voor succes.
                         Navigator.pop(dialogContext, true);
                       } catch (e) {
                         if (mounted) {
@@ -2671,7 +3165,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             ),
                           );
                         }
-                        // Sluit de dialoog en geef 'false' terug bij een fout.
                         Navigator.pop(dialogContext, false);
                       }
                     }
