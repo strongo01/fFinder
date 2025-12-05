@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 
 final algorithm = AesGcm.with256bits();
 final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
@@ -11,6 +12,24 @@ Future<SecretKey> deriveUserKey(SecretKey globalDEK, String uid) async {
     info: utf8.encode('user-specific-key'),
     nonce: utf8.encode(uid), // voor oudere/stabiele versies
   );
+}
+
+Future<SecretKey?> getUserDEKFromRemoteConfig(String uid) async {
+  try {
+    final rc = FirebaseRemoteConfig.instance;
+    await rc.setConfigSettings(RemoteConfigSettings(
+      fetchTimeout: const Duration(seconds: 10),
+      minimumFetchInterval: const Duration(hours: 1),
+    ));
+    await rc.fetchAndActivate();
+    final globalB64 = rc.getString('GLOBAL_DEK');
+    if (globalB64.isEmpty) return null;
+    final globalBytes = base64Decode(globalB64);
+    final globalDEK = SecretKey(globalBytes);
+    return await deriveUserKey(globalDEK, uid);
+  } catch (_) {
+    return null;
+  }
 }
 
 /// Encrypt een string

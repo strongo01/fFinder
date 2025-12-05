@@ -13,7 +13,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
-
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 //start van de app
 Future<void> main() async {
@@ -25,10 +25,12 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   ); // initialiseerd firebase voor het platform
 
+  if (!kIsWeb) {
     await FirebaseAppCheck.instance.activate(
-    webProvider: null, // alleen voor Android
-    androidProvider: AndroidProvider.playIntegrity,
-  );
+      androidProvider: AndroidProvider.playIntegrity,
+      appleProvider: AppleProvider.appAttest,
+    );
+  }
 
   await GoogleSignIn.instance
       .initialize(); // de sign in voor google wordt geinitialiseerd

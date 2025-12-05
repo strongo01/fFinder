@@ -1,3 +1,5 @@
+import 'package:cryptography/cryptography.dart';
+import 'package:fFinder/views/crypto_class.dart';
 import 'package:fFinder/views/feedback_view.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -32,6 +34,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       });
       return;
     }
+    SecretKey? userDEK = await getUserDEKFromRemoteConfig(user.uid);
 
     try {
       final doc = await FirebaseFirestore.instance
@@ -39,10 +42,40 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
           .doc(user.uid)
           .get();
       if (doc.exists && doc.data()!.containsKey('drinkPresets')) {
-        // als er standaarden zijn opgeslagen
-        final presets = List<Map<String, dynamic>>.from(
-          doc.data()!['drinkPresets'], // haal de lijst op
-        );
+        final rawList = doc.data()!['drinkPresets'] as List<dynamic>;
+        final presets = <Map<String, dynamic>>[];
+
+        for (final item in rawList) {
+          if (item is Map<String, dynamic>) {
+            final map = Map<String, dynamic>.from(item);
+
+            // decrypt naam indien nodig
+            if (userDEK != null && map['name'] is String) {
+              try {
+                map['name'] = await decryptValue(map['name'] as String, userDEK);
+              } catch (_) {
+                // laat origineel staan bij fout
+              }
+            }
+
+            if (userDEK != null) {
+              final amountVal = map['amount'];
+              if (amountVal is String) {
+                try {
+                  final decryptedAmount = await decryptValue(amountVal, userDEK);
+                  map['amount'] = int.tryParse(decryptedAmount) ?? decryptedAmount;
+                } catch (_) {
+                 
+                }
+              } else if (amountVal is num) {
+                map['amount'] = amountVal.toInt();
+              }
+            }
+
+            presets.add(map);
+          }
+        }
+
         setState(() {
           _drinkPresets = presets;
         });
@@ -71,9 +104,48 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+        SecretKey? userDEK = await getUserDEKFromRemoteConfig(user.uid);
+
+
+    final toSave = <Map<String, dynamic>>[];
+    for (final preset in _drinkPresets) {
+      final map = <String, dynamic>{};
+      final nameVal = preset['name'];
+      if (userDEK != null && nameVal is String) {
+        try {
+          map['name'] = await encryptValue(nameVal, userDEK);
+        } catch (_) {
+          map['name'] = nameVal;
+        }
+      } else {
+        map['name'] = nameVal;
+      }
+
+      final amountVal = preset['amount'];
+      if (userDEK != null) {
+        try {
+          if (amountVal is int) {
+            map['amount'] = await encryptInt(amountVal, userDEK);
+          } else if (amountVal is double) {
+            map['amount'] = await encryptDouble(amountVal, userDEK);
+          } else if (amountVal is String) {
+            map['amount'] = await encryptValue(amountVal, userDEK);
+          } else {
+            map['amount'] = amountVal;
+          }
+        } catch (_) {
+          map['amount'] = amountVal;
+        }
+      } else {
+        map['amount'] = amountVal;
+      }
+
+      toSave.add(map);
+    }
+
     await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-      'drinkPresets': _drinkPresets, // in drinkPresets veld
-    }, SetOptions(merge: true)); // voeg toe zonder te overschrijven
+      'drinkPresets': toSave,
+    }, SetOptions(merge: true));
   }
 
   Future<void> _logDrink(String name, int amount, String drinkTime) async {
@@ -86,17 +158,34 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       return;
     }
 
+    SecretKey? userDEK = await getUserDEKFromRemoteConfig(user.uid);
+
     final now = DateTime.now();
     final todayDocId =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-    // document ID voor vandaag
+
+    String productNameField = name;
+    String quantityField = '$amount ml';
+
+    if (userDEK != null) {
+      try {
+        productNameField = await encryptValue(name, userDEK);
+      } catch (_) {
+        productNameField = name;
+      }
+      try {
+        quantityField = await encryptInt(amount, userDEK);
+      } catch (_) {
+        quantityField = '$amount ml';
+      }
+    }
+
     final logEntry = {
-      // maak een log entry aan
-      'product_name': name,
-      'quantity': '$amount ml',
+      'product_name': productNameField,
+      'quantity': quantityField,
       'meal_type': drinkTime,
       'drinkTime': drinkTime,
-      'timestamp': DateTime.now(),
+      'timestamp': now,
       'nutriments': {
         'energy-kcal': 0,
         'fat': 0,
@@ -114,16 +203,14 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
         .collection('logs')
         .doc(todayDocId)
         .set({
-          'entries': FieldValue.arrayUnion([
-            logEntry,
-          ]), // voeg entry toe aan entries array
+          'entries': FieldValue.arrayUnion([logEntry]),
         }, SetOptions(merge: true));
 
     if (mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('$name ($amount ml) toegevoegd!')));
-      Navigator.of(context).pop(); // ga terug naar vorige scherm
+      Navigator.of(context).pop();
     }
   }
 
