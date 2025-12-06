@@ -47,6 +47,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
   late TutorialCoachMark tutorialCoachMark;
 
+  bool _hasLoadedMore = false;
+
   @override
   void initState() {
     super.initState();
@@ -351,7 +353,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Future<void> _searchProducts(String query) async {
+  Future<void> _searchProducts(String query, {bool loadMore = false}) async {
     // zoek producten via openfoodfacts api
     if (query.isEmpty) {
       setState(() {
@@ -383,65 +385,69 @@ class _AddFoodPageState extends State<AddFoodPage> {
       try {
         print("--- Poging 1: ffinder.nl endpoint ---");
         final ffinderUrl = Uri.parse(
-          "https://ffinder.nl/search?query=${Uri.encodeComponent(trimmed)}",
+          "https://ffinder.nl/product?q=${Uri.encodeComponent(trimmed)}",
         );
         print("URL: $ffinderUrl");
-        final appKey = dotenv.env["APP_KEY"];
 
+        final appKey = dotenv.env["APP_KEY"];
         final response = await http.get(
           ffinderUrl,
           headers: {"x-app-key": appKey ?? ""},
         );
 
         print("ffinder.nl Status Code: ${response.statusCode}");
-        print("ffinder.nl Response Body: ${response.body}");
+        print("ffinder.nl Response Headers: ${response.headers}");
 
         if (response.statusCode == 200) {
+          print(
+            "ffinder.nl response body (preview): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}",
+          );
           final data = jsonDecode(response.body);
           final foodsObject = data["foods"];
           if (foodsObject != null && foodsObject["food"] is List) {
             final products = foodsObject["food"] as List;
-
-            if (products.isNotEmpty) {
-              print(
-                "Succes: ${products.length} producten gevonden via ffinder.nl",
-              );
-              all = products;
-            } else {
-              print("ffinder.nl gaf een leeg resultaat.");
-            }
+            all = products;
+            print(
+              "Succes: ${products.length} producten gevonden via ffinder.nl",
+            );
+          } else {
+            print("ffinder.nl gaf een leeg resultaat of verkeerde structuur.");
           }
         } else {
-          print("ffinder.nl gaf een error status: ${response.statusCode}");
+          print("ffinder.nl gaf een foutstatus: ${response.statusCode}");
+          print("Response body: ${response.body}");
         }
-      } catch (e) {
+      } catch (e, stack) {
         print("Fout bij het aanroepen van ffinder.nl: $e");
-        // De 'all' lijst is nog steeds leeg, dus de fallback wordt automatisch gebruikt.
+        print(stack);
       }
 
       // Fallback naar Open Food Facts
-      if (all.isEmpty) {
+      if (all.isEmpty || loadMore) {
         print("\n--- Poging 2: Open Food Facts (Fallback) ---");
         final openFoodFactsUrl = Uri.parse(
           "https://nl.openfoodfacts.org/cgi/search.pl"
           "?search_terms=${Uri.encodeComponent(trimmed)}"
-          "&search_simple=1"
-          "&json=1"
-          "&action=process",
+          "&search_simple=1&json=1&action=process",
         );
-        print("URL: $openFoodFactsUrl");
-
         final response = await http.get(openFoodFactsUrl);
-        print("OpenFoodFacts Status Code: ${response.statusCode}");
-        //print("OpenFoodFacts Response Body: ${response.body}"); // Kan erg lang zijn
-
-        if (response.statusCode != 200) {
-          throw Exception("HTTP ${response.statusCode}");
+        print("Open Food Facts Status Code: ${response.statusCode}");
+        if (response.statusCode == 200) {
+          print(
+            "Open Food Facts response body (preview): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}",
+          );
+          final data = jsonDecode(response.body);
+          final products = (data["products"] as List?) ?? [];
+          if (products.isNotEmpty) {
+            if (loadMore) {
+              // voeg nieuwe producten toe aan bestaande resultaten
+              all.addAll(products);
+            } else {
+              all = products;
+            }
+            _hasLoadedMore = true; // geeft aan dat we extra hebben geladen
+          }
         }
-
-        final data = jsonDecode(response.body);
-        all = (data["products"] as List?) ?? []; // alle producten
-        print("Succes: ${all.length} producten gevonden via Open Food Facts.");
       }
 
       final escaped = RegExp.escape(trimmed); // escape speciale tekens
@@ -491,8 +497,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
           _searchResults = limited;
         });
       }
-    } catch (e) {
+    } catch (e, stack) {
       print("Algemene fout in _searchProducts: $e");
+      print(stack);
       setState(() {
         _errorMessage = 'Fout bij ophalen: $e';
       });
@@ -776,8 +783,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   Widget _buildSearchResults() {
-    // bouw de zoekresultaten lijst
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -790,6 +797,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         ),
       );
     }
+
     if (_searchResults!.isEmpty) {
       return Center(
         child: Column(
@@ -801,8 +809,22 @@ class _AddFoodPageState extends State<AddFoodPage> {
             ),
             const SizedBox(height: 8),
             TextButton(
-              // knop om eigen product toe te voegen
               onPressed: _showAddMyProductSheet,
+              style: TextButton.styleFrom(
+                backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+                foregroundColor: isDarkMode ? Colors.white : Colors.black,
+                side: BorderSide(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  width: 1.5,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 14,
+                  horizontal: 18,
+                ),
+              ),
               child: const Text('Wilt u zelf een product toevoegen?'),
             ),
           ],
@@ -810,34 +832,18 @@ class _AddFoodPageState extends State<AddFoodPage> {
       );
     }
 
-    return ListView.builder(
-      itemCount:
-          _searchResults!.length +
-          1, // +1 voor de knop om eigen product toe te voegen
-      itemBuilder: (context, index) {
-        if (index == _searchResults!.length) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: TextButton(
-              onPressed: _showAddMyProductSheet,
-              child: const Text(
-                'Niet de gewenste resultaten: voeg een product toe!',
-              ),
-            ),
-          );
-        }
+    // Bouw een lijst van widgets
+    List<Widget> resultWidgets = [];
 
-        final product = _searchResults![index] as Map<String, dynamic>;
-        final imageUrl = product['image_front_small_url'] as String?;
-
-        return ListTile(
-          // toon elk product in de lijst
+    for (var product in _searchResults!) {
+      final imageUrl = product['image_front_small_url'] as String?;
+      resultWidgets.add(
+        ListTile(
           leading: imageUrl != null
               ? SizedBox(
                   width: 50,
                   height: 50,
                   child: Image.network(
-                    // laad de afbeelding van het product
                     imageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) =>
@@ -849,17 +855,47 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   height: 50,
                   child: Icon(Icons.fastfood),
                 ),
-          title: Text((product['product_name'] as String?) ?? 'Onbekende naam'),
-          subtitle: Text((product['brands'] as String?) ?? 'Onbekend merk'),
+          title: Text(product['product_name'] ?? 'Onbekende naam'),
+          subtitle: Text(product['brands'] ?? 'Onbekend merk'),
           onTap: () {
-            final barcode = product['_id'] as String?;
+            final barcode = (product['_id'] ?? product['barcode']) as String?;
             if (barcode != null) {
               _showProductDetails(barcode);
             }
           },
-        );
-      },
+        ),
+      );
+    }
+
+    // "Meer laden" knop
+    if (!_hasLoadedMore) {
+      resultWidgets.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: TextButton(
+            onPressed: () async {
+              await _searchProducts(_searchController.text, loadMore: true);
+            },
+            child: const Text('Meer producten laden…'),
+          ),
+        ),
+      );
+    }
+
+    // "Niet de gewenste resultaten" knop
+    resultWidgets.add(
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        child: TextButton(
+          onPressed: _showAddMyProductSheet,
+          child: const Text(
+            'Niet de gewenste resultaten: voeg een product toe!',
+          ),
+        ),
+      ),
     );
+
+    return ListView(children: resultWidgets);
   }
 
   Future<void> _showAddMyProductSheet() async {
@@ -2208,6 +2244,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             'nutriments_per_100g': ingredient['nutriments_per_100g'],
           },
           'isSearching': false,
+          'hasLoadedMore': false,
         });
       }
     } else {
@@ -2217,6 +2254,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
         'searchResults': null,
         'selectedProduct': null,
         'isSearching': false,
+
+        'hasLoadedMore': false,
       });
     }
 
@@ -2232,8 +2271,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
             Future<void> searchProductsForIngredient(
               String query,
-              int index,
-            ) async {
+              int index, {
+              bool loadMore = false,
+            }) async {
               if (query.length < 2) {
                 // minimale lengte voor zoeken
                 setModalState(() {
@@ -2244,41 +2284,49 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
               setModalState(() {
                 ingredientEntries[index]['isSearching'] = true;
+                if (!loadMore) {
+                  ingredientEntries[index]['hasLoadedMore'] = false;
+                }
               });
 
               List all = [];
+              if (loadMore) {
+                all.addAll(ingredientEntries[index]['searchResults'] ?? []);
+              }
               final appKey = dotenv.env["APP_KEY"] ?? "";
 
               try {
                 //Probeer eerst ffinder.nl (jouw backend)
-                try {
-                  final ffinderUrl = Uri.parse(
-                    "https://ffinder.nl/search?query=${Uri.encodeComponent(query)}",
-                  );
 
-                  final ffinderResponse = await http.get(
-                    ffinderUrl,
-                    headers: {"x-app-key": appKey},
-                  );
-
-                  if (ffinderResponse.statusCode == 200) {
-                    final data = jsonDecode(ffinderResponse.body);
-                    final foodsObject = data["foods"];
-                    if (foodsObject != null && foodsObject["food"] is List) {
-                      all = foodsObject["food"] as List;
-                    }
-                  } else {
-                    print(
-                      "ffinder.nl gaf status ${ffinderResponse.statusCode}",
+                  try {
+                    final ffinderUrl = Uri.parse(
+                      "https://ffinder.nl/product?q=${Uri.encodeComponent(query)}",
                     );
-                  }
-                } catch (e) {
-                  print("Fout bij zoeken op ffinder.nl: $e");
-                  // laat 'all' leeg zodat fallback wordt gebruikt
+
+                    final ffinderResponse = await http.get(
+                      ffinderUrl,
+                      headers: {"x-app-key": appKey},
+                    );
+
+                    if (ffinderResponse.statusCode == 200) {
+                      final data = jsonDecode(ffinderResponse.body);
+                      final foodsObject = data["foods"];
+                      if (foodsObject != null && foodsObject["food"] is List) {
+                        all = foodsObject["food"] as List;
+                      }
+                    } else {
+                      print(
+                        "ffinder.nl gaf status ${ffinderResponse.statusCode}",
+                      );
+                    }
+                  } catch (e) {
+                    print("Fout bij zoeken op ffinder.nl: $e");
+                    // laat 'all' leeg zodat fallback wordt gebruikt
+                  
                 }
 
                 // Fallback naar OpenFoodFacts als ffinder niets teruggeeft of error
-                if (all.isEmpty) {
+                if (all.isEmpty || loadMore) {
                   final offUrl = Uri.parse(
                     "https://nl.openfoodfacts.org/cgi/search.pl"
                     "?search_terms=${Uri.encodeComponent(query)}"
@@ -2290,7 +2338,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   final offResponse = await http.get(offUrl);
                   if (offResponse.statusCode == 200) {
                     final data = jsonDecode(offResponse.body);
-                    all = (data["products"] as List?) ?? [];
+                    final newProducts = (data["products"] as List?) ?? [];
+                    all.addAll(newProducts);
+                    if (loadMore) {
+                      setModalState(() {
+                        ingredientEntries[index]['hasLoadedMore'] = true;
+                      });
+                    }
                   } else {
                     print("OpenFoodFacts gaf status ${offResponse.statusCode}");
                   }
@@ -2469,11 +2523,31 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                   height: 150,
                                   child: ListView.builder(
                                     itemCount:
-                                        (entry['searchResults'] as List).length,
+                                        (entry['searchResults'] as List)
+                                                .length +
+                                            ((entry['hasLoadedMore']
+                                                    as bool? ??
+                                                    false)
+                                                ? 0
+                                                : 1),
                                     itemBuilder: (context, resultIndex) {
-                                      final product =
-                                          (entry['searchResults']
-                                              as List)[resultIndex];
+                                      final results =
+                                          entry['searchResults'] as List;
+                                      if (resultIndex == results.length) {
+                                        return TextButton(
+                                          onPressed: () =>
+                                              searchProductsForIngredient(
+                                            searchController.text,
+                                            index,
+                                            loadMore: true,
+                                          ),
+                                          child: const Text(
+                                            'Meer producten laden...',
+                                          ),
+                                        );
+                                      }
+
+                                      final product = results[resultIndex];
                                       return ListTile(
                                         title: Text(
                                           product['product_name'] ?? 'Onbekend',
@@ -2528,6 +2602,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 'amountController': TextEditingController(),
                                 'searchResults': null,
                                 'selectedProduct': null,
+
+                                'hasLoadedMore': false,
                                 'isSearching': false,
                               });
                             });
@@ -2741,10 +2817,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: 'Hoeveelheid (bijv. 100g, 250ml)',
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -2760,10 +2839,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: 'Energie (kcal)',
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
                     ],
                     validator: (value) => (value == null || value.isEmpty)
                         ? 'Calorieën zijn verplicht'
@@ -2773,10 +2855,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     controller: _fatController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Vetten'),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
                     ],
                   ),
                   TextFormField(
@@ -2785,10 +2870,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: '  - Waarvan verzadigd',
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
                     ],
                   ),
                   TextFormField(
@@ -2797,10 +2885,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: 'Koolhydraten',
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
                     ],
                   ),
                   TextFormField(
@@ -2809,40 +2900,52 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: '  - Waarvan suikers',
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
                     ],
                   ),
                   TextFormField(
                     controller: _fiberController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Vezels'),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
                     ],
                   ),
                   TextFormField(
                     controller: _proteinsController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Eiwitten'),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
                     ],
                   ),
                   TextFormField(
                     controller: _saltController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Zout'),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
