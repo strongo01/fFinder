@@ -1,3 +1,4 @@
+import 'package:fFinder/views/crypto_class.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -113,6 +114,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     try {
+           final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+      if (userDEK == null) {
+        throw Exception("Kon de encryptiesleutel niet laden.");
+      }
+      
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -121,26 +127,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (doc.exists) {
         final data = doc.data() ?? {};
 
-                final savedActivityLevel = data['activityLevel'] as String?;
-        final savedGoal = data['goal'] as String?;
+final currentWeight = await decryptDouble(data['weight'], userDEK);
+        final targetWeight = await decryptDouble(data['targetWeight'], userDEK);
+        final height = await decryptDouble(data['height'], userDEK);
+        final sleepHours = await decryptDouble(data['sleepHours'], userDEK);
+        final activityLevel = await decryptValue(data['activityLevel'] ?? '', userDEK);
+        final goal = await decryptValue(data['goal'] ?? '', userDEK);
+
 
         // Controleer of de opgeslagen waarden nog geldig zijn. Zo niet, gebruik de eerste optie als fallback.
-        final validActivityLevel = savedActivityLevel != null && _activityOptions.contains(savedActivityLevel)
-            ? savedActivityLevel
+        final validActivityLevel = _activityOptions.contains(activityLevel)
+            ? activityLevel
             : _activityOptions.first;
         
-        final validGoal = savedGoal != null && _goalOptions.contains(savedGoal)
-            ? savedGoal
+        final validGoal = _goalOptions.contains(goal)
+            ? goal
             : _goalOptions.first;
 
         setState(() {
           _isAdmin = data['admin'] ?? false;
-          _currentWeight =
-              (data['weight'] as num?)?.toDouble() ?? _currentWeight;
-          _targetWeight =
-              (data['targetWeight'] as num?)?.toDouble() ?? _targetWeight;
-          _height = (data['height'] as num?)?.toDouble() ?? _height;
-          _sleepHours = (data['sleepHours'] as num?)?.toDouble() ?? _sleepHours;
+          _currentWeight = currentWeight > 0 ? currentWeight : _currentWeight;
+          _targetWeight = targetWeight > 0 ? targetWeight : _targetWeight;
+          _height = height > 0 ? height : _height;
+          _sleepHours = sleepHours > 0 ? sleepHours : _sleepHours;
           _activityLevel = validActivityLevel;
           _goal = validGoal;
 
@@ -176,6 +185,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+      final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+      if (userDEK == null) {
+        throw Exception("Kon de encryptiesleutel niet laden voor opslaan.");
+      }
+
     setState(() => _saving = true);
 
     try {
@@ -194,8 +208,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       final data = doc.data() ?? {};
 
-      final String gender = (data['gender'] as String?) ?? 'Man';
-      final String? birthDateStr = data['birthDate'] as String?;
+            final gender = await decryptValue(data['gender'], userDEK);
+      final birthDateStrEncrypted = data['birthDate'];
+      String? birthDateStr;
+      if (birthDateStrEncrypted != null) {
+        birthDateStr = await decryptValue(birthDateStrEncrypted, userDEK);
+      }
+
       DateTime? birthDate;
       if (birthDateStr != null && birthDateStr.isNotEmpty) {
         birthDate = DateTime.tryParse(birthDateStr);
@@ -273,18 +292,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       // Alles naar Firestore
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'weight': _currentWeight,
-        'targetWeight': _targetWeight,
-        'height': _height,
-        'sleepHours': _sleepHours,
-        'activityLevel': _activityLevel,
-        'goal': _goal,
-        'bmi': bmi,
-        'calorieGoal': calorieGoal,
-        'proteinGoal': proteinGoal,
-        'fatGoal': fatGoal,
-        'carbGoal': carbGoal,
+            await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'weight': await encryptDouble(_currentWeight, userDEK),
+        'targetWeight': await encryptDouble(_targetWeight, userDEK),
+        'height': await encryptDouble(_height, userDEK),
+        'sleepHours': await encryptDouble(_sleepHours, userDEK),
+        'activityLevel': await encryptValue(_activityLevel, userDEK),
+        'goal': await encryptValue(_goal, userDEK),
+        'bmi': bmi != null ? await encryptDouble(bmi, userDEK) : null,
+        'calorieGoal': calorieGoal != null ? await encryptDouble(calorieGoal, userDEK) : null,
+        'proteinGoal': proteinGoal != null ? await encryptDouble(proteinGoal, userDEK) : null,
+        'fatGoal': fatGoal != null ? await encryptDouble(fatGoal, userDEK) : null,
+        'carbGoal': carbGoal != null ? await encryptDouble(carbGoal, userDEK) : null,
       }, SetOptions(merge: true));
 
       if (!mounted) return;

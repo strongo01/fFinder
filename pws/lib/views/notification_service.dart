@@ -6,8 +6,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 
-// Deze handler moet een top-level functie zijn (buiten een class).
-// Het wordt aangeroepen wanneer een notificatie binnenkomt terwijl de app op de achtergrond of gesloten is.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -19,13 +17,11 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  // Maak een Android Notification Channel aan voor voorgrondnotificaties.
   final AndroidNotificationChannel _androidChannel =
       const AndroidNotificationChannel(
-        'high_importance_channel', // id
-        'High Importance Notifications', // title
-        description:
-            'This channel is used for important notifications.', // description
+        'high_importance_channel',
+        'High Importance Notifications',
+        description: 'This channel is used for important notifications.',
         importance: Importance.high,
       );
 
@@ -33,23 +29,32 @@ class NotificationService {
     if (kIsWeb) {
       return;
     }
-//Vraag permissie voor notificaties.
-  await _firebaseMessaging.requestPermission();
 
-  final dynamic currentTimeZone = await FlutterTimezone.getLocalTimezone();
-  tz.setLocalLocation(tz.getLocation(currentTimeZone));
+    await _firebaseMessaging.requestPermission();
 
-  // Voor iOS: stel presentatie-opties in voor voorgrondnotificaties.
-  await _firebaseMessaging.setForegroundNotificationPresentationOptions(
-      alert: true, // Toon een alert.
-      badge: true, // Update de app-badge.
-      sound: true, // Speel een geluid af.
+    // --- 1. TIJDZONE CORRECTIE ---
+    try {
+      // We halen eerst het object op
+      final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      // Daarna pakken we de identifier (de String "Europe/Amsterdam")
+      final String timeZoneName = timezoneInfo.identifier;
+
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      print("Kon tijdzone niet ophalen: $e");
+      // Fallback
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
+    // -----------------------------
+
+    await _firebaseMessaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
     );
 
-    // Initialiseer de local notifications plugin met iOS/Darwin instellingen.
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings();
@@ -60,16 +65,15 @@ class NotificationService {
           iOS: initializationSettingsDarwin,
           macOS: initializationSettingsDarwin,
         );
+
     await _localNotifications.initialize(initializationSettings);
 
-    //Maak het Android channel aan.
     await _localNotifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >()
         ?.createNotificationChannel(_androidChannel);
 
-    // Stel de background en foreground message handlers in.
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     _setupForegroundMessageHandler();
   }
@@ -79,7 +83,6 @@ class NotificationService {
       RemoteNotification? notification = message.notification;
       if (notification != null) {}
 
-      // Controleer op zowel Android als Apple notificatie details
       if (notification != null &&
           (message.notification?.android != null ||
               message.notification?.apple != null)) {
@@ -116,7 +119,7 @@ class NotificationService {
     if (kIsWeb) {
       return;
     }
-    // Annuleer eerst alle bestaande meldingen om duplicaten te voorkomen.
+
     await _localNotifications.cancelAll();
 
     if (areEnabled) {
@@ -140,7 +143,7 @@ class NotificationService {
         body: 'Geniet van je avondeten en natuurlijk ook het loggen ervan!',
         time: dinnerTime,
       );
-    } else {}
+    }
   }
 
   Future<void> _scheduleDailyNotification({
@@ -149,8 +152,9 @@ class NotificationService {
     required String body,
     required TimeOfDay time,
   }) async {
-    final tz.TZDateTime now = tz.TZDateTime.now(tz.local); // Huidige tijd in lokale tijdzone
-    tz.TZDateTime scheduledDate = tz.TZDateTime( // Geplande tijd vandaag
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+
+    tz.TZDateTime scheduledDate = tz.TZDateTime(
       tz.local,
       now.year,
       now.month,
@@ -159,12 +163,11 @@ class NotificationService {
       time.minute,
     );
 
-    // Als de geplande tijd vandaag al voorbij is, plan het voor morgen.
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
-    await _localNotifications.zonedSchedule( // Plan de notificatie
+    await _localNotifications.zonedSchedule(
       id,
       title,
       body,
@@ -174,17 +177,21 @@ class NotificationService {
           'meal_reminders_channel',
           'Maaltijdherinneringen',
           channelDescription: 'Dagelijkse herinneringen voor maaltijden.',
-          importance: Importance.defaultImportance,
-          priority: Priority.low,
+          importance: Importance.high,
+          priority: Priority.high,
         ),
+
         iOS: DarwinNotificationDetails(
           presentSound: true,
           presentAlert: true,
           presentBadge: true,
         ),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time, // dagelijkse herhaling
+      // --- 2. SCHEDULE MODE CORRECTIE ---
+      // We gebruiken 'inexact' om crashes te voorkomen op jouw Android versie
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+
+      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 }

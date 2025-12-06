@@ -988,7 +988,7 @@ class _WeightViewState extends State<WeightView> {
               ),
               const SizedBox(height: 4),
               Text(
-                'X-as: dagen van de maand, Y-as: gewicht (kg)',
+                'Horizontaal: dagen van de maand, Verticaal: gewicht (kg)',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: secondaryTextColor,
                 ),

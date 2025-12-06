@@ -1277,7 +1277,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
 
                 final entries = entriesSnapshot.data!;
-
+                final Map<dynamic, dynamic> originalEntriesMap = {
+                  for (var i = 0; i < entries.length; i++) entries[i]: entriesRaw[i]
+                };
                 // Vanaf hier wordt de bestaande logica uitgevoerd met de gedecrypteerde 'entries'
                 double totalCalories = 0;
                 double totalProteins = 0;
@@ -1436,7 +1438,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Center(
                       child: LayoutBuilder(
                         builder: (context, constraints) {
-                          if (constraints.maxWidth < 400) {
+                          if (constraints.maxWidth < 500) {
                             return Column(
                               children: [
                                 Row(
@@ -1586,6 +1588,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 key: currentKey,
                                 title: mealEntry.key,
                                 entries: const [],
+                                originalEntriesMap: const {}, 
                                 isDarkMode: isDarkMode,
                               ),
                             ),
@@ -1596,6 +1599,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           key: currentKey,
                           title: mealEntry.key,
                           entries: mealEntry.value,
+                          originalEntriesMap: originalEntriesMap, 
                           isDarkMode: isDarkMode,
                         );
                       }).toList();
@@ -1910,12 +1914,13 @@ class _HomeScreenState extends State<HomeScreen> {
     Key? key,
     required String title,
     required List<dynamic> entries,
+required Map<dynamic, dynamic> originalEntriesMap,
     required bool isDarkMode,
   }) {
     double totalMealCalories = 0;
     for (var entry in entries) {
       // berekent de totale calorieën voor de maaltijd
-      totalMealCalories += (entry['nutriments']?['energy-kcal'] ?? 0.0);
+      totalMealCalories += (entry['nutrients']?['energy-kcal'] ?? 0.0);
     }
 
     return Card(
@@ -1951,6 +1956,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const Divider(height: 20),
             ...entries.map((entry) {
+              final originalEncryptedEntry = originalEntriesMap[entry];
+
               // bouwt elke log entry
               final productName = entry['product_name'] ?? 'Onbekend';
               //final calories = (entry['nutriments']?['energy-kcal'] ?? 0.0)
@@ -1961,9 +1968,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
               if (entry.containsKey('quantity')) {
                 // Als het drinken is, toon ml anders kcal
-                rightSideText = entry['quantity'] as String? ?? '0 ml';
+                final quantityValue = entry['quantity']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0';
+                final amount = double.tryParse(quantityValue) ?? 0.0;
+                rightSideText = '${amount.round()} ml';
               } else {
-                final calories = (entry['nutriments']?['energy-kcal'] ?? 0.0)
+                final calories = (entry['nutrients']?['energy-kcal'] ?? 0.0)
                     .round();
                 rightSideText = '$calories kcal';
               }
@@ -1988,8 +1997,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: InkWell(
                   // tik om hoeveelheid aan te passen
-                  onTap: () {
-                    _showEditAmountDialog(entry);
+                           onTap: () {
+                    _showEditAmountDialog(entry, originalEncryptedEntry);
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -2050,10 +2059,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _showEditAmountDialog(Map<String, dynamic> entry) async {
+  Future<void> _showEditAmountDialog(
+    Map<String, dynamic> decryptedEntry,
+    Map<String, dynamic> encryptedEntry,
+  ) async {
     // toont dialoog om hoeveelheid aan te passen
     final amountController = TextEditingController(
-      text: (entry['amount_g'] ?? '100').toString(),
+      text: (decryptedEntry['amount_g'] ?? '100').toString(),
     ); // standaard 100gof ml
     final formKey = GlobalKey<FormState>();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -2114,13 +2126,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (newAmount != null) {
       // als er een nieuwe hoeveelheid is opgegeven
-      _updateEntryAmount(entry, newAmount);
+      _updateEntryAmount(decryptedEntry, encryptedEntry, newAmount);
     }
   }
 
   Future<void> _updateEntryAmount(
-    // werkt de hoeveelheid van een log entry bij in de la Firestore
-    Map<String, dynamic> originalEntry,
+    Map<String, dynamic> decryptedEntry,
+    Map<String, dynamic> encryptedEntry,
     double newAmount,
   ) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -2135,9 +2147,9 @@ class _HomeScreenState extends State<HomeScreen> {
         .collection('logs')
         .doc(todayDocId);
 
-    final originalAmount = originalEntry['amount_g'] as num?;
+    final originalAmount = decryptedEntry['amount_g'] as num?;
     final originalNutriments =
-        originalEntry['nutriments'] as Map<String, dynamic>?;
+        decryptedEntry['nutrients'] as Map<String, dynamic>?;
 
     if (originalAmount == null ||
         originalAmount <= 0 ||
@@ -2171,32 +2183,19 @@ class _HomeScreenState extends State<HomeScreen> {
     final encryptedAmount = await encryptDouble(newAmount, userDEK);
 
     final updatedEntry = {
-      ...originalEntry,
+      ...encryptedEntry, // Gebruik de originele versleutelde entry als basis
       'amount_g': encryptedAmount,
-      'nutriments': newNutriments,
+      'nutrients': newNutriments,
     };
 
     try {
-      // werk de entry bij in Firestore
-      final doc = await docRef.get();
-      if (doc.exists) {
-        final entries = List<Map<String, dynamic>>.from(
-          doc.data()?['entries'] ?? [],
-        );
-
-        final originalTimestamp = originalEntry['timestamp'] as Timestamp?;
-        if (originalTimestamp == null) return;
-
-        final index = entries.indexWhere(
-          (e) => e['timestamp'] == originalTimestamp,
-        );
-
-        if (index != -1) {
-          // als entry gevonden is
-          entries[index] = updatedEntry;
-          await docRef.update({'entries': entries});
-        }
-      }
+      // Verwijder het oude item en voeg het nieuwe toe
+      await docRef.update({
+        'entries': FieldValue.arrayRemove([encryptedEntry])
+      });
+      await docRef.update({
+        'entries': FieldValue.arrayUnion([updatedEntry])
+      });
     } catch (e) {
       ScaffoldMessenger.of(
         context,

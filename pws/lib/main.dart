@@ -27,15 +27,28 @@ Future<void> main() async {
 
   if (!kIsWeb) {
     try {
+      debugPrint('[DEBUG] Activating Firebase App Check...');
       await FirebaseAppCheck.instance.activate(
         androidProvider: AndroidProvider.playIntegrity,
         appleProvider: AppleProvider.appAttest,
       );
-      print('Firebase App Check is succesvol geactiveerd.');
+      debugPrint('[DEBUG] Firebase App Check successfully activated.');
+
+      // Extra check: haal het App Check token op
+      final token = await FirebaseAppCheck.instance.getToken(true);
+      debugPrint('[DEBUG] App Check token obtained: $token');
+
+      // Luister naar token updates
+      FirebaseAppCheck.instance.onTokenChange.listen((token) {
+        debugPrint('[DEBUG] App Check token changed: $token');
+      });
     } catch (e) {
-      print('Fout bij het activeren van Firebase App Check: $e');
+      debugPrint('[ERROR] Error activating Firebase App Check: $e');
     }
+  } else {
+    debugPrint('[DEBUG] Running on web, App Check skipped');
   }
+
 
   await GoogleSignIn.instance
       .initialize(); // de sign in voor google wordt geinitialiseerd

@@ -4,6 +4,7 @@ import 'package:fFinder/views/feedback_view.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -925,6 +926,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: 'Hoeveelheid (bijv. 100g, 250ml)',
                     ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -939,7 +948,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: 'Energie (kcal)',
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
+                    ],
                     validator: (value) => (value == null || value.isEmpty)
                         ? 'Calorieën zijn verplicht'
                         : null,
@@ -948,7 +964,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     controller: _fatController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Vetten'),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
+                    ],
                   ),
                   TextFormField(
                     controller: _saturatedFatController,
@@ -956,7 +979,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: '  - Waarvan verzadigd',
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
+                    ],
                   ),
                   TextFormField(
                     controller: _carbsController,
@@ -964,7 +994,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: 'Koolhydraten',
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
+                    ],
                   ),
                   TextFormField(
                     controller: _sugarsController,
@@ -972,25 +1009,53 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: '  - Waarvan suikers',
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
+                    ],
                   ),
                   TextFormField(
                     controller: _fiberController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Vezels'),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
+                    ],
                   ),
                   TextFormField(
                     controller: _proteinsController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Eiwitten'),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
+                    ],
                   ),
                   TextFormField(
                     controller: _saltController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Zout'),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,.]?\d*'),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
@@ -2676,6 +2741,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: 'Hoeveelheid (bijv. 100g, 250ml)',
                     ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -2690,7 +2760,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: 'Energie (kcal)',
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                    ],
                     validator: (value) => (value == null || value.isEmpty)
                         ? 'Calorieën zijn verplicht'
                         : null,
@@ -2699,7 +2773,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     controller: _fatController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Vetten'),
-                    keyboardType: TextInputType.number,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                    ],
                   ),
                   TextFormField(
                     controller: _saturatedFatController,
@@ -2707,7 +2785,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: '  - Waarvan verzadigd',
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                    ],
                   ),
                   TextFormField(
                     controller: _carbsController,
@@ -2715,7 +2797,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: 'Koolhydraten',
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                    ],
                   ),
                   TextFormField(
                     controller: _sugarsController,
@@ -2723,25 +2809,41 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     decoration: const InputDecoration(
                       labelText: '  - Waarvan suikers',
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                    ],
                   ),
                   TextFormField(
                     controller: _fiberController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Vezels'),
-                    keyboardType: TextInputType.number,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                    ],
                   ),
                   TextFormField(
                     controller: _proteinsController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Eiwitten'),
-                    keyboardType: TextInputType.number,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                    ],
                   ),
                   TextFormField(
                     controller: _saltController,
                     style: TextStyle(color: textColor),
                     decoration: const InputDecoration(labelText: 'Zout'),
-                    keyboardType: TextInputType.number,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[,.]?\d*')),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
