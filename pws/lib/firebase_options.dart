@@ -42,12 +42,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyBX37Q4edN65nrrcefwhhzfHgy26Hhsi0s',
-    appId: '1:308332286849:web:bb4abfb63467a913744e80',
+    appId: '1:308332286849:web:8744b0524b1264f1744e80',
     messagingSenderId: '308332286849',
     projectId: 'pwsmt-fd851',
     authDomain: 'pwsmt-fd851.firebaseapp.com',
     storageBucket: 'pwsmt-fd851.firebasestorage.app',
-    measurementId: 'G-SYDEQ3CBC1',
+    measurementId: 'G-DXQMGG0943',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -71,7 +71,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyBl57bAX9_egYe6a3q4ZW5nP3aMUEFuA6w',
-    appId: '1:308332286849:ios:01f3558f098932b2744e80',
+    appId: '1:308332286849:ios:b3b92f6467819ee0744e80',
     messagingSenderId: '308332286849',
     projectId: 'pwsmt-fd851',
     storageBucket: 'pwsmt-fd851.firebasestorage.app',

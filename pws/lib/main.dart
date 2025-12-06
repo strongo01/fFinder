@@ -13,7 +13,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 
 //start van de app
 Future<void> main() async {
@@ -27,28 +27,44 @@ Future<void> main() async {
 
   if (!kIsWeb) {
     try {
-      debugPrint('[DEBUG] Activating Firebase App Check...');
+      debugPrint('--- APP CHECK START ---');
+
+      // App Check instellen
       await FirebaseAppCheck.instance.activate(
-        androidProvider: AndroidProvider.playIntegrity,
-        appleProvider: AppleProvider.appAttest,
+        androidProvider: kDebugMode
+            ? AndroidProvider
+                  .debug // Android debug token
+            : AndroidProvider.playIntegrity, // Android release
+        // 🔑 CRUCIALE FIX: GEBRUIK AppleProvider.debug in debug mode.
+        appleProvider: kDebugMode
+            ? AppleProvider
+                  .debug // iOS DEBUG TOKEN gebruiken
+            : AppleProvider.appAttest, // iOS release
       );
+
       debugPrint('[DEBUG] Firebase App Check successfully activated.');
 
-      // Extra check: haal het App Check token op
+      // Extra: haal token op en luister naar veranderingen
       final token = await FirebaseAppCheck.instance.getToken(true);
-      debugPrint('[DEBUG] App Check token obtained: $token');
+      debugPrint('[DEBUG] App Check token retrieved: $token');
 
-      // Luister naar token updates
       FirebaseAppCheck.instance.onTokenChange.listen((token) {
         debugPrint('[DEBUG] App Check token changed: $token');
       });
+      debugPrint('--- APP CHECK END ---');
     } catch (e) {
       debugPrint('[ERROR] Error activating Firebase App Check: $e');
+
+      // Print meer details over de fout
+      if (e is FirebaseException) {
+        debugPrint(
+          '[ERROR DETAIL] Platform: ${e.plugin}, Code: ${e.code}, Message: ${e.message}',
+        );
+      }
     }
   } else {
     debugPrint('[DEBUG] Running on web, App Check skipped');
   }
-
 
   await GoogleSignIn.instance
       .initialize(); // de sign in voor google wordt geinitialiseerd

@@ -233,12 +233,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool tutorialHomeAf = userDoc.data()?['tutorialHomeAf'] ?? false;
 
     if (!tutorialHomeAf) {
-      Future.delayed(const Duration(seconds: 1), () {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
           tutorialCoachMark.show(context: context);
         }
       });
-    }
+    });
+  }
   }
 
   void _createTutorial() async {
@@ -294,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     //Receptenkiezer
-    targets.add(
+   /* targets.add(
       TargetFocus(
         identify: "recipes-key",
         keyTarget: _recipesKey,
@@ -333,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-    );
+    );*/
 
     //Barcode
     targets.add(

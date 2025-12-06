@@ -14,55 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "308332286849-2hs0favvjra8507oj5kn7vfpmt7vpol2.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDexuAkaG7uXbyf-YaBOvNNiVuxwP2hewE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "308332286849-2hs0favvjra8507oj5kn7vfpmt7vpol2.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "308332286849-jcopkr41m2sal2q662sble37nj7let9r.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.pws"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:308332286849:android:461ed16392466cda744e80",
-        "android_client_info": {
-          "package_name": "com.MaxTristan.pws"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "308332286849-du0ikk33c31kus7j42894cgfg68e6o6t.apps.googleusercontent.com",
+          "client_id": "308332286849-frmaes09e4slja0sjblskiulfd6smgsr.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.MaxTristan.pws",
-            "certificate_hash": "2048a33b724640ab24801036dba8b61dc9c1511b"
-          }
-        },
-        {
-          "client_id": "308332286849-qiscpjmvhinu7sr29r3lsgvg44n6qd7h.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.MaxTristan.pws",
-            "certificate_hash": "2fa187382b7c979fab2e077bd0d603ce66dcc08f"
+            "package_name": "com.MaxTristan.fFinder",
+            "certificate_hash": "15c01c6d231178b14c8b5c2d8800449ab86f4e2e"
           }
         },
         {
@@ -83,10 +39,10 @@
               "client_type": 3
             },
             {
-              "client_id": "308332286849-jcopkr41m2sal2q662sble37nj7let9r.apps.googleusercontent.com",
+              "client_id": "308332286849-irnt6u02lpvht2k3987i28vahs623lqd.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.pws"
+                "bundle_id": "com.MaxTristan.fFinder"
               }
             }
           ]
