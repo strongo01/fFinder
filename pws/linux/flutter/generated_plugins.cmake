@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   dargon2_flutter_desktop
+  file_selector_linux
   flutter_timezone
   url_launcher_linux
 )

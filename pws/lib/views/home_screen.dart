@@ -642,12 +642,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-
+try{
     // 1️⃣ Global DEK ophalen (Remote Config)
     final remoteConfig = FirebaseRemoteConfig.instance;
-    await remoteConfig.fetchAndActivate(); // haal nieuwste config op
-    final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
-    final globalDEK = SecretKey(base64Decode(globalDEKString));
+      await remoteConfig.fetchAndActivate(); // haal nieuwste config op
+      if (!mounted) return; // Stop if the widget is no longer in the tree.
+      final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
+      final globalDEK = SecretKey(base64Decode(globalDEKString));
 
     // 2️⃣ User-specifieke DEK afleiden
     final userDEK = await deriveUserKey(globalDEK, user.uid);
@@ -658,7 +659,8 @@ class _HomeScreenState extends State<HomeScreen> {
         .doc(user.uid)
         .get();
 
-    if (!doc.exists) return;
+   if (!doc.exists || !mounted) return;
+
 
     final data = doc.data()!;
 
@@ -693,14 +695,18 @@ class _HomeScreenState extends State<HomeScreen> {
       'goal': await decryptValue(data['goal'], userDEK),
     };
 
-    // ✅ Alles printen
     print('Decrypted user data: $decryptedData');
 
-    // 5️⃣ Update state
-    setState(() {
-      _userData = decryptedData;
-      _calorieAllowance = _calculateCalories(_userData!);
-    });
+   if (mounted) {
+        setState(() {
+          _userData = decryptedData;
+          _calorieAllowance = _calculateCalories(_userData!);
+        });
+      }
+    } catch (e) {
+      // Catches the exception if fetchAndActivate is cancelled.
+      print('Could not fetch user data: $e');
+    }
   }
 
   double _calculateCalories(Map<String, dynamic> data) {

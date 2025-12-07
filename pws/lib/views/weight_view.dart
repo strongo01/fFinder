@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cryptography/cryptography.dart';
 import 'package:fFinder/views/crypto_class.dart';
@@ -19,6 +19,8 @@ class _WeightViewState extends State<WeightView> {
   bool _saving = false;
 
   double _weight = 72;
+
+  double? _targetWeight;
   double _height = 180;
   double? _bmi;
 
@@ -40,8 +42,11 @@ class _WeightViewState extends State<WeightView> {
   }
 
   final TextEditingController _weightController = TextEditingController();
+
+  final TextEditingController _targetWeightController = TextEditingController();
   final FocusNode _weightFocusNode =
       FocusNode(); // FocusNode voor het gewicht invoerveld
+  final FocusNode _targetWeightFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -52,7 +57,9 @@ class _WeightViewState extends State<WeightView> {
   @override
   void dispose() {
     _weightController.dispose();
+    _targetWeightController.dispose();
     _weightFocusNode.dispose();
+    _targetWeightFocusNode.dispose();
     super.dispose();
   }
 
@@ -97,6 +104,20 @@ class _WeightViewState extends State<WeightView> {
         }
       } else {
         _height = _parseDouble(data['height']) ?? _height;
+      }
+
+      if (userDEK != null && data['targetWeight'] is String) {
+        try {
+          final dec = await decryptValue(
+            data['targetWeight'] as String,
+            userDEK,
+          );
+          _targetWeight = double.tryParse(dec.replaceAll(',', '.'));
+        } catch (_) {
+          _targetWeight = _parseDouble(data['targetWeight']);
+        }
+      } else {
+        _targetWeight = _parseDouble(data['targetWeight']);
       }
 
       final weightsRaw = data['weights'] as List<dynamic>? ?? [];
@@ -154,6 +175,9 @@ class _WeightViewState extends State<WeightView> {
       _entries = loaded..sort((a, b) => a.date.compareTo(b.date));
       _currentMonthIndex = 0;
       _weightController.text = _weight.toStringAsFixed(1);
+      if (_targetWeight != null) {
+        _targetWeightController.text = _targetWeight!.toStringAsFixed(1);
+      }
       _recalculateBMI();
     } catch (e) {
       if (!mounted) return;
@@ -190,6 +214,7 @@ class _WeightViewState extends State<WeightView> {
     if (user == null) return;
 
     _weightFocusNode.unfocus();
+    _targetWeightFocusNode.unfocus();
 
     setState(() => _saving = true);
     SecretKey? userDEK;
@@ -274,19 +299,8 @@ class _WeightViewState extends State<WeightView> {
       } else {
         heightVal = _parseDouble(data['height']) ?? _height;
       }
-      double targetWeightVal;
-      if (userDEK != null && data['targetWeight'] is String) {
-        String targDec = data['targetWeight'] as String;
-        try {
-          targDec = await decryptValue(data['targetWeight'] as String, userDEK);
-        } catch (_) {}
-        targetWeightVal =
-            double.tryParse(targDec.replaceAll(',', '.')) ?? _weight;
-      } else {
-        targetWeightVal = (data['targetWeight'] is num)
-            ? (data['targetWeight'] as num).toDouble()
-            : _weight;
-      }
+      final targetWeightVal = _targetWeight ?? _weight;
+
       // Recompute goals if possible
       double? bmi;
       double? calorieGoal;
@@ -419,6 +433,7 @@ class _WeightViewState extends State<WeightView> {
       if (mounted) setState(() => _saving = false);
     }
     _weightFocusNode.unfocus(); // Verberg het toetsenbord na het opslaan
+    _targetWeightFocusNode.unfocus();
   }
 
   List<_MonthGroup> _groupEntriesByMonth() {
@@ -488,8 +503,10 @@ class _WeightViewState extends State<WeightView> {
           ? const Center(child: CircularProgressIndicator())
           : GestureDetector(
               onTap: () {
-                if (_weightFocusNode.hasFocus) {
+                if (_weightFocusNode.hasFocus ||
+                    _targetWeightFocusNode.hasFocus) {
                   _weightFocusNode.unfocus();
+                  _targetWeightFocusNode.unfocus();
                 } else {
                   FocusScope.of(context).unfocus();
                 }
@@ -557,6 +574,44 @@ class _WeightViewState extends State<WeightView> {
                                 },
                               ),
                               const SizedBox(height: 16),
+                              TextField(
+                                controller: _targetWeightController,
+                                focusNode: _targetWeightFocusNode,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: primaryTextColor,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: 'Streefgewicht (kg)',
+                                  labelStyle: TextStyle(
+                                    color: secondaryTextColor,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.flag_outlined,
+                                    color: secondaryTextColor,
+                                  ),
+                                  border: const OutlineInputBorder(),
+                                ),
+                                onChanged: (value) {
+                                  final v = double.tryParse(
+                                    value.replaceAll(',', '.'),
+                                  );
+                                  if (v != null && v > 0) {
+                                    setState(() => _targetWeight = v);
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              if (_targetWeight != null && _entries.length >= 2)
+                                _buildTargetWeightEstimate(
+                                  theme,
+                                  primaryTextColor,
+                                  secondaryTextColor,
+                                ),
+                              const SizedBox(height: 16),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -618,6 +673,18 @@ class _WeightViewState extends State<WeightView> {
                                     _saving ? 'Opslaan...' : 'Gewicht opslaan',
                                   ),
                                   onPressed: _saving ? null : _saveWeight,
+                                ),
+                              ),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey[700],
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  icon: const Icon(Icons.bug_report),
+                                  label: const Text('Testdata toevoegen'),
+                                  onPressed: _addTestWeights,
                                 ),
                               ),
                             ],
@@ -859,24 +926,61 @@ class _WeightViewState extends State<WeightView> {
           ),
           const Divider(height: 1),
           ...reversed.map(
-            (e) => ListTile(
-              dense: true,
-              title: Text(
-                _formatDate(e.date),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: primaryTextColor,
-                ),
+            (e) => Dismissible(
+              key: Key('${e.date.toIso8601String()}_${e.weight}'),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                color: Colors.redAccent,
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: const Icon(Icons.delete, color: Colors.white),
               ),
-              trailing: Text(
-                '${e.weight.toStringAsFixed(1)} kg',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: primaryTextColor,
+              confirmDismiss: (direction) async {
+                return await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Verwijderen?'),
+                    content: const Text(
+                      'Weet je zeker dat je deze meting wilt verwijderen?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Annuleren'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Verwijderen'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              onDismissed: (direction) async {
+                await _deleteEntry(e);
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Meting verwijderd')));
+              },
+              child: ListTile(
+                dense: true,
+                title: Text(
+                  _formatDate(e.date),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: primaryTextColor,
+                  ),
                 ),
-              ),
-              subtitle: Text(
-                _formatShortMonth(e.date),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: secondaryTextColor,
+                trailing: Text(
+                  '${e.weight.toStringAsFixed(1)} kg',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: primaryTextColor,
+                  ),
+                ),
+                subtitle: Text(
+                  _formatShortMonth(e.date),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: secondaryTextColor,
+                  ),
                 ),
               ),
             ),
@@ -884,6 +988,47 @@ class _WeightViewState extends State<WeightView> {
         ],
       ),
     );
+  }
+
+  Future<void> _deleteEntry(WeightEntry entry) async {
+    setState(() {
+      _entries.removeWhere(
+        (e) => e.date == entry.date && e.weight == entry.weight,
+      );
+      _weight = _entries.isNotEmpty ? _entries.last.weight : 0.0;
+      _weightController.text = _weight.toStringAsFixed(1);
+      _recalculateBMI();
+    });
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    SecretKey? userDEK;
+    try {
+      userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    } catch (_) {
+      userDEK = null;
+    }
+
+    final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+    if (userDEK != null) {
+      final List<dynamic> weightsToSave = [];
+      for (final e in _entries) {
+        final m = e.toMap();
+        final encDate = await encryptValue(m['date'] as String, userDEK);
+        final encWeight = await encryptDouble(
+          (m['weight'] as num).toDouble(),
+          userDEK,
+        );
+        weightsToSave.add({'date': encDate, 'weight': encWeight});
+      }
+      await docRef.set({'weights': weightsToSave}, SetOptions(merge: true));
+    } else {
+      await docRef.set({
+        'weights': _entries.map((e) => e.toMap()).toList(),
+      }, SetOptions(merge: true));
+    }
   }
 
   Widget _buildChartView(
@@ -996,6 +1141,178 @@ class _WeightViewState extends State<WeightView> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _addTestWeights() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    SecretKey? userDEK;
+    try {
+      userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    } catch (_) {
+      userDEK = null;
+    }
+
+    // Vul hier je eigen datums en gewichten in
+    final List<WeightEntry> testEntries = [
+      WeightEntry(date: DateTime(2023, 12, 1), weight: 60.0),
+      WeightEntry(date: DateTime(2023, 12, 2), weight: 59.5),
+      WeightEntry(date: DateTime(2023, 12, 3), weight: 59.0),
+      WeightEntry(date: DateTime(2023, 12, 4), weight: 60.0),
+      WeightEntry(date: DateTime(2023, 12, 5), weight: 58.0),
+      WeightEntry(date: DateTime(2023, 12, 6), weight: 60.0),
+      WeightEntry(date: DateTime(2023, 12, 7), weight: 58.0),
+      WeightEntry(date: DateTime(2023, 12, 8), weight: 56.5),
+    ];
+
+    setState(() {
+      _entries.addAll(testEntries);
+      _entries.sort((a, b) => a.date.compareTo(b.date));
+      _weight = _entries.last.weight;
+      _weightController.text = _weight.toStringAsFixed(1);
+      _recalculateBMI();
+    });
+
+    // Sla direct op in Firestore, net als _saveWeight
+    final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final doc = await docRef.get();
+    final data = doc.data() ?? {};
+
+    final List<WeightEntry> allEntries = List.from(_entries);
+
+    if (userDEK != null) {
+      // Encrypt elke entry
+      final List<dynamic> weightsToSave = [];
+      for (final e in allEntries) {
+        final m = e.toMap();
+        final encDate = await encryptValue(m['date'] as String, userDEK);
+        final encWeight = await encryptDouble(
+          (m['weight'] as num).toDouble(),
+          userDEK,
+        );
+        weightsToSave.add({'date': encDate, 'weight': encWeight});
+      }
+      await docRef.set({'weights': weightsToSave}, SetOptions(merge: true));
+    } else {
+      // Plaintext opslaan
+      await docRef.set({
+        'weights': allEntries.map((e) => e.toMap()).toList(),
+      }, SetOptions(merge: true));
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Testdata toegevoegd')));
+    }
+  }
+
+  Widget _buildTargetWeightEstimate(
+    ThemeData theme,
+    Color primaryTextColor,
+    Color? secondaryTextColor,
+  ) {
+    if (_entries.length < 2 || _targetWeight == null) {
+      return Text(
+        'Niet genoeg data om een trend te berekenen.',
+        style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
+      );
+    }
+
+    final sorted = _entries.toList()..sort((a, b) => a.date.compareTo(b.date));
+    final firstDate = sorted.first.date;
+    final n = sorted.length;
+
+    // x = dagen sinds eerste meting, y = gewicht
+    final xs = List.generate(
+      n,
+      (i) => sorted[i].date.difference(firstDate).inDays.toDouble(),
+    );
+    final ys = List.generate(n, (i) => sorted[i].weight.toDouble());
+
+    // Ongewogen lineaire regressie (betrouwbaar voor kleine datasets)
+    final meanX = xs.reduce((a, b) => a + b) / n;
+    final meanY = ys.reduce((a, b) => a + b) / n;
+
+    double num = 0.0;
+    double den = 0.0;
+    for (int i = 0; i < n; i++) {
+      final dx = xs[i] - meanX;
+      final dy = ys[i] - meanY;
+      num += dx * dy;
+      den += dx * dx;
+    }
+
+    if (den == 0) {
+      return Text(
+        'Nog geen trend te berekenen.',
+        style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
+      );
+    }
+
+    final slope = num / den; // kg per dag
+    final intercept = meanY - slope * meanX;
+
+    // Residuals voor variatie-inschatting
+    double varNum = 0.0;
+    for (int i = 0; i < n; i++) {
+      final res = ys[i] - (intercept + slope * xs[i]);
+      varNum += res * res;
+    }
+    final weightedStd = sqrt(varNum / n);
+
+    // Drempel om 'stabiel' te melden
+    const slopeThreshold = 0.001; // 1 gram/dag
+    if (slope.abs() < slopeThreshold) {
+      return Text(
+        'Je gewicht is redelijk stabiel, geen betrouwbare trend.',
+        style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
+      );
+    }
+
+    final lastWeight = sorted.last.weight;
+    final remaining = _targetWeight! - lastWeight;
+
+    // Correcte check richting streefgewicht
+    if ((remaining > 0 && slope <= 0) || (remaining < 0 && slope >= 0)) {
+      return Text(
+        'Met de huidige trend beweeg je van je streefgewicht af.',
+        style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
+      );
+    }
+
+    final remainingDays = (remaining / slope).abs().ceil();
+    final weeks = remainingDays ~/ 7;
+    final daysLeft = remainingDays % 7;
+
+    String timeStr = '';
+    if (weeks > 0) {
+      timeStr += '$weeks ${weeks == 1 ? 'week' : 'weken'}';
+    }
+    if (daysLeft > 0) {
+      if (timeStr.isNotEmpty) timeStr += ' en ';
+      timeStr += '$daysLeft dag${daysLeft > 1 ? 'en' : ''}';
+    }
+    if (timeStr.isEmpty) timeStr = 'minder dan een dag';
+
+    // Onzekerheidsmelding
+    String uncertaintyNote = '';
+    if (weightedStd >= 0.5) {
+      uncertaintyNote =
+          '\nLet op: flinke schommelingen in je metingen maken deze schatting onzeker.';
+    } else if (weightedStd >= 0.25) {
+      uncertaintyNote =
+          '\nOpmerking: enige variatie in je weegwaarden — schatting kan afwijken.';
+    }
+
+    return Text(
+      'Als je zo doorgaat, bereik je je streefgewicht over ongeveer $timeStr.$uncertaintyNote',
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: secondaryTextColor,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
