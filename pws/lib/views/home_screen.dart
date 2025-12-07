@@ -574,7 +574,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               CupertinoButton(
-                child: const Text('Vandaag'),
+                child: const Text('Logs'),
                 onPressed: () {
                   setState(() {
                     _selectedDate = todayWithoutTime;
@@ -797,7 +797,7 @@ try{
         items: [
           const BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.home),
-            label: 'Vandaag',
+            label: 'Logs',
           ),
           BottomNavigationBarItem(
             key: _recipesKey,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cryptography/cryptography.dart';
 import 'package:fFinder/views/crypto_class.dart';
 import 'package:fFinder/views/feedback_view.dart';
@@ -548,6 +550,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
       return;
     }
 
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Voorkom wegklikken
+      builder: (context) => const _AILoadingDialog(),
+    );
+
     try {
       final model = FirebaseAI.googleAI().generativeModel(
         model: 'gemini-2.5-flash',
@@ -562,6 +570,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
         Content.multi([prompt, imagePart]),
       ]);
 
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
       final result = response.text?.trim() ?? '';
       if (result.isEmpty) {
         ScaffoldMessenger.of(
@@ -570,232 +582,573 @@ class _AddFoodPageState extends State<AddFoodPage> {
         return;
       }
 
-showDialog(
-  context: context,
-  builder: (ctx) => AlertDialog(
-    title: const Text('AI Ingrediënten Herkend'),
-    content: Text(result),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.of(ctx).pop(),
-        child: const Text('OK'),
-      ),
-      ElevatedButton(
-        onPressed: () {
-          Navigator.of(ctx).pop();
-          _showAddMealFromAI(result);
+      showDialog(
+        context: context,
+        builder: (ctx) {
+          final isDarkMode = Theme.of(ctx).brightness == Brightness.dark;
+          final textColor = isDarkMode ? Colors.white : Colors.black;
+          
+          // Split de string in losse ingrediënten voor de weergave
+          final ingredients = result
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.auto_awesome, color: Colors.blue),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Gevonden Ingrediënten',
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'De AI heeft de volgende ingrediënten herkend:',
+                      style: TextStyle(color: textColor.withOpacity(0.7)),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: ingredients.map((ingredient) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDarkMode 
+                                ? Colors.blue.withOpacity(0.2) 
+                                : Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.blue.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Text(
+                            ingredient,
+                            style: TextStyle(
+                              color: textColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Annuleren'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _showAddMealFromAI(result);
+                },
+                child: const Text('Maaltijd samenstellen'),
+              ),
+            ],
+          );
         },
-        child: const Text('Maaltijd samenstellen'),
-      ),
-    ],
-  ),
-);
+      );
     } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Fout bij AI-analyse: $e')));
     }
   }
 
-Future<void> _showAddMealFromAI(String aiResult) async {
-  final ingredients = aiResult
-      .split(',')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+  Future<void> _showAddMealFromAI(String aiResult) async {
+    final ingredients = aiResult
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
 
-  final formKey = GlobalKey<FormState>();
-  final mealNameController = TextEditingController();
-  final List<Map<String, TextEditingController>> ingredientControllers = [
-    for (final name in ingredients)
-      {
-        'name': TextEditingController(text: name),
-        'calories': TextEditingController(),
-        'fat': TextEditingController(),
-        'carbs': TextEditingController(),
-        'proteins': TextEditingController(),
-      }
-  ];
+    final formKey = GlobalKey<FormState>();
+    final mealNameController = TextEditingController();
 
-  await showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    builder: (modalContext) {
-      final isDarkMode = Theme.of(modalContext).brightness == Brightness.dark;
-      final textColor = isDarkMode ? Colors.white : Colors.black;
-
-      return DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.7, // 70% van het scherm
-        minChildSize: 0.5,
-        maxChildSize: 0.85, // maximaal 85%
-        builder: (context, scrollController) {
-          return SingleChildScrollView(
-            controller: scrollController,
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                top: 20,
-                left: 20,
-                right: 20,
-              ),
-              child: Form(
-                key: formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Maaltijd samenstellen',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(color: textColor),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: mealNameController,
-                      style: TextStyle(color: textColor),
-                      decoration:
-                          const InputDecoration(labelText: 'Naam van maaltijd'),
-                      validator: (value) =>
-                          (value == null || value.isEmpty)
-                              ? 'Naam is verplicht'
-                              : null,
-                    ),
-                    const SizedBox(height: 16),
-                    ...ingredientControllers.map((ctrl) => Card(
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              children: [
-                                TextFormField(
-                                  controller: ctrl['name'],
-                                  style: TextStyle(color: textColor),
-                                  decoration: const InputDecoration(
-                                      labelText: 'Ingrediënt'),
-                                  readOnly: true,
-                                ),
-                                TextFormField(
-                                  controller: ctrl['calories'],
-                                  style: TextStyle(color: textColor),
-                                  decoration: const InputDecoration(
-                                      labelText: 'Energie (kcal)'),
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                          decimal: true),
-                                ),
-                                TextFormField(
-                                  controller: ctrl['fat'],
-                                  style: TextStyle(color: textColor),
-                                  decoration: const InputDecoration(
-                                      labelText: 'Vetten (g)'),
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                          decimal: true),
-                                ),
-                                TextFormField(
-                                  controller: ctrl['carbs'],
-                                  style: TextStyle(color: textColor),
-                                  decoration: const InputDecoration(
-                                      labelText: 'Koolhydraten (g)'),
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                          decimal: true),
-                                ),
-                                TextFormField(
-                                  controller: ctrl['proteins'],
-                                  style: TextStyle(color: textColor),
-                                  decoration: const InputDecoration(
-                                      labelText: 'Eiwitten (g)'),
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                          decimal: true),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () async {
-                        if (formKey.currentState!.validate()) {
-                          final user = FirebaseAuth.instance.currentUser;
-                          if (user == null) return;
-
-                          final userDEK =
-                              await getUserDEKFromRemoteConfig(user.uid);
-                          if (userDEK == null) {
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      'Kon encryptiesleutel niet ophalen.')),
-                            );
-                            return;
-                          }
-
-                          final List<Map<String, dynamic>> finalIngredients =
-                              [];
-                          for (final ctrl in ingredientControllers) {
-                            finalIngredients.add({
-                              'product_name': await encryptValue(
-                                  ctrl['name']!.text, userDEK),
-                              'nutriments_per_100g': {
-                                'energy-kcal': await encryptDouble(
-                                    double.tryParse(
-                                            ctrl['calories']!.text) ??
-                                        0,
-                                    userDEK),
-                                'fat': await encryptDouble(
-                                    double.tryParse(ctrl['fat']!.text) ?? 0,
-                                    userDEK),
-                                'carbohydrates': await encryptDouble(
-                                    double.tryParse(ctrl['carbs']!.text) ?? 0,
-                                    userDEK),
-                                'proteins': await encryptDouble(
-                                    double.tryParse(
-                                            ctrl['proteins']!.text) ??
-                                        0,
-                                    userDEK),
-                              },
-                            });
-                          }
-
-                          final mealData = {
-                            'name': mealNameController.text,
-                            'ingredients': finalIngredients,
-                            'timestamp': FieldValue.serverTimestamp(),
-                          };
-
-                          await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.uid)
-                              .collection('meals')
-                              .add(mealData);
-
-                          if (!mounted) return;
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Maaltijd opgeslagen!')),
-                          );
-                        }
-                      },
-                      child: const Text('Maaltijd opslaan'),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            ),
-          );
+    // Voor elk AI-ingredient een zoekcontroller, amountcontroller, etc.
+    final List<Map<String, dynamic>> ingredientEntries = [
+      for (final name in ingredients)
+        {
+          'searchController': TextEditingController(text: name),
+          'amountController': TextEditingController(),
+          'searchResults': null,
+          'selectedProduct': null,
+          'isSearching': false,
+          'hasLoadedMore': false,
         },
-      );
-    },
-  );
-}
+    ];
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (modalContext) {
+        final isDarkMode = Theme.of(modalContext).brightness == Brightness.dark;
+        final textColor = isDarkMode ? Colors.white : Colors.black;
+
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.85,
+          builder: (context, scrollController) {
+            return StatefulBuilder(
+              builder: (context, setModalState) {
+                Future<void> searchProductsForIngredient(
+                  String query,
+                  int index, {
+                  bool loadMore = false,
+                }) async {
+                  if (query.length < 2) {
+                    setModalState(() {
+                      ingredientEntries[index]['searchResults'] = null;
+                    });
+                    return;
+                  }
+
+                  setModalState(() {
+                    ingredientEntries[index]['isSearching'] = true;
+                    if (!loadMore) {
+                      ingredientEntries[index]['hasLoadedMore'] = false;
+                    }
+                  });
+
+                  List all = [];
+                  if (loadMore) {
+                    all.addAll(ingredientEntries[index]['searchResults'] ?? []);
+                  }
+                  final appKey = dotenv.env["APP_KEY"] ?? "";
+
+                  try {
+                    // ffinder.nl
+                    try {
+                      final ffinderUrl = Uri.parse(
+                        "https://ffinder.nl/product?q=${Uri.encodeComponent(query)}",
+                      );
+                      final ffinderResponse = await http.get(
+                        ffinderUrl,
+                        headers: {"x-app-key": appKey},
+                      );
+                      if (ffinderResponse.statusCode == 200) {
+                        final data = jsonDecode(ffinderResponse.body);
+                        final foodsObject = data["foods"];
+                        if (foodsObject != null &&
+                            foodsObject["food"] is List) {
+                          all = foodsObject["food"] as List;
+                        }
+                      }
+                    } catch (_) {}
+
+                    // OpenFoodFacts fallback
+                    if (all.isEmpty || loadMore) {
+                      final offUrl = Uri.parse(
+                        "https://nl.openfoodfacts.org/cgi/search.pl"
+                        "?search_terms=${Uri.encodeComponent(query)}"
+                        "&search_simple=1"
+                        "&json=1"
+                        "&action=process",
+                      );
+                      final offResponse = await http.get(offUrl);
+                      if (offResponse.statusCode == 200) {
+                        final data = jsonDecode(offResponse.body);
+                        final newProducts = (data["products"] as List?) ?? [];
+                        all.addAll(newProducts);
+                        if (loadMore) {
+                          setModalState(() {
+                            ingredientEntries[index]['hasLoadedMore'] = true;
+                          });
+                        }
+                      }
+                    }
+
+                    setModalState(() {
+                      ingredientEntries[index]['searchResults'] = all;
+                      ingredientEntries[index]['isSearching'] = false;
+                    });
+                  } catch (e) {
+                    setModalState(() {
+                      ingredientEntries[index]['searchResults'] = [];
+                      ingredientEntries[index]['isSearching'] = false;
+                    });
+                  }
+                }
+
+                return SingleChildScrollView(
+                  controller: scrollController,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom,
+                      top: 20,
+                      left: 20,
+                      right: 20,
+                    ),
+                    child: Form(
+                      key: formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Maaltijd samenstellen',
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(color: textColor),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: mealNameController,
+                            style: TextStyle(color: textColor),
+                            decoration: const InputDecoration(
+                              labelText: 'Naam van maaltijd',
+                            ),
+                            validator: (value) =>
+                                (value == null || value.isEmpty)
+                                ? 'Naam is verplicht'
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                          ...ingredientEntries.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final ingredient = entry.value;
+                            final searchController =
+                                ingredient['searchController']
+                                    as TextEditingController;
+                            final amountController =
+                                ingredient['amountController']
+                                    as TextEditingController;
+                            final selectedProduct =
+                                ingredient['selectedProduct']
+                                    as Map<String, dynamic>?;
+
+                            if (selectedProduct != null) {
+                              return Card(
+                                margin: const EdgeInsets.symmetric(
+                                  vertical: 4.0,
+                                ),
+                                child: ListTile(
+                                  title: Text(
+                                    selectedProduct['product_name'] ??
+                                        'Onbekend',
+                                  ),
+                                  subtitle: Text(
+                                    'Hoeveelheid: ${amountController.text}g',
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () {
+                                      setModalState(() {
+                                        ingredient['selectedProduct'] = null;
+                                        amountController.text = '';
+                                      });
+                                    },
+                                  ),
+                                  onTap: () async {
+                                    final barcode =
+                                        selectedProduct['_id'] as String? ??
+                                        'temp_${DateTime.now().millisecondsSinceEpoch}';
+
+                                    final currentAmount = double.tryParse(
+                                      amountController.text,
+                                    );
+
+                                    final normalizedProductData =
+                                        Map<String, dynamic>.from(
+                                          selectedProduct,
+                                        );
+
+                                    // Functie om een veld naar een lijst te converteren
+                                    List<dynamic> toList(dynamic value) {
+                                      if (value is List) return value;
+                                      if (value is String && value.isNotEmpty)
+                                        return [value];
+                                      return [];
+                                    }
+
+                                    // Pas toe op velden die lijsten zouden moeten zijn
+                                    normalizedProductData['allergens_tags'] =
+                                        toList(
+                                          normalizedProductData['allergens_tags'],
+                                        );
+                                    normalizedProductData['traces_tags'] =
+                                        toList(
+                                          normalizedProductData['traces_tags'],
+                                        );
+                                    normalizedProductData['additives_tags'] =
+                                        toList(
+                                          normalizedProductData['additives_tags'],
+                                        );
+
+                                    final result = await _showProductDetails(
+                                      barcode,
+                                      productData:
+                                          normalizedProductData, // Gebruik de genormaliseerde data
+                                      isForMeal: true,
+                                      initialAmount: currentAmount,
+                                    );
+                                    if (result != null &&
+                                        result['amount'] != null) {
+                                      setModalState(() {
+                                        amountController.text = result['amount']
+                                            .toString();
+                                        ingredient['selectedProduct'] =
+                                            result['product'];
+                                      });
+                                    }
+                                  },
+                                ),
+                              );
+                            }
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: searchController,
+                                        style: TextStyle(color: textColor),
+                                        decoration: InputDecoration(
+                                          labelText:
+                                              'Zoek ${searchController.text}',
+                                          suffixIcon: IconButton(
+                                            icon: const Icon(Icons.search),
+                                            onPressed: () =>
+                                                searchProductsForIngredient(
+                                                  searchController.text,
+                                                  index,
+                                                ),
+                                          ),
+                                        ),
+                                        onSubmitted: (query) =>
+                                            searchProductsForIngredient(
+                                              query,
+                                              index,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (ingredient['isSearching'] as bool)
+                                  const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                                if (ingredient['searchResults'] != null)
+                                  SizedBox(
+                                    height: 150,
+                                    child: ListView.builder(
+                                      itemCount:
+                                          (ingredient['searchResults'] as List)
+                                              .length +
+                                          ((ingredient['hasLoadedMore']
+                                                      as bool? ??
+                                                  false)
+                                              ? 0
+                                              : 1),
+                                      itemBuilder: (context, resultIndex) {
+                                        final results =
+                                            ingredient['searchResults'] as List;
+                                        if (resultIndex == results.length) {
+                                          return TextButton(
+                                            onPressed: () =>
+                                                searchProductsForIngredient(
+                                                  searchController.text,
+                                                  index,
+                                                  loadMore: true,
+                                                ),
+                                            child: const Text(
+                                              'Meer producten laden...',
+                                            ),
+                                          );
+                                        }
+                                        final product = results[resultIndex];
+                                        return ListTile(
+                                          title: Text(
+                                            product['product_name'] ??
+                                                'Onbekend',
+                                          ),
+                                          subtitle: Text(
+                                            product['brands'] ?? 'Onbekend',
+                                          ),
+                                          onTap: () {
+                                            setModalState(() {
+                                              ingredient['selectedProduct'] =
+                                                  product;
+                                              ingredient['searchResults'] =
+                                                  null;
+                                            });
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                if (selectedProduct == null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: TextField(
+                                      controller: amountController,
+                                      style: TextStyle(color: textColor),
+                                      decoration: const InputDecoration(
+                                        labelText: 'Hoeveelheid (g)',
+                                      ),
+                                      keyboardType:
+                                          TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          }),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () async {
+                              if (formKey.currentState!.validate()) {
+                                final user = FirebaseAuth.instance.currentUser;
+                                if (user == null) return;
+
+                                final userDEK =
+                                    await getUserDEKFromRemoteConfig(user.uid);
+                                if (userDEK == null) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Kon encryptiesleutel niet ophalen.',
+                                      ),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                final List<Map<String, dynamic>>
+                                finalIngredients = [];
+                                for (final ingredient in ingredientEntries) {
+                                  final selectedProduct =
+                                      ingredient['selectedProduct']
+                                          as Map<String, dynamic>?;
+                                  final amount = double.tryParse(
+                                    (ingredient['amountController']
+                                            as TextEditingController)
+                                        .text,
+                                  );
+                                  if (selectedProduct != null &&
+                                      amount != null) {
+                                    finalIngredients.add({
+                                      'product_id': selectedProduct['_id'],
+                                      'product_name': await encryptValue(
+                                        selectedProduct['product_name'],
+                                        userDEK,
+                                      ),
+                                      'brands': await encryptValue(
+                                        selectedProduct['brands'],
+                                        userDEK,
+                                      ),
+                                      'image_front_small_url':
+                                          selectedProduct['image_front_small_url'],
+                                      'amount': amount,
+                                      'nutriments_per_100g': {
+                                        for (final key
+                                            in (selectedProduct['nutriments_per_100g']
+                                                    as Map<String, dynamic>)
+                                                .keys)
+                                          key: await encryptDouble(
+                                            (selectedProduct['nutriments_per_100g'][key]
+                                                        as num?)
+                                                    ?.toDouble() ??
+                                                0,
+                                            userDEK,
+                                          ),
+                                      },
+                                    });
+                                  }
+                                }
+
+                                if (finalIngredients.isEmpty) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Voeg minimaal één product toe.',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                final mealData = {
+                                  'name': mealNameController.text,
+                                  'ingredients': finalIngredients,
+                                  'timestamp': FieldValue.serverTimestamp(),
+                                };
+
+                                await FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(user.uid)
+                                    .collection('meals')
+                                    .add(mealData);
+
+                                if (!mounted) return;
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Maaltijd opgeslagen!'),
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Text('Maaltijd opslaan'),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
 
   Future<void> _scanBarcode() async {
     //hij reset de foutmeldingen
@@ -2511,7 +2864,8 @@ Future<void> _showAddMealFromAI(String aiResult) async {
     if (existingMeal != null) {
       // als er een bestaande maaltijd is
       mealNameController.text = existingMeal['name'] ?? '';
-      final ingredients = (existingMeal['ingredients'] as List<dynamic>?)
+      final ingredients =
+          (existingMeal['ingredients'] as List<dynamic>?)
               ?.cast<Map<String, dynamic>>() ??
           [];
       for (var ingredient in ingredients) {
@@ -2659,9 +3013,7 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                             existingMeal != null
                                 ? 'Maaltijd Bewerken'
                                 : 'Nieuwe Maaltijd Samenstellen',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
+                            style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(color: textColor),
                             textAlign: TextAlign.center,
                           ),
@@ -2674,16 +3026,15 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                             ),
                             validator: (value) =>
                                 (value == null || value.isEmpty)
-                                    ? 'Naam is verplicht'
-                                    : null,
+                                ? 'Naam is verplicht'
+                                : null,
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'Ingrediënten',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(color: textColor),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleLarge?.copyWith(color: textColor),
                           ),
                           ListView.builder(
                             shrinkWrap: true,
@@ -2697,32 +3048,60 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                               final amountController =
                                   entry['amountController']
                                       as TextEditingController;
-                              final selectedProduct = entry['selectedProduct']
-                                  as Map<String, dynamic>?;
+                              final selectedProduct =
+                                  entry['selectedProduct']
+                                      as Map<String, dynamic>?;
 
                               if (selectedProduct != null) {
                                 return Card(
-                                  margin:
-                                      const EdgeInsets.symmetric(vertical: 4.0),
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 4.0,
+                                  ),
                                   child: ListTile(
-                                    title:
-                                        Text(selectedProduct['product_name']),
+                                    title: Text(
+                                      selectedProduct['product_name'],
+                                    ),
                                     subtitle: Text(
                                       'Hoeveelheid: ${amountController.text}g',
                                     ),
                                     onTap: () async {
                                       final barcode =
-                                          selectedProduct['_id'] as String?;
-                                      if (barcode == null) return;
+                                          selectedProduct['_id'] as String? ??
+                                          'temp_${DateTime.now().millisecondsSinceEpoch}';
 
                                       final currentAmount = double.tryParse(
                                         amountController.text,
                                       );
 
-                                      final result =
-                                          await _showProductDetails(
+                                      final normalizedProductData =
+                                          Map<String, dynamic>.from(
+                                            selectedProduct,
+                                          );
+
+                                      List<dynamic> toList(dynamic value) {
+                                        if (value is List) return value;
+                                        if (value is String && value.isNotEmpty)
+                                          return [value];
+                                        return [];
+                                      }
+
+                                      normalizedProductData['allergens_tags'] =
+                                          toList(
+                                            normalizedProductData['allergens_tags'],
+                                          );
+                                      normalizedProductData['traces_tags'] =
+                                          toList(
+                                            normalizedProductData['traces_tags'],
+                                          );
+                                      normalizedProductData['additives_tags'] =
+                                          toList(
+                                            normalizedProductData['additives_tags'],
+                                          );
+
+                                      final result = await _showProductDetails(
                                         barcode,
-                                        productData: selectedProduct,
+                                        productData:
+                                            normalizedProductData, // Gebruik genormaliseerde data
                                         isForMeal: true,
                                         initialAmount: currentAmount,
                                       );
@@ -2764,16 +3143,16 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                                               icon: const Icon(Icons.search),
                                               onPressed: () =>
                                                   searchProductsForIngredient(
-                                                searchController.text,
-                                                index,
-                                              ),
+                                                    searchController.text,
+                                                    index,
+                                                  ),
                                             ),
                                           ),
                                           onSubmitted: (query) =>
                                               searchProductsForIngredient(
-                                            query,
-                                            index,
-                                          ),
+                                                query,
+                                                index,
+                                              ),
                                         ),
                                       ),
                                       if (ingredientEntries.length > 1)
@@ -2784,8 +3163,7 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                                           ),
                                           onPressed: () {
                                             setModalState(() {
-                                              ingredientEntries
-                                                  .removeAt(index);
+                                              ingredientEntries.removeAt(index);
                                             });
                                           },
                                         ),
@@ -2804,12 +3182,11 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                                       child: ListView.builder(
                                         itemCount:
                                             (entry['searchResults'] as List)
-                                                    .length +
-                                                ((entry['hasLoadedMore']
-                                                            as bool? ??
-                                                        false)
-                                                    ? 0
-                                                    : 1),
+                                                .length +
+                                            ((entry['hasLoadedMore'] as bool? ??
+                                                    false)
+                                                ? 0
+                                                : 1),
                                         itemBuilder: (context, resultIndex) {
                                           final results =
                                               entry['searchResults'] as List;
@@ -2817,18 +3194,17 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                                             return TextButton(
                                               onPressed: () =>
                                                   searchProductsForIngredient(
-                                                searchController.text,
-                                                index,
-                                                loadMore: true,
-                                              ),
+                                                    searchController.text,
+                                                    index,
+                                                    loadMore: true,
+                                                  ),
                                               child: const Text(
                                                 'Meer producten laden...',
                                               ),
                                             );
                                           }
 
-                                          final product =
-                                              results[resultIndex];
+                                          final product = results[resultIndex];
                                           return ListTile(
                                             title: Text(
                                               product['product_name'] ??
@@ -2844,9 +3220,9 @@ Future<void> _showAddMealFromAI(String aiResult) async {
 
                                               final result =
                                                   await _showProductDetails(
-                                                barcode,
-                                                isForMeal: true,
-                                              );
+                                                    barcode,
+                                                    isForMeal: true,
+                                                  );
 
                                               if (result != null &&
                                                   result['amount'] != null) {
@@ -2881,10 +3257,8 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                               onPressed: () {
                                 setModalState(() {
                                   ingredientEntries.add({
-                                    'searchController':
-                                        TextEditingController(),
-                                    'amountController':
-                                        TextEditingController(),
+                                    'searchController': TextEditingController(),
+                                    'amountController': TextEditingController(),
                                     'searchResults': null,
                                     'selectedProduct': null,
                                     'hasLoadedMore': false,
@@ -2898,14 +3272,11 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                           ElevatedButton(
                             onPressed: () async {
                               if (formKey.currentState!.validate()) {
-                                final user =
-                                    FirebaseAuth.instance.currentUser;
+                                final user = FirebaseAuth.instance.currentUser;
                                 if (user == null) return;
 
                                 final userDEK =
-                                    await getUserDEKFromRemoteConfig(
-                                  user.uid,
-                                );
+                                    await getUserDEKFromRemoteConfig(user.uid);
                                 if (userDEK == null) {
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -2925,8 +3296,9 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                                               as TextEditingController)
                                           .text
                                           .isNotEmpty) {
-                                    final product = entry['selectedProduct']
-                                        as Map<String, dynamic>;
+                                    final product =
+                                        entry['selectedProduct']
+                                            as Map<String, dynamic>;
                                     final amount = double.tryParse(
                                       (entry['amountController']
                                               as TextEditingController)
@@ -2940,20 +3312,19 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                                           userDEK,
                                         ),
                                         'brands': await encryptValue(
-                                          product['brands'],
+                                          product['brands'] ?? '',
                                           userDEK,
                                         ),
                                         'image_front_small_url':
                                             product['image_front_small_url'],
                                         'amount': amount,
                                         'nutriments_per_100g': {
-                                          for (final key in (product[
-                                                      'nutriments_per_100g']
-                                                  as Map<String, dynamic>)
-                                              .keys)
+                                          for (final key
+                                              in (product['nutriments_per_100g']
+                                                      as Map<String, dynamic>)
+                                                  .keys)
                                             key: await encryptDouble(
-                                              (product['nutriments_per_100g']
-                                                              [key]
+                                              (product['nutriments_per_100g'][key]
                                                           as num?)
                                                       ?.toDouble() ??
                                                   0,
@@ -2989,9 +3360,7 @@ Future<void> _showAddMealFromAI(String aiResult) async {
                                     .collection('meals');
 
                                 if (mealId != null) {
-                                  await collection
-                                      .doc(mealId)
-                                      .update(mealData);
+                                  await collection.doc(mealId).update(mealData);
                                 } else {
                                   await collection.add(mealData);
                                 }
@@ -3672,6 +4041,119 @@ Future<void> _showAddMealFromAI(String aiResult) async {
           },
         );
       },
+    );
+  }
+}
+
+class _AILoadingDialog extends StatefulWidget {
+  const _AILoadingDialog({Key? key}) : super(key: key);
+
+  @override
+  State<_AILoadingDialog> createState() => _AILoadingDialogState();
+}
+
+class _AILoadingDialogState extends State<_AILoadingDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  int _messageIndex = 0;
+  Timer? _textTimer;
+
+  final List<String> _messages = [
+    "Foto analyseren...",
+    "Ingrediënten herkennen...",
+    "Voedingswaarden inschatten...",
+    "Even geduld...",
+    "Bijna klaar...",
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Animatie voor het pulserende icoon
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    // Timer om de tekst elke 2 seconden te veranderen
+    _textTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (mounted) {
+        setState(() {
+          _messageIndex = (_messageIndex + 1) % _messages.length;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _textTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final bgColor = isDarkMode ? Colors.grey[850] : Colors.white;
+
+    return Dialog(
+      backgroundColor: bgColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ScaleTransition(
+              scale: _scaleAnimation,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.auto_awesome, // AI sterretjes icoon
+                  size: 48,
+                  color: Colors.blue,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "AI is aan het werk",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: Text(
+                _messages[_messageIndex],
+                key: ValueKey<int>(_messageIndex),
+                style: TextStyle(color: textColor.withOpacity(0.7)),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const LinearProgressIndicator(
+              backgroundColor: Colors.transparent,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -675,18 +675,7 @@ class _WeightViewState extends State<WeightView> {
                                   onPressed: _saving ? null : _saveWeight,
                                 ),
                               ),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.grey[700],
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  icon: const Icon(Icons.bug_report),
-                                  label: const Text('Testdata toevoegen'),
-                                  onPressed: _addTestWeights,
-                                ),
-                              ),
+                              
                             ],
                           ),
                         ),
@@ -1145,70 +1134,6 @@ class _WeightViewState extends State<WeightView> {
     );
   }
 
-  Future<void> _addTestWeights() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    SecretKey? userDEK;
-    try {
-      userDEK = await getUserDEKFromRemoteConfig(user.uid);
-    } catch (_) {
-      userDEK = null;
-    }
-
-    // Vul hier je eigen datums en gewichten in
-    final List<WeightEntry> testEntries = [
-      WeightEntry(date: DateTime(2023, 12, 1), weight: 60.0),
-      WeightEntry(date: DateTime(2023, 12, 2), weight: 59.5),
-      WeightEntry(date: DateTime(2023, 12, 3), weight: 59.0),
-      WeightEntry(date: DateTime(2023, 12, 4), weight: 60.0),
-      WeightEntry(date: DateTime(2023, 12, 5), weight: 58.0),
-      WeightEntry(date: DateTime(2023, 12, 6), weight: 60.0),
-      WeightEntry(date: DateTime(2023, 12, 7), weight: 58.0),
-      WeightEntry(date: DateTime(2023, 12, 8), weight: 56.5),
-    ];
-
-    setState(() {
-      _entries.addAll(testEntries);
-      _entries.sort((a, b) => a.date.compareTo(b.date));
-      _weight = _entries.last.weight;
-      _weightController.text = _weight.toStringAsFixed(1);
-      _recalculateBMI();
-    });
-
-    // Sla direct op in Firestore, net als _saveWeight
-    final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-    final doc = await docRef.get();
-    final data = doc.data() ?? {};
-
-    final List<WeightEntry> allEntries = List.from(_entries);
-
-    if (userDEK != null) {
-      // Encrypt elke entry
-      final List<dynamic> weightsToSave = [];
-      for (final e in allEntries) {
-        final m = e.toMap();
-        final encDate = await encryptValue(m['date'] as String, userDEK);
-        final encWeight = await encryptDouble(
-          (m['weight'] as num).toDouble(),
-          userDEK,
-        );
-        weightsToSave.add({'date': encDate, 'weight': encWeight});
-      }
-      await docRef.set({'weights': weightsToSave}, SetOptions(merge: true));
-    } else {
-      // Plaintext opslaan
-      await docRef.set({
-        'weights': allEntries.map((e) => e.toMap()).toList(),
-      }, SetOptions(merge: true));
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Testdata toegevoegd')));
-    }
-  }
 
   Widget _buildTargetWeightEstimate(
     ThemeData theme,
@@ -1223,6 +1148,25 @@ class _WeightViewState extends State<WeightView> {
     }
 
     final sorted = _entries.toList()..sort((a, b) => a.date.compareTo(b.date));
+    final lastWeight = sorted.last.weight;
+
+    // ✅ Check of je op je streefgewicht bent
+    if ((lastWeight - _targetWeight!).abs() < 0.01) {
+      return Text(
+        'Goed zo! Je bent op je streefgewicht.',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: Colors.green,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+    }
+
+    if (sorted.length < 2) {
+      return Text(
+        'Niet genoeg data om een trend te berekenen.',
+        style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
+      );
+    }
     final firstDate = sorted.first.date;
     final n = sorted.length;
 
@@ -1273,8 +1217,7 @@ class _WeightViewState extends State<WeightView> {
       );
     }
 
-    final lastWeight = sorted.last.weight;
-    final remaining = _targetWeight! - lastWeight;
+   final remaining = _targetWeight! - lastWeight;
 
     // Correcte check richting streefgewicht
     if ((remaining > 0 && slope <= 0) || (remaining < 0 && slope >= 0)) {
