@@ -169,8 +169,7 @@ class MyApp extends StatelessWidget {
                       userDocSnapshot.data!.data()
                           as Map<String, dynamic>; //haal de data op
                   final bool onboardingAf =
-                      data['onboardingaf'] ??
-                      false; //controleer of onboarding is voltooid
+                      data['onboardingaf'] == true; //controleer of onboarding is voltooid
 
                   if (onboardingAf) {
                     return const HomeScreen();

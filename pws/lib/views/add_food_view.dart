@@ -127,7 +127,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       colorShadow: Colors.blue.withOpacity(0.7),
       paddingFocus: 10,
       opacityShadow: 0.8,
-      hideSkip: true,
+      hideSkip: false,
       onFinish: () {
         print("Tutorial voltooid");
         prefs.setBool('food_tutorial_shown', true); // lokaal opslaan
@@ -1524,17 +1524,30 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
 
     // "Niet de gewenste resultaten" knop
-    resultWidgets.add(
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        child: TextButton(
-          onPressed: _showAddMyProductSheet,
-          child: const Text(
-            'Niet de gewenste resultaten: voeg een product toe!',
+resultWidgets.add(
+  Padding(
+    padding: const EdgeInsets.symmetric(vertical: 24.0),
+    child: Center(
+      child: ElevatedButton.icon(
+        onPressed: _showAddMyProductSheet,
+        icon: const Icon(Icons.add_circle_outline),
+        label: const Text(
+          'Voeg een nieuw product toe',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          backgroundColor: Colors.blueAccent,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
+          elevation: 3,
         ),
       ),
-    );
+    ),
+  ),
+);
 
     return ListView(children: resultWidgets);
   }

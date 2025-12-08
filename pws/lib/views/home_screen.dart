@@ -233,14 +233,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool tutorialHomeAf = userDoc.data()?['tutorialHomeAf'] ?? false;
 
     if (!tutorialHomeAf) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          tutorialCoachMark.show(context: context);
-        }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            tutorialCoachMark.show(context: context);
+          }
+        });
       });
-    });
-  }
+    }
   }
 
   void _createTutorial() async {
@@ -250,7 +250,8 @@ class _HomeScreenState extends State<HomeScreen> {
       colorShadow: Colors.blue.withOpacity(0.7),
       paddingFocus: 10,
       opacityShadow: 0.8,
-      hideSkip: true,
+      hideSkip: false,
+      
       onClickTarget: (target) {
         if (target.identify == "calorie-info-row-key") {
           _scrollController.animateTo(
@@ -296,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     //Receptenkiezer
-   /* targets.add(
+    /* targets.add(
       TargetFocus(
         identify: "recipes-key",
         keyTarget: _recipesKey,
@@ -642,62 +643,64 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-try{
-    // 1️⃣ Global DEK ophalen (Remote Config)
-    final remoteConfig = FirebaseRemoteConfig.instance;
+    try {
+      // 1️⃣ Global DEK ophalen (Remote Config)
+      final remoteConfig = FirebaseRemoteConfig.instance;
       await remoteConfig.fetchAndActivate(); // haal nieuwste config op
       if (!mounted) return; // Stop if the widget is no longer in the tree.
       final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
       final globalDEK = SecretKey(base64Decode(globalDEKString));
 
-    // 2️⃣ User-specifieke DEK afleiden
-    final userDEK = await deriveUserKey(globalDEK, user.uid);
+      // 2️⃣ User-specifieke DEK afleiden
+      final userDEK = await deriveUserKey(globalDEK, user.uid);
 
-    // 3️⃣ Haal data op
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
+      // 3️⃣ Haal data op
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
-   if (!doc.exists || !mounted) return;
+      if (!doc.exists || !mounted) return;
 
+      final data = doc.data()!;
 
-    final data = doc.data()!;
+      // 4️⃣ Decrypt alle geëncryptte velden
+      final decryptedData = {
+        'firstName': await decryptValue(data['firstName'], userDEK),
+        'gender': await decryptValue(data['gender'], userDEK),
+        'birthDate': await decryptValue(data['birthDate'], userDEK),
+        'height':
+            double.tryParse(await decryptValue(data['height'], userDEK)) ?? 0,
+        'weight':
+            double.tryParse(await decryptValue(data['weight'], userDEK)) ?? 0,
+        'calorieGoal':
+            double.tryParse(await decryptValue(data['calorieGoal'], userDEK)) ??
+            0,
+        'proteinGoal':
+            double.tryParse(await decryptValue(data['proteinGoal'], userDEK)) ??
+            0,
+        'fatGoal':
+            double.tryParse(await decryptValue(data['fatGoal'], userDEK)) ?? 0,
+        'carbGoal':
+            double.tryParse(await decryptValue(data['carbGoal'], userDEK)) ?? 0,
+        'bmi': double.tryParse(await decryptValue(data['bmi'], userDEK)) ?? 0,
+        'sleepHours':
+            double.tryParse(await decryptValue(data['sleepHours'], userDEK)) ??
+            0,
+        'targetWeight':
+            double.tryParse(
+              await decryptValue(data['targetWeight'], userDEK),
+            ) ??
+            0,
+        'notificationsEnabled': data['notificationsEnabled'],
+        'onboardingaf': data['onboardingaf'],
+        'activityLevel': await decryptValue(data['activityLevel'], userDEK),
+        'goal': await decryptValue(data['goal'], userDEK),
+      };
 
-    // 4️⃣ Decrypt alle geëncryptte velden
-    final decryptedData = {
-      'firstName': await decryptValue(data['firstName'], userDEK),
-      'gender': await decryptValue(data['gender'], userDEK),
-      'birthDate': await decryptValue(data['birthDate'], userDEK),
-      'height':
-          double.tryParse(await decryptValue(data['height'], userDEK)) ?? 0,
-      'weight':
-          double.tryParse(await decryptValue(data['weight'], userDEK)) ?? 0,
-      'calorieGoal':
-          double.tryParse(await decryptValue(data['calorieGoal'], userDEK)) ??
-          0,
-      'proteinGoal':
-          double.tryParse(await decryptValue(data['proteinGoal'], userDEK)) ??
-          0,
-      'fatGoal':
-          double.tryParse(await decryptValue(data['fatGoal'], userDEK)) ?? 0,
-      'carbGoal':
-          double.tryParse(await decryptValue(data['carbGoal'], userDEK)) ?? 0,
-      'bmi': double.tryParse(await decryptValue(data['bmi'], userDEK)) ?? 0,
-      'sleepHours':
-          double.tryParse(await decryptValue(data['sleepHours'], userDEK)) ?? 0,
-      'targetWeight':
-          double.tryParse(await decryptValue(data['targetWeight'], userDEK)) ??
-          0,
-      'notificationsEnabled': data['notificationsEnabled'],
-      'onboardingaf': data['onboardingaf'],
-      'activityLevel': await decryptValue(data['activityLevel'], userDEK),
-      'goal': await decryptValue(data['goal'], userDEK),
-    };
+      print('Decrypted user data: $decryptedData');
 
-    print('Decrypted user data: $decryptedData');
-
-   if (mounted) {
+      if (mounted) {
         setState(() {
           _userData = decryptedData;
           _calorieAllowance = _calculateCalories(_userData!);
@@ -1234,7 +1237,9 @@ try{
               return const Center(child: CircularProgressIndicator());
             }
             if (!dekSnapshot.hasData || dekSnapshot.data == null) {
-              return const Center(child: Text("Encryptiesleutel niet gevonden."));
+              return const Center(
+                child: Text("Encryptiesleutel niet gevonden."),
+              );
             }
             final userDEK = dekSnapshot.data!;
 
@@ -1243,33 +1248,44 @@ try{
               future: () async {
                 final decryptedEntries = <Map<String, dynamic>>[];
                 for (final entry in entriesRaw) {
-                  final decryptedEntry =
-                      Map<String, dynamic>.from(entry); // Kopieer de entry
+                  final decryptedEntry = Map<String, dynamic>.from(
+                    entry,
+                  ); // Kopieer de entry
 
-                  decryptedEntry['product_name'] =
-                      await decryptValue(entry['product_name'], userDEK);
-                  decryptedEntry['meal_type'] =
-                      await decryptValue(entry['meal_type'], userDEK);
+                  decryptedEntry['product_name'] = await decryptValue(
+                    entry['product_name'],
+                    userDEK,
+                  );
+                  decryptedEntry['meal_type'] = await decryptValue(
+                    entry['meal_type'],
+                    userDEK,
+                  );
 
                   if (entry.containsKey('nutrients')) {
                     final nutrients =
                         entry['nutrients'] as Map<String, dynamic>? ?? {};
                     final decryptedNutrients = <String, dynamic>{};
                     for (final key in nutrients.keys) {
-                      decryptedNutrients[key] =
-                          await decryptDouble(nutrients[key], userDEK);
+                      decryptedNutrients[key] = await decryptDouble(
+                        nutrients[key],
+                        userDEK,
+                      );
                     }
                     decryptedEntry['nutrients'] = decryptedNutrients;
                   }
 
                   if (entry.containsKey('amount_g')) {
-                     decryptedEntry['amount_g'] =
-                        await decryptDouble(entry['amount_g'], userDEK);
+                    decryptedEntry['amount_g'] = await decryptDouble(
+                      entry['amount_g'],
+                      userDEK,
+                    );
                   }
 
                   if (entry.containsKey('quantity')) {
-                    decryptedEntry['quantity'] =
-                        await decryptValue(entry['quantity'], userDEK);
+                    decryptedEntry['quantity'] = await decryptValue(
+                      entry['quantity'],
+                      userDEK,
+                    );
                   }
 
                   decryptedEntries.add(decryptedEntry);
@@ -1277,7 +1293,8 @@ try{
                 return decryptedEntries;
               }(),
               builder: (context, entriesSnapshot) {
-                if (entriesSnapshot.connectionState == ConnectionState.waiting) {
+                if (entriesSnapshot.connectionState ==
+                    ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (!entriesSnapshot.hasData) {
@@ -1286,7 +1303,8 @@ try{
 
                 final entries = entriesSnapshot.data!;
                 final Map<dynamic, dynamic> originalEntriesMap = {
-                  for (var i = 0; i < entries.length; i++) entries[i]: entriesRaw[i]
+                  for (var i = 0; i < entries.length; i++)
+                    entries[i]: entriesRaw[i],
                 };
                 // Vanaf hier wordt de bestaande logica uitgevoerd met de gedecrypteerde 'entries'
                 double totalCalories = 0;
@@ -1311,7 +1329,8 @@ try{
                   if (mealType != null && meals.containsKey(mealType)) {
                     meals[mealType]!.add(entry);
                   } else {
-                    final timestamp = (entry['timestamp'] as Timestamp?)?.toDate() ??
+                    final timestamp =
+                        (entry['timestamp'] as Timestamp?)?.toDate() ??
                         DateTime.now();
                     final hour = timestamp.hour;
                     if (hour >= 5 && hour < 11) {
@@ -1344,7 +1363,7 @@ try{
                         entry['quantity'] as String? ?? '0 ml';
                     final amount =
                         double.tryParse(quantityString.replaceAll(' ml', '')) ??
-                            0.0;
+                        0.0;
                     final drinkName =
                         entry['product_name'] as String? ?? 'Onbekend';
                     drinkBreakdown.update(
@@ -1384,9 +1403,15 @@ try{
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 _buildCalorieInfo(
-                                    'Gegeten', totalCalories, isDarkMode),
+                                  'Gegeten',
+                                  totalCalories,
+                                  isDarkMode,
+                                ),
                                 _buildCalorieInfo(
-                                    'Doel', calorieGoal, isDarkMode),
+                                  'Doel',
+                                  calorieGoal,
+                                  isDarkMode,
+                                ),
                                 _buildCalorieInfo(
                                   'Over',
                                   remainingCalories,
@@ -1407,8 +1432,8 @@ try{
                                 progress > 1.0
                                     ? Colors.red
                                     : (isDarkMode
-                                        ? Colors.green[300]!
-                                        : Colors.green),
+                                          ? Colors.green[300]!
+                                          : Colors.green),
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -1455,10 +1480,12 @@ try{
                                   children: [
                                     Expanded(
                                       child: Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 80),
+                                        padding: const EdgeInsets.only(
+                                          bottom: 80,
+                                        ),
                                         child: BubbleSpecialThree(
-                                          text: _motivationalMessage ??
+                                          text:
+                                              _motivationalMessage ??
                                               motivationalMessage,
                                           color: isDarkMode
                                               ? const Color(0xFF1B97F3)
@@ -1473,24 +1500,38 @@ try{
                                       ),
                                     ),
                                     const SizedBox(width: 10),
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _motivationalMessage =
-                                              _getMotivationalMessage(
-                                            totalCalories,
-                                            calorieGoal,
-                                            totalWater,
-                                            waterGoal,
-                                            entries.isNotEmpty,
-                                          );
-                                        });
-                                      },
-                                      child: Image.asset(
-                                        'assets/mascotte/mascottelangzaam.gif',
-                                        height: 120,
-                                      ),
-                                    ),
+                                    StreamBuilder<DocumentSnapshot>(
+  stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+  builder: (context, userSnapshot) {
+    bool showGif = true;
+    if (userSnapshot.hasData && userSnapshot.data!.exists) {
+      final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+      showGif = userData['gif'] == true;
+    }
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _motivationalMessage = _getMotivationalMessage(
+            totalCalories,
+            calorieGoal,
+            totalWater,
+            waterGoal,
+            entries.isNotEmpty,
+          );
+        });
+      },
+      child: showGif
+          ? Image.asset(
+              'assets/mascotte/mascottelangzaam.gif',
+              height: 120,
+            )
+          : Image.asset(
+              'assets/mascotte/mascotte1.png',
+              height: 120,
+            ),
+    );
+  },
+),
                                   ],
                                 ),
                                 const SizedBox(height: 20),
@@ -1520,9 +1561,11 @@ try{
                                       Expanded(
                                         child: Padding(
                                           padding: const EdgeInsets.only(
-                                              bottom: 80),
+                                            bottom: 80,
+                                          ),
                                           child: BubbleSpecialThree(
-                                            text: _motivationalMessage ??
+                                            text:
+                                                _motivationalMessage ??
                                                 motivationalMessage,
                                             color: isDarkMode
                                                 ? const Color(0xFF1B97F3)
@@ -1537,24 +1580,38 @@ try{
                                         ),
                                       ),
                                       const SizedBox(width: 10),
-                                      GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            _motivationalMessage =
-                                                _getMotivationalMessage(
-                                              totalCalories,
-                                              calorieGoal,
-                                              totalWater,
-                                              waterGoal,
-                                              entries.isNotEmpty,
-                                            );
-                                          });
-                                        },
-                                        child: Image.asset(
-                                          'assets/mascotte/mascottelangzaam.gif',
-                                          height: 120,
-                                        ),
-                                      ),
+                                      StreamBuilder<DocumentSnapshot>(
+  stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+  builder: (context, userSnapshot) {
+    bool showGif = true;
+    if (userSnapshot.hasData && userSnapshot.data!.exists) {
+      final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+      showGif = userData['gif'] == true;
+    }
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _motivationalMessage = _getMotivationalMessage(
+            totalCalories,
+            calorieGoal,
+            totalWater,
+            waterGoal,
+            entries.isNotEmpty,
+          );
+        });
+      },
+      child: showGif
+          ? Image.asset(
+              'assets/mascotte/mascottelangzaam.gif',
+              height: 120,
+            )
+          : Image.asset(
+              'assets/mascotte/mascotte1.png',
+              height: 120,
+            ),
+    );
+  },
+),
                                     ],
                                   ),
                                 ),
@@ -1596,7 +1653,7 @@ try{
                                 key: currentKey,
                                 title: mealEntry.key,
                                 entries: const [],
-                                originalEntriesMap: const {}, 
+                                originalEntriesMap: const {},
                                 isDarkMode: isDarkMode,
                               ),
                             ),
@@ -1607,7 +1664,7 @@ try{
                           key: currentKey,
                           title: mealEntry.key,
                           entries: mealEntry.value,
-                          originalEntriesMap: originalEntriesMap, 
+                          originalEntriesMap: originalEntriesMap,
                           isDarkMode: isDarkMode,
                         );
                       }).toList();
@@ -1634,6 +1691,7 @@ try{
 
     const defaultMessages = [
       'Goed bezig, ga zo door!',
+      'Als je op mij tikt krijg je een nieuw tekstje!',
       'Elke stap telt!',
       'Je doet het geweldig!',
       'Wist je dat fFinder een afkorting is voor FoodFinder?',
@@ -1922,7 +1980,7 @@ try{
     Key? key,
     required String title,
     required List<dynamic> entries,
-required Map<dynamic, dynamic> originalEntriesMap,
+    required Map<dynamic, dynamic> originalEntriesMap,
     required bool isDarkMode,
   }) {
     double totalMealCalories = 0;
@@ -1976,7 +2034,12 @@ required Map<dynamic, dynamic> originalEntriesMap,
 
               if (entry.containsKey('quantity')) {
                 // Als het drinken is, toon ml anders kcal
-                final quantityValue = entry['quantity']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0';
+                final quantityValue =
+                    entry['quantity']?.toString().replaceAll(
+                      RegExp(r'[^0-9.]'),
+                      '',
+                    ) ??
+                    '0';
                 final amount = double.tryParse(quantityValue) ?? 0.0;
                 rightSideText = '${amount.round()} ml';
               } else {
@@ -2005,7 +2068,7 @@ required Map<dynamic, dynamic> originalEntriesMap,
                 ),
                 child: InkWell(
                   // tik om hoeveelheid aan te passen
-                           onTap: () {
+                  onTap: () {
                     _showEditAmountDialog(entry, originalEncryptedEntry);
                   },
                   child: Padding(
@@ -2199,10 +2262,10 @@ required Map<dynamic, dynamic> originalEntriesMap,
     try {
       // Verwijder het oude item en voeg het nieuwe toe
       await docRef.update({
-        'entries': FieldValue.arrayRemove([encryptedEntry])
+        'entries': FieldValue.arrayRemove([encryptedEntry]),
       });
       await docRef.update({
-        'entries': FieldValue.arrayUnion([updatedEntry])
+        'entries': FieldValue.arrayUnion([updatedEntry]),
       });
     } catch (e) {
       ScaffoldMessenger.of(

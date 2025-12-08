@@ -834,7 +834,70 @@ final currentWeight = await decryptDouble(data['weight'], userDEK);
                       ),
                     ),
                     const SizedBox(height: 16),
-
+Card(
+  color: cardColor,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(16),
+  ),
+  elevation: isDark ? 0 : 2,
+  child: Padding(
+    padding: const EdgeInsets.all(16),
+    child: FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user?.uid)
+          .get(),
+      builder: (context, snapshot) {
+        bool gifEnabled = true;
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          gifEnabled = data['gif'] == true;
+        }
+        return SwitchListTile(
+          title: const Text('Mascotte animatie (GIF) tonen'),
+          value: gifEnabled,
+          onChanged: (val) async {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user?.uid)
+                .set({'gif': val}, SetOptions(merge: true));
+            setState(() {});
+          },
+        );
+      },
+    ),
+  ),
+),
+const SizedBox(height: 16),
+ElevatedButton.icon(
+  icon: const Icon(Icons.refresh),
+  label: const Text('Reset uitleg'),
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.blueAccent,
+    foregroundColor: Colors.white,
+    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+  onPressed: () async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set({
+          'tutorialFoodAf': false,
+          'tutorialHomeAf': false,
+        }, SetOptions(merge: true));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Uitleg is opnieuw gestart!')),
+      );
+    }
+  },
+),
+const SizedBox(height: 16),
                     Text(
                       'Persoonlijke gegevens',
                       style: theme.textTheme.titleMedium?.copyWith(
