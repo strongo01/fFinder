@@ -55,7 +55,6 @@ class _OnboardingViewState extends State<OnboardingView> {
     '2': {}, // vrouw
   };
 
-
   final List<String> activityOptions = [
     'Weinig actief: zittend werk, nauwelijks beweging, geen sport',
     'Licht actief: 1–3x per week lichte training of dagelijks 30–45 min wandelen',
@@ -100,7 +99,7 @@ class _OnboardingViewState extends State<OnboardingView> {
           _updateRange();
         })
         .catchError((e) {
-          print('LMS preload error: $e');
+          debugPrint('LMS preload error: $e');
         });
 
     // listeners
@@ -237,129 +236,147 @@ class _OnboardingViewState extends State<OnboardingView> {
     final user = FirebaseAuth.instance.currentUser; // Huidige gebruiker ophalen
     if (user == null) return; // Als er geen gebruiker is, stop
 
-      // 1️⃣ Global DEK ophalen (Remote Config)
-  final globalDEKString =
-      FirebaseRemoteConfig.instance.getString('GLOBAL_DEK'); // Base64
-  final globalDEK = SecretKey(base64Decode(globalDEKString));
-
-  // 2️⃣ User-specifieke DEK afleiden
-  final userDEK = await deriveUserKey(globalDEK, user.uid);
-
-
-    final heightCm = double.tryParse(_heightController.text);
-    final weightKg = double.tryParse(_weightController.text);
-    final birthDate = _birthDate;
-    final gender = _gender;
-    final activityFull = _activityLevel;
-    final goal = _goal;
-
-    double? bmi;
-    double? calorieGoal;
-    double? proteinGoal;
-    double? fatGoal;
-    double? carbGoal;
-
-    if (heightCm != null &&
-        heightCm > 0 &&
-        weightKg != null &&
-        weightKg > 0 &&
-        birthDate != null) {
-      // Bereken BMI
-      final heightM = heightCm / 100;
-      bmi = weightKg / (heightM * heightM);
-
-      // Bereken caloriebehoefte
-      final age = DateTime.now().year - birthDate.year;
-
-      double bmr;
-      if (gender == 'Vrouw') {
-        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
-      } else {
-        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
-      }
-
-      final activity = activityFull.split(':')[0].trim();
-      double activityFactor;
-      switch (activity) {
-        case 'Weinig actief':
-          activityFactor = 1.2;
-          break;
-        case 'Licht actief':
-          activityFactor = 1.375;
-          break;
-        case 'Gemiddeld actief':
-          activityFactor = 1.55;
-          break;
-        case 'Zeer actief':
-          activityFactor = 1.725;
-          break;
-        case 'Extreem actief':
-          activityFactor = 1.9;
-          break;
-        default:
-          activityFactor = 1.2;
-      }
-
-      double calories = bmr * activityFactor;
-
-      switch (goal) {
-        case 'Afvallen':
-          calories -= 500;
-          break;
-        case 'Aankomen (spiermassa)':
-        case 'Aankomen (algemeen)':
-          calories += 300;
-          break;
-        case 'Op gewicht blijven':
-        default:
-          break;
-      }
-      calorieGoal = calories;
-
-      proteinGoal = weightKg; // 1g per kg
-      final fatCalories = calorieGoal * 0.30;
-      fatGoal = fatCalories / 9; // 1 gram per 9 kcal vet
-
-      final proteinCalories = proteinGoal * 4; // 1 gram per 4 eiwitten eiwit
-      final carbCalories = calorieGoal - fatCalories - proteinCalories;
-      carbGoal = carbCalories / 4; // 1 gram per 4 kcal koolhydraten
-    }
-
+    // --- CORRECTIE: Actief de Remote Config ophalen ---
     try {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .set({
-      'firstName': await encryptValue(_firstNameController.text.trim(), userDEK),
-      'gender': await encryptValue(_gender, userDEK),
-      'birthDate': await encryptValue(birthDate?.toIso8601String() ?? '', userDEK),
-      'height': await encryptDouble(heightCm ?? 0, userDEK),
-      'weight': await encryptDouble(weightKg ?? 0, userDEK),
-      'calorieGoal': await encryptDouble(calorieGoal ?? 0, userDEK),
-      'proteinGoal': await encryptDouble(proteinGoal ?? 0, userDEK),
-      'fatGoal': await encryptDouble(fatGoal ?? 0, userDEK),
-      'carbGoal': await encryptDouble(carbGoal ?? 0, userDEK),
-      'bmi': await encryptDouble(bmi ?? 0, userDEK),
-      'sleepHours': await encryptDouble(_sleepHours, userDEK),
-      'targetWeight': await encryptDouble(
-          double.tryParse(_targetWeightController.text) ?? 0, userDEK),
-      'notificationsEnabled': _notificationsEnabled,
-      'onboardingaf': true,
-      'activityLevel': await encryptValue(_activityLevel, userDEK),
-      'goal': await encryptValue(_goal, userDEK),
-    }, SetOptions(merge: true));
+      // 1️⃣ Global DEK ophalen (Remote Config)
+      final remoteConfig = FirebaseRemoteConfig.instance;
+      // Zorg ervoor dat we de laatste versie hebben, negeer de cache voor deze belangrijke stap.
+      await remoteConfig.setConfigSettings(RemoteConfigSettings(
+        fetchTimeout: const Duration(minutes: 1),
+        minimumFetchInterval: Duration.zero,
+      ));
+      await remoteConfig.fetchAndActivate();
 
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()));
+      final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
+      if (globalDEKString.isEmpty) {
+        throw Exception("GLOBAL_DEK from Remote Config is empty!");
+      }
+      final globalDEK = SecretKey(base64Decode(globalDEKString));
+
+      // 2️⃣ User-specifieke DEK afleiden
+      final userDEK = await deriveUserKey(globalDEK, user.uid);
+
+      // --- De rest van je logica blijft hetzelfde ---
+      final heightCm = double.tryParse(_heightController.text);
+      final weightKg = double.tryParse(_weightController.text);
+      final birthDate = _birthDate;
+      final gender = _gender;
+      final activityFull = _activityLevel;
+      final goal = _goal;
+
+      double? bmi;
+      double? calorieGoal;
+      double? proteinGoal;
+      double? fatGoal;
+      double? carbGoal;
+
+      if (heightCm != null &&
+          heightCm > 0 &&
+          weightKg != null &&
+          weightKg > 0 &&
+          birthDate != null) {
+        // Bereken BMI
+        final heightM = heightCm / 100;
+        bmi = weightKg / (heightM * heightM);
+
+        // Bereken caloriebehoefte
+        final age = DateTime.now().year - birthDate.year;
+
+        double bmr;
+        if (gender == 'Vrouw') {
+          bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+        } else {
+          bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+        }
+
+        final activity = activityFull.split(':')[0].trim();
+        double activityFactor;
+        switch (activity) {
+          case 'Weinig actief':
+            activityFactor = 1.2;
+            break;
+          case 'Licht actief':
+            activityFactor = 1.375;
+            break;
+          case 'Gemiddeld actief':
+            activityFactor = 1.55;
+            break;
+          case 'Zeer actief':
+            activityFactor = 1.725;
+            break;
+          case 'Extreem actief':
+            activityFactor = 1.9;
+            break;
+          default:
+            activityFactor = 1.2;
+        }
+
+        double calories = bmr * activityFactor;
+
+        switch (goal) {
+          case 'Afvallen':
+            calories -= 500;
+            break;
+          case 'Aankomen (spiermassa)':
+          case 'Aankomen (algemeen)':
+            calories += 300;
+            break;
+          case 'Op gewicht blijven':
+          default:
+            break;
+        }
+        calorieGoal = calories;
+
+        proteinGoal = weightKg; // 1g per kg
+        final fatCalories = calorieGoal * 0.30;
+        fatGoal = fatCalories / 9; // 1 gram per 9 kcal vet
+
+        final proteinCalories = proteinGoal * 4; // 1 gram per 4 eiwitten eiwit
+        final carbCalories = calorieGoal - fatCalories - proteinCalories;
+        carbGoal = carbCalories / 4; // 1 gram per 4 kcal koolhydraten
+      }
+
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'firstName': await encryptValue(
+          _firstNameController.text.trim(),
+          userDEK,
+        ),
+        'gender': await encryptValue(_gender, userDEK),
+        'birthDate': await encryptValue(
+          birthDate?.toIso8601String() ?? '',
+          userDEK,
+        ),
+        'height': await encryptDouble(heightCm ?? 0, userDEK),
+        'weight': await encryptDouble(weightKg ?? 0, userDEK),
+        'calorieGoal': await encryptDouble(calorieGoal ?? 0, userDEK),
+        'proteinGoal': await encryptDouble(proteinGoal ?? 0, userDEK),
+        'fatGoal': await encryptDouble(fatGoal ?? 0, userDEK),
+        'carbGoal': await encryptDouble(carbGoal ?? 0, userDEK),
+        'bmi': await encryptDouble(bmi ?? 0, userDEK),
+        'sleepHours': await encryptDouble(_sleepHours, userDEK),
+        'targetWeight': await encryptDouble(
+          double.tryParse(_targetWeightController.text) ?? 0,
+          userDEK,
+        ),
+        'notificationsEnabled': _notificationsEnabled,
+        'onboardingaf': true,
+        'activityLevel': await encryptValue(_activityLevel, userDEK),
+        'goal': await encryptValue(_goal, userDEK),
+      }, SetOptions(merge: true));
+
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Er ging iets mis: $e')));
+      }
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('Er ging iets mis: $e')));
   }
-}
-
-
   // Widget voor de bolletjes voortgangs dingetje
   Widget _buildProgressIndicator() {
     return Row(
@@ -805,9 +822,11 @@ class _OnboardingViewState extends State<OnboardingView> {
                       content: TextField(
                         controller: _heightController,
                         keyboardType: TextInputType.number,
-                                                inputFormatters: [
+                        inputFormatters: [
                           CommaToPeriodTextInputFormatter(), // Vervangt ',' door '.'
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')), // Sta alleen cijfers en één punt toe
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*\.?\d*'),
+                          ), // Sta alleen cijfers en één punt toe
                         ],
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => _nextPage(),
@@ -827,9 +846,11 @@ class _OnboardingViewState extends State<OnboardingView> {
                       content: TextField(
                         controller: _weightController,
                         keyboardType: TextInputType.number,
-                                                inputFormatters: [
+                        inputFormatters: [
                           CommaToPeriodTextInputFormatter(), // Vervangt ',' door '.'
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')), // Sta alleen cijfers en één punt toe
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*\.?\d*'),
+                          ), // Sta alleen cijfers en één punt toe
                         ],
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => _nextPage(),
@@ -893,10 +914,12 @@ class _OnboardingViewState extends State<OnboardingView> {
                           TextField(
                             controller: _targetWeightController,
                             keyboardType: TextInputType.number,
-                                                    inputFormatters: [
-                          CommaToPeriodTextInputFormatter(), // Vervangt ',' door '.'
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')), // Sta alleen cijfers en één punt toe
-                        ],
+                            inputFormatters: [
+                              CommaToPeriodTextInputFormatter(), // Vervangt ',' door '.'
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*\.?\d*'),
+                              ), // Sta alleen cijfers en één punt toe
+                            ],
                             textInputAction: TextInputAction.next,
                             onSubmitted: (_) => _nextPage(),
                             style: inputTextStyle,

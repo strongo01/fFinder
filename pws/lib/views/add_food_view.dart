@@ -92,7 +92,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         tutorialCompleted = userDoc.data()?['tutorialFoodAf'] ?? false;
       } catch (e) {
         // Fout bij ophalen, ga er voor de veiligheid van uit dat de tutorial niet is voltooid
-        print("Kon tutorial status niet ophalen: $e");
+        debugPrint("Kon tutorial status niet ophalen: $e");
         tutorialCompleted = false;
       }
     }
@@ -129,7 +129,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       opacityShadow: 0.8,
       hideSkip: false,
       onFinish: () {
-        print("Tutorial voltooid");
+        debugPrint("Tutorial voltooid");
         prefs.setBool('food_tutorial_shown', true); // lokaal opslaan
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
@@ -140,7 +140,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       },
       onClickTarget: (target) {
         // wanneer een target wordt aangeklikt
-        print('Target geklikt: $target');
+        debugPrint('Target geklikt: $target');
         final String? identify = target.identify;
         int? targetIndex;
 
@@ -387,11 +387,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
       List all = []; // Lege lijst om producten op te slaan
 
       try {
-        print("--- Poging 1: ffinder.nl endpoint ---");
+        debugPrint("--- Poging 1: ffinder.nl endpoint ---");
         final ffinderUrl = Uri.parse(
           "https://ffinder.nl/product?q=${Uri.encodeComponent(trimmed)}",
         );
-        print("URL: $ffinderUrl");
+        debugPrint("URL: $ffinderUrl");
 
         final appKey = dotenv.env["APP_KEY"];
         final response = await http.get(
@@ -399,11 +399,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
           headers: {"x-app-key": appKey ?? ""},
         );
 
-        print("ffinder.nl Status Code: ${response.statusCode}");
-        print("ffinder.nl Response Headers: ${response.headers}");
+        debugPrint("ffinder.nl Status Code: ${response.statusCode}");
+        debugPrint("ffinder.nl Response Headers: ${response.headers}");
 
         if (response.statusCode == 200) {
-          print(
+          debugPrint(
             "ffinder.nl response body (preview): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}",
           );
           final data = jsonDecode(response.body);
@@ -411,33 +411,33 @@ class _AddFoodPageState extends State<AddFoodPage> {
           if (foodsObject != null && foodsObject["food"] is List) {
             final products = foodsObject["food"] as List;
             all = products;
-            print(
+            debugPrint(
               "Succes: ${products.length} producten gevonden via ffinder.nl",
             );
           } else {
-            print("ffinder.nl gaf een leeg resultaat of verkeerde structuur.");
+            debugPrint("ffinder.nl gaf een leeg resultaat of verkeerde structuur.");
           }
         } else {
-          print("ffinder.nl gaf een foutstatus: ${response.statusCode}");
-          print("Response body: ${response.body}");
+          debugPrint("ffinder.nl gaf een foutstatus: ${response.statusCode}");
+          debugPrint("Response body: ${response.body}");
         }
       } catch (e, stack) {
-        print("Fout bij het aanroepen van ffinder.nl: $e");
-        print(stack);
+        debugPrint("Fout bij het aanroepen van ffinder.nl: $e");
+        debugPrint(stack.toString());
       }
 
       // Fallback naar Open Food Facts
       if (all.isEmpty || loadMore) {
-        print("\n--- Poging 2: Open Food Facts (Fallback) ---");
+        debugPrint("\n--- Poging 2: Open Food Facts (Fallback) ---");
         final openFoodFactsUrl = Uri.parse(
           "https://nl.openfoodfacts.org/cgi/search.pl"
           "?search_terms=${Uri.encodeComponent(trimmed)}"
           "&search_simple=1&json=1&action=process",
         );
         final response = await http.get(openFoodFactsUrl);
-        print("Open Food Facts Status Code: ${response.statusCode}");
+        debugPrint("Open Food Facts Status Code: ${response.statusCode}");
         if (response.statusCode == 200) {
-          print(
+          debugPrint(
             "Open Food Facts response body (preview): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}",
           );
           final data = jsonDecode(response.body);
@@ -502,8 +502,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
         });
       }
     } catch (e, stack) {
-      print("Algemene fout in _searchProducts: $e");
-      print(stack);
+      debugPrint("Algemene fout in _searchProducts: $e");
+      debugPrint(stack as String?);
       setState(() {
         _errorMessage = 'Fout bij ophalen: $e';
       });
@@ -1209,7 +1209,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 );
               }
             } catch (e) {
-              print("Fout bij decrypten van recente producten: $e");
+              debugPrint("Fout bij decrypten van recente producten: $e");
               // Ga door met versleutelde (of niet-versleutelde) data bij een fout
             }
           }
@@ -1851,7 +1851,7 @@ resultWidgets.add(
 
     final userDEK = await getUserDEKFromRemoteConfig(user.uid);
     if (userDEK == null) {
-      print("Fout: Kon encryptiesleutel niet ophalen voor recents.");
+      debugPrint("Fout: Kon encryptiesleutel niet ophalen voor recents.");
       return;
     }
 
@@ -2038,7 +2038,7 @@ resultWidgets.add(
                                   decryptedNutriments;
                             }
                           } catch (e) {
-                            print("Fout bij decrypten: $e");
+                            debugPrint("Fout bij decrypten: $e");
                           }
                         }
                         return decrypted;
@@ -2197,7 +2197,7 @@ resultWidgets.add(
                                   decryptedNutriments;
                             }
                           } catch (e) {
-                            print("Fout bij decrypten favoriet: $e");
+                            debugPrint("Fout bij decrypten favoriet: $e");
                           }
                         }
                         return decrypted;
@@ -2349,7 +2349,7 @@ resultWidgets.add(
                                   decryptedNutriments;
                             }
                           } catch (e) {
-                            print("Fout bij decrypten eigen product: $e");
+                            debugPrint("Fout bij decrypten eigen product: $e");
                           }
                         }
                         return decrypted;
@@ -2570,7 +2570,7 @@ resultWidgets.add(
                             }
                             decryptedMeal['ingredients'] = decryptedIngredients;
                           } catch (e) {
-                            print("Fout bij decrypten maaltijd: $e");
+                            debugPrint("Fout bij decrypten maaltijd: $e");
                           }
                         }
                         return decryptedMeal;

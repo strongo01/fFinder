@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cryptography/cryptography.dart';
+import 'package:fFinder/views/add_sport_view.dart';
 import 'package:fFinder/views/crypto_class.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/gestures.dart';
@@ -34,7 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   //variabelen om de status van het scherm bij te houden
   bool _isLoading = false; // of hi jaan het laden is
   String? _errorMessage; // eventuele foutmelding
-  String? _motivationalMessage;
+  //String? _motivationalMessage;
   int _selectedIndex = 0;
 
   Map<String, dynamic>? _userData;
@@ -43,6 +44,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _activeAnnouncements = [];
   StreamSubscription? _announcementSubscription;
   final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<String?> _motivationalMessageNotifier = ValueNotifier(
+    null,
+  );
 
   final GlobalKey _dateKey = GlobalKey();
   final GlobalKey _calorieInfoRowKey = GlobalKey();
@@ -87,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
         .dispose(); // de controller opruimen bij het verwijderen van de widget
     _scrollController.dispose();
     _announcementSubscription?.cancel();
+    _motivationalMessageNotifier.dispose(); // Notifier opruimen
     super.dispose();
   }
 
@@ -140,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           },
           onError: (error) {
-            print("Fout bij luisteren naar admin-berichten: $error");
+            debugPrint("Fout bij luisteren naar admin-berichten: $error");
           },
         );
   }
@@ -162,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       );
     } catch (e) {
-      print("Fout bij opslaan van gesloten bericht: $e");
+      debugPrint("Fout bij opslaan van gesloten bericht: $e");
     }
   }
 
@@ -243,36 +248,48 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _createTutorial() async {
-    final prefs = await SharedPreferences.getInstance();
-    tutorialCoachMark = TutorialCoachMark(
-      targets: _createTargets(context),
-      colorShadow: Colors.blue.withOpacity(0.7),
-      paddingFocus: 10,
-      opacityShadow: 0.8,
-      hideSkip: false,
-      
-      onClickTarget: (target) {
-        if (target.identify == "calorie-info-row-key") {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOut,
-          );
-        }
-      },
-      onFinish: () {
-        print("Tutorial voltooid");
-        prefs.setBool('home_tutorial_shown', true);
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-            'tutorialHomeAf': true,
-          });
-        }
-      },
-    );
-  }
+    // ...existing code...
+    void _createTutorial() async {
+      final prefs = await SharedPreferences.getInstance();
+      tutorialCoachMark = TutorialCoachMark(
+        targets: _createTargets(context),
+        colorShadow: Colors.blue.withOpacity(0.7),
+        paddingFocus: 10,
+        opacityShadow: 0.8,
+        hideSkip: false,
+        onClickTarget: (target) {
+          if (target.identify == "calorie-info-row-key") {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOut,
+            );
+          }
+        },
+        onSkip: () {
+          debugPrint("Tutorial overgeslagen");
+          prefs.setBool('home_tutorial_shown', true);
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+              'tutorialHomeAf': true,
+            });
+          }
+          return true; // Return true om de tutorial te sluiten
+        },
+        onFinish: () {
+          debugPrint("Tutorial voltooid");
+          prefs.setBool('home_tutorial_shown', true);
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+              'tutorialHomeAf': true,
+            });
+          }
+        },
+      );
+    }
+  
 
   List<TargetFocus> _createTargets(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -640,15 +657,33 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _fetchUserData() async {
+    Future<void> _fetchUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {
       // 1️⃣ Global DEK ophalen (Remote Config)
       final remoteConfig = FirebaseRemoteConfig.instance;
+
+      // Forceer het ophalen van de nieuwste config door de cache-tijd te minimaliseren
+      await remoteConfig.setConfigSettings(RemoteConfigSettings(
+        fetchTimeout: const Duration(minutes: 1),
+        minimumFetchInterval: Duration.zero, // Belangrijk voor debuggen!
+      ));
+
       await remoteConfig.fetchAndActivate(); // haal nieuwste config op
       if (!mounted) return; // Stop if the widget is no longer in the tree.
       final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
+
+      // --- DEBUGGING PRINT ---
+      debugPrint('--- FETCHED GLOBAL_DEK ---');
+      debugPrint('Value: "$globalDEKString"');
+      debugPrint('Length: ${globalDEKString.length}');
+      debugPrint('--------------------------');
+
+      if (globalDEKString.isEmpty) {
+        throw Exception("GLOBAL_DEK from Remote Config is empty!");
+      }
+
       final globalDEK = SecretKey(base64Decode(globalDEKString));
 
       // 2️⃣ User-specifieke DEK afleiden
@@ -675,10 +710,10 @@ class _HomeScreenState extends State<HomeScreen> {
             double.tryParse(await decryptValue(data['weight'], userDEK)) ?? 0,
         'calorieGoal':
             double.tryParse(await decryptValue(data['calorieGoal'], userDEK)) ??
-            0,
+                0,
         'proteinGoal':
             double.tryParse(await decryptValue(data['proteinGoal'], userDEK)) ??
-            0,
+                0,
         'fatGoal':
             double.tryParse(await decryptValue(data['fatGoal'], userDEK)) ?? 0,
         'carbGoal':
@@ -686,7 +721,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'bmi': double.tryParse(await decryptValue(data['bmi'], userDEK)) ?? 0,
         'sleepHours':
             double.tryParse(await decryptValue(data['sleepHours'], userDEK)) ??
-            0,
+                0,
         'targetWeight':
             double.tryParse(
               await decryptValue(data['targetWeight'], userDEK),
@@ -698,8 +733,6 @@ class _HomeScreenState extends State<HomeScreen> {
         'goal': await decryptValue(data['goal'], userDEK),
       };
 
-      print('Decrypted user data: $decryptedData');
-
       if (mounted) {
         setState(() {
           _userData = decryptedData;
@@ -708,7 +741,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       // Catches the exception if fetchAndActivate is cancelled.
-      print('Could not fetch user data: $e');
+      debugPrint('Could not fetch user data: $e');
     }
   }
 
@@ -1058,6 +1091,17 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           },
         ),
+        SpeedDialChild(
+          child: const Icon(Icons.fitness_center),
+          label: 'Sport',
+          backgroundColor: childBackgroundColor,
+          labelStyle: TextStyle(color: fabForegroundColor),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const AddSportPage()),
+            );
+          },
+        ),
       ],
     );
   }
@@ -1243,434 +1287,668 @@ class _HomeScreenState extends State<HomeScreen> {
             }
             final userDEK = dekSnapshot.data!;
 
-            // Decrypt alle entries
-            return FutureBuilder<List<Map<String, dynamic>>>(
-              future: () async {
-                final decryptedEntries = <Map<String, dynamic>>[];
-                for (final entry in entriesRaw) {
-                  final decryptedEntry = Map<String, dynamic>.from(
-                    entry,
-                  ); // Kopieer de entry
+            final selectedDate = DateTime.parse(docId);
+            final startOfDay = DateTime(
+              selectedDate.year,
+              selectedDate.month,
+              selectedDate.day,
+            );
+            final endOfDay = startOfDay.add(const Duration(days: 1));
 
-                  decryptedEntry['product_name'] = await decryptValue(
-                    entry['product_name'],
-                    userDEK,
-                  );
-                  decryptedEntry['meal_type'] = await decryptValue(
-                    entry['meal_type'],
-                    userDEK,
-                  );
-
-                  if (entry.containsKey('nutrients')) {
-                    final nutrients =
-                        entry['nutrients'] as Map<String, dynamic>? ?? {};
-                    final decryptedNutrients = <String, dynamic>{};
-                    for (final key in nutrients.keys) {
-                      decryptedNutrients[key] = await decryptDouble(
-                        nutrients[key],
-                        userDEK,
-                      );
-                    }
-                    decryptedEntry['nutrients'] = decryptedNutrients;
-                  }
-
-                  if (entry.containsKey('amount_g')) {
-                    decryptedEntry['amount_g'] = await decryptDouble(
-                      entry['amount_g'],
-                      userDEK,
-                    );
-                  }
-
-                  if (entry.containsKey('quantity')) {
-                    decryptedEntry['quantity'] = await decryptValue(
-                      entry['quantity'],
-                      userDEK,
-                    );
-                  }
-
-                  decryptedEntries.add(decryptedEntry);
-                }
-                return decryptedEntries;
-              }(),
-              builder: (context, entriesSnapshot) {
-                if (entriesSnapshot.connectionState ==
-                    ConnectionState.waiting) {
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(uid)
+                  .collection('sports')
+                  .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+                  .where('timestamp', isLessThan: endOfDay)
+                  .snapshots(),
+              builder: (context, sportsSnapshot) {
+                if (sportsSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (!entriesSnapshot.hasData) {
-                  return const Center(child: Text("Geen log data gevonden."));
-                }
+                final sportsDocs = sportsSnapshot.data?.docs ?? [];
 
-                final entries = entriesSnapshot.data!;
-                final Map<dynamic, dynamic> originalEntriesMap = {
-                  for (var i = 0; i < entries.length; i++)
-                    entries[i]: entriesRaw[i],
-                };
-                // Vanaf hier wordt de bestaande logica uitgevoerd met de gedecrypteerde 'entries'
-                double totalCalories = 0;
-                double totalProteins = 0;
-                double totalFats = 0;
-                double totalCarbs = 0;
+                // Decrypt alle sportgegevens
+                Future<List<Map<String, dynamic>>> sportsFuture = () async {
+                  final result = <Map<String, dynamic>>[];
+                  for (final doc in sportsDocs) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    result.add({
+                      'id': doc.id, // <-- CORRECTIE: ID hier toevoegen
+                      'name': await decryptValue(data['sport'], userDEK),
+                      'duration': await decryptDouble(
+                        data['duration_min'],
+                        userDEK,
+                      ),
+                      'calories': await decryptDouble(
+                        data['calories_burned'],
+                        userDEK,
+                      ),
+                      'timestamp': data['timestamp'],
+                    });
+                  }
+                  return result;
+                }();
 
-                final Map<String, List<dynamic>> meals = {
-                  'Ontbijt': [],
-                  'Lunch': [],
-                  'Avondeten': [],
-                  'Tussendoor': [],
-                };
+                // Decrypt alle entries
+                return FutureBuilder<List<Map<String, dynamic>>>(
+                  future: () async {
+                    final decryptedEntries = <Map<String, dynamic>>[];
+                    for (final entry in entriesRaw) {
+                      final decryptedEntry = Map<String, dynamic>.from(
+                        entry,
+                      ); // Kopieer de entry
 
-                for (var entry in entries) {
-                  totalCalories += (entry['nutrients']?['energy-kcal'] ?? 0.0);
-                  totalProteins += (entry['nutrients']?['proteins'] ?? 0.0);
-                  totalFats += (entry['nutrients']?['fat'] ?? 0.0);
-                  totalCarbs += (entry['nutrients']?['carbohydrates'] ?? 0.0);
-                  final mealType = entry['meal_type'] as String?;
+                      decryptedEntry['product_name'] = await decryptValue(
+                        entry['product_name'],
+                        userDEK,
+                      );
+                      decryptedEntry['meal_type'] = await decryptValue(
+                        entry['meal_type'],
+                        userDEK,
+                      );
 
-                  if (mealType != null && meals.containsKey(mealType)) {
-                    meals[mealType]!.add(entry);
-                  } else {
-                    final timestamp =
-                        (entry['timestamp'] as Timestamp?)?.toDate() ??
-                        DateTime.now();
-                    final hour = timestamp.hour;
-                    if (hour >= 5 && hour < 11) {
-                      meals['Ontbijt']!.add(entry);
-                    } else if (hour >= 11 && hour < 15) {
-                      meals['Lunch']!.add(entry);
-                    } else if (hour >= 15 && hour < 22) {
-                      meals['Avondeten']!.add(entry);
-                    } else {
-                      meals['Tussendoor']!.add(entry);
+                      if (entry.containsKey('nutrients')) {
+                        final nutrients =
+                            entry['nutrients'] as Map<String, dynamic>? ?? {};
+                        final decryptedNutrients = <String, dynamic>{};
+                        for (final key in nutrients.keys) {
+                          decryptedNutrients[key] = await decryptDouble(
+                            nutrients[key],
+                            userDEK,
+                          );
+                        }
+                        decryptedEntry['nutrients'] = decryptedNutrients;
+                      }
+
+                      if (entry.containsKey('amount_g')) {
+                        decryptedEntry['amount_g'] = await decryptDouble(
+                          entry['amount_g'],
+                          userDEK,
+                        );
+                      }
+
+                      if (entry.containsKey('quantity')) {
+                        decryptedEntry['quantity'] = await decryptValue(
+                          entry['quantity'],
+                          userDEK,
+                        );
+                      }
+                      decryptedEntry['timestamp'] = entry['timestamp'];
+                      decryptedEntries.add(decryptedEntry);
                     }
-                  }
-                }
+                    return decryptedEntries;
+                  }(),
+                  builder: (context, entriesSnapshot) {
+                    if (entriesSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!entriesSnapshot.hasData) {
+                      return const Center(
+                        child: Text("Geen log data gevonden."),
+                      );
+                    }
 
-                final calorieGoal = _calorieAllowance ?? 0.0;
-                final proteinGoal = _userData?['proteinGoal'] as num? ?? 0.0;
-                final fatGoal = _userData?['fatGoal'] as num? ?? 0.0;
-                final carbGoal = _userData?['carbGoal'] as num? ?? 0.0;
+                    return FutureBuilder<List<Map<String, dynamic>>>(
+                      future: sportsFuture,
+                      builder: (context, sportsDataSnapshot) {
+                        final entries = entriesSnapshot.data!;
+                        final sportsList = sportsDataSnapshot.data ?? [];
+                        final double totalBurnedCalories = sportsList.fold(
+                          0.0,
+                          (sum, item) => sum + (item['calories'] ?? 0.0),
+                        );
 
-                final remainingCalories = calorieGoal - totalCalories;
-                final progress = calorieGoal > 0
-                    ? (totalCalories / calorieGoal).clamp(0.0, 1.0)
-                    : 0.0;
+                        final Map<dynamic, dynamic> originalEntriesMap = {
+                          for (var i = 0; i < entries.length; i++)
+                            entries[i]: entriesRaw[i],
+                        };
 
-                final Map<String, double> drinkBreakdown = {};
-                double totalWater = 0;
-                for (var entry in entries) {
-                  if (entry.containsKey('quantity')) {
-                    final quantityString =
-                        entry['quantity'] as String? ?? '0 ml';
-                    final amount =
-                        double.tryParse(quantityString.replaceAll(' ml', '')) ??
-                        0.0;
-                    final drinkName =
-                        entry['product_name'] as String? ?? 'Onbekend';
-                    drinkBreakdown.update(
-                      drinkName,
-                      (value) => value + amount,
-                      ifAbsent: () => amount,
-                    );
-                    totalWater += amount;
-                  }
-                }
-                final weight = _userData?['weight'] as num? ?? 70;
-                final waterGoal = weight * 32.5;
+                        double totalCalories = 0;
+                        double totalProteins = 0;
+                        double totalFats = 0;
+                        double totalCarbs = 0;
 
-                final motivationalMessage = _getMotivationalMessage(
-                  totalCalories,
-                  calorieGoal,
-                  totalWater,
-                  waterGoal,
-                  entries.isNotEmpty,
-                );
+                        final Map<String, List<dynamic>> meals = {
+                          'Ontbijt': [],
+                          'Lunch': [],
+                          'Avondeten': [],
+                          'Tussendoor': [],
+                        };
 
-                if (_motivationalMessage == null) {
-                  _motivationalMessage = motivationalMessage;
-                }
+                        for (var entry in entries) {
+                          totalCalories +=
+                              (entry['nutrients']?['energy-kcal'] ?? 0.0);
+                          totalProteins +=
+                              (entry['nutrients']?['proteins'] ?? 0.0);
+                          totalFats += (entry['nutrients']?['fat'] ?? 0.0);
+                          totalCarbs +=
+                              (entry['nutrients']?['carbohydrates'] ?? 0.0);
+                          final mealType = entry['meal_type'] as String?;
 
-                return Column(
-                  children: [
-                    _buildAnnouncementsList(isDarkMode),
-                    Card(
-                      color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
+                          if (mealType != null && meals.containsKey(mealType)) {
+                            meals[mealType]!.add(entry);
+                          } else {
+                            final timestamp =
+                                (entry['timestamp'] as Timestamp?)?.toDate() ??
+                                DateTime.now();
+                            final hour = timestamp.hour;
+                            if (hour >= 5 && hour < 11) {
+                              meals['Ontbijt']!.add(entry);
+                            } else if (hour >= 11 && hour < 15) {
+                              meals['Lunch']!.add(entry);
+                            } else if (hour >= 15 && hour < 22) {
+                              meals['Avondeten']!.add(entry);
+                            } else {
+                              meals['Tussendoor']!.add(entry);
+                            }
+                          }
+                        }
+
+                        final baseCalorieGoal = _calorieAllowance ?? 0.0;
+                        final proteinGoal =
+                            _userData?['proteinGoal'] as num? ?? 0.0;
+                        final fatGoal = _userData?['fatGoal'] as num? ?? 0.0;
+                        final carbGoal = _userData?['carbGoal'] as num? ?? 0.0;
+
+                        // Nieuw doel = basisdoel + verbrande calorieën
+                        final adjustedCalorieGoal =
+                            baseCalorieGoal + totalBurnedCalories;
+                        final remainingCalories =
+                            adjustedCalorieGoal - totalCalories;
+                        final progress = adjustedCalorieGoal > 0
+                            ? (totalCalories / adjustedCalorieGoal).clamp(
+                                0.0,
+                                1.0,
+                              )
+                            : 0.0;
+
+                        final Map<String, double> drinkBreakdown = {};
+                        double totalWater = 0;
+                        for (var entry in entries) {
+                          if (entry.containsKey('quantity')) {
+                            final quantityString =
+                                entry['quantity'] as String? ?? '0 ml';
+                            final amount =
+                                double.tryParse(
+                                  quantityString.replaceAll(' ml', ''),
+                                ) ??
+                                0.0;
+                            final drinkName =
+                                entry['product_name'] as String? ?? 'Onbekend';
+                            drinkBreakdown.update(
+                              drinkName,
+                              (value) => value + amount,
+                              ifAbsent: () => amount,
+                            );
+                            totalWater += amount;
+                          }
+                        }
+                        final weight = _userData?['weight'] as num? ?? 70;
+                        final waterGoal = weight * 32.5;
+
+                        final motivationalMessage = _getMotivationalMessage(
+                          totalCalories,
+                          adjustedCalorieGoal,
+                          totalWater,
+                          waterGoal,
+                          entries.isNotEmpty,
+                        );
+
+                        if (_motivationalMessageNotifier.value == null) {
+                          _motivationalMessageNotifier.value =
+                              motivationalMessage;
+                        }
+
+                        return Column(
                           children: [
-                            Row(
-                              key: _calorieInfoRowKey,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildCalorieInfo(
-                                  'Gegeten',
-                                  totalCalories,
-                                  isDarkMode,
+                            _buildAnnouncementsList(isDarkMode),
+                            Card(
+                              color: isDarkMode
+                                  ? Colors.grey[800]
+                                  : Colors.grey[200],
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      key: _calorieInfoRowKey,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        _buildCalorieInfo(
+                                          'Gegeten',
+                                          totalCalories,
+                                          isDarkMode,
+                                        ),
+                                        _buildCalorieInfo(
+                                          'Doel',
+                                          adjustedCalorieGoal, // Gebruik het aangepaste doel
+                                          isDarkMode,
+                                        ),
+                                        _buildCalorieInfo(
+                                          'Over',
+                                          remainingCalories,
+                                          isDarkMode,
+                                          isRemaining: true,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 15),
+                                    LinearProgressIndicator(
+                                      value: progress,
+                                      minHeight: 10,
+                                      borderRadius: BorderRadius.circular(5),
+                                      backgroundColor: isDarkMode
+                                          ? Colors.grey[700]
+                                          : Colors.grey[300],
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        progress > 1.0
+                                            ? Colors.red
+                                            : (isDarkMode
+                                                  ? Colors.green[300]!
+                                                  : Colors.green),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildMacroCircle(
+                                          'Koolhydraten',
+                                          totalCarbs,
+                                          carbGoal.toDouble(),
+                                          isDarkMode,
+                                          Colors.orange,
+                                        ),
+                                        _buildMacroCircle(
+                                          'Eiwitten',
+                                          totalProteins,
+                                          proteinGoal.toDouble(),
+                                          isDarkMode,
+                                          const Color.fromARGB(
+                                            255,
+                                            0,
+                                            140,
+                                            255,
+                                          ),
+                                        ),
+                                        _buildMacroCircle(
+                                          'Vetten',
+                                          totalFats,
+                                          fatGoal.toDouble(),
+                                          isDarkMode,
+                                          const Color.fromARGB(
+                                            255,
+                                            0,
+                                            213,
+                                            255,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                                _buildCalorieInfo(
-                                  'Doel',
-                                  calorieGoal,
-                                  isDarkMode,
-                                ),
-                                _buildCalorieInfo(
-                                  'Over',
-                                  remainingCalories,
-                                  isDarkMode,
-                                  isRemaining: true,
-                                ),
-                              ],
+                              ),
                             ),
-                            const SizedBox(height: 15),
-                            LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 10,
-                              borderRadius: BorderRadius.circular(5),
-                              backgroundColor: isDarkMode
-                                  ? Colors.grey[700]
-                                  : Colors.grey[300],
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                progress > 1.0
-                                    ? Colors.red
-                                    : (isDarkMode
-                                          ? Colors.green[300]!
-                                          : Colors.green),
+
+                            const SizedBox(height: 20),
+                            Center(
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  if (constraints.maxWidth < 500) {
+                                    return Column(
+                                      children: [
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          key: _mascotteKey,
+                                          children: [
+                                            Expanded(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 80,
+                                                ),
+                                                child: ValueListenableBuilder<String?>(
+                                                  valueListenable:
+                                                      _motivationalMessageNotifier,
+                                                  builder: (context, message, child) {
+                                                    // Gebruik 'message' van de notifier. Als die null is, toon een laadtekst.
+                                                    return BubbleSpecialThree(
+                                                      text:
+                                                          message ??
+                                                          'Even denken...',
+                                                      color: isDarkMode
+                                                          ? const Color(
+                                                              0xFF1B97F3,
+                                                            )
+                                                          : Colors.blueAccent,
+                                                      tail: true,
+                                                      isSender: true,
+                                                      textStyle:
+                                                          const TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 14,
+                                                          ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            StreamBuilder<DocumentSnapshot>(
+                                              stream: FirebaseFirestore.instance
+                                                  .collection('users')
+                                                  .doc(uid)
+                                                  .snapshots(),
+                                              builder: (context, userSnapshot) {
+                                                bool showGif = true;
+                                                if (userSnapshot.hasData &&
+                                                    userSnapshot.data!.exists) {
+                                                  final userData =
+                                                      userSnapshot.data!.data()
+                                                          as Map<
+                                                            String,
+                                                            dynamic
+                                                          >;
+                                                  showGif =
+                                                      userData['gif'] == true;
+                                                }
+                                                return GestureDetector(
+                                                  onTap: () {
+                                                    // GEEN setState() hier!
+                                                    _motivationalMessageNotifier
+                                                            .value =
+                                                        _getMotivationalMessage(
+                                                          totalCalories,
+                                                          adjustedCalorieGoal,
+                                                          totalWater,
+                                                          waterGoal,
+                                                          entries.isNotEmpty,
+                                                        );
+                                                  },
+                                                  child: showGif
+                                                      ? Image.asset(
+                                                          'assets/mascotte/mascottelangzaam.gif',
+                                                          height: 120,
+                                                        )
+                                                      : Image.asset(
+                                                          'assets/mascotte/mascotte1.png',
+                                                          height: 120,
+                                                        ),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 20),
+                                        Container(
+                                          key: _waterCircleKey,
+                                          child: _buildWaterCircle(
+                                            totalWater,
+                                            waterGoal.toDouble(),
+                                            drinkBreakdown,
+                                            isDarkMode,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  } else {
+                                    return Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Flexible(
+                                          flex: 1,
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            key: _mascotteKey,
+                                            children: [
+                                              Expanded(
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        bottom: 80,
+                                                      ),
+                                                  child: ValueListenableBuilder<String?>(
+                                                    valueListenable:
+                                                        _motivationalMessageNotifier,
+                                                    builder:
+                                                        (
+                                                          context,
+                                                          message,
+                                                          child,
+                                                        ) {
+                                                          return BubbleSpecialThree(
+                                                            text:
+                                                                message ??
+                                                                'Even denken...',
+                                                            color: isDarkMode
+                                                                ? const Color(
+                                                                    0xFF1B97F3,
+                                                                  )
+                                                                : Colors
+                                                                      .blueAccent,
+                                                            tail: true,
+                                                            isSender: true,
+                                                            textStyle:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontSize: 14,
+                                                                ),
+                                                          );
+                                                        },
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              StreamBuilder<DocumentSnapshot>(
+                                                stream: FirebaseFirestore
+                                                    .instance
+                                                    .collection('users')
+                                                    .doc(uid)
+                                                    .snapshots(),
+                                                builder: (context, userSnapshot) {
+                                                  bool showGif = true;
+                                                  if (userSnapshot.hasData &&
+                                                      userSnapshot
+                                                          .data!
+                                                          .exists) {
+                                                    final userData =
+                                                        userSnapshot.data!
+                                                                .data()
+                                                            as Map<
+                                                              String,
+                                                              dynamic
+                                                            >;
+                                                    showGif =
+                                                        userData['gif'] == true;
+                                                  }
+                                                  return GestureDetector(
+                                                    onTap: () {
+                                                      // GEEN setState() hier!
+                                                      _motivationalMessageNotifier
+                                                              .value =
+                                                          _getMotivationalMessage(
+                                                            totalCalories,
+                                                            adjustedCalorieGoal,
+                                                            totalWater,
+                                                            waterGoal,
+                                                            entries.isNotEmpty,
+                                                          );
+                                                    },
+                                                    child: showGif
+                                                        ? Image.asset(
+                                                            'assets/mascotte/mascottelangzaam.gif',
+                                                            height: 120,
+                                                          )
+                                                        : Image.asset(
+                                                            'assets/mascotte/mascotte1.png',
+                                                            height: 120,
+                                                          ),
+                                                  );
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 30),
+                                        Flexible(
+                                          flex: 1,
+                                          child: Container(
+                                            key: _waterCircleKey,
+                                            child: _buildWaterCircle(
+                                              totalWater,
+                                              waterGoal.toDouble(),
+                                              drinkBreakdown,
+                                              isDarkMode,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }
+                                },
                               ),
                             ),
                             const SizedBox(height: 20),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _buildMacroCircle(
-                                  'Koolhydraten',
-                                  totalCarbs,
-                                  carbGoal.toDouble(),
-                                  isDarkMode,
-                                  Colors.orange,
-                                ),
-                                _buildMacroCircle(
-                                  'Eiwitten',
-                                  totalProteins,
-                                  proteinGoal.toDouble(),
-                                  isDarkMode,
-                                  const Color.fromARGB(255, 0, 140, 255),
-                                ),
-                                _buildMacroCircle(
-                                  'Vetten',
-                                  totalFats,
-                                  fatGoal.toDouble(),
-                                  isDarkMode,
-                                  const Color.fromARGB(255, 0, 213, 255),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          if (constraints.maxWidth < 500) {
-                            return Column(
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  key: _mascotteKey,
-                                  children: [
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 80,
-                                        ),
-                                        child: BubbleSpecialThree(
-                                          text:
-                                              _motivationalMessage ??
-                                              motivationalMessage,
-                                          color: isDarkMode
-                                              ? const Color(0xFF1B97F3)
-                                              : Colors.blueAccent,
-                                          tail: true,
-                                          isSender: true,
-                                          textStyle: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    StreamBuilder<DocumentSnapshot>(
-  stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
-  builder: (context, userSnapshot) {
-    bool showGif = true;
-    if (userSnapshot.hasData && userSnapshot.data!.exists) {
-      final userData = userSnapshot.data!.data() as Map<String, dynamic>;
-      showGif = userData['gif'] == true;
-    }
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _motivationalMessage = _getMotivationalMessage(
-            totalCalories,
-            calorieGoal,
-            totalWater,
-            waterGoal,
-            entries.isNotEmpty,
-          );
-        });
-      },
-      child: showGif
-          ? Image.asset(
-              'assets/mascotte/mascottelangzaam.gif',
-              height: 120,
-            )
-          : Image.asset(
-              'assets/mascotte/mascotte1.png',
-              height: 120,
-            ),
-    );
-  },
-),
-                                  ],
-                                ),
-                                const SizedBox(height: 20),
-                                Container(
-                                  key: _waterCircleKey,
-                                  child: _buildWaterCircle(
-                                    totalWater,
-                                    waterGoal.toDouble(),
-                                    drinkBreakdown,
-                                    isDarkMode,
-                                  ),
-                                ),
-                              ],
-                            );
-                          } else {
-                            return Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Flexible(
-                                  flex: 1,
-                                  child: Row(
+                            if (sportsList.isNotEmpty)
+                              Card(
+                                margin: const EdgeInsets.only(top: 20.0),
+                                color: isDarkMode
+                                    ? Colors.grey[850]
+                                    : Colors.white,
+                                elevation: 1,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    key: _mascotteKey,
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 80,
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Sportactiviteiten',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: isDarkMode
+                                                  ? Colors.white
+                                                  : Colors.black,
+                                            ),
                                           ),
-                                          child: BubbleSpecialThree(
-                                            text:
-                                                _motivationalMessage ??
-                                                motivationalMessage,
-                                            color: isDarkMode
-                                                ? const Color(0xFF1B97F3)
-                                                : Colors.blueAccent,
-                                            tail: true,
-                                            isSender: true,
-                                            textStyle: const TextStyle(
+                                          Text(
+                                            '+${totalBurnedCalories.round()} kcal',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Divider(height: 20),
+                                      ...sportsList.map(
+                                        (sport) => Dismissible(
+                                          key: ValueKey(sport['id']),
+                                          direction:
+                                              DismissDirection.endToStart,
+                                          onDismissed: (direction) {
+                                            _deleteSportEntry(sport['id']);
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  '${sport['name']} verwijderd',
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          background: Container(
+                                            color: Colors.red,
+                                            alignment: Alignment.centerRight,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20.0,
+                                            ),
+                                            child: const Icon(
+                                              Icons.delete,
                                               color: Colors.white,
-                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 4.0,
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  sport['name'] ??
+                                                      'Onbekende sport',
+                                                  style: TextStyle(
+                                                    color: isDarkMode
+                                                        ? Colors.white
+                                                        : Colors.black,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  '${(sport['calories'] ?? 0.0).toStringAsFixed(0)} kcal',
+                                                  style: TextStyle(
+                                                    color: isDarkMode
+                                                        ? Colors.white70
+                                                        : Colors.black87,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 10),
-                                      StreamBuilder<DocumentSnapshot>(
-  stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
-  builder: (context, userSnapshot) {
-    bool showGif = true;
-    if (userSnapshot.hasData && userSnapshot.data!.exists) {
-      final userData = userSnapshot.data!.data() as Map<String, dynamic>;
-      showGif = userData['gif'] == true;
-    }
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _motivationalMessage = _getMotivationalMessage(
-            totalCalories,
-            calorieGoal,
-            totalWater,
-            waterGoal,
-            entries.isNotEmpty,
-          );
-        });
-      },
-      child: showGif
-          ? Image.asset(
-              'assets/mascotte/mascottelangzaam.gif',
-              height: 120,
-            )
-          : Image.asset(
-              'assets/mascotte/mascotte1.png',
-              height: 120,
-            ),
-    );
-  },
-),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 30),
-                                Flexible(
-                                  flex: 1,
-                                  child: Container(
-                                    key: _waterCircleKey,
-                                    child: _buildWaterCircle(
-                                      totalWater,
-                                      waterGoal.toDouble(),
-                                      drinkBreakdown,
-                                      isDarkMode,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ...() {
-                      bool mealKeyAssigned = false;
-                      return meals.entries.map((mealEntry) {
-                        Key? currentKey;
-                        if (!mealKeyAssigned) {
-                          currentKey = _mealKey;
-                          mealKeyAssigned = true;
-                        }
-
-                        if (mealEntry.value.isEmpty) {
-                          return SizedBox(
-                            width: double.infinity,
-                            child: Offstage(
-                              offstage: true,
-                              child: _buildMealSection(
-                                key: currentKey,
-                                title: mealEntry.key,
-                                entries: const [],
-                                originalEntriesMap: const {},
-                                isDarkMode: isDarkMode,
                               ),
-                            ),
-                          );
-                        }
+                            const SizedBox(height: 20),
+                            ...() {
+                              bool mealKeyAssigned = false;
+                              return meals.entries.map((mealEntry) {
+                                Key? currentKey;
+                                if (!mealKeyAssigned) {
+                                  currentKey = _mealKey;
+                                  mealKeyAssigned = true;
+                                }
 
-                        return _buildMealSection(
-                          key: currentKey,
-                          title: mealEntry.key,
-                          entries: mealEntry.value,
-                          originalEntriesMap: originalEntriesMap,
-                          isDarkMode: isDarkMode,
+                                if (mealEntry.value.isEmpty) {
+                                  return SizedBox.shrink(); // Toon niets als de maaltijd leeg is
+                                }
+
+                                return _buildMealSection(
+                                  key: currentKey,
+                                  title: mealEntry.key,
+                                  entries: mealEntry.value,
+                                  originalEntriesMap: originalEntriesMap,
+                                  isDarkMode: isDarkMode,
+                                );
+                              }).toList();
+                            }(),
+                            const SizedBox(height: 80),
+                          ],
                         );
-                      }).toList();
-                    }(),
-                    const SizedBox(height: 80),
-                  ],
+                      },
+                    );
+                  },
                 );
               },
             );
@@ -1982,6 +2260,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required List<dynamic> entries,
     required Map<dynamic, dynamic> originalEntriesMap,
     required bool isDarkMode,
+    List<Map<String, dynamic>>? sports,
   }) {
     double totalMealCalories = 0;
     for (var entry in entries) {
@@ -2012,15 +2291,48 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Text(
-                  '${totalMealCalories.round()} kcal',
+                  totalMealCalories == 0
+                      ? '0 kcal'
+                      : '-${totalMealCalories.abs().round()} kcal',
                   style: TextStyle(
                     fontSize: 16,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                    color: totalMealCalories == 0 ? Colors.white : Colors.red,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
             const Divider(height: 20),
+            if (sports != null && sports.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  'Sportactiviteiten:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+              ),
+              ...sports.map(
+                (sport) => ListTile(
+                  leading: const Icon(Icons.fitness_center, size: 24),
+                  title: Text(sport['name'] ?? 'Onbekende sport'),
+                  trailing: Text(
+                    '-${(sport['calories'] ?? 0.0).toStringAsFixed(0)} kcal',
+                    style: const TextStyle(
+                      color: Color.fromARGB(255, 73, 244, 54),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
+                ),
+              ),
+              const Divider(height: 20),
+            ],
             ...entries.map((entry) {
               final originalEncryptedEntry = originalEntriesMap[entry];
 
@@ -2101,6 +2413,27 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _deleteSportEntry(String sportId) async {
+    // verwijdert een sport entry uit Firestore
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('sports')
+          .doc(sportId)
+          .delete();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fout bij verwijderen van sport: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _deleteLogEntry(Map<String, dynamic> entry) async {

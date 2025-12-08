@@ -47,7 +47,7 @@ class FeedbackButton extends StatelessWidget {
             .get();
         isAdmin = userDoc.data()?['admin'] ?? false;
       } catch (e) {
-        print("Kon admin status niet controleren: $e");
+        debugPrint("Kon admin status niet controleren: $e");
       }
     }
 

@@ -41,7 +41,7 @@ class NotificationService {
 
       tz.setLocalLocation(tz.getLocation(timeZoneName));
     } catch (e) {
-      print("Kon tijdzone niet ophalen: $e");
+      debugPrint("Kon tijdzone niet ophalen: $e");
       // Fallback
       tz.setLocalLocation(tz.getLocation('UTC'));
     }
