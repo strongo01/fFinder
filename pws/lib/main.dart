@@ -13,7 +13,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode, kReleaseMode;
 
 //start van de app
 Future<void> main() async {
@@ -25,6 +25,14 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   ); // initialiseerd firebase voor het platform
 
+  if (kReleaseMode) {
+    debugPrint('--- BUILD MODE: RELEASE ---');
+  } else if (kDebugMode) {
+    debugPrint('--- BUILD MODE: DEBUG ---');
+  } else {
+    debugPrint('--- BUILD MODE: PROFILE ---');
+  }
+
   if (!kIsWeb) {
     try {
       debugPrint('--- APP CHECK START ---');
@@ -35,7 +43,6 @@ Future<void> main() async {
             ? AndroidProvider
                   .debug // Android debug token
             : AndroidProvider.playIntegrity, // Android release
-        // 🔑 CRUCIALE FIX: GEBRUIK AppleProvider.debug in debug mode.
         appleProvider: kDebugMode
             ? AppleProvider
                   .debug // iOS DEBUG TOKEN gebruiken
@@ -155,7 +162,6 @@ class MyApp extends StatelessWidget {
                   .doc(snapshot.data!.uid)
                   .get(),
               builder: (context, userDocSnapshot) {
-                //builder functie die reageert op het ophalen van het document
                 if (userDocSnapshot.connectionState ==
                     ConnectionState.waiting) {
                   return const Scaffold(
@@ -164,21 +170,39 @@ class MyApp extends StatelessWidget {
                 }
 
                 if (userDocSnapshot.hasData && userDocSnapshot.data!.exists) {
-                  //als het document bestaat
                   final data =
-                      userDocSnapshot.data!.data()
-                          as Map<String, dynamic>; //haal de data op
-                  final bool onboardingAf =
-                      data['onboardingaf'] == true; //controleer of onboarding is voltooid
+                      userDocSnapshot.data!.data() as Map<String, dynamic>;
+                  final bool onboardingAf = data['onboardingaf'] == true;
 
-                  if (onboardingAf) {
+                  // Lijst met alle velden die verplicht zijn na de onboarding.
+                  const requiredFields = [
+                    'firstName',
+                    'gender',
+                    'birthDate',
+                    'height',
+                    'weight',
+                    'calorieGoal',
+                    'proteinGoal',
+                    'fatGoal',
+                    'carbGoal',
+                    'bmi',
+                    'sleepHours',
+                    'targetWeight',
+                    'notificationsEnabled',
+                    'activityLevel',
+                    'goal',
+                  ];
+
+                  // Controleer of alle verplichte velden bestaan in het document.
+                  final allFieldsPresent = requiredFields.every(
+                    (field) => data.containsKey(field),
+                  );
+
+                  if (onboardingAf && allFieldsPresent) {
                     return const HomeScreen();
-                  } else {
-                    return const OnboardingView();
                   }
                 }
 
-                // Als het document niet bestaat, stuur naar onboarding
                 return const OnboardingView();
               },
             );

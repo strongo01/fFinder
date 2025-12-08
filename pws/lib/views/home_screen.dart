@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cryptography/cryptography.dart';
 import 'package:fFinder/views/add_sport_view.dart';
 import 'package:fFinder/views/crypto_class.dart';
+import 'package:fFinder/views/login_register_view.dart';
+import 'package:fFinder/views/onboarding_view.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _errorMessage; // eventuele foutmelding
   //String? _motivationalMessage;
   int _selectedIndex = 0;
+  late Future<void> _userDataFuture;
 
   Map<String, dynamic>? _userData;
   double? _calorieAllowance;
@@ -73,7 +76,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _pageController = PageController(
       initialPage: _initialPage,
     ); // de pagina controller initializeren
-    _fetchUserData();
+    _userDataFuture = _fetchUserData();
+
     _listenToAnnouncements();
   }
 
@@ -248,48 +252,47 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-    // ...existing code...
-    void _createTutorial() async {
-      final prefs = await SharedPreferences.getInstance();
-      tutorialCoachMark = TutorialCoachMark(
-        targets: _createTargets(context),
-        colorShadow: Colors.blue.withOpacity(0.7),
-        paddingFocus: 10,
-        opacityShadow: 0.8,
-        hideSkip: false,
-        onClickTarget: (target) {
-          if (target.identify == "calorie-info-row-key") {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.easeOut,
-            );
-          }
-        },
-        onSkip: () {
-          debugPrint("Tutorial overgeslagen");
-          prefs.setBool('home_tutorial_shown', true);
-          final user = FirebaseAuth.instance.currentUser;
-          if (user != null) {
-            FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-              'tutorialHomeAf': true,
-            });
-          }
-          return true; // Return true om de tutorial te sluiten
-        },
-        onFinish: () {
-          debugPrint("Tutorial voltooid");
-          prefs.setBool('home_tutorial_shown', true);
-          final user = FirebaseAuth.instance.currentUser;
-          if (user != null) {
-            FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-              'tutorialHomeAf': true,
-            });
-          }
-        },
-      );
-    }
-  
+  // ...existing code...
+  void _createTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    tutorialCoachMark = TutorialCoachMark(
+      targets: _createTargets(context),
+      colorShadow: Colors.blue.withOpacity(0.7),
+      paddingFocus: 10,
+      opacityShadow: 0.8,
+      hideSkip: false,
+      onClickTarget: (target) {
+        if (target.identify == "calorie-info-row-key") {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOut,
+          );
+        }
+      },
+      onSkip: () {
+        debugPrint("Tutorial overgeslagen");
+        prefs.setBool('home_tutorial_shown', true);
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+            'tutorialHomeAf': true,
+          });
+        }
+        return true; // Return true om de tutorial te sluiten
+      },
+      onFinish: () {
+        debugPrint("Tutorial voltooid");
+        prefs.setBool('home_tutorial_shown', true);
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+            'tutorialHomeAf': true,
+          });
+        }
+      },
+    );
+  }
 
   List<TargetFocus> _createTargets(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -657,7 +660,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-    Future<void> _fetchUserData() async {
+  Future<void> _fetchUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {
@@ -665,10 +668,12 @@ class _HomeScreenState extends State<HomeScreen> {
       final remoteConfig = FirebaseRemoteConfig.instance;
 
       // Forceer het ophalen van de nieuwste config door de cache-tijd te minimaliseren
-      await remoteConfig.setConfigSettings(RemoteConfigSettings(
-        fetchTimeout: const Duration(minutes: 1),
-        minimumFetchInterval: Duration.zero, // Belangrijk voor debuggen!
-      ));
+      await remoteConfig.setConfigSettings(
+        RemoteConfigSettings(
+          fetchTimeout: const Duration(minutes: 1),
+          minimumFetchInterval: Duration.zero, // Belangrijk voor debuggen!
+        ),
+      );
 
       await remoteConfig.fetchAndActivate(); // haal nieuwste config op
       if (!mounted) return; // Stop if the widget is no longer in the tree.
@@ -699,6 +704,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final data = doc.data()!;
 
+      const requiredFields = [
+        'firstName',
+        'gender',
+        'birthDate',
+        'height',
+        'weight',
+        'calorieGoal',
+        'proteinGoal',
+        'fatGoal',
+        'carbGoal',
+        'bmi',
+        'sleepHours',
+        'targetWeight',
+        'notificationsEnabled',
+        'onboardingaf',
+        'activityLevel',
+        'goal',
+      ];
+      final allFieldsPresent = requiredFields.every(
+        (field) => data.containsKey(field),
+      );
+
+      if (!allFieldsPresent) {
+        debugPrint(
+          "Gebruikersdata is onvolledig. Navigeren naar OnboardingView.",
+        );
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const OnboardingView()),
+            (Route<dynamic> route) => false,
+          );
+        }
+        return; // Stop de functie hier
+      }
+
       // 4️⃣ Decrypt alle geëncryptte velden
       final decryptedData = {
         'firstName': await decryptValue(data['firstName'], userDEK),
@@ -710,10 +750,10 @@ class _HomeScreenState extends State<HomeScreen> {
             double.tryParse(await decryptValue(data['weight'], userDEK)) ?? 0,
         'calorieGoal':
             double.tryParse(await decryptValue(data['calorieGoal'], userDEK)) ??
-                0,
+            0,
         'proteinGoal':
             double.tryParse(await decryptValue(data['proteinGoal'], userDEK)) ??
-                0,
+            0,
         'fatGoal':
             double.tryParse(await decryptValue(data['fatGoal'], userDEK)) ?? 0,
         'carbGoal':
@@ -721,7 +761,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'bmi': double.tryParse(await decryptValue(data['bmi'], userDEK)) ?? 0,
         'sleepHours':
             double.tryParse(await decryptValue(data['sleepHours'], userDEK)) ??
-                0,
+            0,
         'targetWeight':
             double.tryParse(
               await decryptValue(data['targetWeight'], userDEK),
@@ -733,15 +773,32 @@ class _HomeScreenState extends State<HomeScreen> {
         'goal': await decryptValue(data['goal'], userDEK),
       };
 
-      if (mounted) {
-        setState(() {
-          _userData = decryptedData;
-          _calorieAllowance = _calculateCalories(_userData!);
-        });
-      }
-    } catch (e) {
-      // Catches the exception if fetchAndActivate is cancelled.
+      _userData = decryptedData;
+      _calorieAllowance = _calculateCalories(_userData!);
+    } catch (e, s) {
       debugPrint('Could not fetch user data: $e');
+      debugPrint('Stack trace: $s');
+
+      // Controleer of de fout een FormatException is, wat duidt op corrupte data.
+      if (e is FormatException) {
+        debugPrint(
+          'FormatException gedetecteerd. Waarschijnlijk corrupte gebruikersdata. Bezig met uitloggen.',
+        );
+
+        if (mounted) {
+          // Log de gebruiker uit
+          await FirebaseAuth.instance.signOut();
+
+          // Navigeer naar het inlogscherm en wis de navigatiestack
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const LoginRegisterView()),
+            (Route<dynamic> route) => false,
+          );
+        }
+      } else {
+        // Voor alle andere fouten, gooi de fout opnieuw zodat de FutureBuilder deze kan tonen.
+        rethrow;
+      }
     }
   }
 
@@ -816,12 +873,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Check of we op iOS zitten
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      return _buildIOSLayout();
-    }
-    // Anders (Android/Web) de standaard layout
-    return _buildAndroidLayout();
+    return FutureBuilder<void>(
+      future: _userDataFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Fout bij laden van gebruikersdata: ${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
+          );
+        }
+
+        // Als de data succesvol is geladen, bouw de UI
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
+          return _buildIOSLayout();
+        }
+        return _buildAndroidLayout();
+      },
+    );
   }
 
   // iOS layout
