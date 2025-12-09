@@ -29,7 +29,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       setState(() {
         _isLoading = false;
         _drinkPresets = [
-          {'name': 'Water', 'amount': 200},
+          {'name': 'Water', 'amount': 200, 'kcal': 0},
         ];
       });
       return;
@@ -52,23 +52,42 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
             // decrypt naam indien nodig
             if (userDEK != null && map['name'] is String) {
               try {
-                map['name'] = await decryptValue(map['name'] as String, userDEK);
+                map['name'] = await decryptValue(
+                  map['name'] as String,
+                  userDEK,
+                );
               } catch (_) {
                 // laat origineel staan bij fout
               }
             }
 
+            // decrypt amount indien nodig
             if (userDEK != null) {
               final amountVal = map['amount'];
               if (amountVal is String) {
                 try {
-                  final decryptedAmount = await decryptValue(amountVal, userDEK);
-                  map['amount'] = int.tryParse(decryptedAmount) ?? decryptedAmount;
-                } catch (_) {
-                 
-                }
+                  final decryptedAmount = await decryptValue(
+                    amountVal,
+                    userDEK,
+                  );
+                  map['amount'] =
+                      int.tryParse(decryptedAmount) ?? decryptedAmount;
+                } catch (_) {}
               } else if (amountVal is num) {
                 map['amount'] = amountVal.toInt();
+              }
+            }
+
+            // decrypt kcal indien nodig
+            if (userDEK != null && map.containsKey('kcal')) {
+              final kcalVal = map['kcal'];
+              if (kcalVal is String) {
+                try {
+                  final decryptedKcal = await decryptValue(kcalVal, userDEK);
+                  map['kcal'] = double.tryParse(decryptedKcal) ?? decryptedKcal;
+                } catch (_) {}
+              } else if (kcalVal is num) {
+                map['kcal'] = kcalVal.toDouble();
               }
             }
 
@@ -104,8 +123,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-        SecretKey? userDEK = await getUserDEKFromRemoteConfig(user.uid);
-
+    SecretKey? userDEK = await getUserDEKFromRemoteConfig(user.uid);
 
     final toSave = <Map<String, dynamic>>[];
     for (final preset in _drinkPresets) {
@@ -140,6 +158,25 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
         map['amount'] = amountVal;
       }
 
+      final kcalVal = preset['kcal'];
+      if (userDEK != null) {
+        try {
+          if (kcalVal is int) {
+            map['kcal'] = await encryptInt(kcalVal, userDEK);
+          } else if (kcalVal is double) {
+            map['kcal'] = await encryptDouble(kcalVal, userDEK);
+          } else if (kcalVal is String) {
+            map['kcal'] = await encryptValue(kcalVal, userDEK);
+          } else {
+            map['kcal'] = kcalVal;
+          }
+        } catch (_) {
+          map['kcal'] = kcalVal;
+        }
+      } else {
+        map['kcal'] = kcalVal;
+      }
+
       toSave.add(map);
     }
 
@@ -148,7 +185,12 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     }, SetOptions(merge: true));
   }
 
-  Future<void> _logDrink(String name, int amount, String drinkTime) async {
+  Future<void> _logDrink(
+    String name,
+    int amount,
+    String drinkTime,
+    double kcal,
+  ) async {
     // logt het drinken van een drankje
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -166,9 +208,9 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
 
     String productNameField = name;
     String quantityField = '$amount ml';
-        String mealTypeField = drinkTime;
+    String mealTypeField = drinkTime;
     String drinkTimeField = drinkTime;
-
+    String kcalField = kcal.toString();
 
     if (userDEK != null) {
       try {
@@ -191,6 +233,11 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       } catch (_) {
         drinkTimeField = drinkTime;
       }
+      try {
+        kcalField = await encryptDouble(kcal, userDEK);
+      } catch (_) {
+        kcalField = kcal.toString();
+      }
     }
 
     final logEntry = {
@@ -199,6 +246,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       'meal_type': mealTypeField,
       'drinkTime': drinkTimeField,
       'timestamp': now,
+
+      'kcal': kcalField,
       'nutriments': {
         'energy-kcal': 0,
         'fat': 0,
@@ -232,6 +281,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     //final nameController = TextEditingController();
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+
+    final kcalController = TextEditingController();
     final customNameController = TextEditingController();
     String? selectedDrink;
     final drinkOptions = ['Water', 'Koffie', 'Thee', 'Frisdrank', 'Anders'];
@@ -256,13 +307,16 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      value: selectedDrink, // huidige geselecteerde drank
+                      value: selectedDrink,
                       hint: const Text('Kies een drankje'),
                       onChanged: (value) {
-                        // update geselecteerde drank
                         setStateDialog(() {
-                          // updat de dialoog
                           selectedDrink = value;
+                          if (value == 'Water' || value == 'Thee') {
+                            kcalController.text = '0';
+                          } else {
+                            kcalController.text = '';
+                          }
                         });
                       },
                       items: drinkOptions
@@ -296,13 +350,15 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                           decoration: InputDecoration(
                             labelText: 'Naam van drankje',
                             labelStyle: TextStyle(
-                              color: isDarkMode ? Colors.white70 : Colors.black54,
+                              color: isDarkMode
+                                  ? Colors.white70
+                                  : Colors.black54,
                             ),
                           ),
                           validator: (value) =>
                               (selectedDrink == 'Anders' && value!.isEmpty)
-                                  ? 'Naam is verplicht'
-                                  : null,
+                              ? 'Naam is verplicht'
+                              : null,
                         ),
                       ),
                     TextFormField(
@@ -321,6 +377,27 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       validator: (value) {
                         if (value!.isEmpty) return 'Hoeveelheid is verplicht';
                         if (int.tryParse(value) == null) {
+                          return 'Voer een getal in';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
+                      controller: kcalController,
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                      cursorColor: isDarkMode ? Colors.white : Colors.black,
+                      decoration: InputDecoration(
+                        labelText: 'Kcal per portie',
+                        labelStyle: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value!.isEmpty) return 'Kcal is verplicht';
+                        if (double.tryParse(value) == null) {
                           return 'Voer een getal in';
                         }
                         return null;
@@ -345,6 +422,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                         _drinkPresets.add({
                           'name': name,
                           'amount': int.parse(amountController.text),
+                          'kcal': double.parse(kcalController.text),
                         });
                       });
                       _saveDrinkPresets();
@@ -426,7 +504,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                             ),
                             content: Column(
                               mainAxisSize: MainAxisSize.min,
-                              children: mealOptions.map((m) { // maak een lijstitem voor elke maaltijdoptie
+                              children: mealOptions.map((m) {
+                                // maak een lijstitem voor elke maaltijdoptie
                                 return ListTile(
                                   title: Text(
                                     m,
@@ -450,13 +529,153 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                         },
                       );
 
-                      if (selected != null) { // als er een optie is geselecteerd
+                      if (selected != null) {
+                        // als er een optie is geselecteerd
                         await _logDrink(
                           preset['name'],
                           preset['amount'],
                           selected,
+                          preset['kcal'] ?? 0.0,
                         );
                       }
+                    },
+                    onLongPress: () {
+                      final preset = _drinkPresets[index];
+                      final nameController = TextEditingController(
+                        text: preset['name'],
+                      );
+                      final amountController = TextEditingController(
+                        text: preset['amount'].toString(),
+                      );
+                      final kcalController = TextEditingController(
+                        text: preset['kcal'].toString(),
+                      );
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          final isDark =
+                              Theme.of(context).brightness == Brightness.dark;
+                          return AlertDialog(
+                            backgroundColor: isDark
+                                ? Colors.grey[900]
+                                : Colors.white,
+                            title: Text(
+                              'Drankje aanpassen',
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextFormField(
+                                  controller: nameController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Naam',
+                                    labelStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                  cursorColor: isDark
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                                TextFormField(
+                                  controller: amountController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Hoeveelheid (ml)',
+                                    labelStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                  cursorColor: isDark
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                                TextFormField(
+                                  controller: kcalController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Kcal per portie',
+                                    labelStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                  cursorColor: isDark
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _drinkPresets.removeAt(index);
+                                  });
+                                  _saveDrinkPresets();
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text(
+                                  'Verwijderen',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: Text(
+                                  'Annuleren',
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isDark
+                                      ? Colors.green[700]
+                                      : Colors.green,
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _drinkPresets[index] = {
+                                      'name': nameController.text,
+                                      'amount':
+                                          int.tryParse(amountController.text) ??
+                                          0,
+                                      'kcal':
+                                          double.tryParse(
+                                            kcalController.text,
+                                          ) ??
+                                          0.0,
+                                    };
+                                  });
+                                  _saveDrinkPresets();
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('Opslaan'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colors['background'],
@@ -465,6 +684,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       padding: const EdgeInsets.all(8),
+                      shadowColor: isDarkMode ? Colors.black : Colors.grey[400],
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -483,6 +703,11 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                         ),
                         Text(
                           '${preset['amount']} ml',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        Text(
+                          '${preset['kcal'] ?? 0} kcal',
                           textAlign: TextAlign.center,
                           style: const TextStyle(fontSize: 12),
                         ),

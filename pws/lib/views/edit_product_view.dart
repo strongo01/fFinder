@@ -362,7 +362,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Voedingswaarden per 100g/ml',
+                    'Voedingswaarden per 100g of ml',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: textColor,
                           fontWeight: FontWeight.bold,

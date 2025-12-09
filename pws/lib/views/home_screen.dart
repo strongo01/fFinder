@@ -768,7 +768,9 @@ class _HomeScreenState extends State<HomeScreen> {
       };
 
       _userData = decryptedData;
-      _calorieAllowance = decryptedData['calorieGoal'] as double? ?? _calculateCalories(_userData!);
+      _calorieAllowance =
+          decryptedData['calorieGoal'] as double? ??
+          _calculateCalories(_userData!);
     } catch (e, s) {
       debugPrint('Could not fetch user data: $e');
       debugPrint('Stack trace: $s');
@@ -1451,6 +1453,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           userDEK,
                         );
                       }
+                      if (entry.containsKey('kcal')) {
+                        decryptedEntry['kcal'] = await decryptValue(
+                          entry['kcal'],
+                          userDEK,
+                        );
+                      }
                       decryptedEntry['timestamp'] = entry['timestamp'];
                       decryptedEntries.add(decryptedEntry);
                     }
@@ -1487,6 +1495,27 @@ class _HomeScreenState extends State<HomeScreen> {
                         double totalFats = 0;
                         double totalCarbs = 0;
 
+                        for (var entry in entries) {
+                          if (entry.containsKey('quantity')) {
+                            // Drankje: gebruik kcal uit het veld 'kcal'
+                            final kcal =
+                                double.tryParse(
+                                  entry['kcal']?.toString() ?? '0',
+                                ) ??
+                                0.0;
+                            totalCalories += kcal;
+                          } else {
+                            // Voedsel: gebruik kcal uit nutrients
+                            totalCalories +=
+                                (entry['nutrients']?['energy-kcal'] ?? 0.0);
+                            totalProteins +=
+                                (entry['nutrients']?['proteins'] ?? 0.0);
+                            totalFats += (entry['nutrients']?['fat'] ?? 0.0);
+                            totalCarbs +=
+                                (entry['nutrients']?['carbohydrates'] ?? 0.0);
+                          }
+                        }
+
                         final Map<String, List<dynamic>> meals = {
                           'Ontbijt': [],
                           'Lunch': [],
@@ -1495,13 +1524,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         };
 
                         for (var entry in entries) {
-                          totalCalories +=
+                          /*totalCalories +=
                               (entry['nutrients']?['energy-kcal'] ?? 0.0);
                           totalProteins +=
                               (entry['nutrients']?['proteins'] ?? 0.0);
                           totalFats += (entry['nutrients']?['fat'] ?? 0.0);
                           totalCarbs +=
-                              (entry['nutrients']?['carbohydrates'] ?? 0.0);
+                              (entry['nutrients']?['carbohydrates'] ?? 0.0);*/
                           final mealType = entry['meal_type'] as String?;
 
                           if (mealType != null && meals.containsKey(mealType)) {
@@ -2036,8 +2065,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _showEditGoalDialog(double currentGoal) async {
-    final amountController =
-        TextEditingController(text: currentGoal.round().toString());
+    final amountController = TextEditingController(
+      text: currentGoal.round().toString(),
+    );
     final formKey = GlobalKey<FormState>();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -2054,7 +2084,9 @@ class _HomeScreenState extends State<HomeScreen> {
             child: TextFormField(
               controller: amountController,
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-              keyboardType: const TextInputType.numberWithOptions(decimal: false),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: false,
+              ),
               decoration: const InputDecoration(labelText: 'Nieuw doel (kcal)'),
               validator: (value) {
                 if (value == null ||
@@ -2075,7 +2107,9 @@ class _HomeScreenState extends State<HomeScreen> {
             TextButton(
               onPressed: () {
                 if (formKey.currentState!.validate()) {
-                  Navigator.of(context).pop(double.parse(amountController.text));
+                  Navigator.of(
+                    context,
+                  ).pop(double.parse(amountController.text));
                 }
               },
               child: const Text('Opslaan'),
@@ -2099,9 +2133,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final encryptedGoal = await encryptValue(newGoal.toString(), userDEK);
 
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-          'calorieGoal': encryptedGoal,
-        });
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({'calorieGoal': encryptedGoal});
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -2110,9 +2145,9 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Fout bij opslaan: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Fout bij opslaan: $e')));
           // Herstel de oude waarde in de UI bij een fout
           setState(() {
             _calorieAllowance = currentGoal;
@@ -2121,7 +2156,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
   }
-
 
   String _getMotivationalMessage(
     double totalCalories,
@@ -2362,7 +2396,7 @@ class _HomeScreenState extends State<HomeScreen> {
       color: isDarkMode ? Colors.white70 : Colors.black87,
     );
 
-        if (title == 'Doel') {
+    if (title == 'Doel') {
       return GestureDetector(
         onTap: () => _showEditGoalDialog(value),
         child: Column(
@@ -2432,8 +2466,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     double totalMealCalories = 0;
     for (var entry in entries) {
-      // berekent de totale calorieën voor de maaltijd
-      totalMealCalories += (entry['nutrients']?['energy-kcal'] ?? 0.0);
+      if (entry.containsKey('quantity')) {
+        // Drankje: gebruik kcal uit het veld 'kcal'
+        final kcal = double.tryParse(entry['kcal']?.toString() ?? '0') ?? 0.0;
+        totalMealCalories += kcal;
+      } else {
+        // Voedsel: gebruik kcal uit nutrients
+        totalMealCalories += (entry['nutrients']?['energy-kcal'] ?? 0.0);
+      }
     }
 
     return Card(
@@ -2461,10 +2501,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   totalMealCalories == 0
                       ? '0 kcal'
-                      : 'Totaal gegeten: ${totalMealCalories.abs().round()} kcal',
+                      : 'Totale inname: ${totalMealCalories.abs().round()} kcal',
                   style: TextStyle(
                     fontSize: 16,
-                    color:Colors.white,
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -2513,7 +2553,7 @@ class _HomeScreenState extends State<HomeScreen> {
               String rightSideText;
 
               if (entry.containsKey('quantity')) {
-                // Als het drinken is, toon ml anders kcal
+                // Als het drinken is, toon ml EN kcal
                 final quantityValue =
                     entry['quantity']?.toString().replaceAll(
                       RegExp(r'[^0-9.]'),
@@ -2521,7 +2561,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ) ??
                     '0';
                 final amount = double.tryParse(quantityValue) ?? 0.0;
-                rightSideText = '${amount.round()} ml';
+                final kcalValue = entry['kcal']?.toString() ?? '0';
+                rightSideText = '${amount.round()} ml | ${kcalValue} kcal';
               } else {
                 final calories = (entry['nutrients']?['energy-kcal'] ?? 0.0)
                     .round();

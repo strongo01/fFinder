@@ -1627,7 +1627,7 @@ resultWidgets.add(
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Voedingswaarden per 100g/ml',
+                    'Voedingswaarden per 100g of ml',
                     style: Theme.of(
                       context,
                     ).textTheme.titleLarge?.copyWith(color: textColor),
@@ -3501,7 +3501,7 @@ resultWidgets.add(
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Voedingswaarden per 100g/ml',
+                    'Voedingswaarden per 100g of ml',
                     style: Theme.of(
                       context,
                     ).textTheme.titleLarge?.copyWith(color: textColor),
@@ -3790,7 +3790,7 @@ resultWidgets.add(
                   _buildInfoRow('Hoeveelheid', quantity),
                   const Divider(height: 24),
                   Text(
-                    'Voedingswaarden per 100g/ml',
+                    'Voedingswaarden per 100g of ml',
                     style: Theme.of(
                       context,
                     ).textTheme.titleLarge?.copyWith(color: textColor),
