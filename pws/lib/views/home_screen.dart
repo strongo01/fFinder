@@ -2431,7 +2431,7 @@ class _HomeScreenState extends State<HomeScreen> {
         valueColor = Colors.red;
       } else {
         topText = 'Nog';
-        bottomText = 'calorieën over tot je dagdoel';
+        bottomText = 'calorieën over';
       }
     } else {
       topText = 'Je hebt';
