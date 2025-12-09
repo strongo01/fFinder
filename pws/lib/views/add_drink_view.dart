@@ -289,13 +289,20 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                         padding: const EdgeInsets.only(top: 8.0),
                         child: TextFormField(
                           controller: customNameController,
-                          decoration: const InputDecoration(
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
+                          cursorColor: isDarkMode ? Colors.white : Colors.black,
+                          decoration: InputDecoration(
                             labelText: 'Naam van drankje',
+                            labelStyle: TextStyle(
+                              color: isDarkMode ? Colors.white70 : Colors.black54,
+                            ),
                           ),
                           validator: (value) =>
                               (selectedDrink == 'Anders' && value!.isEmpty)
-                              ? 'Naam is verplicht'
-                              : null,
+                                  ? 'Naam is verplicht'
+                                  : null,
                         ),
                       ),
                     TextFormField(

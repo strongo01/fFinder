@@ -679,12 +679,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return; // Stop if the widget is no longer in the tree.
       final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
 
-      // --- DEBUGGING PRINT ---
-      debugPrint('--- FETCHED GLOBAL_DEK ---');
-      debugPrint('Value: "$globalDEKString"');
-      debugPrint('Length: ${globalDEKString.length}');
-      debugPrint('--------------------------');
-
       if (globalDEKString.isEmpty) {
         throw Exception("GLOBAL_DEK from Remote Config is empty!");
       }
@@ -774,7 +768,7 @@ class _HomeScreenState extends State<HomeScreen> {
       };
 
       _userData = decryptedData;
-      _calorieAllowance = _calculateCalories(_userData!);
+      _calorieAllowance = decryptedData['calorieGoal'] as double? ?? _calculateCalories(_userData!);
     } catch (e, s) {
       debugPrint('Could not fetch user data: $e');
       debugPrint('Stack trace: $s');
@@ -1536,8 +1530,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         final carbGoal = _userData?['carbGoal'] as num? ?? 0.0;
 
                         // Nieuw doel = basisdoel + verbrande calorieën
-                        final adjustedCalorieGoal =
-                            baseCalorieGoal + totalBurnedCalories;
+                        final adjustedCalorieGoal = baseCalorieGoal;
                         final remainingCalories =
                             adjustedCalorieGoal - totalCalories;
                         final progress = adjustedCalorieGoal > 0
@@ -1929,11 +1922,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                             ),
                                           ),
                                           Text(
-                                            '+${totalBurnedCalories.round()} kcal',
+                                            'Totaal verbrand: ${totalBurnedCalories.round()} kcal',
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.green,
+                                              color: isDarkMode
+                                                  ? Colors.white
+                                                  : Colors.black,
                                             ),
                                           ),
                                         ],
@@ -2039,6 +2034,94 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
+
+  Future<void> _showEditGoalDialog(double currentGoal) async {
+    final amountController =
+        TextEditingController(text: currentGoal.round().toString());
+    final formKey = GlobalKey<FormState>();
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final newGoal = await showDialog<double>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            'Calorieëndoel aanpassen',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+          ),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: amountController,
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              keyboardType: const TextInputType.numberWithOptions(decimal: false),
+              decoration: const InputDecoration(labelText: 'Nieuw doel (kcal)'),
+              validator: (value) {
+                if (value == null ||
+                    value.isEmpty ||
+                    double.tryParse(value) == null ||
+                    double.parse(value) <= 0) {
+                  return 'Voer een geldig getal in';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Annuleren'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(context).pop(double.parse(amountController.text));
+                }
+              },
+              child: const Text('Opslaan'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (newGoal != null && newGoal != currentGoal) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      setState(() {
+        _calorieAllowance = newGoal;
+      });
+
+      try {
+        final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+        if (userDEK == null) throw Exception("DEK niet gevonden");
+
+        final encryptedGoal = await encryptValue(newGoal.toString(), userDEK);
+
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          'calorieGoal': encryptedGoal,
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Calorieëndoel bijgewerkt!')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Fout bij opslaan: $e')),
+          );
+          // Herstel de oude waarde in de UI bij een fout
+          setState(() {
+            _calorieAllowance = currentGoal;
+          });
+        }
+      }
+    }
+  }
+
 
   String _getMotivationalMessage(
     double totalCalories,
@@ -2279,21 +2362,24 @@ class _HomeScreenState extends State<HomeScreen> {
       color: isDarkMode ? Colors.white70 : Colors.black87,
     );
 
-    if (title == 'Doel') {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(title, style: labelStyle),
-          const SizedBox(height: 4),
-          Text(
-            '${value.round()}', // toon het doel afgerond
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: defaultColor,
+        if (title == 'Doel') {
+      return GestureDetector(
+        onTap: () => _showEditGoalDialog(value),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(title, style: labelStyle),
+            const SizedBox(height: 4),
+            Text(
+              '${value.round()}', // toon het doel afgerond
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: defaultColor,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       );
     }
 
@@ -2310,8 +2396,8 @@ class _HomeScreenState extends State<HomeScreen> {
         displayValue = value.abs(); // maak positief voor weergave
         valueColor = Colors.red;
       } else {
-        topText = 'Je hebt nog';
-        bottomText = 'calorieën over';
+        topText = 'Nog';
+        bottomText = 'calorieën over tot je dagdoel';
       }
     } else {
       topText = 'Je hebt';
@@ -2375,10 +2461,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   totalMealCalories == 0
                       ? '0 kcal'
-                      : '-${totalMealCalories.abs().round()} kcal',
+                      : 'Totaal gegeten: ${totalMealCalories.abs().round()} kcal',
                   style: TextStyle(
                     fontSize: 16,
-                    color: totalMealCalories == 0 ? Colors.white : Colors.red,
+                    color:Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -2798,7 +2884,7 @@ class SegmentedArcPainter extends CustomPainter {
           : {'background': Colors.red[400]!, 'foreground': Colors.red[800]!};
     }
     return isDarkMode
-        ? {'background': Colors.grey[600]!, 'foreground': Colors.white}
-        : {'background': Colors.grey[400]!, 'foreground': Colors.black};
+        ? {'background': Colors.green[600]!, 'foreground': Colors.white}
+        : {'background': Colors.green[400]!, 'foreground': Colors.black};
   }
 }
