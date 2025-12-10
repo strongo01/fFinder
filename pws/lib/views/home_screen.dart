@@ -595,7 +595,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               CupertinoButton(
-                child: const Text('Logs'),
+                child: const Text('Vandaag'),
                 onPressed: () {
                   setState(() {
                     _selectedDate = todayWithoutTime;

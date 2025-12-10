@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 class FeedbackButton extends StatelessWidget {
   final double bottom; // afstand vanaf de onderkant
-  final double right;     // afstand vanaf de rechterkant
+  final double right; // afstand vanaf de rechterkant
 
   const FeedbackButton({Key? key, this.bottom = 120, this.right = 16})
     : super(key: key);
@@ -22,6 +22,228 @@ class FeedbackButton extends StatelessWidget {
       mini: true,
       onPressed: () => _openFeedbackSheet(context),
       child: Icon(Icons.feedback, color: Colors.white),
+    );
+  }
+
+  void _openRapportFeedbackSheet(BuildContext context) async {
+    final outerContext = context;
+    final formKey = GlobalKey<FormState>();
+    final Map<String, List<String>> categories = {
+  'Functionaliteit': [
+    'Functies',
+    'Functionaliteit',
+    'Gebruiksgemak',
+    'Overzichtelijkheid',
+    'Nauwkeurigheid',
+    'Navigatie',
+  ],
+  'Performance': [
+    'Snelheid',
+    'Laadtijden',
+    'Stabiliteit',
+  ],
+  'Interface & Design': [
+    'Layout',
+    'Kleuren & Thema',
+    'Iconen & Design',
+    'Leesbaarheid',
+  ],
+  'Communicatie': [
+    'Foutmeldingen',
+    'Uitleg & Instructies',
+  ],
+  'App Onderdelen': [
+    'Dashboard',
+    'Inloggen / Registratie',
+    'Gewicht',
+    'Statistieken',
+    'Kalender',
+  ],
+  'Overig': [
+    'Algemene Tevredenheid',
+  ],
+};
+final Map<String, int> ratings = {
+  for (var group in categories.values)
+    for (var item in group) item: 0,
+};
+
+final Map<String, TextEditingController> comments = {
+  for (var group in categories.values)
+    for (var item in group) item: TextEditingController(),
+};
+
+    
+    bool isSending = false;
+
+    showModalBottomSheet<void>(
+      context: outerContext,
+      isScrollControlled: true,
+      useSafeArea: false, // Sheet gaat nu tot helemaal bovenaan
+      backgroundColor: Theme.of(outerContext).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final isDarkMode = Theme.of(ctx).brightness == Brightness.dark;
+
+        Future<void> send() async {
+          if (!formKey.currentState!.validate()) return;
+          isSending = true;
+          try {
+            final user = FirebaseAuth.instance.currentUser;
+            await FirebaseFirestore.instance.collection('rapport_feedback').add(
+              {
+                'uid': user?.uid,
+                'timestamp': FieldValue.serverTimestamp(),
+                'ratings': ratings,
+                'comments': {
+                  for (var k in comments.keys) k: comments[k]!.text.trim(),
+                },
+                'platform': Theme.of(outerContext).platform.name,
+              },
+            );
+            if (ctx.mounted) {
+              Navigator.of(ctx).pop();
+              ScaffoldMessenger.of(outerContext).showSnackBar(
+                const SnackBar(content: Text('Bedankt voor je rapport!')),
+              );
+            }
+          } catch (e) {
+            if (ctx.mounted) {
+              ScaffoldMessenger.of(
+                outerContext,
+              ).showSnackBar(SnackBar(content: Text('Fout bij verzenden: $e')));
+            }
+          } finally {
+            isSending = false;
+          }
+        }
+
+        Widget buildRatingRow(
+          String label,
+          void Function(void Function()) setState,
+        ) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Row(
+                children: List.generate(5, (i) {
+                  return IconButton(
+                    onPressed: () {
+                      setState(() {
+                        ratings[label] = i + 1;
+                      });
+                    },
+                    icon: Icon(
+                      Icons.star,
+                      color: i < (ratings[label] ?? 0)
+                          ? Colors.amber
+                          : Colors.grey[500],
+                    ),
+                  );
+                }),
+              ),
+              TextFormField(
+                controller: comments[label],
+                decoration: InputDecoration(
+                  hintText: 'Opmerking bij $label (optioneel)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+            ],
+          );
+        }
+
+        return StatefulBuilder(
+          builder: (ctx, setState) => Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 0, // Zet top-padding op 0
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: isDarkMode
+                              ? Colors.grey[500]
+                              : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Rapporteer onderdelen',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+...categories.entries.map((entry) {
+  return ExpansionTile(
+    title: Text(
+      entry.key,
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    ),
+    children: entry.value.map((label) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+        child: buildRatingRow(label, setState),
+      );
+    }).toList(),
+  );
+}).toList(),
+
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Annuleren'),
+                        ),
+                        ElevatedButton(
+                          onPressed: isSending ? null : send,
+                          child: isSending
+                              ? SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: isDarkMode
+                                        ? Colors.white
+                                        : Colors.black,
+                                  ),
+                                )
+                              : const Text('Versturen'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -51,7 +273,8 @@ class FeedbackButton extends StatelessWidget {
       }
     }
 
-    showModalBottomSheet<void>( // Voeg het return type toe
+    showModalBottomSheet<void>(
+      // Voeg het return type toe
       context: outerContext,
       isScrollControlled: true,
       backgroundColor: Theme.of(outerContext).scaffoldBackgroundColor,
@@ -69,7 +292,8 @@ class FeedbackButton extends StatelessWidget {
             bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
           ),
           child: StatefulBuilder(
-            builder: (innerCtx, setState) { // Gebruik innerCtx voor de builder context. dat betekent dat we outerContext kunnen gebruiken voor snackbar etc.
+            builder: (innerCtx, setState) {
+              // Gebruik innerCtx voor de builder context. dat betekent dat we outerContext kunnen gebruiken voor snackbar etc.
               Future<void> send() async {
                 if (!formKey.currentState!.validate()) return;
 
@@ -90,7 +314,8 @@ class FeedbackButton extends StatelessWidget {
                     'platform': Theme.of(outerContext).platform.name,
                   });
 
-                  if (ctx.mounted) { // Controleer of de context nog gemount is
+                  if (ctx.mounted) {
+                    // Controleer of de context nog gemount is
                     Navigator.of(ctx).pop();
                     ScaffoldMessenger.of(outerContext).showSnackBar(
                       const SnackBar(
@@ -111,7 +336,8 @@ class FeedbackButton extends StatelessWidget {
 
               Widget buildTypeChip(String value, String label) {
                 final bool selected = selectedType == value;
-                return ChoiceChip( // Gebruik ChoiceChip voor selecteerbare chips
+                return ChoiceChip(
+                  // Gebruik ChoiceChip voor selecteerbare chips
                   label: Text(label),
                   selected: selected,
                   onSelected: (_) {
@@ -159,7 +385,8 @@ class FeedbackButton extends StatelessWidget {
                           Navigator.of(ctx).pop(); // Sluit de sheet
                           Navigator.of(outerContext).push(
                             MaterialPageRoute(
-                              builder: (_) => const AllFeedbackView(), // Navigeer met outerContext
+                              builder: (_) =>
+                                  const AllFeedbackView(), // Navigeer met outerContext
                             ),
                           );
                         },
@@ -170,14 +397,50 @@ class FeedbackButton extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      const Divider(height: 24),
+                     ListTile(
+  leading: const Icon(Icons.assignment_turned_in_outlined),
+  title: const Text('Bekijk alle rapport feedback'),
+  onTap: () {
+    Navigator.of(ctx).pop();
+    Navigator.of(outerContext).push(
+      MaterialPageRoute(
+        builder: (_) => const AllRapportFeedbackView(),
+      ),
+    );
+  },
+  tileColor: Theme.of(ctx).colorScheme.primary.withOpacity(0.1),
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(8),
+  ),
+),
+const Divider(height: 24),
                     ],
 
                     const SizedBox(height: 16),
-
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.assignment_outlined),
+                     label: const Text(
+  'Tik om het rapport in te vullen!\nLet op: dit is een uitgebreide vragenlijst. Vul deze pas in als je de app meerdere dagen goed hebt getest.'
+),                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () => _openRapportFeedbackSheet(context),
+                    ),
+const Divider(height: 16),
+                    const SizedBox(height: 16),
+Text("Hier kan je elk moment je feedback geven."),
                     /// ⭐ Rating
                     Row(
-                      children: List.generate(5, (i) { // 5 sterren
+                      children: List.generate(5, (i) {
+                        // 5 sterren
                         return IconButton(
                           onPressed: () => setState(() => rating = i + 1),
                           icon: Icon(
@@ -220,7 +483,11 @@ class FeedbackButton extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                             ),
-                            validator: (v) => (v == null || v.trim().isEmpty) //  Validator voor leeg bericht
+                            validator: (v) =>
+                                (v == null ||
+                                    v
+                                        .trim()
+                                        .isEmpty) //  Validator voor leeg bericht
                                 ? 'Voer een bericht in'
                                 : null,
                           ),
@@ -292,13 +559,16 @@ class AllFeedbackView extends StatelessWidget {
             .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) { // Wacht op data
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            // Wacht op data
             return const Center(child: CircularProgressIndicator());
           }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) { // Geen feedback
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            // Geen feedback
             return const Center(child: Text('Geen feedback gevonden.'));
           }
-          if (snapshot.hasError) { // Fout bij ophalen
+          if (snapshot.hasError) {
+            // Fout bij ophalen
             return const Center(child: Text('Er is een fout opgetreden.'));
           }
 
@@ -335,8 +605,12 @@ class AllFeedbackView extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 4,
                         children: [
-                          Chip(label: Text(data['type'] ?? 'onbekend')), // Type feedback
-                          if (data['rating'] != null && data['rating'] > 0) // Rating weergeven als die er is
+                          Chip(
+                            label: Text(data['type'] ?? 'onbekend'),
+                          ), // Type feedback
+                          if (data['rating'] != null &&
+                              data['rating'] >
+                                  0) // Rating weergeven als die er is
                             Chip(
                               avatar: const Icon(
                                 Icons.star,
@@ -346,13 +620,17 @@ class AllFeedbackView extends StatelessWidget {
                               label: Text('${data['rating']}/5'),
                             ),
 
-                          if (platform != null) //  Platform weergeven als die er is
+                          if (platform !=
+                              null) //  Platform weergeven als die er is
                             Chip(
                               avatar: const Icon(Icons.devices, size: 16),
                               label: Text(platform),
                             ),
 
-                          if (uid != null) UserDetailChip(uid: uid), // Toon gebruikerschip als UID er is
+                          if (uid != null)
+                            UserDetailChip(
+                              uid: uid,
+                            ), // Toon gebruikerschip als UID er is
 
                           if (data['email'] != null &&
                               (data['email'] as String).isNotEmpty)
@@ -368,7 +646,8 @@ class AllFeedbackView extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         'Ingezonden op: $date',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith( // Datum stijl
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          // Datum stijl
                           color: Theme.of(context).brightness == Brightness.dark
                               ? Colors.grey[300]
                               : Colors.grey[700],
@@ -416,7 +695,8 @@ class _UserDetailChipState extends State<UserDetailChip> {
         .get();
   }
 
-  Future<void> _launchEmail(String email) async { // E-mail app openen
+  Future<void> _launchEmail(String email) async {
+    // E-mail app openen
     final String subject = 'Reactie op je feedback - fFinder';
     final String body = 'Hoi $email,\n\n\nGroetjes,\nHet fFinder team';
 
@@ -464,6 +744,152 @@ class _UserDetailChipState extends State<UserDetailChip> {
           onPressed: () => _launchEmail(email),
         );
       },
+    );
+  }
+}
+
+class AllRapportFeedbackView extends StatelessWidget {
+  const AllRapportFeedbackView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Alle Rapport Feedback')),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('rapport_feedback')
+            .orderBy('timestamp', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('Geen rapport feedback gevonden.'));
+          }
+          if (snapshot.hasError) {
+            return const Center(child: Text('Er is een fout opgetreden.'));
+          }
+
+          return ListView(
+            padding: const EdgeInsets.all(8.0),
+            children: snapshot.data!.docs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final uid = data['uid'] as String?;
+              final platform = data['platform'] as String?;
+              final timestamp = data['timestamp'] as Timestamp?;
+              final date = timestamp != null
+                  ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate())
+                  : 'Onbekende datum';
+
+              final ratings = data['ratings'] as Map<String, dynamic>? ?? {};
+              final comments = data['comments'] as Map<String, dynamic>? ?? {};
+
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Rapport feedback',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...ratings.entries.map((entry) {
+                        final label = entry.key;
+                        final value = entry.value;
+                        final comment = comments[label] ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Text(label,
+                                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                              ),
+                              Row(
+                                children: List.generate(
+                                  5,
+                                  (i) => Icon(
+                                    Icons.star,
+                                    size: 18,
+                                    color: i < (value ?? 0)
+                                        ? Colors.amber
+                                        : Colors.grey[400],
+                                  ),
+                                ),
+                              ),
+                              if ((comment as String).isNotEmpty)
+                                Expanded(
+                                  flex: 3,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 8.0),
+                                    child: Text(
+                                      comment,
+                                      style: TextStyle(
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.grey[300]
+                                            : Colors.grey[800],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      }),
+                      const Divider(),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          if (platform != null)
+                            Chip(
+                              avatar: const Icon(Icons.devices, size: 16),
+                              label: Text(platform),
+                            ),
+                          if (uid != null)
+                            UserDetailChip(uid: uid),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Ingezonden op: $date',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
+                            ),
+                      ),
+                      if (uid != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Text(
+                            'UID: $uid',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: Colors.grey),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        },
+      ),
     );
   }
 }
