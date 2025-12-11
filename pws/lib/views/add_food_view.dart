@@ -562,7 +562,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       );
       final prompt = TextPart(
         "Wat voor ingrediënten zie je hier? Antwoord in het Nederlands. "
-        "Negeer marketingtermen, productnamen, en niet-relevante woorden zoals 'zero', 'sugar', 'light', 'lemon', etc. "
+        "Negeer marketingtermen, productnamen, en niet-relevante woorden zoals 'zero', 'light', etc. "
         "Antwoord alleen met daadwerkelijke ingrediënten die in het product zitten. "
         "Antwoord als: {ingredient}, {ingredient}, ..."
       );
