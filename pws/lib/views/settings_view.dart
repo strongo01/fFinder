@@ -24,6 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _sleepHours = 8.0;
   String _activityLevel = 'Weinig actief';
   String _goal = 'Afvallen';
+  bool _hasUnsavedChanges = false;
 
   bool _mealNotificationsEnabled = false;
   TimeOfDay _breakfastTime = const TimeOfDay(hour: 7, minute: 0);
@@ -41,12 +42,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isAdmin = false;
 
   final List<String> _activityOptions = [
-  'Weinig actief: zittend werk, nauwelijks beweging, geen sport',
-  'Licht actief: 1–3x per week lichte training of dagelijks 30–45 min wandelen',
-  'Gemiddeld actief: 3–5x per week sporten of een actief beroep (horeca, zorg, postbezorger)',
-  'Zeer actief: 6–7x per week intensieve training of fysiek zwaar werk (bouw, magazijn)',
-  'Extreem actief: topsporttraining 2× per dag of extreem fysiek zwaar werk (militair, bosbouw)',
-];
+    'Weinig actief: zittend werk, nauwelijks beweging, geen sport',
+    'Licht actief: 1–3x per week lichte training of dagelijks 30–45 min wandelen',
+    'Gemiddeld actief: 3–5x per week sporten of een actief beroep (horeca, zorg, postbezorger)',
+    'Zeer actief: 6–7x per week intensieve training of fysiek zwaar werk (bouw, magazijn)',
+    'Extreem actief: topsporttraining 2× per dag of extreem fysiek zwaar werk (militair, bosbouw)',
+  ];
 
   final List<String> _goalOptions = [
     // opties voor doelen
@@ -63,7 +64,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadProfile();
   }
 
-  Future<void> _loadSettings() async { // Laad instellingen uit SharedPreferences
+  Future<void> _loadSettings() async {
+    // Laad instellingen uit SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _mealNotificationsEnabled =
@@ -114,11 +116,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     try {
-           final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+      final userDEK = await getUserDEKFromRemoteConfig(user.uid);
       if (userDEK == null) {
         throw Exception("Kon de encryptiesleutel niet laden.");
       }
-      
+
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -127,19 +129,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (doc.exists) {
         final data = doc.data() ?? {};
 
-final currentWeight = await decryptDouble(data['weight'], userDEK);
+        final currentWeight = await decryptDouble(data['weight'], userDEK);
         final targetWeight = await decryptDouble(data['targetWeight'], userDEK);
         final height = await decryptDouble(data['height'], userDEK);
         final sleepHours = await decryptDouble(data['sleepHours'], userDEK);
-        final activityLevel = await decryptValue(data['activityLevel'] ?? '', userDEK);
+        final activityLevel = await decryptValue(
+          data['activityLevel'] ?? '',
+          userDEK,
+        );
         final goal = await decryptValue(data['goal'] ?? '', userDEK);
-
 
         // Controleer of de opgeslagen waarden nog geldig zijn. Zo niet, gebruik de eerste optie als fallback.
         final validActivityLevel = _activityOptions.contains(activityLevel)
             ? activityLevel
             : _activityOptions.first;
-        
+
         final validGoal = _goalOptions.contains(goal)
             ? goal
             : _goalOptions.first;
@@ -179,16 +183,17 @@ final currentWeight = await decryptDouble(data['weight'], userDEK);
     super.dispose();
   }
 
-  Future<void> _saveProfile() async { // Validatie en opslaan
+  Future<void> _saveProfile() async {
+    // Validatie en opslaan
     if (!_formKey.currentState!.validate()) return;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-      final userDEK = await getUserDEKFromRemoteConfig(user.uid);
-      if (userDEK == null) {
-        throw Exception("Kon de encryptiesleutel niet laden voor opslaan.");
-      }
+    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    if (userDEK == null) {
+      throw Exception("Kon de encryptiesleutel niet laden voor opslaan.");
+    }
 
     setState(() => _saving = true);
 
@@ -208,7 +213,7 @@ final currentWeight = await decryptDouble(data['weight'], userDEK);
 
       final data = doc.data() ?? {};
 
-            final gender = await decryptValue(data['gender'], userDEK);
+      final gender = await decryptValue(data['gender'], userDEK);
       final birthDateStrEncrypted = data['birthDate'];
       String? birthDateStr;
       if (birthDateStrEncrypted != null) {
@@ -226,7 +231,8 @@ final currentWeight = await decryptDouble(data['weight'], userDEK);
       double? fatGoal;
       double? carbGoal;
 
-      if (_height > 0 && _currentWeight > 0 && birthDate != null) { //  Berekeningen
+      if (_height > 0 && _currentWeight > 0 && birthDate != null) {
+        //  Berekeningen
         final heightCm = _height;
         final weightKg = _currentWeight;
 
@@ -292,7 +298,7 @@ final currentWeight = await decryptDouble(data['weight'], userDEK);
       }
 
       // Alles naar Firestore
-            await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'weight': await encryptDouble(_currentWeight, userDEK),
         'targetWeight': await encryptDouble(_targetWeight, userDEK),
         'height': await encryptDouble(_height, userDEK),
@@ -300,11 +306,23 @@ final currentWeight = await decryptDouble(data['weight'], userDEK);
         'activityLevel': await encryptValue(_activityLevel, userDEK),
         'goal': await encryptValue(_goal, userDEK),
         'bmi': bmi != null ? await encryptDouble(bmi, userDEK) : null,
-        'calorieGoal': calorieGoal != null ? await encryptDouble(calorieGoal, userDEK) : null,
-        'proteinGoal': proteinGoal != null ? await encryptDouble(proteinGoal, userDEK) : null,
-        'fatGoal': fatGoal != null ? await encryptDouble(fatGoal, userDEK) : null,
-        'carbGoal': carbGoal != null ? await encryptDouble(carbGoal, userDEK) : null,
+        'calorieGoal': calorieGoal != null
+            ? await encryptDouble(calorieGoal, userDEK)
+            : null,
+        'proteinGoal': proteinGoal != null
+            ? await encryptDouble(proteinGoal, userDEK)
+            : null,
+        'fatGoal': fatGoal != null
+            ? await encryptDouble(fatGoal, userDEK)
+            : null,
+        'carbGoal': carbGoal != null
+            ? await encryptDouble(carbGoal, userDEK)
+            : null,
       }, SetOptions(merge: true));
+
+      setState(() {
+        _hasUnsavedChanges = false;
+      });
 
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -367,7 +385,8 @@ final currentWeight = await decryptDouble(data['weight'], userDEK);
     }
   }
 
-  String _generateDeletionCode() { // Genereer een eenvoudige 6-cijferige code
+  String _generateDeletionCode() {
+    // Genereer een eenvoudige 6-cijferige code
     final random = DateTime.now().millisecondsSinceEpoch.remainder(1000000);
     return random.toString().padLeft(6, '0');
   }
@@ -656,9 +675,7 @@ final currentWeight = await decryptDouble(data['weight'], userDEK);
                         ),
                       );
                     }
-                  } catch (e) {
-                    
-                  }
+                  } catch (e) {}
                 }
               },
               child: const Text('Publiceren'),
@@ -681,525 +698,107 @@ final currentWeight = await decryptDouble(data['weight'], userDEK);
     final secondaryTextColor = isDark ? Colors.grey[300] : Colors.grey[700];
     final cardColor = theme.cardColor;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Instellingen',
-          style: TextStyle(color: isDark ? Colors.white : Colors.black),
-        ),
-        centerTitle: true,
-        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
-        backgroundColor: isDark ? Colors.black : Colors.white,
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Gebruikersinformatie
-                    Card(
-                      color: cardColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: isDark ? 0 : 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 26,
-                              backgroundColor: colorScheme.primaryContainer,
-                              foregroundColor: colorScheme.onPrimaryContainer,
-                              child: Text(
-                                (user?.email?.substring(0, 1).toUpperCase() ??
-                                    '?'),
-                                style: const TextStyle(fontSize: 24),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // e‑mail
-                                  Text(
-                                    user?.email ?? 'Onbekende gebruiker',
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: primaryTextColor,
-                                        ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    Card(
-                      margin: const EdgeInsets.all(16.0),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Maaltijdherinneringen',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: isDark ? Colors.white : Colors.black,
-                                  ),
-                            ),
-                            SwitchListTile(
-                              title: const Text('Herinneringen inschakelen'),
-                              value: _mealNotificationsEnabled,
-                              onChanged: (bool value) async {
-                                final prefs =
-                                    await SharedPreferences.getInstance();
-                                await prefs.setBool(
-                                  'mealNotificationsEnabled',
-                                  value,
-                                );
-                                setState(() {
-                                  _mealNotificationsEnabled = value;
-                                });
-                                await _updateNotificationSchedule();
-                              },
-                            ),
-                            const Divider(),
-                            ListTile(
-                              title: const Text('Ontbijt'),
-                              trailing: Text(_breakfastTime.format(context)),
-                              onTap: () => _pickTime(context, _breakfastTime, (
-                                newTime,
-                              ) async {
-                                final prefs =
-                                    await SharedPreferences.getInstance();
-                                await prefs.setInt(
-                                  'breakfastHour',
-                                  newTime.hour,
-                                );
-                                await prefs.setInt(
-                                  'breakfastMinute',
-                                  newTime.minute,
-                                );
-                                setState(() => _breakfastTime = newTime);
-                                await _updateNotificationSchedule();
-                              }),
-                            ),
-                            ListTile(
-                              title: const Text('Lunch'),
-                              trailing: Text(_lunchTime.format(context)),
-                              onTap: () => _pickTime(context, _lunchTime, (
-                                newTime,
-                              ) async {
-                                final prefs =
-                                    await SharedPreferences.getInstance();
-                                await prefs.setInt('lunchHour', newTime.hour);
-                                await prefs.setInt(
-                                  'lunchMinute',
-                                  newTime.minute,
-                                );
-                                setState(() => _lunchTime = newTime);
-                                await _updateNotificationSchedule();
-                              }),
-                            ),
-                            ListTile(
-                              title: const Text('Avondeten'),
-                              trailing: Text(_dinnerTime.format(context)),
-                              onTap: () => _pickTime(context, _dinnerTime, (
-                                newTime,
-                              ) async {
-                                final prefs =
-                                    await SharedPreferences.getInstance();
-                                await prefs.setInt('dinnerHour', newTime.hour);
-                                await prefs.setInt(
-                                  'dinnerMinute',
-                                  newTime.minute,
-                                );
-                                setState(() => _dinnerTime = newTime);
-                                await _updateNotificationSchedule();
-                              }),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-Card(
-  color: cardColor,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(16),
-  ),
-  elevation: isDark ? 0 : 2,
-  child: Padding(
-    padding: const EdgeInsets.all(16),
-    child: FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user?.uid)
-          .get(),
-      builder: (context, snapshot) {
-        bool gifEnabled = true;
-        if (snapshot.hasData && snapshot.data!.exists) {
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-          gifEnabled = data['gif'] == true;
+    return WillPopScope(
+      onWillPop: () async {
+        if (_hasUnsavedChanges) {
+          final shouldLeave = await showDialog<bool>(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text('Niet-opgeslagen wijzigingen'),
+                content: const Text(
+                  'Je hebt wijzigingen aangebracht die nog niet zijn opgeslagen. '
+                  'Weet je zeker dat je wilt afsluiten zonder op te slaan?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Blijven'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Afsluiten'),
+                  ),
+                ],
+              );
+            },
+          );
+          return shouldLeave ?? false;
         }
-        return SwitchListTile(
-          title: const Text('Mascotte animatie (GIF) tonen'),
-          value: gifEnabled,
-          onChanged: (val) async {
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(user?.uid)
-                .set({'gif': val}, SetOptions(merge: true));
-            setState(() {});
-          },
-        );
+        return true;
       },
-    ),
-  ),
-),
-const SizedBox(height: 16),
-ElevatedButton.icon(
-  icon: const Icon(Icons.refresh),
-  label: const Text('Reset uitleg'),
-  style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.blueAccent,
-    foregroundColor: Colors.white,
-    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-  ),
-  onPressed: () async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .set({
-          'tutorialFoodAf': false,
-          'tutorialHomeAf': false,
-        }, SetOptions(merge: true));
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Uitleg is opnieuw gestart!')),
-      );
-    }
-  },
-),
-const SizedBox(height: 16),
-                    Text(
-                      'Persoonlijke gegevens',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: primaryTextColor,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Pas je gewicht, lengte, doel en activiteit aan.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: secondaryTextColor,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    Card(
-                      color: cardColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: isDark ? 0 : 2,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 20,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Instellingen',
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          ),
+          centerTitle: true,
+          iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
+          backgroundColor: isDark ? Colors.black : Colors.white,
+        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Gebruikersinformatie
+                      Card(
+                        color: cardColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
+                        elevation: isDark ? 0 : 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
                             children: [
-                              // Huidig gewicht
-                              TextFormField(
-                                controller: _weightController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: primaryTextColor,
+                              CircleAvatar(
+                                radius: 26,
+                                backgroundColor: colorScheme.primaryContainer,
+                                foregroundColor: colorScheme.onPrimaryContainer,
+                                child: Text(
+                                  (user?.email?.substring(0, 1).toUpperCase() ??
+                                      '?'),
+                                  style: const TextStyle(fontSize: 24),
                                 ),
-                                decoration: InputDecoration(
-                                  labelText: 'Huidig gewicht (kg)',
-                                  labelStyle: TextStyle(
-                                    color: secondaryTextColor,
-                                  ),
-                                  prefixIcon: Icon(
-                                    Icons.monitor_weight,
-                                    color: secondaryTextColor,
-                                  ),
-                                  border: const OutlineInputBorder(),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Vul je huidige gewicht in';
-                                  }
-                                  final v = double.tryParse(
-                                    value.replaceAll(',', '.'),
-                                  );
-                                  if (v == null || v <= 0) {
-                                    return 'Voer een geldig gewicht in';
-                                  }
-                                  return null;
-                                },
                               ),
-                              const SizedBox(height: 16),
-
-                              // Lengte
-                              TextFormField(
-                                controller: _heightController,
-                                keyboardType: TextInputType.number,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: primaryTextColor,
-                                ),
-                                decoration: InputDecoration(
-                                  labelText: 'Lengte (cm)',
-                                  labelStyle: TextStyle(
-                                    color: secondaryTextColor,
-                                  ),
-                                  prefixIcon: Icon(
-                                    Icons.height,
-                                    color: secondaryTextColor,
-                                  ),
-                                  border: const OutlineInputBorder(),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Vul je lengte in';
-                                  }
-                                  final v = double.tryParse(
-                                    value.replaceAll(',', '.'),
-                                  );
-                                  if (v == null || v < 100 || v > 250) {
-                                    return 'Voer een lengte tussen 100 en 250 cm in';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Doelgewicht
-                              TextFormField(
-                                controller: _targetWeightController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: primaryTextColor,
-                                ),
-                                decoration: InputDecoration(
-                                  labelText: 'Doelgewicht (kg)',
-                                  labelStyle: TextStyle(
-                                    color: secondaryTextColor,
-                                  ),
-                                  prefixIcon: Icon(
-                                    Icons.flag,
-                                    color: secondaryTextColor,
-                                  ),
-                                  border: const OutlineInputBorder(),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Vul je doelgewicht in';
-                                  }
-                                  final v = double.tryParse(
-                                    value.replaceAll(',', '.'),
-                                  );
-                                  if (v == null || v <= 0) {
-                                    return 'Voer een geldig doelgewicht in';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Slaapuren (slider)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Slaap (uur per nacht)',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: primaryTextColor,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        '${_sleepHours.toStringAsFixed(1)} uur',
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: primaryTextColor,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                  SliderTheme(
-                                    data: SliderTheme.of(context).copyWith(
-                                      activeTrackColor: colorScheme.primary,
-                                      inactiveTrackColor: colorScheme.primary
-                                          .withOpacity(0.3),
-                                      thumbColor: colorScheme.primary,
-                                      overlayColor: colorScheme.primary
-                                          .withOpacity(0.2),
-                                    ),
-                                    child: Slider(
-                                      value: _sleepHours,
-                                      min: 4,
-                                      max: 12,
-                                      divisions: 16,
-                                      label: _sleepHours.toStringAsFixed(1),
-                                      onChanged: (v) {
-                                        setState(() => _sleepHours = v);
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Activiteitsniveau (dropdown)
-                              DropdownButtonFormField<String>(
-                                isExpanded: true,
-                                value: _activityLevel,
-                                decoration: InputDecoration(
-                                  labelText: 'Activiteitsniveau',
-                                  labelStyle: TextStyle(
-                                    color: secondaryTextColor,
-                                  ),
-                                  prefixIcon: Icon(
-                                    Icons.directions_run,
-                                    color: secondaryTextColor,
-                                  ),
-                                  border: const OutlineInputBorder(),
-                                ),
-                                dropdownColor: cardColor,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: primaryTextColor,
-                                ),
-                                items: _activityOptions
-                                    .map(
-                                      (e) => DropdownMenuItem(
-                                        value: e,
-                                        child: Text(
-                                          e,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val == null) return;
-                                  setState(() => _activityLevel = val);
-                                },
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Doel (dropdown)
-                              DropdownButtonFormField<String>(
-                                value: _goal,
-                                decoration: InputDecoration(
-                                  labelText: 'Doel',
-                                  labelStyle: TextStyle(
-                                    color: secondaryTextColor,
-                                  ),
-                                  prefixIcon: Icon(
-                                    Icons.flag_circle,
-                                    color: secondaryTextColor,
-                                  ),
-                                  border: const OutlineInputBorder(),
-                                ),
-                                dropdownColor: cardColor,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: primaryTextColor,
-                                ),
-                                items: _goalOptions
-                                    .map(
-                                      (e) => DropdownMenuItem(
-                                        value: e,
-                                        child: Text(e),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val == null) return;
-                                  setState(() => _goal = val);
-                                },
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              // Opslaan-knop
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: isDark
-                                        ? Colors.black
-                                        : colorScheme.primary,
-
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  icon: _saving
-                                      ? SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // e‑mail
+                                    Text(
+                                      user?.email ?? 'Onbekende gebruiker',
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: primaryTextColor,
                                           ),
-                                        )
-                                      : const Icon(Icons.save),
-                                  label: Text(
-                                    _saving
-                                        ? 'Opslaan...'
-                                        : 'Instellingen opslaan',
-                                  ),
-                                  onPressed: _saving ? null : _saveProfile,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 24),
 
-                    const SizedBox(height: 24),
-
-                    if (_isAdmin)
                       Card(
-                        elevation: 2,
+                        margin: const EdgeInsets.all(16.0),
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Admin Acties',
+                                'Maaltijdherinneringen',
                                 style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(
                                       color: isDark
@@ -1207,96 +806,581 @@ const SizedBox(height: 16),
                                           : Colors.black,
                                     ),
                               ),
-                              const SizedBox(height: 16),
-                              ListTile(
-                                leading: const Icon(Icons.campaign),
-                                title: const Text('Nieuw bericht maken'),
-                                subtitle: const Text(
-                                  'Publiceer een bericht voor alle gebruikers.',
-                                ),
-                                onTap: _showCreateAnnouncementDialog,
+                              SwitchListTile(
+                                title: const Text('Herinneringen inschakelen'),
+                                value: _mealNotificationsEnabled,
+                                onChanged: (bool value) async {
+                                  final prefs =
+                                      await SharedPreferences.getInstance();
+                                  await prefs.setBool(
+                                    'mealNotificationsEnabled',
+                                    value,
+                                  );
+                                  setState(() {
+                                    _mealNotificationsEnabled = value;
+                                  });
+                                  await _updateNotificationSchedule();
+                                },
                               ),
                               const Divider(),
                               ListTile(
-                                leading: const Icon(Icons.edit_note),
-                                title: const Text('Berichten beheren'),
-                                subtitle: const Text(
-                                  'Bekijk, deactiveer of verwijder berichten.',
+                                title: const Text('Ontbijt'),
+                                trailing: Text(_breakfastTime.format(context)),
+                                onTap: () => _pickTime(
+                                  context,
+                                  _breakfastTime,
+                                  (newTime) async {
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    await prefs.setInt(
+                                      'breakfastHour',
+                                      newTime.hour,
+                                    );
+                                    await prefs.setInt(
+                                      'breakfastMinute',
+                                      newTime.minute,
+                                    );
+                                    setState(() => _breakfastTime = newTime);
+                                    await _updateNotificationSchedule();
+                                  },
                                 ),
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const ManageAnnouncementsView(),
-                                    ),
+                              ),
+                              ListTile(
+                                title: const Text('Lunch'),
+                                trailing: Text(_lunchTime.format(context)),
+                                onTap: () => _pickTime(context, _lunchTime, (
+                                  newTime,
+                                ) async {
+                                  final prefs =
+                                      await SharedPreferences.getInstance();
+                                  await prefs.setInt('lunchHour', newTime.hour);
+                                  await prefs.setInt(
+                                    'lunchMinute',
+                                    newTime.minute,
                                   );
-                                },
+                                  setState(() => _lunchTime = newTime);
+                                  await _updateNotificationSchedule();
+                                }),
+                              ),
+                              ListTile(
+                                title: const Text('Avondeten'),
+                                trailing: Text(_dinnerTime.format(context)),
+                                onTap: () => _pickTime(context, _dinnerTime, (
+                                  newTime,
+                                ) async {
+                                  final prefs =
+                                      await SharedPreferences.getInstance();
+                                  await prefs.setInt(
+                                    'dinnerHour',
+                                    newTime.hour,
+                                  );
+                                  await prefs.setInt(
+                                    'dinnerMinute',
+                                    newTime.minute,
+                                  );
+                                  setState(() => _dinnerTime = newTime);
+                                  await _updateNotificationSchedule();
+                                }),
                               ),
                             ],
                           ),
                         ),
                       ),
-
-                    const SizedBox(height: 32),
-
-                    // Account / uitloggen
-                    Text(
-                      'Account',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: primaryTextColor,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      icon: Icon(Icons.logout, color: colorScheme.error),
-                      label: Text(
-                        'Uitloggen',
-                        style: TextStyle(color: colorScheme.error),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: colorScheme.error),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
+                      const SizedBox(height: 16),
+                      Card(
+                        color: cardColor,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        foregroundColor: colorScheme.error,
-                      ),
-                      onPressed: _confirmSignOut,
-                    ),
-                    const SizedBox(height: 50),
-                    OutlinedButton.icon(
-                      icon: Icon(
-                        Icons.delete_forever,
-                        color: Colors.red.shade700,
-                      ),
-                      label: Text(
-                        _deletingAccount
-                            ? 'Account verwijderen...'
-                            : 'Account verwijderen',
-                        style: TextStyle(color: Colors.red.shade700),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.red.shade700),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                        elevation: isDark ? 0 : 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: FutureBuilder<DocumentSnapshot>(
+                            future: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user?.uid)
+                                .get(),
+                            builder: (context, snapshot) {
+                              bool gifEnabled = true;
+                              if (snapshot.hasData && snapshot.data!.exists) {
+                                final data =
+                                    snapshot.data!.data()
+                                        as Map<String, dynamic>;
+                                gifEnabled = data['gif'] == true;
+                              }
+                              return SwitchListTile(
+                                title: const Text(
+                                  'Mascotte animatie (GIF) tonen',
+                                ),
+                                value: gifEnabled,
+                                onChanged: (val) async {
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(user?.uid)
+                                      .set({
+                                        'gif': val,
+                                      }, SetOptions(merge: true));
+                                  setState(() {});
+                                },
+                              );
+                            },
+                          ),
                         ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Reset uitleg'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 14,
+                            horizontal: 24,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final user = FirebaseAuth.instance.currentUser;
+                          if (user == null) return;
+                          await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(user.uid)
+                              .set({
+                                'tutorialFoodAf': false,
+                                'tutorialHomeAf': false,
+                              }, SetOptions(merge: true));
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Uitleg is opnieuw gestart!'),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Persoonlijke gegevens',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: primaryTextColor,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Pas je gewicht, lengte, doel en activiteit aan.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: secondaryTextColor,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      Card(
+                        color: cardColor,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        foregroundColor: Colors.red.shade700,
+                        elevation: isDark ? 0 : 2,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 20,
+                          ),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              children: [
+                                // Huidig gewicht
+                                TextFormField(
+                                  controller: _weightController,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: primaryTextColor,
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: 'Huidig gewicht (kg)',
+                                    labelStyle: TextStyle(
+                                      color: secondaryTextColor,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.monitor_weight,
+                                      color: secondaryTextColor,
+                                    ),
+                                    border: const OutlineInputBorder(),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Vul je huidige gewicht in';
+                                    }
+                                    final v = double.tryParse(
+                                      value.replaceAll(',', '.'),
+                                    );
+                                    if (v == null || v <= 0) {
+                                      return 'Voer een geldig gewicht in';
+                                    }
+                                    return null;
+                                  },
+                                    onChanged: (value) {
+    setState(() {
+      _hasUnsavedChanges = true;
+    });
+  },
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Lengte
+                                TextFormField(
+                                  controller: _heightController,
+                                  keyboardType: TextInputType.number,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: primaryTextColor,
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: 'Lengte (cm)',
+                                    labelStyle: TextStyle(
+                                      color: secondaryTextColor,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.height,
+                                      color: secondaryTextColor,
+                                    ),
+                                    border: const OutlineInputBorder(),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Vul je lengte in';
+                                    }
+                                    final v = double.tryParse(
+                                      value.replaceAll(',', '.'),
+                                    );
+                                    if (v == null || v < 100 || v > 250) {
+                                      return 'Voer een lengte tussen 100 en 250 cm in';
+                                    }
+                                    return null;
+                                  },
+                                    onChanged: (value) {
+    setState(() {
+      _hasUnsavedChanges = true;
+    });
+  },
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Doelgewicht
+                                TextFormField(
+                                  controller: _targetWeightController,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: primaryTextColor,
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: 'Doelgewicht (kg)',
+                                    labelStyle: TextStyle(
+                                      color: secondaryTextColor,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.flag,
+                                      color: secondaryTextColor,
+                                    ),
+                                    border: const OutlineInputBorder(),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Vul je doelgewicht in';
+                                    }
+                                    final v = double.tryParse(
+                                      value.replaceAll(',', '.'),
+                                    );
+                                    if (v == null || v <= 0) {
+                                      return 'Voer een geldig doelgewicht in';
+                                    }
+                                    return null;
+                                  },
+                                    onChanged: (value) {
+    setState(() {
+      _hasUnsavedChanges = true;
+    });
+  },
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Slaapuren (slider)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Slaap (uur per nacht)',
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(color: primaryTextColor),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          '${_sleepHours.toStringAsFixed(1)} uur',
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                color: primaryTextColor,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                    SliderTheme(
+                                      data: SliderTheme.of(context).copyWith(
+                                        activeTrackColor: colorScheme.primary,
+                                        inactiveTrackColor: colorScheme.primary
+                                            .withOpacity(0.3),
+                                        thumbColor: colorScheme.primary,
+                                        overlayColor: colorScheme.primary
+                                            .withOpacity(0.2),
+                                      ),
+                                      child: Slider(
+                                        value: _sleepHours,
+                                        min: 4,
+                                        max: 12,
+                                        divisions: 16,
+                                        label: _sleepHours.toStringAsFixed(1),
+                                        onChanged: (v) {
+                                          setState(() {
+                                            _sleepHours = v;
+                                            _hasUnsavedChanges = true;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Activiteitsniveau (dropdown)
+                                DropdownButtonFormField<String>(
+                                  isExpanded: true,
+                                  value: _activityLevel,
+                                  decoration: InputDecoration(
+                                    labelText: 'Activiteitsniveau',
+                                    labelStyle: TextStyle(
+                                      color: secondaryTextColor,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.directions_run,
+                                      color: secondaryTextColor,
+                                    ),
+                                    border: const OutlineInputBorder(),
+                                  ),
+                                  dropdownColor: cardColor,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: primaryTextColor,
+                                  ),
+                                  items: _activityOptions
+                                      .map(
+                                        (e) => DropdownMenuItem(
+                                          value: e,
+                                          child: Text(
+                                            e,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (val) {
+                                    if (val == null) return;
+                                    setState(() => _activityLevel = val);
+                                    _hasUnsavedChanges = true;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Doel (dropdown)
+                                DropdownButtonFormField<String>(
+                                  value: _goal,
+                                  decoration: InputDecoration(
+                                    labelText: 'Doel',
+                                    labelStyle: TextStyle(
+                                      color: secondaryTextColor,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.flag_circle,
+                                      color: secondaryTextColor,
+                                    ),
+                                    border: const OutlineInputBorder(),
+                                  ),
+                                  dropdownColor: cardColor,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: primaryTextColor,
+                                  ),
+                                  items: _goalOptions
+                                      .map(
+                                        (e) => DropdownMenuItem(
+                                          value: e,
+                                          child: Text(e),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (val) {
+                                    if (val == null) return;
+                                    setState(() => _goal = val);
+                                    _hasUnsavedChanges = true;
+                                  },
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                // Opslaan-knop
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isDark
+                                          ? Colors.black
+                                          : colorScheme.primary,
+
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    icon: _saving
+                                        ? SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Icon(Icons.save),
+                                    label: Text(
+                                      _saving
+                                          ? 'Opslaan...'
+                                          : 'Instellingen opslaan',
+                                    ),
+                                    onPressed: _saving ? null : _saveProfile,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                      onPressed: _deletingAccount
-                          ? null
-                          : _confirmDeleteAccount,
-                    ),
-                  ],
+
+                      const SizedBox(height: 24),
+
+                      if (_isAdmin)
+                        Card(
+                          elevation: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Admin Acties',
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black,
+                                      ),
+                                ),
+                                const SizedBox(height: 16),
+                                ListTile(
+                                  leading: const Icon(Icons.campaign),
+                                  title: const Text('Nieuw bericht maken'),
+                                  subtitle: const Text(
+                                    'Publiceer een bericht voor alle gebruikers.',
+                                  ),
+                                  onTap: _showCreateAnnouncementDialog,
+                                ),
+                                const Divider(),
+                                ListTile(
+                                  leading: const Icon(Icons.edit_note),
+                                  title: const Text('Berichten beheren'),
+                                  subtitle: const Text(
+                                    'Bekijk, deactiveer of verwijder berichten.',
+                                  ),
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const ManageAnnouncementsView(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      const SizedBox(height: 32),
+
+                      // Account / uitloggen
+                      Text(
+                        'Account',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: primaryTextColor,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        icon: Icon(Icons.logout, color: colorScheme.error),
+                        label: Text(
+                          'Uitloggen',
+                          style: TextStyle(color: colorScheme.error),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: colorScheme.error),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          foregroundColor: colorScheme.error,
+                        ),
+                        onPressed: _confirmSignOut,
+                      ),
+                      const SizedBox(height: 50),
+                      OutlinedButton.icon(
+                        icon: Icon(
+                          Icons.delete_forever,
+                          color: Colors.red.shade700,
+                        ),
+                        label: Text(
+                          _deletingAccount
+                              ? 'Account verwijderen...'
+                              : 'Account verwijderen',
+                          style: TextStyle(color: Colors.red.shade700),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.red.shade700),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          foregroundColor: Colors.red.shade700,
+                        ),
+                        onPressed: _deletingAccount
+                            ? null
+                            : _confirmDeleteAccount,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 }
@@ -1314,7 +1398,9 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
       .collection('announcements');
 
   Future<void> _toggleActive(DocumentSnapshot doc) async {
-    await _announcements.doc(doc.id).update({'isActive': !doc['isActive']}); // Toggle the isActive field
+    await _announcements.doc(doc.id).update({
+      'isActive': !doc['isActive'],
+    }); // Toggle the isActive field
   }
 
   Future<void> _deleteAnnouncement(String docId) async {

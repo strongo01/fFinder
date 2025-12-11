@@ -2435,7 +2435,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } else {
       topText = 'Je hebt';
-      bottomText = 'calorieën gegeten';
+      bottomText = 'calorieën geconsumeerd';
     }
 
     return Column(

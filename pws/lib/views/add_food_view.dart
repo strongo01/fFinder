@@ -561,7 +561,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
         model: 'gemini-2.5-flash',
       );
       final prompt = TextPart(
-        "Wat voor ingredienten zie je hier? Antwoord als: {ingredient}, {ingredient}, ...",
+        "Wat voor ingrediënten zie je hier? Antwoord in het Nederlands. "
+        "Negeer marketingtermen, productnamen, en niet-relevante woorden zoals 'zero', 'sugar', 'light', 'lemon', etc. "
+        "Antwoord alleen met daadwerkelijke ingrediënten die in het product zitten. "
+        "Antwoord als: {ingredient}, {ingredient}, ..."
       );
       final imageBytes = await pickedFile.readAsBytes();
       final imagePart = InlineDataPart('image/jpeg', imageBytes);
