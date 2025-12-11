@@ -1403,7 +1403,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
     }); // Toggle the isActive field
   }
 
-  Future<void> _editAnnouncement(DocumentSnapshot doc) async {
+Future<void> _editAnnouncement(DocumentSnapshot doc) async {
   final data = doc.data() as Map<String, dynamic>;
   final titleController = TextEditingController(text: data['title']);
   final messageController = TextEditingController(text: data['message']);
@@ -1412,8 +1412,19 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
   await showDialog(
     context: context,
     builder: (context) {
+      final theme = Theme.of(context);
+      final cs = theme.colorScheme;
+      final isDark = theme.brightness == Brightness.dark;
+
       return AlertDialog(
-        title: const Text('Bericht bewerken'),
+        backgroundColor: isDark ? Colors.black : Colors.white,
+        title: Text(
+          'Bericht bewerken',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: isDark ? Colors.white : Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         content: Form(
           key: formKey,
           child: Column(
@@ -1421,7 +1432,17 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
             children: [
               TextFormField(
                 controller: titleController,
-                decoration: const InputDecoration(labelText: 'Titel'),
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                decoration: InputDecoration(
+                  labelText: 'Titel',
+                  labelStyle: TextStyle(color: isDark ? Colors.grey[300] : Colors.grey[800]),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: isDark ? Colors.grey[600]! : Colors.grey),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: isDark ? Colors.white : cs.primary, width: 2),
+                  ),
+                ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Titel mag niet leeg zijn.';
@@ -1432,8 +1453,18 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: messageController,
-                decoration: const InputDecoration(labelText: 'Bericht'),
                 maxLines: 3,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                decoration: InputDecoration(
+                  labelText: 'Bericht',
+                  labelStyle: TextStyle(color: isDark ? Colors.grey[300] : Colors.grey[800]),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: isDark ? Colors.grey[600]! : Colors.grey),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: isDark ? Colors.white : cs.primary, width: 2),
+                  ),
+                ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Bericht mag niet leeg zijn.';
@@ -1447,9 +1478,13 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annuleren'),
+            child: Text('Annuleren', style: TextStyle(color: isDark ? Colors.white : cs.primary)),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? Colors.black : cs.primary,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 await _announcements.doc(doc.id).update({
@@ -1482,113 +1517,138 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Berichten Beheren')),
-      body: StreamBuilder(
-        stream: _announcements
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
-        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-          if (snapshot.hasError) {
-            return const Center(child: Text('Er is een fout opgetreden.'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.data!.docs.isEmpty) {
-            return Center(
-              child: Text(
-                'Geen berichten gevonden.',
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black,
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
+    appBar: AppBar(
+      backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
+      title: Text(
+        'Berichten Beheren',
+        style: TextStyle(
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      iconTheme: IconThemeData(
+        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+      ),
+    ),
+    body: StreamBuilder(
+      stream: _announcements.orderBy('createdAt', descending: true).snapshots(),
+      builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Er is een fout opgetreden.',
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+              ),
+            ),
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Text(
+              'Geen berichten gevonden.',
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+              ),
+            ),
+          );
+        }
+
+        final theme = Theme.of(context);
+        final cs = theme.colorScheme;
+        final isDark = theme.brightness == Brightness.dark;
+
+        return ListView(
+          padding: const EdgeInsets.all(8.0),
+          children: snapshot.data!.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final title = data['title'] ?? 'Geen titel';
+            final message = data['message'] ?? '';
+            final isActive = data['isActive'] ?? false;
+            final timestamp = data['createdAt'] as Timestamp?;
+            final date = timestamp != null
+                ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate())
+                : 'Onbekende datum';
+
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+              color: isDark ? Colors.black : theme.cardColor,
+              surfaceTintColor: Colors.transparent,
+              elevation: isDark ? 0 : 2,
+              child: ListTile(
+                title: Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      message,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Gemaakt op: $date',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: (isDark ? Colors.white : Colors.black).withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Chip(
+                      label: Text(
+                        isActive ? 'Actief' : 'Inactief',
+                        style: TextStyle(
+                          color: isActive ? cs.onPrimaryContainer : (isDark ? Colors.white : cs.onSurfaceVariant),
+                        ),
+                      ),
+                      backgroundColor: isActive
+                          ? cs.primaryContainer
+                          : (isDark ? Colors.black : cs.surfaceVariant),
+                      side: BorderSide(color: isDark ? Colors.white24 : Colors.transparent),
+                    ),
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.edit, color: isDark ? Colors.white : cs.primary),
+                      tooltip: 'Bewerken',
+                      onPressed: () => _editAnnouncement(doc),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        isActive ? Icons.toggle_on : Icons.toggle_off,
+                        color: isActive ? (isDark ? Colors.white : cs.primary) : (isDark ? Colors.white70 : cs.onSurfaceVariant),
+                      ),
+                      tooltip: isActive ? 'Deactiveren' : 'Activeren',
+                      onPressed: () => _toggleActive(doc),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete_outline, color: isDark ? Colors.white : cs.error),
+                      tooltip: 'Verwijderen',
+                      onPressed: () => _deleteAnnouncement(doc.id),
+                    ),
+                  ],
                 ),
               ),
             );
-          }
-
-          return ListView(
-            padding: const EdgeInsets.all(8.0),
-            children: snapshot.data!.docs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              final title = data['title'] ?? 'Geen titel';
-              final message = data['message'] ?? '';
-              final isActive = data['isActive'] ?? false;
-              final timestamp = data['createdAt'] as Timestamp?;
-              final date = timestamp != null
-                  ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate())
-                  : 'Onbekende datum';
-
-              return Card(
-                margin: const EdgeInsets.symmetric(
-                  vertical: 8.0,
-                  horizontal: 4.0,
-                ),
-                child: ListTile(
-                  title: Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(message),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Gemaakt op: $date',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.grey[300]
-                              : Colors.grey[700],
-                        ),
-                      ),
-                      Chip(
-                        label: Text(isActive ? 'Actief' : 'Inactief'),
-                        backgroundColor: isActive
-                            ? Colors.green.shade100
-                            : Colors.grey.shade300,
-                        labelStyle: TextStyle(
-                          color: isActive
-                              ? Colors.green.shade800
-                              : Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                          IconButton(
-      icon: const Icon(Icons.edit, color: Colors.blue),
-      tooltip: 'Bewerken',
-      onPressed: () => _editAnnouncement(doc),
+          }).toList(),
+        );
+      },
     ),
-                      IconButton(
-                        icon: Icon(
-                          isActive ? Icons.toggle_on : Icons.toggle_off,
-                          color: isActive ? Colors.green : Colors.grey,
-                        ),
-                        tooltip: isActive ? 'Deactiveren' : 'Activeren',
-                        onPressed: () => _toggleActive(doc),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.red,
-                        ),
-                        tooltip: 'Verwijderen',
-                        onPressed: () => _deleteAnnouncement(doc.id),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          );
-        },
-      ),
-    );
-  }
+  );
+}
 }
