@@ -29,51 +29,41 @@ class FeedbackButton extends StatelessWidget {
     final outerContext = context;
     final formKey = GlobalKey<FormState>();
     final Map<String, List<String>> categories = {
-  'Functionaliteit': [
-    'Functies',
-    'Functionaliteit',
-    'Gebruiksgemak',
-    'Overzichtelijkheid',
-    'Nauwkeurigheid',
-    'Navigatie',
-  ],
-  'Performance': [
-    'Snelheid',
-    'Laadtijden',
-    'Stabiliteit',
-  ],
-  'Interface & Design': [
-    'Layout',
-    'Kleuren & Thema',
-    'Iconen & Design',
-    'Leesbaarheid',
-  ],
-  'Communicatie': [
-    'Foutmeldingen',
-    'Uitleg & Instructies',
-  ],
-  'App Onderdelen': [
-    'Dashboard',
-    'Inloggen / Registratie',
-    'Gewicht',
-    'Statistieken',
-    'Kalender',
-  ],
-  'Overig': [
-    'Algemene Tevredenheid',
-  ],
-};
-final Map<String, int> ratings = {
-  for (var group in categories.values)
-    for (var item in group) item: 0,
-};
+      'Functionaliteit': [
+        'Functies',
+        'Functionaliteit',
+        'Gebruiksgemak',
+        'Overzichtelijkheid',
+        'Nauwkeurigheid',
+        'Navigatie',
+      ],
+      'Performance': ['Snelheid', 'Laadtijden', 'Stabiliteit'],
+      'Interface & Design': [
+        'Layout',
+        'Kleuren & Thema',
+        'Iconen & Design',
+        'Leesbaarheid',
+      ],
+      'Communicatie': ['Foutmeldingen', 'Uitleg & Instructies'],
+      'App Onderdelen': [
+        'Dashboard',
+        'Inloggen / Registratie',
+        'Gewicht',
+        'Statistieken',
+        'Kalender',
+      ],
+      'Overig': ['Algemene Tevredenheid'],
+    };
+    final Map<String, int> ratings = {
+      for (var group in categories.values)
+        for (var item in group) item: 0,
+    };
 
-final Map<String, TextEditingController> comments = {
-  for (var group in categories.values)
-    for (var item in group) item: TextEditingController(),
-};
+    final Map<String, TextEditingController> comments = {
+      for (var group in categories.values)
+        for (var item in group) item: TextEditingController(),
+    };
 
-    
     bool isSending = false;
 
     showModalBottomSheet<void>(
@@ -197,21 +187,24 @@ final Map<String, TextEditingController> comments = {
                       ),
                     ),
                     const SizedBox(height: 16),
-...categories.entries.map((entry) {
-  return ExpansionTile(
-    title: Text(
-      entry.key,
-      style: const TextStyle(fontWeight: FontWeight.bold),
-    ),
-    children: entry.value.map((label) {
-      return Padding(
-        padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
-        child: buildRatingRow(label, setState),
-      );
-    }).toList(),
-  );
-}).toList(),
-
+                    ...categories.entries.map((entry) {
+                      return ExpansionTile(
+                        title: Text(
+                          entry.key,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        children: entry.value.map((label) {
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                              left: 12,
+                              right: 12,
+                              bottom: 12,
+                            ),
+                            child: buildRatingRow(label, setState),
+                          );
+                        }).toList(),
+                      );
+                    }).toList(),
 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -397,31 +390,36 @@ final Map<String, TextEditingController> comments = {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                     ListTile(
-  leading: const Icon(Icons.assignment_turned_in_outlined),
-  title: const Text('Bekijk alle rapport feedback'),
-  onTap: () {
-    Navigator.of(ctx).pop();
-    Navigator.of(outerContext).push(
-      MaterialPageRoute(
-        builder: (_) => const AllRapportFeedbackView(),
-      ),
-    );
-  },
-  tileColor: Theme.of(ctx).colorScheme.primary.withOpacity(0.1),
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(8),
-  ),
-),
-const Divider(height: 24),
+                      ListTile(
+                        leading: const Icon(
+                          Icons.assignment_turned_in_outlined,
+                        ),
+                        title: const Text('Bekijk alle rapport feedback'),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          Navigator.of(outerContext).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AllRapportFeedbackView(),
+                            ),
+                          );
+                        },
+                        tileColor: Theme.of(
+                          ctx,
+                        ).colorScheme.primary.withOpacity(0.1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      const Divider(height: 24),
                     ],
 
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       icon: const Icon(Icons.assignment_outlined),
-                     label: const Text(
-  'Tik om het rapport in te vullen!\nLet op: dit is een uitgebreide vragenlijst. Vul deze pas in als je de app meerdere dagen goed hebt getest.'
-),                      style: ElevatedButton.styleFrom(
+                      label: const Text(
+                        'Tik om het rapport in te vullen!\nLet op: dit is een uitgebreide vragenlijst. Vul deze pas in als je de app meerdere dagen goed hebt getest.',
+                      ),
+                      style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.teal,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
@@ -434,9 +432,15 @@ const Divider(height: 24),
                       ),
                       onPressed: () => _openRapportFeedbackSheet(context),
                     ),
-const Divider(height: 16),
+                    const Divider(height: 16),
                     const SizedBox(height: 16),
-Text("Hier kan je elk moment je feedback geven."),
+                    Text(
+                      "Hier kan je elk moment je feedback geven.",
+                      style: TextStyle(
+                      color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                      ),
+                    ),
+
                     /// ⭐ Rating
                     Row(
                       children: List.generate(5, (i) {
@@ -814,8 +818,12 @@ class AllRapportFeedbackView extends StatelessWidget {
                             children: [
                               Expanded(
                                 flex: 2,
-                                child: Text(label,
-                                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                                child: Text(
+                                  label,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ),
                               Row(
                                 children: List.generate(
@@ -837,7 +845,9 @@ class AllRapportFeedbackView extends StatelessWidget {
                                     child: Text(
                                       comment,
                                       style: TextStyle(
-                                        color: Theme.of(context).brightness == Brightness.dark
+                                        color:
+                                            Theme.of(context).brightness ==
+                                                Brightness.dark
                                             ? Colors.grey[300]
                                             : Colors.grey[800],
                                         fontStyle: FontStyle.italic,
@@ -858,28 +868,26 @@ class AllRapportFeedbackView extends StatelessWidget {
                               avatar: const Icon(Icons.devices, size: 16),
                               label: Text(platform),
                             ),
-                          if (uid != null)
-                            UserDetailChip(uid: uid),
+                          if (uid != null) UserDetailChip(uid: uid),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Ingezonden op: $date',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.grey[300]
-                                  : Colors.grey[700],
-                            ),
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[300]
+                              : Colors.grey[700],
+                        ),
                       ),
                       if (uid != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 4.0),
                           child: Text(
                             'UID: $uid',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: Colors.grey),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                           ),
                         ),
                     ],
