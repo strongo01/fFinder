@@ -40,7 +40,6 @@ class _HomeScreenState extends State<HomeScreen> {
   //String? _motivationalMessage;
   int _selectedIndex = 0;
   late Future<void> _userDataFuture;
-
   Map<String, dynamic>? _userData;
   double? _calorieAllowance;
   DateTime _selectedDate = DateTime.now();
@@ -1190,6 +1189,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _errorMessage = null;
       _isLoading = true; // Toon laadindicator
     });
+    debugPrint("[HOME_SCREEN] Starting barcode scan...");
 
     // hij opent de barcode scanner en wacht totdat hij klaar is
     var res = await Navigator.push(
@@ -1200,6 +1200,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // als er een geldige barcode is gescand en niet -1
     if (res is String && res != '-1') {
       final barcode = res;
+      debugPrint("[HOME_SCREEN] Scanned barcode: $barcode");
       final user = FirebaseAuth.instance.currentUser;
       Map<String, dynamic>? productData;
 
@@ -1215,10 +1216,63 @@ class _HomeScreenState extends State<HomeScreen> {
           final docSnapshot = await recentDocRef.get();
 
           if (docSnapshot.exists) {
-            // Product gevonden in recents, gebruik die data
-            productData = docSnapshot.data() as Map<String, dynamic>;
+            debugPrint("[HOME_SCREEN] Product found in recents for barcode: $barcode");
+            // Product gevonden in recents, decrypt de data
+            final encryptedData = docSnapshot.data() as Map<String, dynamic>;
+            debugPrint("[HOME_SCREEN] Encrypted data from recents: $encryptedData");
+
+            final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+            if (userDEK != null) {
+              debugPrint("[HOME_SCREEN] User DEK found. Decrypting...");
+              final decryptedData = Map<String, dynamic>.from(encryptedData);
+
+              // Decrypt basisvelden
+              if (encryptedData['product_name'] != null) {
+                decryptedData['product_name'] = await decryptValue(
+                  encryptedData['product_name'],
+                  userDEK,
+                );
+              }
+              if (encryptedData['brands'] != null) {
+                decryptedData['brands'] = await decryptValue(
+                  encryptedData['brands'],
+                  userDEK,
+                );
+              }
+              if (encryptedData['quantity'] != null) {
+                decryptedData['quantity'] = await decryptValue(
+                  encryptedData['quantity'],
+                  userDEK,
+                );
+              }
+
+              // Decrypt de geneste voedingswaarden
+              if (encryptedData['nutriments_per_100g'] != null &&
+                  encryptedData['nutriments_per_100g'] is Map) {
+                final encryptedNutriments =
+                    encryptedData['nutriments_per_100g'] as Map<String, dynamic>;
+                final decryptedNutriments = <String, dynamic>{};
+                for (final key in encryptedNutriments.keys) {
+                  // Gebruik decryptDouble voor de numerieke waarden binnen nutriments
+                  decryptedNutriments[key] = await decryptDouble(
+                    encryptedNutriments[key],
+                    userDEK,
+                  );
+                }
+                decryptedData['nutriments_per_100g'] = decryptedNutriments;
+              }
+
+              productData = decryptedData;
+              debugPrint("[HOME_SCREEN] Decrypted data: $productData");
+            } else {
+              debugPrint("[HOME_SCREEN] User DEK not found. Using encrypted data as fallback.");
+              productData = encryptedData; // Fallback to encrypted
+            }
+          } else {
+            debugPrint("[HOME_SCREEN] Product not found in recents for barcode: $barcode");
           }
         } catch (e) {
+          debugPrint("[HOME_SCREEN] Error fetching from recents: $e");
           if (mounted) {
             setState(() {
               _errorMessage = "Fout bij ophalen recente producten: $e";
@@ -1228,6 +1282,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       if (mounted) {
+        debugPrint("[HOME_SCREEN] Navigating to AddFoodPage with initialProductData: $productData");
         // Controleer of de widget nog bestaat
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -1238,6 +1293,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       }
+    } else {
+      debugPrint("[HOME_SCREEN] Barcode scan cancelled or failed. Result: $res");
     }
 
     // Verberg laadindicator

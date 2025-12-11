@@ -49,6 +49,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
   final GlobalKey _maaltijdenAddKey = GlobalKey();
   final GlobalKey _maaltijdenLogKey = GlobalKey();
 
+  bool _isSheetShown =
+      false; // Vlag om te controleren of de sheet al is getoond
+
   late TutorialCoachMark tutorialCoachMark;
 
   bool _hasLoadedMore = false;
@@ -56,31 +59,23 @@ class _AddFoodPageState extends State<AddFoodPage> {
   @override
   void initState() {
     super.initState();
-    /*if (widget.scannedBarcode != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        // wacht totdat de build klaar is
-        if (mounted) {
-          _showProductDetails(
-            widget.scannedBarcode!,
-            productData: widget.initialProductData,
-          );
-        }
-      });
-    }*/
+    _createTutorial();
+    _handleInitialAction();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _createTutorial();
-    //_showTutorial();
-    _handleInitialAction();
+    // Verplaatst naar initState om meervoudige aanroepen te voorkomen
   }
 
   void _handleInitialAction() async {
-    final user = FirebaseAuth.instance.currentUser;
+    // Wacht een kort moment om zeker te zijn dat de context beschikbaar is.
+    await Future.delayed(const Duration(milliseconds: 100));
 
-    // Standaard is de tutorial niet afgerond als er geen gebruiker is
+    if (!mounted || _isSheetShown) return;
+
+    final user = FirebaseAuth.instance.currentUser;
     bool tutorialCompleted = false;
 
     if (user != null) {
@@ -91,27 +86,21 @@ class _AddFoodPageState extends State<AddFoodPage> {
             .get();
         tutorialCompleted = userDoc.data()?['tutorialFoodAf'] ?? false;
       } catch (e) {
-        // Fout bij ophalen, ga er voor de veiligheid van uit dat de tutorial niet is voltooid
-        debugPrint("Kon tutorial status niet ophalen: $e");
-        tutorialCompleted = false;
+        debugPrint("[ADD_FOOD_VIEW] Kon tutorial status niet ophalen: $e");
       }
     }
 
-    if (tutorialCompleted) {
-      // Tutorial is afgerond, open de productdetails als er een barcode is
-      if (widget.scannedBarcode != null && mounted) {
-        // Gebruik addPostFrameCallback om zeker te weten dat de build klaar is
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _showProductDetails(
-              widget.scannedBarcode!,
-              productData: widget.initialProductData,
-            );
-          }
-        });
-      }
-    } else {
-      // Tutorial is nog niet afgerond, start de tutorial
+    if (widget.scannedBarcode != null) {
+      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: Barcode detected from widget.");
+      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: initialProductData: ${widget.initialProductData}");
+      _isSheetShown = true; // Zet de vlag om herhaling te voorkomen
+      _showProductDetails(
+        widget.scannedBarcode!,
+        productData: widget.initialProductData,
+      );
+    } else if (!tutorialCompleted) {
+      // Start de tutorial alleen als er geen barcode is gescand
+      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: No barcode, starting tutorial.");
       Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
           tutorialCoachMark.show(context: context);
@@ -415,7 +404,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
               "Succes: ${products.length} producten gevonden via ffinder.nl",
             );
           } else {
-            debugPrint("ffinder.nl gaf een leeg resultaat of verkeerde structuur.");
+            debugPrint(
+              "ffinder.nl gaf een leeg resultaat of verkeerde structuur.",
+            );
           }
         } else {
           debugPrint("ffinder.nl gaf een foutstatus: ${response.statusCode}");
@@ -564,7 +555,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         "Wat voor ingrediënten zie je hier? Antwoord in het Nederlands. "
         "Negeer marketingtermen, productnamen, en niet-relevante woorden zoals 'zero', 'light', etc. "
         "Antwoord alleen met daadwerkelijke ingrediënten die in het product zitten. "
-        "Antwoord als: {ingredient}, {ingredient}, ..."
+        "Antwoord als: {ingredient}, {ingredient}, ...",
       );
       final imageBytes = await pickedFile.readAsBytes();
       final imagePart = InlineDataPart('image/jpeg', imageBytes);
@@ -590,7 +581,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         builder: (ctx) {
           final isDarkMode = Theme.of(ctx).brightness == Brightness.dark;
           final textColor = isDarkMode ? Colors.white : Colors.black;
-          
+
           // Split de string in losse ingrediënten voor de weergave
           final ingredients = result
               .split(',')
@@ -599,7 +590,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
               .toList();
 
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             title: Row(
               children: [
                 const Icon(Icons.auto_awesome, color: Colors.blue),
@@ -638,8 +631,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: isDarkMode 
-                                ? Colors.blue.withOpacity(0.2) 
+                            color: isDarkMode
+                                ? Colors.blue.withOpacity(0.2)
                                 : Colors.blue.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
@@ -1009,13 +1002,29 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                           subtitle: Text(
                                             product['brands'] ?? 'Onbekend',
                                           ),
-                                          onTap: () {
-                                            setModalState(() {
-                                              ingredient['selectedProduct'] =
-                                                  product;
-                                              ingredient['searchResults'] =
-                                                  null;
-                                            });
+                                          onTap: () async {
+                                            final barcode = (product['_id'] ?? product['code'] ?? product['barcode']) as String?;
+                                            if (barcode == null) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Geen barcode gevonden voor dit product.')),
+                                              );
+                                              return;
+                                            }
+
+                                            // Vraag direct om de hoeveelheid
+                                            final result = await _showProductDetails(
+                                              barcode,
+                                              productData: product,
+                                              isForMeal: true,
+                                            );
+
+                                            if (result != null && result['amount'] != null) {
+                                              setModalState(() {
+                                                (ingredient['amountController'] as TextEditingController).text = result['amount'].toString();
+                                                ingredient['selectedProduct'] = result['product'];
+                                                ingredient['searchResults'] = null;
+                                              });
+                                            }
                                           },
                                         );
                                       },
@@ -1154,51 +1163,47 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   Future<void> _scanBarcode() async {
-    //hij reset de foutmeldingen
+    // Reset de foutmeldingen
     setState(() {
       _errorMessage = null;
+      _isLoading = true;
     });
-    // hij opent de barcode scanner en wacht totdat hij klaar is
+    debugPrint("[ADD_FOOD_VIEW] Starting barcode scan from within AddFoodPage...");
+
+    // Open de barcode scanner
     var res = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const SimpleBarcodeScannerPage()),
     );
 
-    // als er een geldige barcode is gescand en niet -1
+    // Als er een geldige barcode is gescand
     if (res is String && res != '-1') {
       final barcode = res;
+      debugPrint("[ADD_FOOD_VIEW] Scanned barcode: $barcode");
       final user = FirebaseAuth.instance.currentUser;
+      Map<String, dynamic>? productData;
 
-      // Als er geen gebruiker is, haal direct op van API
-      if (user == null) {
-        _showProductDetails(barcode);
-        return;
-      }
+      if (user != null) {
+        try {
+          // Controleer de 'recents' collectie op een bestaand product
+          final recentDocRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('recents')
+              .doc(barcode);
 
-      // Toon laadindicator terwijl we Firestore controleren
-      setState(() {
-        _isLoading = true;
-      });
+          final docSnapshot = await recentDocRef.get();
 
-      try {
-        // Controleer eerst collectie
-        final recentDocRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('recents')
-            .doc(barcode);
+          if (docSnapshot.exists) {
+            debugPrint("[ADD_FOOD_VIEW] Product found in recents for barcode: $barcode");
+            // Product gevonden, decrypt de data
+            final encryptedData = docSnapshot.data() as Map<String, dynamic>;
+            debugPrint("[ADD_FOOD_VIEW] Encrypted data from recents: $encryptedData");
 
-        final docSnapshot = await recentDocRef.get();
-
-        if (docSnapshot.exists) {
-          // Product gevonden in recents, haal de data op
-          final encryptedData = docSnapshot.data() as Map<String, dynamic>;
-          final decryptedData = Map<String, dynamic>.from(encryptedData);
-          final userDEK = await getUserDEKFromRemoteConfig(user.uid);
-
-          if (userDEK != null) {
-            // Decrypt de velden als de sleutel beschikbaar is
-            try {
+            final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+            if (userDEK != null) {
+              debugPrint("[ADD_FOOD_VIEW] User DEK found. Decrypting...");
+              final decryptedData = Map<String, dynamic>.from(encryptedData);
               if (encryptedData['product_name'] != null) {
                 decryptedData['product_name'] = await decryptValue(
                   encryptedData['product_name'],
@@ -1211,31 +1216,59 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   userDEK,
                 );
               }
-            } catch (e) {
-              debugPrint("Fout bij decrypten van recente producten: $e");
-              // Ga door met versleutelde (of niet-versleutelde) data bij een fout
+              if (encryptedData['quantity'] != null) {
+                decryptedData['quantity'] = await decryptValue(
+                  encryptedData['quantity'],
+                  userDEK,
+                );
+              }
+
+              // Decrypt de geneste voedingswaarden
+              if (encryptedData['nutriments_per_100g'] != null &&
+                  encryptedData['nutriments_per_100g'] is Map) {
+                final encryptedNutriments =
+                    encryptedData['nutriments_per_100g'] as Map<String, dynamic>;
+                final decryptedNutriments = <String, dynamic>{};
+                for (final key in encryptedNutriments.keys) {
+                  decryptedNutriments[key] = await decryptDouble(
+                    encryptedNutriments[key],
+                    userDEK,
+                  );
+                }
+                decryptedData['nutriments_per_100g'] = decryptedNutriments;
+              }
+
+              productData = decryptedData;
+              debugPrint("[ADD_FOOD_VIEW] Decrypted data: $productData");
+            } else {            debugPrint("[ADD_FOOD_VIEW] User DEK not found. Using encrypted data as fallback.");
+              productData = encryptedData; // Fallback naar versleutelde data
             }
+          } else {
+            debugPrint("[ADD_FOOD_VIEW] Product not found in recents for barcode: $barcode");
           }
-          // Roep de details sheet aan met de (mogelijk) gedecrypteerde data
-          _showProductDetails(barcode, productData: decryptedData);
-        } else {
-          // Product niet in recents, haal op van API
-          _showProductDetails(barcode);
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _errorMessage = "Fout bij controleren van recente producten: $e";
-          });
-        }
-      } finally {
-        // Verberg laadindicator NADAT de data is doorgegeven
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
+        } catch (e) {
+          debugPrint("[ADD_FOOD_VIEW] Error fetching from recents: $e");
+          if (mounted) {
+            setState(() {
+              _errorMessage = "Fout bij ophalen recente producten: $e";
+            });
+          }
         }
       }
+
+      // Toon de product details sheet met de (mogelijk) gedecrypteerde data
+      if (mounted) {
+        _showProductDetails(barcode, productData: productData);
+      }
+    } else {
+      debugPrint("[ADD_FOOD_VIEW] Barcode scan cancelled or failed. Result: $res");
+    }
+
+    // Verberg de laadindicator
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -1479,7 +1512,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     // Bouw een lijst van widgets
     List<Widget> resultWidgets = [];
 
-    for (var product in _searchResults!) {
+for (var product in _searchResults!) {
       final imageUrl = product['image_front_small_url'] as String?;
       resultWidgets.add(
         ListTile(
@@ -1502,9 +1535,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
           title: Text(product['product_name'] ?? 'Onbekende naam'),
           subtitle: Text(product['brands'] ?? 'Onbekend merk'),
           onTap: () {
-            final barcode = (product['_id'] ?? product['barcode']) as String?;
+            final barcode = (product['_id'] ?? product['code'] ?? product['barcode']) as String?;
             if (barcode != null) {
-              _showProductDetails(barcode);
+              _showProductDetails(barcode, productData: product);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Geen barcode gevonden voor dit product.')),
+              );
             }
           },
         ),
@@ -1527,30 +1564,30 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
 
     // "Niet de gewenste resultaten" knop
-resultWidgets.add(
-  Padding(
-    padding: const EdgeInsets.symmetric(vertical: 24.0),
-    child: Center(
-      child: ElevatedButton.icon(
-        onPressed: _showAddMyProductSheet,
-        icon: const Icon(Icons.add_circle_outline),
-        label: const Text(
-          'Voeg een nieuw product toe',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          backgroundColor: Colors.blueAccent,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    resultWidgets.add(
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24.0),
+        child: Center(
+          child: ElevatedButton.icon(
+            onPressed: _showAddMyProductSheet,
+            icon: const Icon(Icons.add_circle_outline),
+            label: const Text(
+              'Voeg een nieuw product toe',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+              backgroundColor: Colors.blueAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 3,
+            ),
           ),
-          elevation: 3,
         ),
       ),
-    ),
-  ),
-);
+    );
 
     return ListView(children: resultWidgets);
   }
@@ -1887,6 +1924,8 @@ resultWidgets.add(
     bool isForMeal = false,
     double? initialAmount,
   }) async {
+    debugPrint("[ADD_FOOD_VIEW] _showProductDetails called for barcode: $barcode");
+    debugPrint("[ADD_FOOD_VIEW] _showProductDetails productData: $productData");
     return showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
@@ -1989,6 +2028,9 @@ resultWidgets.add(
             return FutureBuilder<SecretKey?>(
               future: getUserDEKFromRemoteConfig(user.uid),
               builder: (context, dekSnapshot) {
+                if (dekSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
                 if (!dekSnapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -1999,66 +2041,69 @@ resultWidgets.add(
                   itemBuilder: (context, index) {
                     final productDoc = products[index];
                     final product = productDoc.data() as Map<String, dynamic>;
-                    final isMyProduct =
-                        product['isMyProduct'] as bool? ?? false;
+                    final isMyProduct = product['isMyProduct'] == true;
 
                     return FutureBuilder<Map<String, dynamic>>(
                       future: () async {
-                        final decrypted = Map<String, dynamic>.from(product);
-                        if (userDEK != null) {
-                          try {
-                            if (product['product_name'] != null) {
-                              decrypted['product_name'] = await decryptValue(
-                                product['product_name'],
-                                userDEK,
-                              );
-                            }
-                            if (product['brands'] != null) {
-                              decrypted['brands'] = await decryptValue(
-                                product['brands'],
-                                userDEK,
-                              );
-                            }
-                            if (product['quantity'] != null) {
-                              decrypted['quantity'] = await decryptValue(
-                                product['quantity'],
-                                userDEK,
-                              );
-                            }
-                            // Optioneel: decrypt nutriments als ze encrypted zijn
-                            if (product['nutriments_per_100g'] != null) {
-                              final nutriments =
-                                  product['nutriments_per_100g']
-                                      as Map<String, dynamic>;
-                              final decryptedNutriments = <String, dynamic>{};
-                              for (final key in nutriments.keys) {
-                                decryptedNutriments[key] = await decryptDouble(
-                                  nutriments[key],
-                                  userDEK,
-                                );
-                              }
-                              decrypted['nutriments_per_100g'] =
-                                  decryptedNutriments;
-                            }
-                          } catch (e) {
-                            debugPrint("Fout bij decrypten: $e");
+                        if (userDEK == null) return product;
+                        final decryptedProduct =
+                            Map<String, dynamic>.from(product);
+                        try {
+                          // Volledige decryptie voor recente items
+                          if (product['product_name'] != null) {
+                            decryptedProduct['product_name'] =
+                                await decryptValue(
+                              product['product_name'],
+                              userDEK,
+                            );
                           }
+                          if (product['brands'] != null) {
+                            decryptedProduct['brands'] = await decryptValue(
+                              product['brands'],
+                              userDEK,
+                            );
+                          }
+                          if (product['quantity'] != null) {
+                            decryptedProduct['quantity'] = await decryptValue(
+                              product['quantity'],
+                              userDEK,
+                            );
+                          }
+                          if (product['nutriments_per_100g'] != null &&
+                              product['nutriments_per_100g'] is Map) {
+                            final nutriments = product['nutriments_per_100g']
+                                as Map<String, dynamic>;
+                            final decryptedNutriments = <String, dynamic>{};
+                            for (final key in nutriments.keys) {
+                              decryptedNutriments[key] = await decryptDouble(
+                                nutriments[key],
+                                userDEK,
+                              );
+                            }
+                            decryptedProduct['nutriments_per_100g'] =
+                                decryptedNutriments;
+                          }
+                        } catch (e) {
+                          debugPrint(
+                              "[ADD_FOOD_VIEW] Decryption failed for recent item: $e");
                         }
-                        return decrypted;
+                        return decryptedProduct;
                       }(),
                       builder: (context, decryptedSnapshot) {
-                        if (!decryptedSnapshot.hasData) {
+                        if (decryptedSnapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const ListTile(
-                            title: Text('Product wordt geladen...'),
+                            title: Text("Laden..."),
+                            subtitle: Text(""),
                           );
                         }
-                        final decryptedProduct = decryptedSnapshot.data!;
-                        final name =
-                            decryptedProduct['product_name'] ??
-                            'Onbekende naam';
-                        final brand =
-                            decryptedProduct['brands'] ?? 'Onbekend merk';
-                        final imageUrl =
+
+                                                final decryptedProduct =
+                            decryptedSnapshot.data ?? product;
+                        final productName =
+                            decryptedProduct['product_name'] ?? 'Onbekend';
+                        final brands = decryptedProduct['brands'] ?? 'Onbekend';
+                        final imageUrl = decryptedProduct['image_front_small_url'] as String? ??
                             decryptedProduct['image_front_url'] as String?;
 
                         return ListTile(
@@ -2072,8 +2117,8 @@ resultWidgets.add(
                                     errorBuilder:
                                         (context, error, stackTrace) =>
                                             const Icon(
-                                              Icons.image_not_supported,
-                                            ),
+                                      Icons.image_not_supported,
+                                    ),
                                   ),
                                 )
                               : const SizedBox(
@@ -2081,14 +2126,11 @@ resultWidgets.add(
                                   height: 50,
                                   child: Icon(Icons.fastfood),
                                 ),
-                          title: Text(name),
-                          subtitle: Text(brand),
+                          title: Text(productName),
+                          subtitle: Text(brands),
                           onTap: () {
-                            if (isMyProduct) {
-                              _showMyProductDetails(
-                                decryptedProduct,
-                                productDoc.id,
-                              );
+                            if (isMyProduct) {  _showMyProductDetails(
+                                  decryptedProduct, productDoc.id);
                             } else {
                               _showProductDetails(
                                 productDoc.id,
@@ -3230,9 +3272,13 @@ resultWidgets.add(
                                               product['brands'] ?? 'Onbekend',
                                             ),
                                             onTap: () async {
-                                              final barcode =
-                                                  product['_id'] as String?;
-                                              if (barcode == null) return;
+                                              final barcode = (product['_id'] ?? product['code'] ?? product['barcode']) as String?;
+                                              if (barcode == null) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('Geen barcode gevonden voor dit product.')),
+                                                );
+                                                return;
+                                              }
 
                                               final result =
                                                   await _showProductDetails(
