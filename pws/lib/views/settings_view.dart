@@ -1403,6 +1403,75 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
     }); // Toggle the isActive field
   }
 
+  Future<void> _editAnnouncement(DocumentSnapshot doc) async {
+  final data = doc.data() as Map<String, dynamic>;
+  final titleController = TextEditingController(text: data['title']);
+  final messageController = TextEditingController(text: data['message']);
+  final formKey = GlobalKey<FormState>();
+
+  await showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Bericht bewerken'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: 'Titel'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Titel mag niet leeg zijn.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: messageController,
+                decoration: const InputDecoration(labelText: 'Bericht'),
+                maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Bericht mag niet leeg zijn.';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Annuleren'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                await _announcements.doc(doc.id).update({
+                  'title': titleController.text.trim(),
+                  'message': messageController.text.trim(),
+                });
+                if (mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Bericht bijgewerkt.')),
+                  );
+                }
+              }
+            },
+            child: const Text('Opslaan'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
   Future<void> _deleteAnnouncement(String docId) async {
     await _announcements.doc(docId).delete();
     if (mounted) {
@@ -1491,6 +1560,11 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                          IconButton(
+      icon: const Icon(Icons.edit, color: Colors.blue),
+      tooltip: 'Bewerken',
+      onPressed: () => _editAnnouncement(doc),
+    ),
                       IconButton(
                         icon: Icon(
                           isActive ? Icons.toggle_on : Icons.toggle_off,
