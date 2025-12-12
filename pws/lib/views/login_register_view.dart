@@ -552,7 +552,13 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       //scaffold is de basis van het scherm
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).padding.bottom + 40,
+          ),
+
           child: ConstrainedBox(
             //zorgt dat het formulier niet te breed wordt op grote schermen
             constraints: const BoxConstraints(maxWidth: 400),

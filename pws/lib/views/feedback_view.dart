@@ -76,7 +76,7 @@ class FeedbackButton extends StatelessWidget {
       ),
       builder: (ctx) {
         final isDarkMode = Theme.of(ctx).brightness == Brightness.dark;
-
+final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
         Future<void> send() async {
           if (!formKey.currentState!.validate()) return;
           isSending = true;
@@ -155,8 +155,8 @@ class FeedbackButton extends StatelessWidget {
             padding: EdgeInsets.only(
               left: 16,
               right: 16,
-              top: 0, // Zet top-padding op 0
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+              top: 0,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + sysBottomPadding + 20, // vergroot onder-padding
             ),
             child: Form(
               key: formKey,
@@ -169,7 +169,7 @@ class FeedbackButton extends StatelessWidget {
                       child: Container(
                         width: 40,
                         height: 5,
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: const EdgeInsets.only(bottom: 20),
                         decoration: BoxDecoration(
                           color: isDarkMode
                               ? Colors.grey[500]
@@ -276,13 +276,13 @@ class FeedbackButton extends StatelessWidget {
       ),
       builder: (ctx) {
         final isDarkMode = Theme.of(ctx).brightness == Brightness.dark;
-
+final sysBottomPadding = MediaQuery.of(ctx).padding.bottom; // nav bar hoogte
         return Padding(
           padding: EdgeInsets.only(
             left: 16,
             right: 16,
             top: 16,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + sysBottomPadding + 20, // vergroot onder-padding
           ),
           child: StatefulBuilder(
             builder: (innerCtx, setState) {
@@ -348,7 +348,7 @@ class FeedbackButton extends StatelessWidget {
                       child: Container(
                         width: 40,
                         height: 5,
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: const EdgeInsets.only(bottom: 20),
                         decoration: BoxDecoration(
                           color: isDarkMode
                               ? Colors.grey[500]

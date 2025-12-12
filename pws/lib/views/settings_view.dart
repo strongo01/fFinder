@@ -1025,11 +1025,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     }
                                     return null;
                                   },
-                                    onChanged: (value) {
-    setState(() {
-      _hasUnsavedChanges = true;
-    });
-  },
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _hasUnsavedChanges = true;
+                                    });
+                                  },
                                 ),
                                 const SizedBox(height: 16),
 
@@ -1063,11 +1063,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     }
                                     return null;
                                   },
-                                    onChanged: (value) {
-    setState(() {
-      _hasUnsavedChanges = true;
-    });
-  },
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _hasUnsavedChanges = true;
+                                    });
+                                  },
                                 ),
                                 const SizedBox(height: 16),
 
@@ -1104,11 +1104,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     }
                                     return null;
                                   },
-                                    onChanged: (value) {
-    setState(() {
-      _hasUnsavedChanges = true;
-    });
-  },
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _hasUnsavedChanges = true;
+                                    });
+                                  },
                                 ),
                                 const SizedBox(height: 16),
 
@@ -1315,6 +1315,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     );
                                   },
                                 ),
+                                const Divider(),
+                                ListTile(
+                                  leading: const Icon(Icons.edit_note),
+                                  title: const Text('Decrypten'),
+                                  subtitle: const Text(
+                                    'Decrypt waardes voor gebruiker als ze account willen overzetten naar andere email.',
+                                  ),
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const DecryptView(),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ],
                             ),
                           ),
@@ -1403,109 +1419,126 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
     }); // Toggle the isActive field
   }
 
-Future<void> _editAnnouncement(DocumentSnapshot doc) async {
-  final data = doc.data() as Map<String, dynamic>;
-  final titleController = TextEditingController(text: data['title']);
-  final messageController = TextEditingController(text: data['message']);
-  final formKey = GlobalKey<FormState>();
+  Future<void> _editAnnouncement(DocumentSnapshot doc) async {
+    final data = doc.data() as Map<String, dynamic>;
+    final titleController = TextEditingController(text: data['title']);
+    final messageController = TextEditingController(text: data['message']);
+    final formKey = GlobalKey<FormState>();
 
-  await showDialog(
-    context: context,
-    builder: (context) {
-      final theme = Theme.of(context);
-      final cs = theme.colorScheme;
-      final isDark = theme.brightness == Brightness.dark;
+    await showDialog(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+        final cs = theme.colorScheme;
+        final isDark = theme.brightness == Brightness.dark;
 
-      return AlertDialog(
-        backgroundColor: isDark ? Colors.black : Colors.white,
-        title: Text(
-          'Bericht bewerken',
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: isDark ? Colors.white : Colors.black,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: titleController,
-                style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                decoration: InputDecoration(
-                  labelText: 'Titel',
-                  labelStyle: TextStyle(color: isDark ? Colors.grey[300] : Colors.grey[800]),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: isDark ? Colors.grey[600]! : Colors.grey),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: isDark ? Colors.white : cs.primary, width: 2),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Titel mag niet leeg zijn.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: messageController,
-                maxLines: 3,
-                style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                decoration: InputDecoration(
-                  labelText: 'Bericht',
-                  labelStyle: TextStyle(color: isDark ? Colors.grey[300] : Colors.grey[800]),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: isDark ? Colors.grey[600]! : Colors.grey),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: isDark ? Colors.white : cs.primary, width: 2),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Bericht mag niet leeg zijn.';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Annuleren', style: TextStyle(color: isDark ? Colors.white : cs.primary)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isDark ? Colors.black : cs.primary,
-              foregroundColor: Colors.white,
+        return AlertDialog(
+          backgroundColor: isDark ? Colors.black : Colors.white,
+          title: Text(
+            'Bericht bewerken',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: isDark ? Colors.white : Colors.black,
+              fontWeight: FontWeight.w600,
             ),
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                await _announcements.doc(doc.id).update({
-                  'title': titleController.text.trim(),
-                  'message': messageController.text.trim(),
-                });
-                if (mounted) {
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Bericht bijgewerkt.')),
-                  );
-                }
-              }
-            },
-            child: const Text('Opslaan'),
           ),
-        ],
-      );
-    },
-  );
-}
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: titleController,
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                  decoration: InputDecoration(
+                    labelText: 'Titel',
+                    labelStyle: TextStyle(
+                      color: isDark ? Colors.grey[300] : Colors.grey[800],
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.grey[600]! : Colors.grey,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white : cs.primary,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Titel mag niet leeg zijn.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: messageController,
+                  maxLines: 3,
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                  decoration: InputDecoration(
+                    labelText: 'Bericht',
+                    labelStyle: TextStyle(
+                      color: isDark ? Colors.grey[300] : Colors.grey[800],
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.grey[600]! : Colors.grey,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white : cs.primary,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Bericht mag niet leeg zijn.';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Annuleren',
+                style: TextStyle(color: isDark ? Colors.white : cs.primary),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDark ? Colors.black : cs.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  await _announcements.doc(doc.id).update({
+                    'title': titleController.text.trim(),
+                    'message': messageController.text.trim(),
+                  });
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Bericht bijgewerkt.')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Opslaan'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Future<void> _deleteAnnouncement(String docId) async {
     await _announcements.doc(docId).delete();
@@ -1517,138 +1550,493 @@ Future<void> _editAnnouncement(DocumentSnapshot doc) async {
   }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
-    appBar: AppBar(
-      backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
-      title: Text(
-        'Berichten Beheren',
-        style: TextStyle(
-          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-          fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.black
+          : Colors.white,
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.black
+            : Colors.white,
+        title: Text(
+          'Berichten Beheren',
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        iconTheme: IconThemeData(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black,
         ),
       ),
-      iconTheme: IconThemeData(
-        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-      ),
-    ),
-    body: StreamBuilder(
-      stream: _announcements.orderBy('createdAt', descending: true).snapshots(),
-      builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Er is een fout opgetreden.',
-              style: TextStyle(
-                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-              ),
-            ),
-          );
-        }
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.data!.docs.isEmpty) {
-          return Center(
-            child: Text(
-              'Geen berichten gevonden.',
-              style: TextStyle(
-                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-              ),
-            ),
-          );
-        }
-
-        final theme = Theme.of(context);
-        final cs = theme.colorScheme;
-        final isDark = theme.brightness == Brightness.dark;
-
-        return ListView(
-          padding: const EdgeInsets.all(8.0),
-          children: snapshot.data!.docs.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            final title = data['title'] ?? 'Geen titel';
-            final message = data['message'] ?? '';
-            final isActive = data['isActive'] ?? false;
-            final timestamp = data['createdAt'] as Timestamp?;
-            final date = timestamp != null
-                ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate())
-                : 'Onbekende datum';
-
-            return Card(
-              margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-              color: isDark ? Colors.black : theme.cardColor,
-              surfaceTintColor: Colors.transparent,
-              elevation: isDark ? 0 : 2,
-              child: ListTile(
-                title: Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: isDark ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      message,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Gemaakt op: $date',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: (isDark ? Colors.white : Colors.black).withOpacity(0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Chip(
-                      label: Text(
-                        isActive ? 'Actief' : 'Inactief',
-                        style: TextStyle(
-                          color: isActive ? cs.onPrimaryContainer : (isDark ? Colors.white : cs.onSurfaceVariant),
-                        ),
-                      ),
-                      backgroundColor: isActive
-                          ? cs.primaryContainer
-                          : (isDark ? Colors.black : cs.surfaceVariant),
-                      side: BorderSide(color: isDark ? Colors.white24 : Colors.transparent),
-                    ),
-                  ],
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.edit, color: isDark ? Colors.white : cs.primary),
-                      tooltip: 'Bewerken',
-                      onPressed: () => _editAnnouncement(doc),
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        isActive ? Icons.toggle_on : Icons.toggle_off,
-                        color: isActive ? (isDark ? Colors.white : cs.primary) : (isDark ? Colors.white70 : cs.onSurfaceVariant),
-                      ),
-                      tooltip: isActive ? 'Deactiveren' : 'Activeren',
-                      onPressed: () => _toggleActive(doc),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.delete_outline, color: isDark ? Colors.white : cs.error),
-                      tooltip: 'Verwijderen',
-                      onPressed: () => _deleteAnnouncement(doc.id),
-                    ),
-                  ],
+      body: StreamBuilder(
+        stream: _announcements
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Er is een fout opgetreden.',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
                 ),
               ),
             );
-          }).toList(),
-        );
-      },
-    ),
-  );
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.data!.docs.isEmpty) {
+            return Center(
+              child: Text(
+                'Geen berichten gevonden.',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
+                ),
+              ),
+            );
+          }
+
+          final theme = Theme.of(context);
+          final cs = theme.colorScheme;
+          final isDark = theme.brightness == Brightness.dark;
+
+          return ListView(
+            padding: const EdgeInsets.all(8.0),
+            children: snapshot.data!.docs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final title = data['title'] ?? 'Geen titel';
+              final message = data['message'] ?? '';
+              final isActive = data['isActive'] ?? false;
+              final timestamp = data['createdAt'] as Timestamp?;
+              final date = timestamp != null
+                  ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate())
+                  : 'Onbekende datum';
+
+              return Card(
+                margin: const EdgeInsets.symmetric(
+                  vertical: 8.0,
+                  horizontal: 4.0,
+                ),
+                color: isDark ? Colors.black : theme.cardColor,
+                surfaceTintColor: Colors.transparent,
+                elevation: isDark ? 0 : 2,
+                child: ListTile(
+                  title: Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: isDark ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        message,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Gemaakt op: $date',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: (isDark ? Colors.white : Colors.black)
+                              .withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Chip(
+                        label: Text(
+                          isActive ? 'Actief' : 'Inactief',
+                          style: TextStyle(
+                            color: isActive
+                                ? cs.onPrimaryContainer
+                                : (isDark ? Colors.white : cs.onSurfaceVariant),
+                          ),
+                        ),
+                        backgroundColor: isActive
+                            ? cs.primaryContainer
+                            : (isDark ? Colors.black : cs.surfaceVariant),
+                        side: BorderSide(
+                          color: isDark ? Colors.white24 : Colors.transparent,
+                        ),
+                      ),
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.edit,
+                          color: isDark ? Colors.white : cs.primary,
+                        ),
+                        tooltip: 'Bewerken',
+                        onPressed: () => _editAnnouncement(doc),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          isActive ? Icons.toggle_on : Icons.toggle_off,
+                          color: isActive
+                              ? (isDark ? Colors.white : cs.primary)
+                              : (isDark ? Colors.white70 : cs.onSurfaceVariant),
+                        ),
+                        tooltip: isActive ? 'Deactiveren' : 'Activeren',
+                        onPressed: () => _toggleActive(doc),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: isDark ? Colors.white : cs.error,
+                        ),
+                        tooltip: 'Verwijderen',
+                        onPressed: () => _deleteAnnouncement(doc.id),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        },
+      ),
+    );
+  }
 }
+
+class DecryptView extends StatefulWidget {
+  const DecryptView({super.key});
+
+  @override
+  State<DecryptView> createState() => _DecryptViewState();
+}
+
+class _DecryptViewState extends State<DecryptView> {
+  final _formKey = GlobalKey<FormState>();
+  final _uidController = TextEditingController();
+  final _encryptedController = TextEditingController();
+
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _uidController.dispose();
+    _encryptedController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitRequest() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+
+    try {
+      final targetUid = _uidController.text.trim();
+      final encryptedJson = _encryptedController.text.trim();
+      final requesterUid = FirebaseAuth.instance.currentUser!.uid;
+      final requestsCollection = FirebaseFirestore.instance.collection('decryption_requests');
+
+      // 1. Check for duplicate pending requests
+      final existing = await requestsCollection
+          .where('targetUid', isEqualTo: targetUid)
+          .where('encryptedJson', isEqualTo: encryptedJson)
+          .where('status', isEqualTo: 'pending')
+          .limit(1)
+          .get();
+
+      if (existing.docs.isNotEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Er bestaat al een openstaande aanvraag voor deze waarde.')),
+        );
+        return;
+      }
+
+      // 2. Create new pending request
+      await requestsCollection.add({
+        'targetUid': targetUid,
+        'encryptedJson': encryptedJson,
+        'status': 'pending',
+        'requestedAt': FieldValue.serverTimestamp(),
+        'requesterUid': requesterUid,
+        'fieldKey': 'custom', // You can make this dynamic if needed
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Decryptie-aanvraag ingediend voor goedkeuring.')),
+      );
+      _encryptedController.clear(); // Clear field after submission
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Indienen van aanvraag mislukt: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _approveRequest(String requestId) async {
+    try {
+      final approverUid = FirebaseAuth.instance.currentUser!.uid;
+      final reqRef = FirebaseFirestore.instance.collection('decryption_requests').doc(requestId);
+
+      final reqSnap = await reqRef.get();
+      if (!reqSnap.exists) throw Exception('Aanvraag niet gevonden.');
+
+      final data = reqSnap.data() as Map<String, dynamic>;
+      final requesterUid = data['requesterUid'] as String;
+      final targetUid = data['targetUid'] as String;
+
+      if (requesterUid == approverUid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Je kunt je eigen aanvraag niet goedkeuren.')),
+        );
+        return;
+      }
+
+      final encryptedJson = data['encryptedJson'] as String;
+      final dek = await getUserDEKFromRemoteConfig(targetUid);
+      if (dek == null) throw Exception('Kon encryptiesleutel niet ophalen.');
+
+      final decryptedValue = await decryptValue(encryptedJson, dek);
+
+      await reqRef.update({
+        'status': 'approved',
+        'approvedBy': approverUid,
+        'approvedAt': FieldValue.serverTimestamp(),
+        'decryptedValue': decryptedValue,
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aanvraag goedgekeurd.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Goedkeuren mislukt: $e')));
+    }
+  }
+
+  Future<void> _rejectRequest(String requestId) async {
+    try {
+      final approverUid = FirebaseAuth.instance.currentUser!.uid;
+      final reqRef = FirebaseFirestore.instance.collection('decryption_requests').doc(requestId);
+
+      final reqSnap = await reqRef.get();
+      if (!reqSnap.exists) throw Exception('Aanvraag niet gevonden.');
+
+      final data = reqSnap.data() as Map<String, dynamic>;
+      if (data['requesterUid'] == approverUid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Je kunt je eigen aanvraag niet afkeuren.')),
+        );
+        return;
+      }
+
+      await reqRef.update({
+        'status': 'rejected',
+        'rejectedBy': approverUid,
+        'rejectedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aanvraag afgekeurd.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Afkeuren mislukt: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = cs.brightness == Brightness.dark;
+    final currentAdminUid = FirebaseAuth.instance.currentUser?.uid;
+
+    return Scaffold(
+      backgroundColor: isDark ? Colors.black : cs.background,
+      appBar: AppBar(
+        backgroundColor: isDark ? Colors.black : cs.background,
+        title: Text('Decrypten', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+        centerTitle: true,
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 16,
+          ),
+          child: Column(
+            children: [
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _uidController,
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                      cursorColor: isDark ? Colors.white : cs.primary,
+                      decoration: InputDecoration(
+                        labelText: 'UID',
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+                        filled: true,
+                        fillColor: isDark ? Colors.white10 : cs.surfaceVariant,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Vul een UID in' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _encryptedController,
+                      maxLines: 5,
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                      cursorColor: isDark ? Colors.white : cs.primary,
+                      decoration: InputDecoration(
+                        labelText: 'Versleutelde JSON (nonce/cipher/tag)',
+                        hintText: '{"nonce":"...","cipher":"...","tag":"..."}',
+                        hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+                        filled: true,
+                        fillColor: isDark ? Colors.white10 : cs.surfaceVariant,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Plak de versleutelde JSON' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _loading ? null : _submitRequest,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark ? Colors.black : cs.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: _loading
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.send),
+                        label: Text(_loading ? 'Indienen...' : 'Aanvraag indienen'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Openstaande aanvragen', style: theme.textTheme.titleMedium?.copyWith(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(height: 8),
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('decryption_requests').orderBy('requestedAt', descending: true).snapshots(),
+                builder: (context, snap) {
+                  if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+                  if (snap.data!.docs.isEmpty) return const Text('Geen aanvragen gevonden.');
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: snap.data!.docs.length,
+                    itemBuilder: (context, index) {
+                      final doc = snap.data!.docs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final status = data['status'] as String;
+                      final requesterUid = data['requesterUid'] as String;
+                      final targetUid = data['targetUid'] as String;
+                      final decryptedValue = data['decryptedValue'] as String?;
+                      final encryptedJson = data['encryptedJson'] as String?;
+
+                      final isPending = status == 'pending';
+                      final canApprove = isPending && requesterUid != currentAdminUid;
+
+                      return Card(
+                        color: isDark ? Colors.grey.shade900 : theme.cardColor,
+                        elevation: isDark ? 0 : 1,
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Voor UID: $targetUid', style: theme.textTheme.labelLarge?.copyWith(color: isDark ? Colors.white : Colors.black)),
+                              const SizedBox(height: 4),
+                              Text('Aangevraagd door: $requesterUid', style: theme.textTheme.bodySmall?.copyWith(color: isDark ? Colors.white70 : Colors.black87)),
+                              if (encryptedJson != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Versleutelde waarde:',
+                                  style: theme.textTheme.bodySmall?.copyWith(color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 4),
+                                SelectableText(
+                                  encryptedJson,
+                                  style: theme.textTheme.bodySmall?.copyWith(color: isDark ? Colors.white54 : Colors.black54, fontFamily: 'monospace'),
+                                  maxLines: 3,
+                                ),
+                              ],
+                              const Divider(height: 16),
+                              if (status == 'approved' && decryptedValue != null)
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: SelectableText(decryptedValue, style: TextStyle(color: isDark ? Colors.white : Colors.black))),
+                                  ],
+                                )
+                              else
+                                Text('Status: $status', style: TextStyle(color: status == 'rejected' ? cs.error : (isDark ? Colors.yellow : Colors.orange))),
+                              if (canApprove)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      TextButton.icon(
+                                        icon: const Icon(Icons.close),
+                                        label: const Text('Afkeuren'),
+                                        style: TextButton.styleFrom(foregroundColor: cs.error),
+                                        onPressed: () => _rejectRequest(doc.id),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      ElevatedButton.icon(
+                                        icon: const Icon(Icons.check),
+                                        label: const Text('Goedkeuren'),
+                                        style: ElevatedButton.styleFrom(backgroundColor: cs.primary, foregroundColor: cs.onPrimary),
+                                        onPressed: () => _approveRequest(doc.id),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

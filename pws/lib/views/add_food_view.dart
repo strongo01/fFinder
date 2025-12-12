@@ -91,8 +91,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
 
     if (widget.scannedBarcode != null) {
-      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: Barcode detected from widget.");
-      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: initialProductData: ${widget.initialProductData}");
+      debugPrint(
+        "[ADD_FOOD_VIEW] _handleInitialAction: Barcode detected from widget.",
+      );
+      debugPrint(
+        "[ADD_FOOD_VIEW] _handleInitialAction: initialProductData: ${widget.initialProductData}",
+      );
       _isSheetShown = true; // Zet de vlag om herhaling te voorkomen
       _showProductDetails(
         widget.scannedBarcode!,
@@ -100,7 +104,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
       );
     } else if (!tutorialCompleted) {
       // Start de tutorial alleen als er geen barcode is gescand
-      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: No barcode, starting tutorial.");
+      debugPrint(
+        "[ADD_FOOD_VIEW] _handleInitialAction: No barcode, starting tutorial.",
+      );
       Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
           tutorialCoachMark.show(context: context);
@@ -555,6 +561,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         "Wat voor ingrediënten zie je hier? Antwoord in het Nederlands. "
         "Negeer marketingtermen, productnamen, en niet-relevante woorden zoals 'zero', 'light', etc. "
         "Antwoord alleen met daadwerkelijke ingrediënten die in het product zitten. "
+        "Antwoord alleen als het plaatje een voedselproduct toont."
         "Antwoord als: {ingredient}, {ingredient}, ...",
       );
       final imageBytes = await pickedFile.readAsBytes();
@@ -807,7 +814,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   controller: scrollController,
                   child: Padding(
                     padding: EdgeInsets.only(
-                      bottom: MediaQuery.of(context).viewInsets.bottom,
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 30,
                       top: 20,
                       left: 20,
                       right: 20,
@@ -1003,26 +1010,43 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                             product['brands'] ?? 'Onbekend',
                                           ),
                                           onTap: () async {
-                                            final barcode = (product['_id'] ?? product['code'] ?? product['barcode']) as String?;
+                                            final barcode =
+                                                (product['_id'] ??
+                                                        product['code'] ??
+                                                        product['barcode'])
+                                                    as String?;
                                             if (barcode == null) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Geen barcode gevonden voor dit product.')),
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Geen barcode gevonden voor dit product.',
+                                                  ),
+                                                ),
                                               );
                                               return;
                                             }
 
                                             // Vraag direct om de hoeveelheid
-                                            final result = await _showProductDetails(
-                                              barcode,
-                                              productData: product,
-                                              isForMeal: true,
-                                            );
+                                            final result =
+                                                await _showProductDetails(
+                                                  barcode,
+                                                  productData: product,
+                                                  isForMeal: true,
+                                                );
 
-                                            if (result != null && result['amount'] != null) {
+                                            if (result != null &&
+                                                result['amount'] != null) {
                                               setModalState(() {
-                                                (ingredient['amountController'] as TextEditingController).text = result['amount'].toString();
-                                                ingredient['selectedProduct'] = result['product'];
-                                                ingredient['searchResults'] = null;
+                                                (ingredient['amountController']
+                                                        as TextEditingController)
+                                                    .text = result['amount']
+                                                    .toString();
+                                                ingredient['selectedProduct'] =
+                                                    result['product'];
+                                                ingredient['searchResults'] =
+                                                    null;
                                               });
                                             }
                                           },
@@ -1168,7 +1192,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
       _errorMessage = null;
       _isLoading = true;
     });
-    debugPrint("[ADD_FOOD_VIEW] Starting barcode scan from within AddFoodPage...");
+    debugPrint(
+      "[ADD_FOOD_VIEW] Starting barcode scan from within AddFoodPage...",
+    );
 
     // Open de barcode scanner
     var res = await Navigator.push(
@@ -1195,10 +1221,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
           final docSnapshot = await recentDocRef.get();
 
           if (docSnapshot.exists) {
-            debugPrint("[ADD_FOOD_VIEW] Product found in recents for barcode: $barcode");
+            debugPrint(
+              "[ADD_FOOD_VIEW] Product found in recents for barcode: $barcode",
+            );
             // Product gevonden, decrypt de data
             final encryptedData = docSnapshot.data() as Map<String, dynamic>;
-            debugPrint("[ADD_FOOD_VIEW] Encrypted data from recents: $encryptedData");
+            debugPrint(
+              "[ADD_FOOD_VIEW] Encrypted data from recents: $encryptedData",
+            );
 
             final userDEK = await getUserDEKFromRemoteConfig(user.uid);
             if (userDEK != null) {
@@ -1227,7 +1257,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
               if (encryptedData['nutriments_per_100g'] != null &&
                   encryptedData['nutriments_per_100g'] is Map) {
                 final encryptedNutriments =
-                    encryptedData['nutriments_per_100g'] as Map<String, dynamic>;
+                    encryptedData['nutriments_per_100g']
+                        as Map<String, dynamic>;
                 final decryptedNutriments = <String, dynamic>{};
                 for (final key in encryptedNutriments.keys) {
                   decryptedNutriments[key] = await decryptDouble(
@@ -1240,11 +1271,16 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
               productData = decryptedData;
               debugPrint("[ADD_FOOD_VIEW] Decrypted data: $productData");
-            } else {            debugPrint("[ADD_FOOD_VIEW] User DEK not found. Using encrypted data as fallback.");
+            } else {
+              debugPrint(
+                "[ADD_FOOD_VIEW] User DEK not found. Using encrypted data as fallback.",
+              );
               productData = encryptedData; // Fallback naar versleutelde data
             }
           } else {
-            debugPrint("[ADD_FOOD_VIEW] Product not found in recents for barcode: $barcode");
+            debugPrint(
+              "[ADD_FOOD_VIEW] Product not found in recents for barcode: $barcode",
+            );
           }
         } catch (e) {
           debugPrint("[ADD_FOOD_VIEW] Error fetching from recents: $e");
@@ -1261,7 +1297,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
         _showProductDetails(barcode, productData: productData);
       }
     } else {
-      debugPrint("[ADD_FOOD_VIEW] Barcode scan cancelled or failed. Result: $res");
+      debugPrint(
+        "[ADD_FOOD_VIEW] Barcode scan cancelled or failed. Result: $res",
+      );
     }
 
     // Verberg de laadindicator
@@ -1512,7 +1550,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     // Bouw een lijst van widgets
     List<Widget> resultWidgets = [];
 
-for (var product in _searchResults!) {
+    for (var product in _searchResults!) {
       final imageUrl = product['image_front_small_url'] as String?;
       resultWidgets.add(
         ListTile(
@@ -1535,12 +1573,16 @@ for (var product in _searchResults!) {
           title: Text(product['product_name'] ?? 'Onbekende naam'),
           subtitle: Text(product['brands'] ?? 'Onbekend merk'),
           onTap: () {
-            final barcode = (product['_id'] ?? product['code'] ?? product['barcode']) as String?;
+            final barcode =
+                (product['_id'] ?? product['code'] ?? product['barcode'])
+                    as String?;
             if (barcode != null) {
               _showProductDetails(barcode, productData: product);
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Geen barcode gevonden voor dit product.')),
+                const SnackBar(
+                  content: Text('Geen barcode gevonden voor dit product.'),
+                ),
               );
             }
           },
@@ -1617,7 +1659,7 @@ for (var product in _searchResults!) {
 
         return Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 30,
             top: 20,
             left: 20,
             right: 20,
@@ -1924,7 +1966,9 @@ for (var product in _searchResults!) {
     bool isForMeal = false,
     double? initialAmount,
   }) async {
-    debugPrint("[ADD_FOOD_VIEW] _showProductDetails called for barcode: $barcode");
+    debugPrint(
+      "[ADD_FOOD_VIEW] _showProductDetails called for barcode: $barcode",
+    );
     debugPrint("[ADD_FOOD_VIEW] _showProductDetails productData: $productData");
     return showModalBottomSheet<Map<String, dynamic>>(
       context: context,
@@ -2046,16 +2090,17 @@ for (var product in _searchResults!) {
                     return FutureBuilder<Map<String, dynamic>>(
                       future: () async {
                         if (userDEK == null) return product;
-                        final decryptedProduct =
-                            Map<String, dynamic>.from(product);
+                        final decryptedProduct = Map<String, dynamic>.from(
+                          product,
+                        );
                         try {
                           // Volledige decryptie voor recente items
                           if (product['product_name'] != null) {
                             decryptedProduct['product_name'] =
                                 await decryptValue(
-                              product['product_name'],
-                              userDEK,
-                            );
+                                  product['product_name'],
+                                  userDEK,
+                                );
                           }
                           if (product['brands'] != null) {
                             decryptedProduct['brands'] = await decryptValue(
@@ -2071,8 +2116,9 @@ for (var product in _searchResults!) {
                           }
                           if (product['nutriments_per_100g'] != null &&
                               product['nutriments_per_100g'] is Map) {
-                            final nutriments = product['nutriments_per_100g']
-                                as Map<String, dynamic>;
+                            final nutriments =
+                                product['nutriments_per_100g']
+                                    as Map<String, dynamic>;
                             final decryptedNutriments = <String, dynamic>{};
                             for (final key in nutriments.keys) {
                               decryptedNutriments[key] = await decryptDouble(
@@ -2085,7 +2131,8 @@ for (var product in _searchResults!) {
                           }
                         } catch (e) {
                           debugPrint(
-                              "[ADD_FOOD_VIEW] Decryption failed for recent item: $e");
+                            "[ADD_FOOD_VIEW] Decryption failed for recent item: $e",
+                          );
                         }
                         return decryptedProduct;
                       }(),
@@ -2098,12 +2145,14 @@ for (var product in _searchResults!) {
                           );
                         }
 
-                                                final decryptedProduct =
+                        final decryptedProduct =
                             decryptedSnapshot.data ?? product;
                         final productName =
                             decryptedProduct['product_name'] ?? 'Onbekend';
                         final brands = decryptedProduct['brands'] ?? 'Onbekend';
-                        final imageUrl = decryptedProduct['image_front_small_url'] as String? ??
+                        final imageUrl =
+                            decryptedProduct['image_front_small_url']
+                                as String? ??
                             decryptedProduct['image_front_url'] as String?;
 
                         return ListTile(
@@ -2117,8 +2166,8 @@ for (var product in _searchResults!) {
                                     errorBuilder:
                                         (context, error, stackTrace) =>
                                             const Icon(
-                                      Icons.image_not_supported,
-                                    ),
+                                              Icons.image_not_supported,
+                                            ),
                                   ),
                                 )
                               : const SizedBox(
@@ -2129,8 +2178,11 @@ for (var product in _searchResults!) {
                           title: Text(productName),
                           subtitle: Text(brands),
                           onTap: () {
-                            if (isMyProduct) {  _showMyProductDetails(
-                                  decryptedProduct, productDoc.id);
+                            if (isMyProduct) {
+                              _showMyProductDetails(
+                                decryptedProduct,
+                                productDoc.id,
+                              );
                             } else {
                               _showProductDetails(
                                 productDoc.id,
@@ -3054,7 +3106,7 @@ for (var product in _searchResults!) {
 
                 return Padding(
                   padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 30,
                     top: 20,
                     left: 20,
                     right: 20,
@@ -3272,10 +3324,20 @@ for (var product in _searchResults!) {
                                               product['brands'] ?? 'Onbekend',
                                             ),
                                             onTap: () async {
-                                              final barcode = (product['_id'] ?? product['code'] ?? product['barcode']) as String?;
+                                              final barcode =
+                                                  (product['_id'] ??
+                                                          product['code'] ??
+                                                          product['barcode'])
+                                                      as String?;
                                               if (barcode == null) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Geen barcode gevonden voor dit product.')),
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Geen barcode gevonden voor dit product.',
+                                                    ),
+                                                  ),
                                                 );
                                                 return;
                                               }
@@ -3500,7 +3562,7 @@ for (var product in _searchResults!) {
 
         return Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 30,
             top: 20,
             left: 20,
             right: 20,
@@ -3791,7 +3853,13 @@ for (var product in _searchResults!) {
           builder: (_, scrollController) {
             return SingleChildScrollView(
               controller: scrollController,
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(context).padding.bottom + 30,
+              ),
+
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

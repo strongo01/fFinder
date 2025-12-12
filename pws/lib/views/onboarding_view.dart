@@ -241,10 +241,12 @@ class _OnboardingViewState extends State<OnboardingView> {
       // 1️⃣ Global DEK ophalen (Remote Config)
       final remoteConfig = FirebaseRemoteConfig.instance;
       // Zorg ervoor dat we de laatste versie hebben, negeer de cache voor deze belangrijke stap.
-      await remoteConfig.setConfigSettings(RemoteConfigSettings(
-        fetchTimeout: const Duration(minutes: 1),
-        minimumFetchInterval: Duration.zero,
-      ));
+      await remoteConfig.setConfigSettings(
+        RemoteConfigSettings(
+          fetchTimeout: const Duration(minutes: 1),
+          minimumFetchInterval: Duration.zero,
+        ),
+      );
       await remoteConfig.fetchAndActivate();
 
       final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
@@ -377,6 +379,7 @@ class _OnboardingViewState extends State<OnboardingView> {
       }
     }
   }
+
   // Widget voor de bolletjes voortgangs dingetje
   Widget _buildProgressIndicator() {
     return Row(

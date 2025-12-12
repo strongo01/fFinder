@@ -62,6 +62,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _settingsKey = GlobalKey();
   final GlobalKey _weightKey = GlobalKey();
 
+
+  static const String _appVersion = '1.0.1';
+
   late TutorialCoachMark tutorialCoachMark;
 
   late PageController _pageController; // controller voor de paginaweergave
@@ -174,6 +177,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  int _compareVersions(String a, String b) {
+    List<int> pa = a.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    List<int> pb = b.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    while (pa.length < 3) pa.add(0);
+    while (pb.length < 3) pb.add(0);
+    for (int i = 0; i < 3; i++) {
+      if (pa[i] != pb[i]) return pa[i].compareTo(pb[i]);
+    }
+    return 0;
+  }
+
   Widget _buildAnnouncementsList(bool isDarkMode) {
     //bouw de lijst met admin-berichten
     if (_activeAnnouncements.isEmpty) {
@@ -227,6 +241,67 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       }).toList(),
+    );
+  }
+
+    Widget _buildBannerList(bool isDarkMode) {
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('version')
+          .doc('version')
+          .get(const GetOptions(source: Source.server)), // forceer server
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        }
+        if (snapshot.hasError) {
+          debugPrint("[BANNER] Firestore error: ${snapshot.error}");
+          return const SizedBox.shrink();
+        }
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          debugPrint("[BANNER] version/version niet gevonden.");
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final remoteVersionRaw = data['version'];
+        final remoteVersion = (remoteVersionRaw as String?)?.trim();
+        debugPrint("[BANNER] Local: $_appVersion, Remote: $remoteVersionRaw");
+
+        if (remoteVersion == null || remoteVersion.isEmpty) {
+          debugPrint("[BANNER] Remote version leeg of null.");
+          return const SizedBox.shrink();
+        }
+
+        final isNewer = _compareVersions(remoteVersion, _appVersion) > 0;
+        debugPrint("[BANNER] isNewer=$isNewer");
+
+        if (!isNewer) return const SizedBox.shrink();
+
+        return Card(
+          color: isDarkMode ? Colors.orange[800] : Colors.orange[100],
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Icon(Icons.system_update,
+                    color: isDarkMode ? Colors.white : Colors.black87),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Er is een nieuwe update uit! Update de app via TestFlight voor Apple of via Google Play Store of App Distribution voor Android.',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1021,17 +1096,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   //  Android layout
-  Widget _buildAndroidLayout() {
+Widget _buildAndroidLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     Widget body;
     Widget? fab;
 
     if (_selectedIndex == 0) {
-      // Home-tab
       body = Stack(
         children: [
-          _buildHomeContent(),
+          Positioned.fill(
+            child: Column(
+              children: [
+      
+                Expanded(child: _buildHomeContent()),
+              ],
+            ),
+          ),
           Positioned(
             right: 16,
             bottom: 120,
@@ -1042,17 +1123,15 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       fab = _buildSpeedDial();
     } else if (_selectedIndex == 1) {
-      // Recepten-tab
       body = const RecipesScreen();
       fab = null;
     } else {
-      // Gewicht-tab
       body = const WeightView();
       fab = null;
     }
 
     return Scaffold(
-      appBar: _selectedIndex == 0
+            appBar: _selectedIndex == 0
           ? AppBar(
               title: GestureDetector(
                 key: _dateKey,
@@ -1105,7 +1184,12 @@ class _HomeScreenState extends State<HomeScreen> {
       body: body,
       floatingActionButton: fab,
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
+        selectedItemColor: isDarkMode ? Colors.tealAccent : Colors.teal,
+        unselectedItemColor: isDarkMode ? Colors.grey[500] : Colors.grey[600],
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+        showUnselectedLabels: true,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
@@ -1120,7 +1204,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           BottomNavigationBarItem(
             key: _weightKey,
-            icon: Icon(Icons.monitor_weight),
+            icon: const Icon(Icons.monitor_weight),
             label: 'Gewicht',
           ),
         ],
@@ -1375,7 +1459,13 @@ class _HomeScreenState extends State<HomeScreen> {
       controller: _scrollController,
       physics: const BouncingScrollPhysics(),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.only(
+    left: 16,
+    right: 16,
+    top: 16,
+    bottom: MediaQuery.of(context).padding.bottom + 40,
+  ),
+
         child: _buildDailyLog(
           user.uid,
           docId,
@@ -1666,6 +1756,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         return Column(
                           children: [
                             _buildAnnouncementsList(isDarkMode),
+                            _buildBannerList(isDarkMode),
                             Card(
                               color: isDarkMode
                                   ? Colors.grey[800]
