@@ -2631,7 +2631,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 key: Key(timestamp?.toString() ?? UniqueKey().toString()),
                 direction: DismissDirection.endToStart,
                 onDismissed: (direction) {
-                  _deleteLogEntry(entry);
+                  // Gebruik het originele versleutelde entry object voor arrayRemove
+                  _deleteLogEntry(originalEncryptedEntry);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('$productName verwijderd')),
                   );
@@ -2639,13 +2640,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 background: Container(
                   color: Colors.red,
                   alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20.0,
-                  ), // ruimte aan de zijkant
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
                   child: const Icon(Icons.delete, color: Colors.white),
                 ),
                 child: InkWell(
-                  // tik om hoeveelheid aan te passen
                   onTap: () {
                     _showEditAmountDialog(entry, originalEncryptedEntry);
                   },
