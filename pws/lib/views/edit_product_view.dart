@@ -77,6 +77,34 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     super.dispose();
   }
 
+    List<String> _normalizeTags(dynamic v) {
+    if (v == null) return <String>[];
+    if (v is List) return v.map((e) => e.toString()).toList();
+    if (v is String) {
+      final s = v.trim();
+      if (s.isEmpty) return <String>[];
+
+      // 1) Probeer expliciete OFF-tags zoals "en:milk"
+      final matches = RegExp(r'en:[^,;\/\s]+')
+          .allMatches(s)
+          .map((m) => m.group(0)!)
+          .toList();
+      if (matches.isNotEmpty) return matches;
+
+      // 2) Fallback: split op comma/semicolon/slash/whitespace
+      final parts = s
+          .split(RegExp(r'[,\;\/\s]+'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (parts.isNotEmpty) return parts;
+
+      return <String>[s];
+    }
+    // Onverwachte type: fallback naar stringified single element
+    return <String>[v.toString()];
+  }
+
   Future<void> _fetchDetails() async {
     // Haal productdetails op van OpenFoodFacts of gebruik lokale data
     if (widget.productData != null) {
@@ -98,20 +126,9 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
           brands: widget.productData!['brands'],
           quantity: widget.productData!['quantity'],
           imageFrontUrl: widget.productData!['image_front_url'],
-          additives: Additives(
-            [],
-            (widget.productData!['additives'] as List<dynamic>?)
-                    ?.map((e) => e.toString())
-                    .toList() ??
-                [],
-          ),
-          allergens: Allergens(
-            [],
-            (widget.productData!['allergens'] as List<dynamic>?)
-                    ?.map((e) => e.toString())
-                    .toList() ??
-                [],
-          ),
+additives: Additives([], _normalizeTags(widget.productData!['additives'])),
+          allergens: Allergens([], _normalizeTags(widget.productData!['allergens'])),
+
         );
 
         if (mounted) {

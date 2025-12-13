@@ -69,8 +69,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     // Verplaatst naar initState om meervoudige aanroepen te voorkomen
   }
 
-  void _handleInitialAction() async {
-    // Wacht een kort moment om zeker te zijn dat de context beschikbaar is.
+    void _handleInitialAction() async {
+    // Wacht kort om zeker te zijn dat context beschikbaar is.
     await Future.delayed(const Duration(milliseconds: 100));
 
     if (!mounted || _isSheetShown) return;
@@ -91,22 +91,78 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
 
     if (widget.scannedBarcode != null) {
-      debugPrint(
-        "[ADD_FOOD_VIEW] _handleInitialAction: Barcode detected from widget.",
-      );
-      debugPrint(
-        "[ADD_FOOD_VIEW] _handleInitialAction: initialProductData: ${widget.initialProductData}",
-      );
-      _isSheetShown = true; // Zet de vlag om herhaling te voorkomen
-      _showProductDetails(
-        widget.scannedBarcode!,
-        productData: widget.initialProductData,
-      );
+      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: Barcode detected from widget.");
+      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: initialProductData: ${widget.initialProductData}");
+
+      _isSheetShown = true; // voorkom herhaling
+
+      // Als er geen initialProductData is, probeer OFF te fetchen voordat sheet opent
+      Map<String, dynamic>? productData = widget.initialProductData;
+      if (productData == null) {
+        try {
+          final offUrl = Uri.parse('https://nl.openfoodfacts.org/api/v0/product/${widget.scannedBarcode}.json');
+          final resp = await http.get(offUrl);
+          if (resp.statusCode == 200) {
+            final j = jsonDecode(resp.body) as Map<String, dynamic>;
+            if (j['status'] == 1 && j['product'] is Map) {
+              final fetched = Map<String, dynamic>.from(j['product'] as Map);
+
+              // helper: parse numeric-ish values
+              double _asDouble(dynamic v) {
+                if (v == null) return 0.0;
+                if (v is num) return v.toDouble();
+                if (v is String) return double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
+                return 0.0;
+              }
+
+              // normaliseer nutriments indien nodig
+              if (fetched['nutriments_per_100g'] == null && fetched['nutriments'] is Map) {
+                final n = fetched['nutriments'] as Map<String, dynamic>;
+                fetched['nutriments_per_100g'] = {
+                  'energy-kcal': _asDouble(n['energy-kcal_100g'] ?? n['energy-kcal']),
+                  'fat': _asDouble(n['fat_100g'] ?? n['fat']),
+                  'saturated-fat': _asDouble(n['saturated-fat_100g'] ?? n['saturated-fat']),
+                  'carbohydrates': _asDouble(n['carbohydrates_100g'] ?? n['carbohydrates']),
+                  'sugars': _asDouble(n['sugars_100g'] ?? n['sugars']),
+                  'fiber': _asDouble(n['fiber_100g'] ?? n['fiber']),
+                  'proteins': _asDouble(n['proteins_100g'] ?? n['proteins']),
+                  'salt': _asDouble(n['salt_100g'] ?? n['salt']),
+                };
+              } else if (fetched['nutriments_per_100g'] is Map) {
+                final mp = Map<String, dynamic>.from(fetched['nutriments_per_100g'] as Map);
+                final fixed = <String, dynamic>{};
+                for (final k in mp.keys) {
+                  fixed[k] = _asDouble(mp[k]);
+                }
+                fetched['nutriments_per_100g'] = fixed;
+              }
+
+              // normaliseer tags via bestaande helper
+              fetched['allergens_tags'] = _normalizeTags(fetched['allergens_tags'] ?? fetched['allergens']);
+              fetched['additives_tags'] = _normalizeTags(fetched['additives_tags'] ?? fetched['additives']);
+              fetched['traces_tags'] = _normalizeTags(fetched['traces_tags'] ?? fetched['traces']);
+
+              // vul enkele velden zodat sheet minder hoeft te fetchen
+              fetched['product_name'] = fetched['product_name'] ?? '';
+              fetched['brands'] = fetched['brands'] ?? '';
+              fetched['quantity'] = fetched['quantity'] ?? '';
+
+              productData = fetched;
+              debugPrint("[ADD_FOOD_VIEW] Fetched product from OFF for ${widget.scannedBarcode}");
+            }
+          }
+        } catch (e) {
+          debugPrint("[ADD_FOOD_VIEW] OFF fetch failed in _handleInitialAction: $e");
+        }
+      }
+
+      // Open sheet met (mogelijk) gefetchte data
+      if (mounted) {
+        _showProductDetails(widget.scannedBarcode!, productData: productData);
+      }
     } else if (!tutorialCompleted) {
-      // Start de tutorial alleen als er geen barcode is gescand
-      debugPrint(
-        "[ADD_FOOD_VIEW] _handleInitialAction: No barcode, starting tutorial.",
-      );
+      // Start tutorial alleen als geen barcode
+      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: No barcode, starting tutorial.");
       Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
           tutorialCoachMark.show(context: context);
@@ -1028,11 +1084,100 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                               return;
                                             }
 
-                                            // Vraag direct om de hoeveelheid
+                                            final normalized =
+                                                Map<String, dynamic>.from(
+                                                  product,
+                                                );
+
+                                            normalized['allergens_tags'] =
+                                                _normalizeTags(
+                                                  normalized['allergens_tags'],
+                                                );
+                                            normalized['traces_tags'] =
+                                                _normalizeTags(
+                                                  normalized['traces_tags'],
+                                                );
+                                            normalized['additives_tags'] =
+                                                _normalizeTags(
+                                                  normalized['additives_tags'],
+                                                );
+
+                                            if (normalized['nutriments_per_100g'] ==
+                                                null) {
+                                              if (normalized['nutriments']
+                                                  is Map) {
+                                                final n =
+                                                    normalized['nutriments']
+                                                        as Map<String, dynamic>;
+                                                double _asDouble(dynamic v) {
+                                                  if (v == null) return 0.0;
+                                                  if (v is num)
+                                                    return v.toDouble();
+                                                  if (v is String)
+                                                    return double.tryParse(
+                                                          v.replaceAll(
+                                                            ',',
+                                                            '.',
+                                                          ),
+                                                        ) ??
+                                                        0.0;
+                                                  return 0.0;
+                                                }
+
+                                                normalized['nutriments_per_100g'] = {
+                                                  'energy-kcal': _asDouble(
+                                                    n['energy-kcal_100g'] ??
+                                                        n['energy-kcal'],
+                                                  ),
+                                                  'fat': _asDouble(
+                                                    n['fat_100g'] ?? n['fat'],
+                                                  ),
+                                                  'saturated-fat': _asDouble(
+                                                    n['saturated-fat_100g'] ??
+                                                        n['saturated-fat'],
+                                                  ),
+                                                  'carbohydrates': _asDouble(
+                                                    n['carbohydrates_100g'] ??
+                                                        n['carbohydrates'],
+                                                  ),
+                                                  'sugars': _asDouble(
+                                                    n['sugars_100g'] ??
+                                                        n['sugars'],
+                                                  ),
+                                                  'fiber': _asDouble(
+                                                    n['fiber_100g'] ??
+                                                        n['fiber'],
+                                                  ),
+                                                  'proteins': _asDouble(
+                                                    n['proteins_100g'] ??
+                                                        n['proteins'],
+                                                  ),
+                                                  'salt': _asDouble(
+                                                    n['salt_100g'] ?? n['salt'],
+                                                  ),
+                                                };
+                                              } else {
+                                                normalized['nutriments_per_100g'] =
+                                                    (normalized['nutriments_per_100g']
+                                                        as Map<
+                                                          String,
+                                                          dynamic
+                                                        >?) ??
+                                                    {};
+                                              }
+                                            }
+
+                                            normalized['product_name'] =
+                                                normalized['product_name'] ??
+                                                '';
+                                            normalized['brands'] =
+                                                normalized['brands'] ?? '';
+                                            normalized['quantity'] =
+                                                normalized['quantity'] ?? '';
                                             final result =
                                                 await _showProductDetails(
                                                   barcode,
-                                                  productData: product,
+                                                  productData: normalized,
                                                   isForMeal: true,
                                                 );
 
@@ -1102,7 +1247,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                   final amount = double.tryParse(
                                     (ingredient['amountController']
                                             as TextEditingController)
-                                        .text,
+                                        .text
+                                        .replaceAll(',', '.'),
                                   );
                                   if (selectedProduct != null &&
                                       amount != null) {
@@ -1293,7 +1439,59 @@ class _AddFoodPageState extends State<AddFoodPage> {
       }
 
       // Toon de product details sheet met de (mogelijk) gedecrypteerde data
-      if (mounted) {
+if (mounted) {
+        // Als we geen lokaal (gedecodeerd) product hebben, probeer eerst OpenFoodFacts
+        if (productData == null) {
+          try {
+            final offUrl = Uri.parse(
+              'https://nl.openfoodfacts.org/api/v0/product/$barcode.json',
+            );
+            final resp = await http.get(offUrl);
+            if (resp.statusCode == 200) {
+              final j = jsonDecode(resp.body) as Map<String, dynamic>;
+              if (j['status'] == 1 && j['product'] is Map) {
+                final p = j['product'] as Map<String, dynamic>;
+                final normalized = Map<String, dynamic>.from(p);
+
+                // normalize tags/nutriments similar to _showProductDetails
+                normalized['allergens_tags'] =
+                    _normalizeTags(normalized['allergens_tags']);
+                normalized['traces_tags'] =
+                    _normalizeTags(normalized['traces_tags']);
+                normalized['additives_tags'] =
+                    _normalizeTags(normalized['additives_tags']);
+
+                // ensure nutriments_per_100g numeric
+                double _asDouble(dynamic v) {
+                  if (v == null) return 0.0;
+                  if (v is num) return v.toDouble();
+                  if (v is String) return double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
+                  return 0.0;
+                }
+                if (normalized['nutriments_per_100g'] == null &&
+                    normalized['nutriments'] is Map) {
+                  final n = normalized['nutriments'] as Map<String, dynamic>;
+                  normalized['nutriments_per_100g'] = {
+                    'energy-kcal': _asDouble(n['energy-kcal_100g'] ?? n['energy-kcal']),
+                    'fat': _asDouble(n['fat_100g'] ?? n['fat']),
+                    'saturated-fat': _asDouble(n['saturated-fat_100g'] ?? n['saturated-fat']),
+                    'carbohydrates': _asDouble(n['carbohydrates_100g'] ?? n['carbohydrates']),
+                    'sugars': _asDouble(n['sugars_100g'] ?? n['sugars']),
+                    'fiber': _asDouble(n['fiber_100g'] ?? n['fiber']),
+                    'proteins': _asDouble(n['proteins_100g'] ?? n['proteins']),
+                    'salt': _asDouble(n['salt_100g'] ?? n['salt']),
+                  };
+                }
+
+                productData = normalized;
+                debugPrint('[ADD_FOOD_VIEW] Fetched product from OFF for $barcode');
+              }
+            }
+          } catch (e) {
+            debugPrint('[ADD_FOOD_VIEW] OFF fetch failed: $e');
+          }
+        }
+
         _showProductDetails(barcode, productData: productData);
       }
     } else {
@@ -1577,7 +1775,58 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 (product['_id'] ?? product['code'] ?? product['barcode'])
                     as String?;
             if (barcode != null) {
-              _showProductDetails(barcode, productData: product);
+              // Normalize product for OFF structure
+              final normalized = Map<String, dynamic>.from(product);
+
+              normalized['allergens_tags'] = _normalizeTags(
+                normalized['allergens_tags'],
+              );
+              normalized['traces_tags'] = _normalizeTags(
+                normalized['traces_tags'],
+              );
+              normalized['additives_tags'] = _normalizeTags(
+                normalized['additives_tags'],
+              );
+
+              if (normalized['nutriments_per_100g'] == null) {
+                if (normalized['nutriments'] is Map) {
+                  final n = normalized['nutriments'] as Map<String, dynamic>;
+                  double _asDouble(dynamic v) {
+                    if (v == null) return 0.0;
+                    if (v is num) return v.toDouble();
+                    if (v is String)
+                      return double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
+                    return 0.0;
+                  }
+
+                  normalized['nutriments_per_100g'] = {
+                    'energy-kcal': _asDouble(
+                      n['energy-kcal_100g'] ?? n['energy-kcal'],
+                    ),
+                    'fat': _asDouble(n['fat_100g'] ?? n['fat']),
+                    'saturated-fat': _asDouble(
+                      n['saturated-fat_100g'] ?? n['saturated-fat'],
+                    ),
+                    'carbohydrates': _asDouble(
+                      n['carbohydrates_100g'] ?? n['carbohydrates'],
+                    ),
+                    'sugars': _asDouble(n['sugars_100g'] ?? n['sugars']),
+                    'fiber': _asDouble(n['fiber_100g'] ?? n['fiber']),
+                    'proteins': _asDouble(n['proteins_100g'] ?? n['proteins']),
+                    'salt': _asDouble(n['salt_100g'] ?? n['salt']),
+                  };
+                } else {
+                  normalized['nutriments_per_100g'] =
+                      (normalized['nutriments_per_100g']
+                          as Map<String, dynamic>?) ??
+                      {};
+                }
+              }
+
+              normalized['product_name'] = normalized['product_name'] ?? '';
+              normalized['brands'] = normalized['brands'] ?? '';
+              normalized['quantity'] = normalized['quantity'] ?? '';
+              _showProductDetails(barcode, productData: normalized);
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -1589,7 +1838,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
         ),
       );
     }
-
     // "Meer laden" knop
     if (!_hasLoadedMore) {
       resultWidgets.add(
@@ -1868,36 +2116,68 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           'timestamp': FieldValue.serverTimestamp(),
                           'nutriments_per_100g': {
                             'energy-kcal': await encryptDouble(
-                              double.tryParse(_caloriesController.text) ?? 0,
+                              double.tryParse(
+                                    _caloriesController.text.replaceAll(
+                                      ',',
+                                      '.',
+                                    ),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'fat': await encryptDouble(
-                              double.tryParse(_fatController.text) ?? 0,
+                              double.tryParse(
+                                    _fatController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'saturated-fat': await encryptDouble(
-                              double.tryParse(_saturatedFatController.text) ??
+                              double.tryParse(
+                                    _saturatedFatController.text.replaceAll(
+                                      ',',
+                                      '.',
+                                    ),
+                                  ) ??
                                   0,
                               userDEK,
                             ),
                             'carbohydrates': await encryptDouble(
-                              double.tryParse(_carbsController.text) ?? 0,
+                              double.tryParse(
+                                    _carbsController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'sugars': await encryptDouble(
-                              double.tryParse(_sugarsController.text) ?? 0,
+                              double.tryParse(
+                                    _sugarsController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'fiber': await encryptDouble(
-                              double.tryParse(_fiberController.text) ?? 0,
+                              double.tryParse(
+                                    _fiberController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'proteins': await encryptDouble(
-                              double.tryParse(_proteinsController.text) ?? 0,
+                              double.tryParse(
+                                    _proteinsController.text.replaceAll(
+                                      ',',
+                                      '.',
+                                    ),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'salt': await encryptDouble(
-                              double.tryParse(_saltController.text) ?? 0,
+                              double.tryParse(
+                                    _saltController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                           },
@@ -1921,6 +2201,32 @@ class _AddFoodPageState extends State<AddFoodPage> {
         );
       },
     );
+  }
+
+  List<dynamic> _normalizeTags(dynamic v) {
+    if (v == null) return <dynamic>[];
+    if (v is List) return v;
+    if (v is String) {
+      final s = v.trim();
+      if (s.isEmpty) return <dynamic>[];
+
+      // 1) Probeer expliciete OFF-tags zoals "en:milk" te vinden
+      final matches = RegExp(
+        r'en:[^,;\/\s]+',
+      ).allMatches(s).map((m) => m.group(0)!).toList();
+      if (matches.isNotEmpty) return matches;
+
+      // 2) Fallback: split op komma/semicolon/slash/whitespace
+      final parts = s
+          .split(RegExp(r'[,\;\/\s]+'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (parts.isNotEmpty) return parts;
+
+      return <dynamic>[s];
+    }
+    return <dynamic>[];
   }
 
   Future<void> _addRecentMyProduct(
@@ -1974,10 +2280,88 @@ class _AddFoodPageState extends State<AddFoodPage> {
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        // toon de product bewerk sheet
+        final normalized = Map<String, dynamic>.from(productData ?? {});
+
+        // Parse num or numeric string to double
+        double _asDouble(dynamic v) {
+          if (v == null) return 0.0;
+          if (v is num) return v.toDouble();
+          if (v is String) {
+            final s = v.trim();
+            if (s.isEmpty) return 0.0;
+            return double.tryParse(s.replaceAll(',', '.')) ?? 0.0;
+          }
+          return 0.0;
+        }
+
+        try {
+          normalized['allergens_tags'] = _normalizeTags(
+            normalized['allergens_tags'],
+          );
+          normalized['traces_tags'] = _normalizeTags(normalized['traces_tags']);
+          normalized['additives_tags'] = _normalizeTags(
+            normalized['additives_tags'],
+          );
+
+          // Ensure nutriments_per_100g contains numeric doubles
+          if (normalized['nutriments_per_100g'] == null) {
+            if (normalized['nutriments'] is Map) {
+              final n = normalized['nutriments'] as Map<String, dynamic>;
+              normalized['nutriments_per_100g'] = {
+                'energy-kcal': _asDouble(
+                  n['energy-kcal_100g'] ?? n['energy-kcal'],
+                ),
+                'fat': _asDouble(n['fat_100g'] ?? n['fat']),
+                'saturated-fat': _asDouble(
+                  n['saturated-fat_100g'] ?? n['saturated-fat'],
+                ),
+                'carbohydrates': _asDouble(
+                  n['carbohydrates_100g'] ?? n['carbohydrates'],
+                ),
+                'sugars': _asDouble(n['sugars_100g'] ?? n['sugars']),
+                'fiber': _asDouble(n['fiber_100g'] ?? n['fiber']),
+                'proteins': _asDouble(n['proteins_100g'] ?? n['proteins']),
+                'salt': _asDouble(n['salt_100g'] ?? n['salt']),
+              };
+            } else {
+              // if already present but values might be strings, normalize them
+              final mp =
+                  normalized['nutriments_per_100g'] as Map<String, dynamic>?;
+              if (mp != null) {
+                final fixed = <String, dynamic>{};
+                for (final k in mp.keys) {
+                  fixed[k] = _asDouble(mp[k]);
+                }
+                normalized['nutriments_per_100g'] = fixed;
+              } else {
+                normalized['nutriments_per_100g'] = <String, dynamic>{};
+              }
+            }
+          } else {
+            // normalize existing map values
+            final mp =
+                normalized['nutriments_per_100g'] as Map<String, dynamic>?;
+            if (mp != null) {
+              final fixed = <String, dynamic>{};
+              for (final k in mp.keys) {
+                fixed[k] = _asDouble(mp[k]);
+              }
+              normalized['nutriments_per_100g'] = fixed;
+            }
+          }
+
+          normalized['product_name'] = normalized['product_name'] ?? '';
+          normalized['brands'] = normalized['brands'] ?? '';
+          normalized['quantity'] = normalized['quantity'] ?? '';
+        } catch (e) {
+          debugPrint("[ADD_FOOD_VIEW] Normalization failed: $e");
+          // fall back to original productData if normalization fails
+        }
+
+        // toon de product bewerk sheet met altijd genormaliseerde data
         return ProductEditSheet(
           barcode: barcode,
-          productData: productData,
+          productData: normalized,
           isForMeal: isForMeal,
           initialAmount: initialAmount,
         );
@@ -2137,12 +2521,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         return decryptedProduct;
                       }(),
                       builder: (context, decryptedSnapshot) {
-                        if (decryptedSnapshot.connectionState ==
+                 if (decryptedSnapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return const ListTile(
-                            title: Text("Laden..."),
-                            subtitle: Text(""),
-                          );
+                          return const SizedBox.shrink();
                         }
 
                         final decryptedProduct =
@@ -2300,10 +2681,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         return decrypted;
                       }(),
                       builder: (context, decryptedSnapshot) {
-                        if (!decryptedSnapshot.hasData) {
-                          return const ListTile(
-                            title: Text('Product wordt geladen...'),
-                          );
+                       if (!decryptedSnapshot.hasData) {
+                          return const SizedBox.shrink();
                         }
                         final decryptedProduct = decryptedSnapshot.data!;
                         final name =
@@ -2453,9 +2832,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       }(),
                       builder: (context, decryptedSnapshot) {
                         if (!decryptedSnapshot.hasData) {
-                          return const ListTile(
-                            title: Text('Product wordt geladen...'),
-                          );
+                          return const SizedBox.shrink();
                         }
                         final decryptedProduct = decryptedSnapshot.data!;
                         final name =
@@ -2673,10 +3050,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         return decryptedMeal;
                       }(),
                       builder: (context, decryptedSnapshot) {
-                        if (!decryptedSnapshot.hasData) {
-                          return const ListTile(
-                            title: Text('Maaltijd wordt geladen...'),
-                          );
+                     if (!decryptedSnapshot.hasData) {
+                          return const SizedBox.shrink();
                         }
                         final decryptedMeal = decryptedSnapshot.data!;
                         final name =
@@ -3342,9 +3717,104 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                 return;
                                               }
 
+                                              final normalized =
+                                                  Map<String, dynamic>.from(
+                                                    product,
+                                                  );
+
+                                              normalized['allergens_tags'] =
+                                                  _normalizeTags(
+                                                    normalized['allergens_tags'],
+                                                  );
+                                              normalized['traces_tags'] =
+                                                  _normalizeTags(
+                                                    normalized['traces_tags'],
+                                                  );
+                                              normalized['additives_tags'] =
+                                                  _normalizeTags(
+                                                    normalized['additives_tags'],
+                                                  );
+
+                                              if (normalized['nutriments_per_100g'] ==
+                                                  null) {
+                                                if (normalized['nutriments']
+                                                    is Map) {
+                                                  final n =
+                                                      normalized['nutriments']
+                                                          as Map<
+                                                            String,
+                                                            dynamic
+                                                          >;
+                                                  double _asDouble(dynamic v) {
+                                                    if (v == null) return 0.0;
+                                                    if (v is num)
+                                                      return v.toDouble();
+                                                    if (v is String)
+                                                      return double.tryParse(
+                                                            v.replaceAll(
+                                                              ',',
+                                                              '.',
+                                                            ),
+                                                          ) ??
+                                                          0.0;
+                                                    return 0.0;
+                                                  }
+
+                                                  normalized['nutriments_per_100g'] = {
+                                                    'energy-kcal': _asDouble(
+                                                      n['energy-kcal_100g'] ??
+                                                          n['energy-kcal'],
+                                                    ),
+                                                    'fat': _asDouble(
+                                                      n['fat_100g'] ?? n['fat'],
+                                                    ),
+                                                    'saturated-fat': _asDouble(
+                                                      n['saturated-fat_100g'] ??
+                                                          n['saturated-fat'],
+                                                    ),
+                                                    'carbohydrates': _asDouble(
+                                                      n['carbohydrates_100g'] ??
+                                                          n['carbohydrates'],
+                                                    ),
+                                                    'sugars': _asDouble(
+                                                      n['sugars_100g'] ??
+                                                          n['sugars'],
+                                                    ),
+                                                    'fiber': _asDouble(
+                                                      n['fiber_100g'] ??
+                                                          n['fiber'],
+                                                    ),
+                                                    'proteins': _asDouble(
+                                                      n['proteins_100g'] ??
+                                                          n['proteins'],
+                                                    ),
+                                                    'salt': _asDouble(
+                                                      n['salt_100g'] ??
+                                                          n['salt'],
+                                                    ),
+                                                  };
+                                                } else {
+                                                  normalized['nutriments_per_100g'] =
+                                                      (normalized['nutriments_per_100g']
+                                                          as Map<
+                                                            String,
+                                                            dynamic
+                                                          >?) ??
+                                                      {};
+                                                }
+                                              }
+
+                                              normalized['product_name'] =
+                                                  normalized['product_name'] ??
+                                                  '';
+                                              normalized['brands'] =
+                                                  normalized['brands'] ?? '';
+                                              normalized['quantity'] =
+                                                  normalized['quantity'] ?? '';
                                               final result =
                                                   await _showProductDetails(
                                                     barcode,
+                                                    productData: normalized,
                                                     isForMeal: true,
                                                   );
 
@@ -3426,7 +3896,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     final amount = double.tryParse(
                                       (entry['amountController']
                                               as TextEditingController)
-                                          .text,
+                                          .text
+                                          .replaceAll(',', '.'),
                                     );
                                     if (amount != null) {
                                       finalProducts.add({
@@ -3769,36 +4240,68 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           'timestamp': FieldValue.serverTimestamp(),
                           'nutriments_per_100g': {
                             'energy-kcal': await encryptDouble(
-                              double.tryParse(_caloriesController.text) ?? 0,
+                              double.tryParse(
+                                    _caloriesController.text.replaceAll(
+                                      ',',
+                                      '.',
+                                    ),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'fat': await encryptDouble(
-                              double.tryParse(_fatController.text) ?? 0,
+                              double.tryParse(
+                                    _fatController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'saturated-fat': await encryptDouble(
-                              double.tryParse(_saturatedFatController.text) ??
+                              double.tryParse(
+                                    _saturatedFatController.text.replaceAll(
+                                      ',',
+                                      '.',
+                                    ),
+                                  ) ??
                                   0,
                               userDEK,
                             ),
                             'carbohydrates': await encryptDouble(
-                              double.tryParse(_carbsController.text) ?? 0,
+                              double.tryParse(
+                                    _carbsController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'sugars': await encryptDouble(
-                              double.tryParse(_sugarsController.text) ?? 0,
+                              double.tryParse(
+                                    _sugarsController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'fiber': await encryptDouble(
-                              double.tryParse(_fiberController.text) ?? 0,
+                              double.tryParse(
+                                    _fiberController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'proteins': await encryptDouble(
-                              double.tryParse(_proteinsController.text) ?? 0,
+                              double.tryParse(
+                                    _proteinsController.text.replaceAll(
+                                      ',',
+                                      '.',
+                                    ),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                             'salt': await encryptDouble(
-                              double.tryParse(_saltController.text) ?? 0,
+                              double.tryParse(
+                                    _saltController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  0,
                               userDEK,
                             ),
                           },
