@@ -27,7 +27,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
   String? error;
   bool isLoading = true;
   bool isFavorite = false;
-String? servingSize;
+  String? servingSize;
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
@@ -77,7 +77,7 @@ String? servingSize;
     super.dispose();
   }
 
-    List<String> _normalizeTags(dynamic v) {
+  List<String> _normalizeTags(dynamic v) {
     if (v == null) return <String>[];
     if (v is List) return v.map((e) => e.toString()).toList();
     if (v is String) {
@@ -85,10 +85,9 @@ String? servingSize;
       if (s.isEmpty) return <String>[];
 
       // 1) Probeer expliciete OFF-tags zoals "en:milk"
-      final matches = RegExp(r'en:[^,;\/\s]+')
-          .allMatches(s)
-          .map((m) => m.group(0)!)
-          .toList();
+      final matches = RegExp(
+        r'en:[^,;\/\s]+',
+      ).allMatches(s).map((m) => m.group(0)!).toList();
       if (matches.isNotEmpty) return matches;
 
       // 2) Fallback: split op comma/semicolon/slash/whitespace
@@ -105,17 +104,21 @@ String? servingSize;
     return <String>[v.toString()];
   }
 
-String? _extractServingSize(dynamic v) {
+  String? _extractServingSize(dynamic v) {
     if (v == null) return null;
     if (v is num) return "${v.toString()} g";
     if (v is String) {
       final s = v.trim();
       if (s.isEmpty) return null;
-      final unitMatch = RegExp(r'(\d+(?:[.,]\d+)?)\s*(g|gram|gr|ml)', caseSensitive: false).firstMatch(s);
+      final unitMatch = RegExp(
+        r'(\d+(?:[.,]\d+)?)\s*(g|gram|gr|ml)',
+        caseSensitive: false,
+      ).firstMatch(s);
       if (unitMatch != null) {
         final numPart = unitMatch.group(1)!.replaceAll(',', '.');
         final unit = unitMatch.group(2)!.toLowerCase();
-        if (unit == 'ml') return "${double.tryParse(numPart)?.toString() ?? numPart} ml";
+        if (unit == 'ml')
+          return "${double.tryParse(numPart)?.toString() ?? numPart} ml";
         return "${double.tryParse(numPart)?.toString() ?? numPart} g";
       }
       final numOnly = double.tryParse(s.replaceAll(',', '.'));
@@ -125,6 +128,47 @@ String? _extractServingSize(dynamic v) {
     return v.toString();
   }
 
+  Map<String, dynamic> _mergeAndNormalizeNutriments(
+    Map<String, dynamic>? per100g,
+    Map<String, dynamic>? nutriments,
+  ) {
+    final out = <String, dynamic>{};
+
+    String normalizeKey(String k) {
+      return k
+          .replaceAll('_', '-')
+          .replaceAll(RegExp(r'(-|_)100g$'), '')
+          .replaceAll(RegExp(r'per-100g'), '')
+          .trim();
+    }
+
+    // Voeg per100g eerst toe (bewaar ook expliciete 0.0)
+    if (per100g != null) {
+      per100g.forEach((k, v) {
+        final key = normalizeKey(k);
+        if (key.isEmpty) return;
+        out[key] = v;
+      });
+    }
+
+    // Voeg nutriments daarna toe, maar alleen als waarde niet null.
+    // Overschrijf bestaande waarde alleen als die null is of numeriek 0.
+    if (nutriments != null) {
+      nutriments.forEach((k, v) {
+        if (v == null)
+          return; // skip null zodat we geen per100g 0 overschrijven met null
+        final key = normalizeKey(k);
+        if (key.isEmpty) return;
+        final existing = out[key];
+        if (existing == null || (existing is num && existing == 0)) {
+          out[key] = v;
+        }
+      });
+    }
+
+    return out;
+  }
+
   Future<void> _fetchDetails() async {
     // Haal productdetails op van OpenFoodFacts of gebruik lokale data
     if (widget.productData != null) {
@@ -132,12 +176,22 @@ String? _extractServingSize(dynamic v) {
         final isFav = await _isFavorite(
           widget.barcode,
         ); // Zorg dat _isFavorite bereikbaar is of pas dit aan
-        final nutriments =
+        /* final nutriments =
             widget.productData!['nutriments_per_100g']
                 as Map<String, dynamic>? ??
             {};
 
-        _fillControllers(nutriments);
+        _fillControllers(nutriments);*/
+
+        final rawPer100 =
+            widget.productData!['nutriments_per_100g'] as Map<String, dynamic>?;
+        final rawNut =
+            widget.productData!['nutriments'] as Map<String, dynamic>?;
+        final mergedNutriments = _mergeAndNormalizeNutriments(
+          rawPer100,
+          rawNut,
+        );
+        _fillControllers(mergedNutriments);
 
         final loadedProduct = Product(
           // Maak een Product object aan
@@ -146,9 +200,14 @@ String? _extractServingSize(dynamic v) {
           brands: widget.productData!['brands'],
           quantity: widget.productData!['quantity'],
           imageFrontUrl: widget.productData!['image_front_url'],
-additives: Additives([], _normalizeTags(widget.productData!['additives'])),
-          allergens: Allergens([], _normalizeTags(widget.productData!['allergens'])),
-
+          additives: Additives(
+            [],
+            _normalizeTags(widget.productData!['additives']),
+          ),
+          allergens: Allergens(
+            [],
+            _normalizeTags(widget.productData!['allergens']),
+          ),
         );
 
         servingSize = _extractServingSize(
@@ -387,6 +446,7 @@ additives: Additives([], _normalizeTags(widget.productData!['additives'])),
                               context,
                               product!.productName ?? 'Onbekend product',
                               nutrimentsData,
+                              servingSize,
                             );
                             if (wasAdded == true && mounted) {
                               Navigator.pop(context);
@@ -409,9 +469,9 @@ additives: Additives([], _normalizeTags(widget.productData!['additives'])),
                   Text(
                     'Voedingswaarden per 100g of ml',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: textColor,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
 
                   _buildInfoRow('Portiegrootte', servingSize),
@@ -621,119 +681,177 @@ additives: Additives([], _normalizeTags(widget.productData!['additives'])),
   }
 
   Future<void> _addRecentProduct(
-  Product product, {
-  Map<String, dynamic>? editedNutriments,
-}) async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
+    Product product, {
+    Map<String, dynamic>? editedNutriments,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  final barcode = product.barcode;
-  if (barcode == null || barcode.isEmpty) return;
+    final barcode = product.barcode;
+    if (barcode == null || barcode.isEmpty) return;
 
-  final userDEK = await getUserDEKFromRemoteConfig(user.uid);
-  if (userDEK == null) return;
+    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    if (userDEK == null) return;
 
-  final nutriments = editedNutriments ?? {
-    'energy-kcal': product.nutriments?.getValue(Nutrient.energyKCal, PerSize.oneHundredGrams),
-    'fat': product.nutriments?.getValue(Nutrient.fat, PerSize.oneHundredGrams),
-    'saturated-fat': product.nutriments?.getValue(Nutrient.saturatedFat, PerSize.oneHundredGrams),
-    'carbohydrates': product.nutriments?.getValue(Nutrient.carbohydrates, PerSize.oneHundredGrams),
-    'sugars': product.nutriments?.getValue(Nutrient.sugars, PerSize.oneHundredGrams),
-    'fiber': product.nutriments?.getValue(Nutrient.fiber, PerSize.oneHundredGrams),
-    'proteins': product.nutriments?.getValue(Nutrient.proteins, PerSize.oneHundredGrams),
-    'salt': product.nutriments?.getValue(Nutrient.salt, PerSize.oneHundredGrams),
-  };
+    final nutriments =
+        editedNutriments ??
+        {
+          'energy-kcal': product.nutriments?.getValue(
+            Nutrient.energyKCal,
+            PerSize.oneHundredGrams,
+          ),
+          'fat': product.nutriments?.getValue(
+            Nutrient.fat,
+            PerSize.oneHundredGrams,
+          ),
+          'saturated-fat': product.nutriments?.getValue(
+            Nutrient.saturatedFat,
+            PerSize.oneHundredGrams,
+          ),
+          'carbohydrates': product.nutriments?.getValue(
+            Nutrient.carbohydrates,
+            PerSize.oneHundredGrams,
+          ),
+          'sugars': product.nutriments?.getValue(
+            Nutrient.sugars,
+            PerSize.oneHundredGrams,
+          ),
+          'fiber': product.nutriments?.getValue(
+            Nutrient.fiber,
+            PerSize.oneHundredGrams,
+          ),
+          'proteins': product.nutriments?.getValue(
+            Nutrient.proteins,
+            PerSize.oneHundredGrams,
+          ),
+          'salt': product.nutriments?.getValue(
+            Nutrient.salt,
+            PerSize.oneHundredGrams,
+          ),
+        };
 
-  final encryptedNutriments = <String, dynamic>{};
-  for (final key in nutriments.keys) {
-    encryptedNutriments[key] = await encryptDouble(nutriments[key] ?? 0, userDEK);
+    final encryptedNutriments = <String, dynamic>{};
+    for (final key in nutriments.keys) {
+      encryptedNutriments[key] = await encryptDouble(
+        nutriments[key] ?? 0,
+        userDEK,
+      );
+    }
+
+    final productData = {
+      'product_name': await encryptValue(product.productName ?? '', userDEK),
+      'brands': await encryptValue(product.brands ?? '', userDEK),
+      'image_front_url': product.imageFrontUrl,
+      'serving_size': (servingSize ?? product.servingSize) != null
+          ? await encryptValue((servingSize ?? product.servingSize)!, userDEK)
+          : null,
+      'quantity': await encryptValue(product.quantity ?? '', userDEK),
+      'timestamp': FieldValue.serverTimestamp(),
+      'nutriments_per_100g': encryptedNutriments,
+      'allergens': product.allergens?.names,
+      'additives': product.additives?.names,
+      'isMyProduct': false,
+    };
+
+    productData.removeWhere((key, value) => value == null);
+    (productData['nutriments_per_100g'] as Map).removeWhere(
+      (key, value) => value == null,
+    );
+
+    final docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('recents')
+        .doc(barcode);
+
+    await docRef.set(productData, SetOptions(merge: true));
   }
-
-  final productData = {
-    'product_name': await encryptValue(product.productName ?? '', userDEK),
-    'brands': await encryptValue(product.brands ?? '', userDEK),
-    'image_front_url': product.imageFrontUrl,
-    'serving_size': (servingSize ?? product.servingSize) != null
-        ? await encryptValue((servingSize ?? product.servingSize)!, userDEK)
-        : null,
-    'quantity': await encryptValue(product.quantity ?? '', userDEK),
-    'timestamp': FieldValue.serverTimestamp(),
-    'nutriments_per_100g': encryptedNutriments,
-    'allergens': product.allergens?.names,
-    'additives': product.additives?.names,
-    'isMyProduct': false,
-  };
-
-  productData.removeWhere((key, value) => value == null);
-  (productData['nutriments_per_100g'] as Map).removeWhere(
-    (key, value) => value == null,
-  );
-
-  final docRef = FirebaseFirestore.instance
-      .collection('users')
-      .doc(user.uid)
-      .collection('recents')
-      .doc(barcode);
-
-  await docRef.set(productData, SetOptions(merge: true));
-}
 
   Future<void> _addFavoriteProduct(
-  Product product, {
-  Map<String, dynamic>? editedNutriments,
-}) async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
+    Product product, {
+    Map<String, dynamic>? editedNutriments,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  final barcode = product.barcode;
-  if (barcode == null || barcode.isEmpty) return;
+    final barcode = product.barcode;
+    if (barcode == null || barcode.isEmpty) return;
 
-  final userDEK = await getUserDEKFromRemoteConfig(user.uid);
-  if (userDEK == null) return;
+    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    if (userDEK == null) return;
 
-  final nutriments = editedNutriments ?? {
-    'energy-kcal': product.nutriments?.getValue(Nutrient.energyKCal, PerSize.oneHundredGrams),
-    'fat': product.nutriments?.getValue(Nutrient.fat, PerSize.oneHundredGrams),
-    'saturated-fat': product.nutriments?.getValue(Nutrient.saturatedFat, PerSize.oneHundredGrams),
-    'carbohydrates': product.nutriments?.getValue(Nutrient.carbohydrates, PerSize.oneHundredGrams),
-    'sugars': product.nutriments?.getValue(Nutrient.sugars, PerSize.oneHundredGrams),
-    'fiber': product.nutriments?.getValue(Nutrient.fiber, PerSize.oneHundredGrams),
-    'proteins': product.nutriments?.getValue(Nutrient.proteins, PerSize.oneHundredGrams),
-    'salt': product.nutriments?.getValue(Nutrient.salt, PerSize.oneHundredGrams),
-  };
+    final nutriments =
+        editedNutriments ??
+        {
+          'energy-kcal': product.nutriments?.getValue(
+            Nutrient.energyKCal,
+            PerSize.oneHundredGrams,
+          ),
+          'fat': product.nutriments?.getValue(
+            Nutrient.fat,
+            PerSize.oneHundredGrams,
+          ),
+          'saturated-fat': product.nutriments?.getValue(
+            Nutrient.saturatedFat,
+            PerSize.oneHundredGrams,
+          ),
+          'carbohydrates': product.nutriments?.getValue(
+            Nutrient.carbohydrates,
+            PerSize.oneHundredGrams,
+          ),
+          'sugars': product.nutriments?.getValue(
+            Nutrient.sugars,
+            PerSize.oneHundredGrams,
+          ),
+          'fiber': product.nutriments?.getValue(
+            Nutrient.fiber,
+            PerSize.oneHundredGrams,
+          ),
+          'proteins': product.nutriments?.getValue(
+            Nutrient.proteins,
+            PerSize.oneHundredGrams,
+          ),
+          'salt': product.nutriments?.getValue(
+            Nutrient.salt,
+            PerSize.oneHundredGrams,
+          ),
+        };
 
-  final encryptedNutriments = <String, dynamic>{};
-  for (final key in nutriments.keys) {
-    encryptedNutriments[key] = await encryptDouble(nutriments[key] ?? 0, userDEK);
+    final encryptedNutriments = <String, dynamic>{};
+    for (final key in nutriments.keys) {
+      encryptedNutriments[key] = await encryptDouble(
+        nutriments[key] ?? 0,
+        userDEK,
+      );
+    }
+
+    final productData = {
+      'product_name': await encryptValue(product.productName ?? '', userDEK),
+      'brands': await encryptValue(product.brands ?? '', userDEK),
+      'image_front_url': product.imageFrontUrl,
+      'quantity': await encryptValue(product.quantity ?? '', userDEK),
+      'serving_size': (servingSize ?? product.servingSize) != null
+          ? await encryptValue((servingSize ?? product.servingSize)!, userDEK)
+          : null,
+      'timestamp': FieldValue.serverTimestamp(),
+      'nutriments_per_100g': encryptedNutriments,
+      'allergens': product.allergens?.names,
+      'additives': product.additives?.names,
+    };
+
+    productData.removeWhere((key, value) => value == null);
+    (productData['nutriments_per_100g'] as Map).removeWhere(
+      (key, value) => value == null,
+    );
+
+    final docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('favorites')
+        .doc(barcode);
+
+    await docRef.set(productData, SetOptions(merge: true));
   }
-
-  final productData = {
-    'product_name': await encryptValue(product.productName ?? '', userDEK),
-    'brands': await encryptValue(product.brands ?? '', userDEK),
-    'image_front_url': product.imageFrontUrl,
-    'quantity': await encryptValue(product.quantity ?? '', userDEK),
-    'serving_size': (servingSize ?? product.servingSize) != null
-        ? await encryptValue((servingSize ?? product.servingSize)!, userDEK)
-        : null,
-    'timestamp': FieldValue.serverTimestamp(),
-    'nutriments_per_100g': encryptedNutriments,
-    'allergens': product.allergens?.names,
-    'additives': product.additives?.names,
-  };
-
-  productData.removeWhere((key, value) => value == null);
-  (productData['nutriments_per_100g'] as Map).removeWhere(
-    (key, value) => value == null,
-  );
-
-  final docRef = FirebaseFirestore.instance
-      .collection('users')
-      .doc(user.uid)
-      .collection('favorites')
-      .doc(barcode);
-
-  await docRef.set(productData, SetOptions(merge: true));
-}
 
   Future<void> _removeFavoriteProduct(String barcode) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -765,9 +883,16 @@ additives: Additives([], _normalizeTags(widget.productData!['additives'])),
     BuildContext context,
     String productName,
     Map<String, dynamic>? nutriments,
+    String? servingSize,
   ) async {
     final amountController =
         TextEditingController(); // controller voor hoeveelheid input
+    if (servingSize != null && servingSize.trim().isNotEmpty) {
+      final match = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(servingSize);
+      if (match != null) {
+        amountController.text = match.group(1)!.replaceAll(',', '.');
+      }
+    }
     final formKey = GlobalKey<FormState>();
     final hour = DateTime.now().hour;
     String selectedMeal;
@@ -855,121 +980,131 @@ additives: Additives([], _normalizeTags(widget.productData!['additives'])),
                 ),
                 ElevatedButton(
                   onPressed: () async {
-  if (formKey.currentState!.validate()) {
-    final amount = double.parse(
-      amountController.text.replaceAll(',', '.'),
-    );
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || nutriments == null) {
-      Navigator.pop(dialogContext, false);
-      return;
-    }
+                    if (formKey.currentState!.validate()) {
+                      final amount = double.parse(
+                        amountController.text.replaceAll(',', '.'),
+                      );
+                      final user = FirebaseAuth.instance.currentUser;
+                      if (user == null || nutriments == null) {
+                        Navigator.pop(dialogContext, false);
+                        return;
+                      }
 
-    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
-    if (userDEK == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kon encryptiesleutel niet ophalen.')),
-      );
-      Navigator.pop(dialogContext, false);
-      return;
-    }
+                      final userDEK = await getUserDEKFromRemoteConfig(
+                        user.uid,
+                      );
+                      if (userDEK == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Kon encryptiesleutel niet ophalen.'),
+                          ),
+                        );
+                        Navigator.pop(dialogContext, false);
+                        return;
+                      }
 
-    final factor = amount / 100.0;
-    final nutrimentsJson = nutriments;
+                      final factor = amount / 100.0;
+                      final nutrimentsJson = nutriments;
 
-    final calculatedNutriments = {
-      'energy-kcal':
-          (nutrimentsJson['energy-kcal_100g'] as num? ??
-              nutrimentsJson['energy-kcal'] as num? ??
-              0) *
-          factor,
-      'fat':
-          (nutrimentsJson['fat_100g'] as num? ??
-              nutrimentsJson['fat'] as num? ??
-              0) *
-          factor,
-      'saturated-fat':
-          (nutrimentsJson['saturated-fat_100g'] as num? ??
-              nutrimentsJson['saturated-fat'] as num? ??
-              0) *
-          factor,
-      'carbohydrates':
-          (nutrimentsJson['carbohydrates_100g'] as num? ??
-              nutrimentsJson['carbohydrates'] as num? ??
-              0) *
-          factor,
-      'sugars':
-          (nutrimentsJson['sugars_100g'] as num? ??
-              nutrimentsJson['sugars'] as num? ??
-              0) *
-          factor,
-      'fiber':
-          (nutrimentsJson['fiber_100g'] as num? ??
-              nutrimentsJson['fiber'] as num? ??
-              0) *
-          factor,
-      'proteins':
-          (nutrimentsJson['proteins_100g'] as num? ??
-              nutrimentsJson['proteins'] as num? ??
-              0) *
-          factor,
-      'salt':
-          (nutrimentsJson['salt_100g'] as num? ??
-              nutrimentsJson['salt'] as num? ??
-              0) *
-          factor,
-    };
+                      final calculatedNutriments = {
+                        'energy-kcal':
+                            (nutrimentsJson['energy-kcal_100g'] as num? ??
+                                nutrimentsJson['energy-kcal'] as num? ??
+                                0) *
+                            factor,
+                        'fat':
+                            (nutrimentsJson['fat_100g'] as num? ??
+                                nutrimentsJson['fat'] as num? ??
+                                0) *
+                            factor,
+                        'saturated-fat':
+                            (nutrimentsJson['saturated-fat_100g'] as num? ??
+                                nutrimentsJson['saturated-fat'] as num? ??
+                                0) *
+                            factor,
+                        'carbohydrates':
+                            (nutrimentsJson['carbohydrates_100g'] as num? ??
+                                nutrimentsJson['carbohydrates'] as num? ??
+                                0) *
+                            factor,
+                        'sugars':
+                            (nutrimentsJson['sugars_100g'] as num? ??
+                                nutrimentsJson['sugars'] as num? ??
+                                0) *
+                            factor,
+                        'fiber':
+                            (nutrimentsJson['fiber_100g'] as num? ??
+                                nutrimentsJson['fiber'] as num? ??
+                                0) *
+                            factor,
+                        'proteins':
+                            (nutrimentsJson['proteins_100g'] as num? ??
+                                nutrimentsJson['proteins'] as num? ??
+                                0) *
+                            factor,
+                        'salt':
+                            (nutrimentsJson['salt_100g'] as num? ??
+                                nutrimentsJson['salt'] as num? ??
+                                0) *
+                            factor,
+                      };
 
-    final now = DateTime.now();
-    final todayDocId =
-        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+                      final now = DateTime.now();
+                      final todayDocId =
+                          "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
-    final dailyLogRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('logs')
-        .doc(todayDocId);
+                      final dailyLogRef = FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(user.uid)
+                          .collection('logs')
+                          .doc(todayDocId);
 
-    // Encrypt de waarden
-    final logEntry = {
-      'product_name': await encryptValue(productName, userDEK),
-      'amount_g': await encryptDouble(amount, userDEK),
-      'timestamp': Timestamp.now(),
-      'nutrients': {
-        for (final key in calculatedNutriments.keys)
-          key: await encryptDouble(calculatedNutriments[key] ?? 0, userDEK),
-      },
-      'meal_type': await encryptValue(selectedMeal, userDEK),
-    };
+                      // Encrypt de waarden
+                      final logEntry = {
+                        'product_name': await encryptValue(
+                          productName,
+                          userDEK,
+                        ),
+                        'amount_g': await encryptDouble(amount, userDEK),
+                        'timestamp': Timestamp.now(),
+                        'nutrients': {
+                          for (final key in calculatedNutriments.keys)
+                            key: await encryptDouble(
+                              calculatedNutriments[key] ?? 0,
+                              userDEK,
+                            ),
+                        },
+                        'meal_type': await encryptValue(selectedMeal, userDEK),
+                      };
 
-    try {
-      await dailyLogRef.set({
-        'entries': FieldValue.arrayUnion([logEntry]),
-      }, SetOptions(merge: true));
+                      try {
+                        await dailyLogRef.set({
+                          'entries': FieldValue.arrayUnion([logEntry]),
+                        }, SetOptions(merge: true));
 
-      if (mounted) {
-        ScaffoldMessenger.of(this.context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '$productName toegevoegd aan je logboek.',
-            ),
-          ),
-        );
-      }
-      Navigator.pop(dialogContext, true);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(this.context).showSnackBar(
-          SnackBar(
-            content: Text('Fout bij opslaan: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      Navigator.pop(dialogContext, false);
-    }
-  }
-},
+                        if (mounted) {
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '$productName toegevoegd aan je logboek.',
+                              ),
+                            ),
+                          );
+                        }
+                        Navigator.pop(dialogContext, true);
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            SnackBar(
+                              content: Text('Fout bij opslaan: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                        Navigator.pop(dialogContext, false);
+                      }
+                    }
+                  },
                   child: const Text('Opslaan'),
                 ),
               ],

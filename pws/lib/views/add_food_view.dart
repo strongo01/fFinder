@@ -4499,6 +4499,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             context,
                             name,
                             nutrimentsMap,
+                            productData['serving_size']?.toString(),
                           );
 
                           if (wasAdded == true && context.mounted) {
@@ -4558,9 +4559,16 @@ class _AddFoodPageState extends State<AddFoodPage> {
     BuildContext context,
     String productName,
     Map<String, dynamic>? nutriments,
+    String? servingSize,
   ) async {
     final amountController =
         TextEditingController(); // controller voor hoeveelheid input
+        if (servingSize != null && servingSize.trim().isNotEmpty) {
+      final match = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(servingSize);
+      if (match != null) {
+        amountController.text = match.group(1)!.replaceAll(',', '.');
+      }
+    }
     final formKey = GlobalKey<FormState>();
     final hour = DateTime.now().hour;
     String selectedMeal;

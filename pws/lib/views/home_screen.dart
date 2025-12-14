@@ -1330,6 +1330,19 @@ Widget _buildAndroidLayout() {
                 );
               }
 
+                 if (encryptedData['serving_size'] != null) {
+                try {
+                  decryptedData['serving_size'] = await decryptValue(
+                    encryptedData['serving_size'],
+                    userDEK,
+                  );
+                } catch (e) {
+                  debugPrint("[HOME_SCREEN] Error decrypting serving_size: $e");
+                  // fallback naar het originele versleutelde object als decryptie faalt
+                  decryptedData['serving_size'] = encryptedData['serving_size'];
+                }
+              }
+
               // Decrypt de geneste voedingswaarden
               if (encryptedData['nutriments_per_100g'] != null &&
                   encryptedData['nutriments_per_100g'] is Map) {
