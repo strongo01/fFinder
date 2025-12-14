@@ -24,6 +24,7 @@ import 'barcode_scanner.dart';
 import 'recipes_view.dart';
 import 'feedback_view.dart';
 import 'weight_view.dart';
+import 'package:collection/collection.dart';
 
 //homescreen is een statefulwidget omdat de inhoud verandert
 class HomeScreen extends StatefulWidget {
@@ -61,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _feedbackKey = GlobalKey();
   final GlobalKey _settingsKey = GlobalKey();
   final GlobalKey _weightKey = GlobalKey();
-
 
   static const String _appVersion = '1.0.2';
 
@@ -244,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-    Widget _buildBannerList(bool isDarkMode) {
+  Widget _buildBannerList(bool isDarkMode) {
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance
           .collection('version')
@@ -285,8 +285,10 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                Icon(Icons.system_update,
-                    color: isDarkMode ? Colors.white : Colors.black87),
+                Icon(
+                  Icons.system_update,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -1096,7 +1098,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   //  Android layout
-Widget _buildAndroidLayout() {
+  Widget _buildAndroidLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     Widget body;
@@ -1106,12 +1108,7 @@ Widget _buildAndroidLayout() {
       body = Stack(
         children: [
           Positioned.fill(
-            child: Column(
-              children: [
-      
-                Expanded(child: _buildHomeContent()),
-              ],
-            ),
+            child: Column(children: [Expanded(child: _buildHomeContent())]),
           ),
           Positioned(
             right: 16,
@@ -1131,7 +1128,7 @@ Widget _buildAndroidLayout() {
     }
 
     return Scaffold(
-            appBar: _selectedIndex == 0
+      appBar: _selectedIndex == 0
           ? AppBar(
               title: GestureDetector(
                 key: _dateKey,
@@ -1237,7 +1234,9 @@ Widget _buildAndroidLayout() {
           onTap: () {
             // actie bij tikken
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const AddFoodPage()),
+              MaterialPageRoute(
+                builder: (context) => AddFoodPage(selectedDate: _selectedDate),
+              ),
             );
           },
         ),
@@ -1248,7 +1247,9 @@ Widget _buildAndroidLayout() {
           labelStyle: TextStyle(color: fabForegroundColor),
           onTap: () {
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const AddDrinkPage()),
+              MaterialPageRoute(
+                builder: (context) => AddDrinkPage(selectedDate: _selectedDate),
+              ),
             );
           },
         ),
@@ -1259,7 +1260,9 @@ Widget _buildAndroidLayout() {
           labelStyle: TextStyle(color: fabForegroundColor),
           onTap: () {
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const AddSportPage()),
+              MaterialPageRoute(
+                builder: (context) => AddSportPage(selectedDate: _selectedDate),
+              ),
             );
           },
         ),
@@ -1300,10 +1303,14 @@ Widget _buildAndroidLayout() {
           final docSnapshot = await recentDocRef.get();
 
           if (docSnapshot.exists) {
-            debugPrint("[HOME_SCREEN] Product found in recents for barcode: $barcode");
+            debugPrint(
+              "[HOME_SCREEN] Product found in recents for barcode: $barcode",
+            );
             // Product gevonden in recents, decrypt de data
             final encryptedData = docSnapshot.data() as Map<String, dynamic>;
-            debugPrint("[HOME_SCREEN] Encrypted data from recents: $encryptedData");
+            debugPrint(
+              "[HOME_SCREEN] Encrypted data from recents: $encryptedData",
+            );
 
             final userDEK = await getUserDEKFromRemoteConfig(user.uid);
             if (userDEK != null) {
@@ -1330,7 +1337,7 @@ Widget _buildAndroidLayout() {
                 );
               }
 
-                 if (encryptedData['serving_size'] != null) {
+              if (encryptedData['serving_size'] != null) {
                 try {
                   decryptedData['serving_size'] = await decryptValue(
                     encryptedData['serving_size'],
@@ -1347,7 +1354,8 @@ Widget _buildAndroidLayout() {
               if (encryptedData['nutriments_per_100g'] != null &&
                   encryptedData['nutriments_per_100g'] is Map) {
                 final encryptedNutriments =
-                    encryptedData['nutriments_per_100g'] as Map<String, dynamic>;
+                    encryptedData['nutriments_per_100g']
+                        as Map<String, dynamic>;
                 final decryptedNutriments = <String, dynamic>{};
                 for (final key in encryptedNutriments.keys) {
                   // Gebruik decryptDouble voor de numerieke waarden binnen nutriments
@@ -1362,11 +1370,15 @@ Widget _buildAndroidLayout() {
               productData = decryptedData;
               debugPrint("[HOME_SCREEN] Decrypted data: $productData");
             } else {
-              debugPrint("[HOME_SCREEN] User DEK not found. Using encrypted data as fallback.");
+              debugPrint(
+                "[HOME_SCREEN] User DEK not found. Using encrypted data as fallback.",
+              );
               productData = encryptedData; // Fallback to encrypted
             }
           } else {
-            debugPrint("[HOME_SCREEN] Product not found in recents for barcode: $barcode");
+            debugPrint(
+              "[HOME_SCREEN] Product not found in recents for barcode: $barcode",
+            );
           }
         } catch (e) {
           debugPrint("[HOME_SCREEN] Error fetching from recents: $e");
@@ -1379,19 +1391,24 @@ Widget _buildAndroidLayout() {
       }
 
       if (mounted) {
-        debugPrint("[HOME_SCREEN] Navigating to AddFoodPage with initialProductData: $productData");
+        debugPrint(
+          "[HOME_SCREEN] Navigating to AddFoodPage with initialProductData: $productData",
+        );
         // Controleer of de widget nog bestaat
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => AddFoodPage(
               scannedBarcode: barcode,
               initialProductData: productData,
+              selectedDate: _selectedDate,
             ),
           ),
         );
       }
     } else {
-      debugPrint("[HOME_SCREEN] Barcode scan cancelled or failed. Result: $res");
+      debugPrint(
+        "[HOME_SCREEN] Barcode scan cancelled or failed. Result: $res",
+      );
     }
 
     // Verberg laadindicator
@@ -1473,11 +1490,11 @@ Widget _buildAndroidLayout() {
       physics: const BouncingScrollPhysics(),
       child: Padding(
         padding: EdgeInsets.only(
-    left: 16,
-    right: 16,
-    top: 16,
-    bottom: MediaQuery.of(context).padding.bottom + 40,
-  ),
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(context).padding.bottom + 40,
+        ),
 
         child: _buildDailyLog(
           user.uid,
@@ -2805,24 +2822,106 @@ Widget _buildAndroidLayout() {
   }
 
   Future<void> _deleteLogEntry(Map<String, dynamic> entry) async {
-    // verwijdert een log entry uit Firestore
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      return;
+    }
 
     final date = _selectedDate;
-    final todayDocId =
+    final docId =
         "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
     final docRef = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
         .collection('logs')
-        .doc(todayDocId);
+        .doc(docId);
+
+    // Normaliseer helper
+    dynamic _normalize(dynamic v) {
+      if (v is Map) {
+        final map = <String, dynamic>{};
+        v.forEach((k, val) => map[k] = _normalize(val));
+        return map;
+      }
+      if (v is List) return v.map(_normalize).toList();
+      if (v is Timestamp) return v.millisecondsSinceEpoch;
+      if (v is DateTime) return v.millisecondsSinceEpoch;
+      return v;
+    }
+
+    final targetNormalized = _normalize(entry);
 
     try {
-      await docRef.update({
-        'entries': FieldValue.arrayRemove([entry]),
+      // Log current doc state for debugging
+      final snap = await docRef.get();
+      debugPrint("[DELETE_LOG] Doc exists: ${snap.exists}");
+      if (snap.exists) {
+        final data = snap.data()!;
+        final currentEntries = List.from(
+          data['entries'] as List<dynamic>? ?? [],
+        );
+        for (var i = 0; i < currentEntries.length; i++) {
+          if (i >= 5) break;
+        }
+      } else {}
+
+      await FirebaseFirestore.instance.runTransaction((tx) async {
+        final doc = await tx.get(docRef);
+        if (!doc.exists) {
+          return;
+        }
+
+        final data = doc.data()!;
+        final entries = List.from(data['entries'] as List<dynamic>? ?? []);
+
+        int? foundIndex;
+        final eq = const DeepCollectionEquality();
+
+        for (var i = 0; i < entries.length; i++) {
+          final candidateNorm = _normalize(entries[i]);
+          if (eq.equals(candidateNorm, targetNormalized)) {
+            foundIndex = i;
+            break;
+          }
+        }
+
+        // heuristiek: match op timestamp if exact match failed
+        if (foundIndex == null) {
+          final targetTs = targetNormalized['timestamp'];
+          if (targetTs != null) {
+            for (var i = 0; i < entries.length; i++) {
+              try {
+                final cand = entries[i] as Map<String, dynamic>;
+                final candTs = cand['timestamp'] is Timestamp
+                    ? (cand['timestamp'] as Timestamp).millisecondsSinceEpoch
+                    : cand['timestamp'] is DateTime
+                    ? (cand['timestamp'] as DateTime).millisecondsSinceEpoch
+                    : cand['timestamp'];
+                if (candTs != null && candTs == targetTs) {
+                  foundIndex = i;
+                  break;
+                }
+              } catch (e) {
+                // ignore
+              }
+            }
+          }
+        }
+
+        if (foundIndex == null) {
+          return;
+        }
+
+        entries.removeAt(foundIndex);
+        if (entries.isEmpty) {
+          tx.delete(docRef);
+        } else {
+          tx.update(docRef, {'entries': entries});
+        }
       });
-    } catch (e) {
+    } catch (e, s) {
+      debugPrint("[DELETE_LOG] Error deleting entry: $e");
+      debugPrint("[DELETE_LOG] Stack: $s");
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -2911,13 +3010,13 @@ Widget _buildAndroidLayout() {
     if (user == null) return;
 
     final date = _selectedDate;
-    final todayDocId =
+    final docId =
         "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
     final docRef = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
         .collection('logs')
-        .doc(todayDocId);
+        .doc(docId);
 
     final originalAmount = decryptedEntry['amount_g'] as num?;
     final originalNutriments =

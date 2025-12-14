@@ -21,8 +21,13 @@ class AddFoodPage extends StatefulWidget {
   final String? scannedBarcode;
   final Map<String, dynamic>?
   initialProductData; //initialproductdata: de data van het product als die al bekend is (barcode)
-
-  const AddFoodPage({super.key, this.scannedBarcode, this.initialProductData});
+  final DateTime? selectedDate;
+  const AddFoodPage({
+    super.key,
+    this.scannedBarcode,
+    this.initialProductData,
+    this.selectedDate,
+  });
   State<AddFoodPage> createState() => _AddFoodPageState();
 }
 
@@ -172,7 +177,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 fetched['serving_size'] ??
                     fetched['serving-size'] ??
                     fetched['servingSize'] ??
-                    fetched['serving_quantity']
+                    fetched['serving_quantity'],
               );
               productData = fetched;
               debugPrint(
@@ -1431,12 +1436,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   userDEK,
                 );
               }
-  if (encryptedData['serving_size'] != null) {
-                 decryptedData['serving_size'] = await decryptValue(
-                   encryptedData['serving_size'],
-                   userDEK,
-                 );
-               }
+              if (encryptedData['serving_size'] != null) {
+                decryptedData['serving_size'] = await decryptValue(
+                  encryptedData['serving_size'],
+                  userDEK,
+                );
+              }
               // Decrypt de geneste voedingswaarden
               if (encryptedData['nutriments_per_100g'] != null &&
                   encryptedData['nutriments_per_100g'] is Map) {
@@ -2298,7 +2303,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     if (v is String) {
       final s = v.trim();
       if (s.isEmpty) return null;
-           final unitMatch = RegExp(
+      final unitMatch = RegExp(
         r'(\d+(?:[.,]\d+)?)\s*(g|gram|gr|ml)',
         caseSensitive: false,
       ).firstMatch(s);
@@ -2372,7 +2377,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
           normalized['serving_size'] ??
               normalized['serving-size'] ??
               normalized['servingSize'] ??
-              normalized['serving_quantity'] 
+              normalized['serving_quantity'],
         );
         // Parse num or numeric string to double
         double _asDouble(dynamic v) {
@@ -2456,6 +2461,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
           productData: normalized,
           isForMeal: isForMeal,
           initialAmount: initialAmount,
+          selectedDate: widget.selectedDate,
         );
       },
     );
@@ -2585,9 +2591,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             );
                           }
                           if (product['serving_size'] != null) {
-                           decryptedProduct['serving_size'] =
-                               await decryptValue(product['serving_size'], userDEK);
-                         }
+                            decryptedProduct['serving_size'] =
+                                await decryptValue(
+                                  product['serving_size'],
+                                  userDEK,
+                                );
+                          }
                           if (product['quantity'] != null) {
                             decryptedProduct['quantity'] = await decryptValue(
                               product['quantity'],
@@ -2757,9 +2766,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               );
                             }
                             if (product['serving_size'] != null) {
-                           decrypted['serving_size'] =
-                               await decryptValue(product['serving_size'], userDEK);
-                         }
+                              decrypted['serving_size'] = await decryptValue(
+                                product['serving_size'],
+                                userDEK,
+                              );
+                            }
                             if (product['nutriments_per_100g'] != null) {
                               final nutriments =
                                   product['nutriments_per_100g']
@@ -2910,10 +2921,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 userDEK,
                               );
                             }
-                             if (product['serving_size'] != null) {
-                           decrypted['serving_size'] =
-                               await decryptValue(product['serving_size'], userDEK);
-                         }
+                            if (product['serving_size'] != null) {
+                              decrypted['serving_size'] = await decryptValue(
+                                product['serving_size'],
+                                userDEK,
+                              );
+                            }
                             if (product['nutriments_per_100g'] != null) {
                               final nutriments =
                                   product['nutriments_per_100g']
@@ -3320,9 +3333,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final String? selectedMealType = await _showSelectMealTypeDialog(context);
     if (selectedMealType == null) return;
 
-    final now = DateTime.now();
+/*final now = DateTime.now();
     final todayDocId =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+*/
+debugPrint("SELECTEDDATE: ${widget.selectedDate}");
+    final date = widget.selectedDate ?? DateTime.now();
+    final todayDocId =
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
     final dailyLogRef = FirebaseFirestore.instance
         .collection('users')
@@ -4563,7 +4581,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   ) async {
     final amountController =
         TextEditingController(); // controller voor hoeveelheid input
-        if (servingSize != null && servingSize.trim().isNotEmpty) {
+    if (servingSize != null && servingSize.trim().isNotEmpty) {
       final match = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(servingSize);
       if (match != null) {
         amountController.text = match.group(1)!.replaceAll(',', '.');
@@ -4727,9 +4745,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             factor,
                       };
 
-                      final now = DateTime.now();
+                      /*final now = DateTime.now();
                       final todayDocId =
                           "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+*/
+                      final date = widget.selectedDate ?? DateTime.now();
+                      final todayDocId =
+                          "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
                       final dailyLogRef = FirebaseFirestore.instance
                           .collection('users')

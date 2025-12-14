@@ -9,6 +9,7 @@ class ProductEditSheet extends StatefulWidget {
   final Map<String, dynamic>? productData;
   final bool isForMeal;
   final double? initialAmount;
+  final DateTime? selectedDate;
 
   const ProductEditSheet({
     Key? key,
@@ -16,6 +17,7 @@ class ProductEditSheet extends StatefulWidget {
     this.productData,
     this.isForMeal = false,
     this.initialAmount,
+    this.selectedDate,
   }) : super(key: key);
 
   @override
@@ -1049,9 +1051,14 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                             factor,
                       };
 
-                      final now = DateTime.now();
+                     /* final now = DateTime.now();
                       final todayDocId =
                           "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+*/
+debugPrint("SELECTEDDATE: ${widget.selectedDate}");
+final date = widget.selectedDate ?? DateTime.now();
+                      final todayDocId =
+                          "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
                       final dailyLogRef = FirebaseFirestore.instance
                           .collection('users')

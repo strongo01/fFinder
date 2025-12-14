@@ -5,7 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'crypto_class.dart';
 
 class AddSportPage extends StatefulWidget {
-  const AddSportPage({super.key});
+  final DateTime? selectedDate;
+  const AddSportPage({super.key, this.selectedDate,});
 
   @override
   State<AddSportPage> createState() => _AddSportPageState();
@@ -80,7 +81,7 @@ class _AddSportPageState extends State<AddSportPage> {
             'sport': encryptedSport,
             'duration_min': encryptedDuration,
             'calories_burned': encryptedCalories,
-            'timestamp': DateTime.now(),
+            'timestamp': widget.selectedDate ?? DateTime.now(),
           });
 
       if (mounted) {

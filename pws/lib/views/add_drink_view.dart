@@ -6,7 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddDrinkPage extends StatefulWidget {
-  const AddDrinkPage({super.key});
+  final DateTime? selectedDate;
+  const AddDrinkPage({super.key, this.selectedDate,});
 
   @override
   State<AddDrinkPage> createState() => _AddDrinkPageState();
@@ -202,9 +203,13 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
 
     SecretKey? userDEK = await getUserDEKFromRemoteConfig(user.uid);
 
-    final now = DateTime.now();
+    /*final now = DateTime.now();
     final todayDocId =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+*/
+    final date = widget.selectedDate ?? DateTime.now();
+    final todayDocId =
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
     String productNameField = name;
     String quantityField = '$amount ml';
@@ -245,7 +250,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       'quantity': quantityField,
       'meal_type': mealTypeField,
       'drinkTime': drinkTimeField,
-      'timestamp': now,
+      'timestamp': date,
 
       'kcal': kcalField,
       'nutriments': {
