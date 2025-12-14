@@ -27,7 +27,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
   String? error;
   bool isLoading = true;
   bool isFavorite = false;
-
+String? servingSize;
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
@@ -105,6 +105,26 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     return <String>[v.toString()];
   }
 
+String? _extractServingSize(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return "${v.toString()} g";
+    if (v is String) {
+      final s = v.trim();
+      if (s.isEmpty) return null;
+      final unitMatch = RegExp(r'(\d+(?:[.,]\d+)?)\s*(g|gram|gr|ml)', caseSensitive: false).firstMatch(s);
+      if (unitMatch != null) {
+        final numPart = unitMatch.group(1)!.replaceAll(',', '.');
+        final unit = unitMatch.group(2)!.toLowerCase();
+        if (unit == 'ml') return "${double.tryParse(numPart)?.toString() ?? numPart} ml";
+        return "${double.tryParse(numPart)?.toString() ?? numPart} g";
+      }
+      final numOnly = double.tryParse(s.replaceAll(',', '.'));
+      if (numOnly != null) return "${numOnly.toString()} g";
+      return s;
+    }
+    return v.toString();
+  }
+
   Future<void> _fetchDetails() async {
     // Haal productdetails op van OpenFoodFacts of gebruik lokale data
     if (widget.productData != null) {
@@ -129,6 +149,13 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
 additives: Additives([], _normalizeTags(widget.productData!['additives'])),
           allergens: Allergens([], _normalizeTags(widget.productData!['allergens'])),
 
+        );
+
+        servingSize = _extractServingSize(
+          widget.productData!['serving_size'] ??
+              widget.productData!['serving-size'] ??
+              widget.productData!['servingSize'] ??
+              widget.productData!['serving_quantity'],
         );
 
         if (mounted) {
@@ -212,6 +239,7 @@ additives: Additives([], _normalizeTags(widget.productData!['additives'])),
             product = p;
             isLoading = false;
             isFavorite = isFav;
+            servingSize = _extractServingSize(p.servingSize);
           });
         }
       } else {
@@ -385,6 +413,9 @@ additives: Additives([], _normalizeTags(widget.productData!['additives'])),
                           fontWeight: FontWeight.bold,
                         ),
                   ),
+
+                  _buildInfoRow('Portiegrootte', servingSize),
+
                   const SizedBox(height: 8),
                   _buildEditableInfoRow(
                     'Energie (kcal)',
@@ -424,7 +455,6 @@ additives: Additives([], _normalizeTags(widget.productData!['additives'])),
                     'Allergenen',
                     product!.allergens?.names.join(", "),
                   ),
-
                   if (widget.isForMeal) ...[
                     // Alleen tonen als voor maaltijd
                     const SizedBox(height: 24),
@@ -623,6 +653,9 @@ additives: Additives([], _normalizeTags(widget.productData!['additives'])),
     'product_name': await encryptValue(product.productName ?? '', userDEK),
     'brands': await encryptValue(product.brands ?? '', userDEK),
     'image_front_url': product.imageFrontUrl,
+    'serving_size': (servingSize ?? product.servingSize) != null
+        ? await encryptValue((servingSize ?? product.servingSize)!, userDEK)
+        : null,
     'quantity': await encryptValue(product.quantity ?? '', userDEK),
     'timestamp': FieldValue.serverTimestamp(),
     'nutriments_per_100g': encryptedNutriments,
@@ -679,6 +712,9 @@ additives: Additives([], _normalizeTags(widget.productData!['additives'])),
     'brands': await encryptValue(product.brands ?? '', userDEK),
     'image_front_url': product.imageFrontUrl,
     'quantity': await encryptValue(product.quantity ?? '', userDEK),
+    'serving_size': (servingSize ?? product.servingSize) != null
+        ? await encryptValue((servingSize ?? product.servingSize)!, userDEK)
+        : null,
     'timestamp': FieldValue.serverTimestamp(),
     'nutriments_per_100g': encryptedNutriments,
     'allergens': product.allergens?.names,

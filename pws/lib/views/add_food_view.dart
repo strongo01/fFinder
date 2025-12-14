@@ -69,7 +69,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     // Verplaatst naar initState om meervoudige aanroepen te voorkomen
   }
 
-    void _handleInitialAction() async {
+  void _handleInitialAction() async {
     // Wacht kort om zeker te zijn dat context beschikbaar is.
     await Future.delayed(const Duration(milliseconds: 100));
 
@@ -91,8 +91,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
 
     if (widget.scannedBarcode != null) {
-      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: Barcode detected from widget.");
-      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: initialProductData: ${widget.initialProductData}");
+      debugPrint(
+        "[ADD_FOOD_VIEW] _handleInitialAction: Barcode detected from widget.",
+      );
+      debugPrint(
+        "[ADD_FOOD_VIEW] _handleInitialAction: initialProductData: ${widget.initialProductData}",
+      );
 
       _isSheetShown = true; // voorkom herhaling
 
@@ -100,7 +104,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
       Map<String, dynamic>? productData = widget.initialProductData;
       if (productData == null) {
         try {
-          final offUrl = Uri.parse('https://nl.openfoodfacts.org/api/v0/product/${widget.scannedBarcode}.json');
+          final offUrl = Uri.parse(
+            'https://nl.openfoodfacts.org/api/v0/product/${widget.scannedBarcode}.json',
+          );
           final resp = await http.get(offUrl);
           if (resp.statusCode == 200) {
             final j = jsonDecode(resp.body) as Map<String, dynamic>;
@@ -111,25 +117,35 @@ class _AddFoodPageState extends State<AddFoodPage> {
               double _asDouble(dynamic v) {
                 if (v == null) return 0.0;
                 if (v is num) return v.toDouble();
-                if (v is String) return double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
+                if (v is String)
+                  return double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
                 return 0.0;
               }
 
               // normaliseer nutriments indien nodig
-              if (fetched['nutriments_per_100g'] == null && fetched['nutriments'] is Map) {
+              if (fetched['nutriments_per_100g'] == null &&
+                  fetched['nutriments'] is Map) {
                 final n = fetched['nutriments'] as Map<String, dynamic>;
                 fetched['nutriments_per_100g'] = {
-                  'energy-kcal': _asDouble(n['energy-kcal_100g'] ?? n['energy-kcal']),
+                  'energy-kcal': _asDouble(
+                    n['energy-kcal_100g'] ?? n['energy-kcal'],
+                  ),
                   'fat': _asDouble(n['fat_100g'] ?? n['fat']),
-                  'saturated-fat': _asDouble(n['saturated-fat_100g'] ?? n['saturated-fat']),
-                  'carbohydrates': _asDouble(n['carbohydrates_100g'] ?? n['carbohydrates']),
+                  'saturated-fat': _asDouble(
+                    n['saturated-fat_100g'] ?? n['saturated-fat'],
+                  ),
+                  'carbohydrates': _asDouble(
+                    n['carbohydrates_100g'] ?? n['carbohydrates'],
+                  ),
                   'sugars': _asDouble(n['sugars_100g'] ?? n['sugars']),
                   'fiber': _asDouble(n['fiber_100g'] ?? n['fiber']),
                   'proteins': _asDouble(n['proteins_100g'] ?? n['proteins']),
                   'salt': _asDouble(n['salt_100g'] ?? n['salt']),
                 };
               } else if (fetched['nutriments_per_100g'] is Map) {
-                final mp = Map<String, dynamic>.from(fetched['nutriments_per_100g'] as Map);
+                final mp = Map<String, dynamic>.from(
+                  fetched['nutriments_per_100g'] as Map,
+                );
                 final fixed = <String, dynamic>{};
                 for (final k in mp.keys) {
                   fixed[k] = _asDouble(mp[k]);
@@ -138,21 +154,36 @@ class _AddFoodPageState extends State<AddFoodPage> {
               }
 
               // normaliseer tags via bestaande helper
-              fetched['allergens_tags'] = _normalizeTags(fetched['allergens_tags'] ?? fetched['allergens']);
-              fetched['additives_tags'] = _normalizeTags(fetched['additives_tags'] ?? fetched['additives']);
-              fetched['traces_tags'] = _normalizeTags(fetched['traces_tags'] ?? fetched['traces']);
+              fetched['allergens_tags'] = _normalizeTags(
+                fetched['allergens_tags'] ?? fetched['allergens'],
+              );
+              fetched['additives_tags'] = _normalizeTags(
+                fetched['additives_tags'] ?? fetched['additives'],
+              );
+              fetched['traces_tags'] = _normalizeTags(
+                fetched['traces_tags'] ?? fetched['traces'],
+              );
 
               // vul enkele velden zodat sheet minder hoeft te fetchen
               fetched['product_name'] = fetched['product_name'] ?? '';
               fetched['brands'] = fetched['brands'] ?? '';
               fetched['quantity'] = fetched['quantity'] ?? '';
-
+              fetched['serving_size'] = _extractServingSize(
+                fetched['serving_size'] ??
+                    fetched['serving-size'] ??
+                    fetched['servingSize'] ??
+                    fetched['serving_quantity']
+              );
               productData = fetched;
-              debugPrint("[ADD_FOOD_VIEW] Fetched product from OFF for ${widget.scannedBarcode}");
+              debugPrint(
+                "[ADD_FOOD_VIEW] Fetched product from OFF for ${widget.scannedBarcode}",
+              );
             }
           }
         } catch (e) {
-          debugPrint("[ADD_FOOD_VIEW] OFF fetch failed in _handleInitialAction: $e");
+          debugPrint(
+            "[ADD_FOOD_VIEW] OFF fetch failed in _handleInitialAction: $e",
+          );
         }
       }
 
@@ -162,7 +193,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
       }
     } else if (!tutorialCompleted) {
       // Start tutorial alleen als geen barcode
-      debugPrint("[ADD_FOOD_VIEW] _handleInitialAction: No barcode, starting tutorial.");
+      debugPrint(
+        "[ADD_FOOD_VIEW] _handleInitialAction: No barcode, starting tutorial.",
+      );
       Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
           tutorialCoachMark.show(context: context);
@@ -1398,7 +1431,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   userDEK,
                 );
               }
-
+  if (encryptedData['serving_size'] != null) {
+                 decryptedData['serving_size'] = await decryptValue(
+                   encryptedData['serving_size'],
+                   userDEK,
+                 );
+               }
               // Decrypt de geneste voedingswaarden
               if (encryptedData['nutriments_per_100g'] != null &&
                   encryptedData['nutriments_per_100g'] is Map) {
@@ -1439,7 +1477,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       }
 
       // Toon de product details sheet met de (mogelijk) gedecrypteerde data
-if (mounted) {
+      if (mounted) {
         // Als we geen lokaal (gedecodeerd) product hebben, probeer eerst OpenFoodFacts
         if (productData == null) {
           try {
@@ -1454,28 +1492,39 @@ if (mounted) {
                 final normalized = Map<String, dynamic>.from(p);
 
                 // normalize tags/nutriments similar to _showProductDetails
-                normalized['allergens_tags'] =
-                    _normalizeTags(normalized['allergens_tags']);
-                normalized['traces_tags'] =
-                    _normalizeTags(normalized['traces_tags']);
-                normalized['additives_tags'] =
-                    _normalizeTags(normalized['additives_tags']);
+                normalized['allergens_tags'] = _normalizeTags(
+                  normalized['allergens_tags'],
+                );
+                normalized['traces_tags'] = _normalizeTags(
+                  normalized['traces_tags'],
+                );
+                normalized['additives_tags'] = _normalizeTags(
+                  normalized['additives_tags'],
+                );
 
                 // ensure nutriments_per_100g numeric
                 double _asDouble(dynamic v) {
                   if (v == null) return 0.0;
                   if (v is num) return v.toDouble();
-                  if (v is String) return double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
+                  if (v is String)
+                    return double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
                   return 0.0;
                 }
+
                 if (normalized['nutriments_per_100g'] == null &&
                     normalized['nutriments'] is Map) {
                   final n = normalized['nutriments'] as Map<String, dynamic>;
                   normalized['nutriments_per_100g'] = {
-                    'energy-kcal': _asDouble(n['energy-kcal_100g'] ?? n['energy-kcal']),
+                    'energy-kcal': _asDouble(
+                      n['energy-kcal_100g'] ?? n['energy-kcal'],
+                    ),
                     'fat': _asDouble(n['fat_100g'] ?? n['fat']),
-                    'saturated-fat': _asDouble(n['saturated-fat_100g'] ?? n['saturated-fat']),
-                    'carbohydrates': _asDouble(n['carbohydrates_100g'] ?? n['carbohydrates']),
+                    'saturated-fat': _asDouble(
+                      n['saturated-fat_100g'] ?? n['saturated-fat'],
+                    ),
+                    'carbohydrates': _asDouble(
+                      n['carbohydrates_100g'] ?? n['carbohydrates'],
+                    ),
                     'sugars': _asDouble(n['sugars_100g'] ?? n['sugars']),
                     'fiber': _asDouble(n['fiber_100g'] ?? n['fiber']),
                     'proteins': _asDouble(n['proteins_100g'] ?? n['proteins']),
@@ -1484,7 +1533,15 @@ if (mounted) {
                 }
 
                 productData = normalized;
-                debugPrint('[ADD_FOOD_VIEW] Fetched product from OFF for $barcode');
+                productData['serving_size'] = _extractServingSize(
+                  normalized['serving_size'] ??
+                      normalized['serving-size'] ??
+                      normalized['servingSize'] ??
+                      normalized['serving_quantity'],
+                );
+                debugPrint(
+                  '[ADD_FOOD_VIEW] Fetched product from OFF for $barcode',
+                );
               }
             }
           } catch (e) {
@@ -1777,7 +1834,12 @@ if (mounted) {
             if (barcode != null) {
               // Normalize product for OFF structure
               final normalized = Map<String, dynamic>.from(product);
-
+              normalized['serving_size'] = _extractServingSize(
+                normalized['serving_size'] ??
+                    normalized['serving-size'] ??
+                    normalized['servingSize'] ??
+                    normalized['serving_quantity'],
+              );
               normalized['allergens_tags'] = _normalizeTags(
                 normalized['allergens_tags'],
               );
@@ -1962,6 +2024,7 @@ if (mounted) {
                       context,
                     ).textTheme.titleLarge?.copyWith(color: textColor),
                   ),
+
                   TextFormField(
                     controller: _caloriesController,
                     style: TextStyle(color: textColor),
@@ -2229,6 +2292,30 @@ if (mounted) {
     return <dynamic>[];
   }
 
+  String? _extractServingSize(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return "${v.toString()} g";
+    if (v is String) {
+      final s = v.trim();
+      if (s.isEmpty) return null;
+           final unitMatch = RegExp(
+        r'(\d+(?:[.,]\d+)?)\s*(g|gram|gr|ml)',
+        caseSensitive: false,
+      ).firstMatch(s);
+      if (unitMatch != null) {
+        final numPart = unitMatch.group(1)!.replaceAll(',', '.');
+        final unit = unitMatch.group(2)!.toLowerCase();
+        if (unit == 'ml')
+          return "${double.tryParse(numPart)?.toString() ?? numPart} ml";
+        return "${double.tryParse(numPart)?.toString() ?? numPart} g";
+      }
+      final numOnly = double.tryParse(s.replaceAll(',', '.'));
+      if (numOnly != null) return "${numOnly.toString()} g";
+      return s;
+    }
+    return v.toString();
+  }
+
   Future<void> _addRecentMyProduct(
     // voeg recent eigen product toe
     Map<String, dynamic> productData,
@@ -2281,7 +2368,12 @@ if (mounted) {
       isScrollControlled: true,
       builder: (context) {
         final normalized = Map<String, dynamic>.from(productData ?? {});
-
+        normalized['serving_size'] = _extractServingSize(
+          normalized['serving_size'] ??
+              normalized['serving-size'] ??
+              normalized['servingSize'] ??
+              normalized['serving_quantity'] 
+        );
         // Parse num or numeric string to double
         double _asDouble(dynamic v) {
           if (v == null) return 0.0;
@@ -2492,6 +2584,10 @@ if (mounted) {
                               userDEK,
                             );
                           }
+                          if (product['serving_size'] != null) {
+                           decryptedProduct['serving_size'] =
+                               await decryptValue(product['serving_size'], userDEK);
+                         }
                           if (product['quantity'] != null) {
                             decryptedProduct['quantity'] = await decryptValue(
                               product['quantity'],
@@ -2521,7 +2617,7 @@ if (mounted) {
                         return decryptedProduct;
                       }(),
                       builder: (context, decryptedSnapshot) {
-                 if (decryptedSnapshot.connectionState ==
+                        if (decryptedSnapshot.connectionState ==
                             ConnectionState.waiting) {
                           return const SizedBox.shrink();
                         }
@@ -2660,6 +2756,10 @@ if (mounted) {
                                 userDEK,
                               );
                             }
+                            if (product['serving_size'] != null) {
+                           decrypted['serving_size'] =
+                               await decryptValue(product['serving_size'], userDEK);
+                         }
                             if (product['nutriments_per_100g'] != null) {
                               final nutriments =
                                   product['nutriments_per_100g']
@@ -2681,7 +2781,7 @@ if (mounted) {
                         return decrypted;
                       }(),
                       builder: (context, decryptedSnapshot) {
-                       if (!decryptedSnapshot.hasData) {
+                        if (!decryptedSnapshot.hasData) {
                           return const SizedBox.shrink();
                         }
                         final decryptedProduct = decryptedSnapshot.data!;
@@ -2810,6 +2910,10 @@ if (mounted) {
                                 userDEK,
                               );
                             }
+                             if (product['serving_size'] != null) {
+                           decrypted['serving_size'] =
+                               await decryptValue(product['serving_size'], userDEK);
+                         }
                             if (product['nutriments_per_100g'] != null) {
                               final nutriments =
                                   product['nutriments_per_100g']
@@ -3050,7 +3154,7 @@ if (mounted) {
                         return decryptedMeal;
                       }(),
                       builder: (context, decryptedSnapshot) {
-                     if (!decryptedSnapshot.hasData) {
+                        if (!decryptedSnapshot.hasData) {
                           return const SizedBox.shrink();
                         }
                         final decryptedMeal = decryptedSnapshot.data!;
@@ -4408,6 +4512,10 @@ if (mounted) {
                   const SizedBox(height: 8),
                   _buildInfoRow('Merk', brand),
                   _buildInfoRow('Hoeveelheid', quantity),
+                  _buildInfoRow(
+                    'Portiegrootte',
+                    productData['serving_size']?.toString(),
+                  ),
                   const Divider(height: 24),
                   Text(
                     'Voedingswaarden per 100g of ml',
