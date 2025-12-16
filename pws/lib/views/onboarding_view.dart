@@ -837,9 +837,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                         decoration: const InputDecoration(
                           labelText: 'Lengte in cm',
                           border: OutlineInputBorder(),
-                          suffixText: 'cm',
-                          helperText:
-                              'Min $minHeightCm cm - Max $maxHeightCm cm',
+                          suffixText: 'cm'
                         ),
                       ),
                     ),
@@ -862,8 +860,6 @@ class _OnboardingViewState extends State<OnboardingView> {
                           labelText: 'Gewicht in kg',
                           border: OutlineInputBorder(),
                           suffixText: 'kg',
-                          helperText:
-                              'Min $minWeightKg kg - Max $maxWeightKg kg',
                         ),
                       ),
                     ),
