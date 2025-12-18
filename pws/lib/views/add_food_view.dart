@@ -227,6 +227,17 @@ class _AddFoodPageState extends State<AddFoodPage> {
           });
         }
       },
+      onSkip: () {
+        debugPrint("Tutorial overgeslagen");
+        prefs.setBool('food_tutorial_shown', true);
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+            'tutorialFoodAf': true,
+          });
+        }
+        return true; // Return true om de tutorial te sluiten
+      },
       onClickTarget: (target) {
         // wanneer een target wordt aangeklikt
         debugPrint('Target geklikt: $target');
@@ -454,8 +465,32 @@ class _AddFoodPageState extends State<AddFoodPage> {
     return v.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
-  List<String> _tokens(String? s) =>
-      _normalize(s).split(' ').where((e) => e.isNotEmpty).toList();
+  List<String> _tokensWithCompounds(String? s) {
+    final base = _normalize(s);
+    if (base.isEmpty) return [];
+
+    // losse tokens
+    final parts = base.split(' ').where((e) => e.isNotEmpty).toList();
+
+    final out = <String>[];
+    out.addAll(parts);
+
+    // voeg bigram-concatenaties toe (volkoren + brood -> volkorenbrood)
+    for (int i = 0; i < parts.length - 1; i++) {
+      out.add(parts[i] + parts[i + 1]);
+    }
+
+    // voeg full concat toe (als meerdere woorden) (volkoren brood tarwe -> volkorenbroodtarwe)
+    if (parts.length > 1) {
+      out.add(parts.join());
+    }
+
+    // optioneel: voeg trigram concats (beperkt) — comment uit als je dat te ver vindt
+    // if (parts.length >= 3) out.add(parts[0] + parts[1] + parts[2]);
+
+    // dedupe and return
+    return out.toSet().toList();
+  }
 
   bool _isSingleWordQuery(String q) {
     return q.trim().split(' ').length == 1;
@@ -474,11 +509,15 @@ class _AddFoodPageState extends State<AddFoodPage> {
     if (rawName.isEmpty) return 0;
 
     final name = _normalize(rawName);
-    final nameTokensRaw = _tokens(rawName); // tokens from raw name, normalized
+    final nameTokensRaw = _tokensWithCompounds(
+      rawName,
+    ); // tokens from raw name, normalized
     final nameTokens = nameTokensRaw
         .map((t) => _stem(t))
         .toList(); // stemmed tokens
-    final queryTokens = _tokens(query).map((t) => _stem(t)).toList();
+    final queryTokens = _tokensWithCompounds(
+      query,
+    ).map((t) => _stem(t)).toList();
 
     final categories = _normalize(p['categories'] ?? '');
     final catTags = _normalize((p['categories_tags'] ?? '').toString());
@@ -588,7 +627,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
 
     // enkelvoudige productnaam (zoals "appel", "elstar", "fuji")
-    final nameTokens = _tokens(p['product_name']);
+    final nameTokens = _tokensWithCompounds(p['product_name']);
     if (nameTokens.length <= 2 && nameTokens.any((t) => t == query)) {
       return true;
     }
@@ -596,7 +635,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
     return false;
   }
 
-    List<Map<String, dynamic>> _rankProducts(List products, String query, {int take = 50}) {
+  List<Map<String, dynamic>> _rankProducts(
+    List products,
+    String query, {
+    int take = 50,
+  }) {
     final q = _normalize(query);
     final ranked = products.map((p) {
       final map = p as Map<String, dynamic>;
@@ -605,7 +648,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }).toList();
 
     ranked.sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
-    return ranked.take(take).map((e) => Map<String, dynamic>.from(e['product'] as Map)).toList();
+    return ranked
+        .take(take)
+        .map((e) => Map<String, dynamic>.from(e['product'] as Map))
+        .toList();
   }
 
   Future<void> _searchProducts(String query, {bool loadMore = false}) async {
@@ -1012,20 +1058,23 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       }
                     }
 
-                      final ranked = _rankProducts(all, query, take: 50);
-                   setModalState(() {
-                     if (loadMore) {
-                       final existing =
-                           (ingredientEntries[index]['searchResults'] as List?) ??
-                               [];
-                       ingredientEntries[index]['searchResults'] =
-                           [...existing, ...ranked];
-                       ingredientEntries[index]['hasLoadedMore'] = true;
-                     } else {
-                       ingredientEntries[index]['searchResults'] = ranked;
-                     }
-                     ingredientEntries[index]['isSearching'] = false;
-                   });
+                    final ranked = _rankProducts(all, query, take: 50);
+                    setModalState(() {
+                      if (loadMore) {
+                        final existing =
+                            (ingredientEntries[index]['searchResults']
+                                as List?) ??
+                            [];
+                        ingredientEntries[index]['searchResults'] = [
+                          ...existing,
+                          ...ranked,
+                        ];
+                        ingredientEntries[index]['hasLoadedMore'] = true;
+                      } else {
+                        ingredientEntries[index]['searchResults'] = ranked;
+                      }
+                      ingredientEntries[index]['isSearching'] = false;
+                    });
                   } catch (e) {
                     setModalState(() {
                       ingredientEntries[index]['searchResults'] = [];
@@ -1087,8 +1136,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 ),
                                 child: ListTile(
                                   title: Text(
-                                    selectedProduct['product_name'] ??
-                                        'Onbekend',
+                                    _displayProductName(
+                                      selectedProduct['product_name'],
+                                    ),
                                   ),
                                   subtitle: Text(
                                     'Hoeveelheid: ${amountController.text}g',
@@ -1225,9 +1275,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                           );
                                         }
                                         final product = results[resultIndex];
-                                        final imageUrl = (product['image_front_small_url'] ??
-                                                product['image_front_url'] ??
-                                                product['image_thumb_url']) as String?;
+                                        final imageUrl =
+                                            (product['image_front_small_url'] ??
+                                                    product['image_front_url'] ??
+                                                    product['image_thumb_url'])
+                                                as String?;
                                         return ListTile(
                                           leading: imageUrl != null
                                               ? SizedBox(
@@ -1237,8 +1289,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                     imageUrl,
                                                     fit: BoxFit.cover,
                                                     errorBuilder:
-                                                        (context, error, stackTrace) =>
-                                                            const Icon(Icons.image_not_supported),
+                                                        (
+                                                          context,
+                                                          error,
+                                                          stackTrace,
+                                                        ) => const Icon(
+                                                          Icons
+                                                              .image_not_supported,
+                                                        ),
                                                   ),
                                                 )
                                               : const SizedBox(
@@ -1246,8 +1304,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                   height: 50,
                                                   child: Icon(Icons.fastfood),
                                                 ),
-                                          title: Text(product['product_name'] ?? 'Onbekend'),
-                                          subtitle: Text(product['brands'] ?? 'Onbekend'),
+                                          title: Text(
+                                            _displayProductName(
+                                              product['product_name'],
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            _displayString(product['brands']),
+                                          ),
                                           onTap: () async {
                                             final barcode =
                                                 (product['_id'] ??
@@ -1975,8 +2039,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   height: 50,
                   child: Icon(Icons.fastfood),
                 ),
-          title: Text(product['product_name'] ?? 'Onbekende naam'),
-          subtitle: Text(product['brands'] ?? 'Onbekend merk'),
+          title: Text(_displayProductName(product['product_name'])),
+          subtitle: Text(
+            _displayString(product['brands'], fallback: 'Onbekend merk'),
+          ),
           onTap: () {
             final barcode =
                 (product['_id'] ?? product['code'] ?? product['barcode'])
@@ -2645,6 +2711,15 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
+  String _displayString(dynamic v, {String fallback = 'Onbekend'}) {
+    if (v == null) return fallback;
+    if (v is String && v.trim().isNotEmpty) return v.trim();
+    return fallback;
+  }
+
+  String _displayProductName(dynamic v) =>
+      _displayString(v, fallback: 'Onbekende naam');
+
   Widget _buildProductList() {
     // bouw de lijst met producten op basis van geselecteerde tab
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -2778,8 +2853,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
                         final decryptedProduct =
                             decryptedSnapshot.data ?? product;
-                        final productName =
-                            decryptedProduct['product_name'] ?? 'Onbekend';
+                        final productName = _displayProductName(
+                          decryptedProduct['product_name'],
+                        );
                         final brands = decryptedProduct['brands'] ?? 'Onbekend';
                         final imageUrl =
                             decryptedProduct['image_front_small_url']
@@ -2941,11 +3017,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           return const SizedBox.shrink();
                         }
                         final decryptedProduct = decryptedSnapshot.data!;
-                        final name =
-                            decryptedProduct['product_name'] ??
-                            'Onbekende naam';
-                        final brand =
-                            decryptedProduct['brands'] ?? 'Onbekend merk';
+                        final name =_displayProductName(
+                            decryptedProduct['product_name']);
+                        final brand =_displayString(
+                            decryptedProduct['brands']);
                         final imageUrl =
                             decryptedProduct['image_front_url'] as String?;
 
@@ -3734,20 +3809,23 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       }
                     }
 
-                   final ranked = _rankProducts(all, query, take: 50);
-                   setModalState(() {
-                     if (loadMore) {
-                       final existing =
-                           (ingredientEntries[index]['searchResults'] as List?) ??
-                               [];
-                       ingredientEntries[index]['searchResults'] =
-                           [...existing, ...ranked];
-                       ingredientEntries[index]['hasLoadedMore'] = true;
-                     } else {
-                       ingredientEntries[index]['searchResults'] = ranked;
-                     }
-                     ingredientEntries[index]['isSearching'] = false;
-                   });
+                    final ranked = _rankProducts(all, query, take: 50);
+                    setModalState(() {
+                      if (loadMore) {
+                        final existing =
+                            (ingredientEntries[index]['searchResults']
+                                as List?) ??
+                            [];
+                        ingredientEntries[index]['searchResults'] = [
+                          ...existing,
+                          ...ranked,
+                        ];
+                        ingredientEntries[index]['hasLoadedMore'] = true;
+                      } else {
+                        ingredientEntries[index]['searchResults'] = ranked;
+                      }
+                      ingredientEntries[index]['isSearching'] = false;
+                    });
                   } catch (e) {
                     setModalState(() {
                       ingredientEntries[index]['searchResults'] = [];
@@ -3821,7 +3899,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                   ),
                                   child: ListTile(
                                     title: Text(
-                                      selectedProduct['product_name'],
+                                      _displayProductName(
+                                        selectedProduct['product_name'],
+                                      ),
                                     ),
                                     subtitle: Text(
                                       'Hoeveelheid: ${amountController.text}g',
@@ -3967,32 +4047,44 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                           }
 
                                           final product = results[resultIndex];
-                                   final imageUrl = (product['image_front_small_url'] ??
-                                                product['image_front_url'] ??
-                                                product['image_thumb_url']) as String?;
-                                        return ListTile(
-                                          leading: imageUrl != null
-                                              ? SizedBox(
-                                                  width: 50,
-                                                  height: 50,
-                                                  child: Image.network(
-                                                    imageUrl,
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder:
-                                                        (context, error, stackTrace) =>
-                                                            const Icon(Icons.image_not_supported),
+                                          final imageUrl =
+                                              (product['image_front_small_url'] ??
+                                                      product['image_front_url'] ??
+                                                      product['image_thumb_url'])
+                                                  as String?;
+                                          return ListTile(
+                                            leading: imageUrl != null
+                                                ? SizedBox(
+                                                    width: 50,
+                                                    height: 50,
+                                                    child: Image.network(
+                                                      imageUrl,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder:
+                                                          (
+                                                            context,
+                                                            error,
+                                                            stackTrace,
+                                                          ) => const Icon(
+                                                            Icons
+                                                                .image_not_supported,
+                                                          ),
+                                                    ),
+                                                  )
+                                                : const SizedBox(
+                                                    width: 50,
+                                                    height: 50,
+                                                    child: Icon(Icons.fastfood),
                                                   ),
-                                                )
-                                              : const SizedBox(
-                                                  width: 50,
-                                                  height: 50,
-                                                  child: Icon(Icons.fastfood),
-                                                ),
-                                          title: Text(
-                                            product['product_name'] ?? 'Onbekend',
-                                          ),
-                                          subtitle: Text(product['brands'] ?? 'Onbekend'),
-                                         
+                                            title: Text(
+                                              _displayProductName(
+                                                product['product_name'],
+                                              ),
+                                            ),
+                                            subtitle: Text(
+                                              product['brands'] ?? 'Onbekend',
+                                            ),
+
                                             onTap: () async {
                                               final barcode =
                                                   (product['_id'] ??

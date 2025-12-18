@@ -328,7 +328,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ...existing code...
   void _createTutorial() async {
     final prefs = await SharedPreferences.getInstance();
     tutorialCoachMark = TutorialCoachMark(

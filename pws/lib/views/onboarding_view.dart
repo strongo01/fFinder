@@ -792,12 +792,13 @@ class _OnboardingViewState extends State<OnboardingView> {
                                   ),
                                 );
                               } else {
-                                // Android en Web standaard picker
+                                // Android en Web: toon Material datepicker met Nederlandse locale
                                 final picked = await showDatePicker(
                                   context: context,
                                   initialDate: _birthDate ?? DateTime(2000),
                                   firstDate: DateTime(1900),
                                   lastDate: DateTime.now(),
+                                  locale: const Locale('nl', 'NL'),
                                   builder: (context, child) {
                                     // Forceer dark theme voor de picker als dark mode aan staat
                                     return Theme(
@@ -865,7 +866,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                     ),
                     // Vraag 6: Slaap
                     _buildQuestionPage(
-                      title: 'Hoeveel uur slaap je gemiddeld?',
+                      title: 'Hoeveel uur slaap je gemiddeld per nacht?',
                       content: Column(
                         children: [
                           Text(

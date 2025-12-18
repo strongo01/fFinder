@@ -42,6 +42,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
   late TextEditingController fiberController;
   late TextEditingController proteinsController;
   late TextEditingController saltController;
+  late TextEditingController productNameController;
+  bool isEditingName = false;
 
   @override
   void initState() {
@@ -58,6 +60,11 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     fiberController = TextEditingController();
     proteinsController = TextEditingController();
     saltController = TextEditingController();
+    productNameController = TextEditingController(
+      text: widget.productData != null
+          ? (widget.productData!['product_name'] as String? ?? '')
+          : '',
+    );
 
     // Start direct met data ophalen
     _fetchDetails();
@@ -76,6 +83,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     fiberController.dispose();
     proteinsController.dispose();
     saltController.dispose();
+    productNameController.dispose();
     super.dispose();
   }
 
@@ -334,6 +342,58 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     saltController.text = nutriments['salt']?.toString() ?? '';
   }
 
+  Future<void> _saveEditedName() async {
+    final newName = productNameController.text.trim();
+    final effectiveBarcode = product?.barcode ?? widget.barcode;
+
+    final updatedProduct = Product(
+      barcode: effectiveBarcode,
+      productName: newName.isEmpty ? null : newName,
+      brands: product!.brands,
+      quantity: product!.quantity,
+      imageFrontUrl: product!.imageFrontUrl,
+      imageFrontSmallUrl: product!.imageFrontSmallUrl,
+      additives: product!.additives,
+      allergens: product!.allergens,
+      nutriments: product!.nutriments,
+      servingSize: product!.servingSize,
+    );
+
+    // Update local state
+    setState(() {
+      product = updatedProduct;
+      isEditingName = false;
+    });
+    FocusScope.of(context).unfocus();
+
+    try {
+      final nutrimentsData = _getNutrimentsFromControllers();
+      final futures = <Future>[];
+      if (isFavorite) {
+        futures.add(_addFavoriteProduct(
+          updatedProduct,
+          editedNutriments: nutrimentsData,
+        ));
+      }
+      futures.add(_addRecentProduct(
+        updatedProduct,
+        editedNutriments: nutrimentsData,
+      ));
+      await Future.wait(futures);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Naam opgeslagen.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fout bij opslaan: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -391,11 +451,59 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Text(
-                          product!.productName ?? 'Onbekende naam',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.headlineSmall?.copyWith(color: textColor),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Expanded(
+                              child: isEditingName
+                                  ? TextFormField(
+                                      controller: productNameController,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineSmall
+                                          ?.copyWith(color: textColor),
+                                      decoration: const InputDecoration(
+                                        isDense: true,
+                                        border: UnderlineInputBorder(),
+                                      ),
+                                      textInputAction: TextInputAction.done,
+                                      onFieldSubmitted: (_) async {
+                                        await _saveEditedName();
+                                      },
+                                    )
+                                  : GestureDetector(
+                                      behavior: HitTestBehavior.translucent,
+                                      onTap: () {
+                                        productNameController.text =
+                                            product!.productName ?? '';
+                                        setState(() => isEditingName = true);
+                                      },
+                                      child: Text(
+                                        (product!.productName == null ||
+                                                product!.productName!
+                                                    .trim()
+                                                    .isEmpty)
+                                            ? 'Onbekende naam'
+                                            : product!.productName!,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineSmall
+                                            ?.copyWith(color: textColor),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                            ),
+                            // Toon vinkje alleen tijdens bewerken
+                            if (isEditingName)
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'Opslaan naam',
+
+                                icon: const Icon(Icons.check),
+onPressed: _saveEditedName,
+                              ),
+                          ],
                         ),
                       ),
                       IconButton(
@@ -689,7 +797,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final barcode = product.barcode;
+    // final barcode = product.barcode;
+    final barcode = product.barcode ?? widget.barcode;
     if (barcode == null || barcode.isEmpty) return;
 
     final userDEK = await getUserDEKFromRemoteConfig(user.uid);
@@ -776,7 +885,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final barcode = product.barcode;
+    //final barcode = product.barcode;
+    final barcode = product.barcode ?? widget.barcode;
     if (barcode == null || barcode.isEmpty) return;
 
     final userDEK = await getUserDEKFromRemoteConfig(user.uid);
@@ -1051,12 +1161,12 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                             factor,
                       };
 
-                     /* final now = DateTime.now();
+                      /* final now = DateTime.now();
                       final todayDocId =
                           "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 */
-debugPrint("SELECTEDDATE: ${widget.selectedDate}");
-final date = widget.selectedDate ?? DateTime.now();
+                      debugPrint("SELECTEDDATE: ${widget.selectedDate}");
+                      final date = widget.selectedDate ?? DateTime.now();
                       final todayDocId =
                           "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 

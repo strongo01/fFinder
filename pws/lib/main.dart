@@ -14,6 +14,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode, kReleaseMode;
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 //start van de app
 Future<void> main() async {
@@ -101,6 +102,14 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('nl', 'NL'),
+      ],
       debugShowCheckedModeBanner: false, //verbergt de debug banner
       themeMode: ThemeMode.system, // systeem instelling voor light of darkmode
       //thema voor lightmode

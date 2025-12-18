@@ -64,6 +64,8 @@ dependencies:
   flutter_timezone: ^5.0.1
   firebase_ai: ^3.6.0
   image_picker: ^1.2.1
+  flutter_localizations:
+    sdk: flutter
 
 flutter_launcher_icons:
   android: "launcher_icon"
@@ -82,6 +84,10 @@ flutter_launcher_icons:
   macos:
     generate: true
     image_path: "assets/icons/appicon.png"
+
+flutter_localizations:
+  sdk: flutter  
+
 
 dev_dependencies:
   flutter_test:
