@@ -446,6 +446,168 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
+  String _normalize(String? s) {
+    if (s == null || s.isEmpty) return '';
+    var v = s.toLowerCase();
+    v = v.replaceAll(RegExp(r'[-–—/,&+]'), ' ');
+    v = v.replaceAll(RegExp(r'[^\w\s]', unicode: true), ' ');
+    return v.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  List<String> _tokens(String? s) =>
+      _normalize(s).split(' ').where((e) => e.isNotEmpty).toList();
+
+  bool _isSingleWordQuery(String q) {
+    return q.trim().split(' ').length == 1;
+  }
+
+  String _stem(String token) {
+    // eenvoudige singularisatie: appels -> appel, bananen -> banaan
+    if (token.length <= 3) return token;
+    if (token.endsWith('en')) return token.substring(0, token.length - 2);
+    if (token.endsWith('s')) return token.substring(0, token.length - 1);
+    return token;
+  }
+
+  int scoreProduct(Map p, String query) {
+    final rawName = (p['product_name'] ?? p['generic_name'] ?? '').toString();
+    if (rawName.isEmpty) return 0;
+
+    final name = _normalize(rawName);
+    final nameTokensRaw = _tokens(rawName); // tokens from raw name, normalized
+    final nameTokens = nameTokensRaw
+        .map((t) => _stem(t))
+        .toList(); // stemmed tokens
+    final queryTokens = _tokens(query).map((t) => _stem(t)).toList();
+
+    final categories = _normalize(p['categories'] ?? '');
+    final catTags = _normalize((p['categories_tags'] ?? '').toString());
+
+    final hasSeparator =
+        rawName.contains(',') ||
+        rawName.contains('&') ||
+        rawName.contains('/') ||
+        rawName.contains('-');
+
+    int score = 0;
+    final reasons = <String>[];
+
+    // 1) token-based matching (gestemd)
+    for (final qt in queryTokens) {
+      if (nameTokens.contains(qt)) {
+        score += 900; // sterke match op gestemd token
+        reasons.add('+900 token match (stemmed) [$qt]');
+      } else if (nameTokensRaw.any((t) => t.startsWith(qt))) {
+        score += 250; // token startsWith query (appelmoes, appel-limoen)
+        reasons.add('+250 token startsWith [$qt]');
+      } else if (name.contains(qt)) {
+        score += 150; // substring fallback
+        reasons.add('+150 substring match [$qt]');
+      }
+      // category boost per token
+      if (categories.contains(qt) || catTags.contains(qt)) {
+        score += 700;
+        reasons.add('+700 category match [$qt]');
+      }
+    }
+
+    // 2) exact normalized full-string match
+    if (name == _normalize(query)) {
+      score += 1400;
+      reasons.add('+1400 exact name == query');
+    }
+
+    // 3) commodity boost for single-word queries when product looks "simple"
+    final isSingle = _isSingleWordQuery(query);
+    if (isSingle) {
+      final qt = queryTokens.isNotEmpty ? queryTokens.first : '';
+      if (qt.isNotEmpty &&
+          nameTokens.contains(qt) &&
+          !hasSeparator &&
+          nameTokens.length <= 3) {
+        score += 1000;
+        reasons.add('+1000 commodity boost');
+      }
+      // milde penalty for clear combos
+      if (hasSeparator || nameTokens.length >= 4) {
+        score -= 400;
+        reasons.add('-400 combo/long (single-word intent)');
+      }
+    }
+
+    // 4) processed-word penalty (detect ook in compounds)
+    const processedWords = [
+      'stroop',
+      'sap',
+      'drink',
+      'smoothie',
+      'reep',
+      'repen',
+      'koek',
+      'koeken',
+      'muesli',
+      'granola',
+      'kwark',
+      'yoghurt',
+      'saus',
+      'puree',
+      'chips',
+    ];
+    for (final w in processedWords) {
+      // check stemmed tokens and raw tokens contains
+      if (nameTokens.any((t) => t.contains(w)) ||
+          nameTokensRaw.any((t) => t.contains(w))) {
+        score -= 800; // milder dan eerst, maar merkbaar
+        reasons.add('-800 processed contains ($w)');
+        // break; // optional: break after first processed word found
+      }
+    }
+
+    // 5) length penalty (mild)
+    if (nameTokensRaw.length >= 6) {
+      score -= 250;
+      reasons.add('-250 long name');
+    }
+
+    // tie-breaker prefer filled product_name
+    if (name.isNotEmpty) {
+      score += 5;
+    }
+
+    debugPrint('SCORE $score — $rawName → ${reasons.join(', ')}');
+    return score;
+  }
+
+  bool isPrimaryProduct(Map p, String query) {
+    final categories = _normalize(p['categories']);
+    final tags = _normalize((p['categories_tags'] ?? '').toString());
+
+    // exacte productcategorie (meest betrouwbaar)
+    if (categories.contains(query) || tags.contains(query)) {
+      return true;
+    }
+
+    // enkelvoudige productnaam (zoals "appel", "elstar", "fuji")
+    final nameTokens = _tokens(p['product_name']);
+    if (nameTokens.length <= 2 && nameTokens.any((t) => t == query)) {
+      return true;
+    }
+
+    return false;
+  }
+
+    List<Map<String, dynamic>> _rankProducts(List products, String query, {int take = 50}) {
+    final q = _normalize(query);
+    final ranked = products.map((p) {
+      final map = p as Map<String, dynamic>;
+      final score = scoreProduct(map, q);
+      return {'product': map, 'score': score};
+    }).toList();
+
+    ranked.sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
+    return ranked.take(take).map((e) => Map<String, dynamic>.from(e['product'] as Map)).toList();
+  }
+
   Future<void> _searchProducts(String query, {bool loadMore = false}) async {
     // zoek producten via openfoodfacts api
     if (query.isEmpty) {
@@ -545,53 +707,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
         }
       }
 
-      final escaped = RegExp.escape(trimmed); // escape speciale tekens
-      final wholeWord = RegExp(
-        // hele woord matchen
-        r'\b' + escaped + r'\b',
-        caseSensitive: false,
-        unicode: true,
-      );
-      final startsWith = RegExp(
-        '^' + escaped,
-        caseSensitive: false,
-        unicode: true,
-      );
+      final rankedProducts = _rankProducts(all, trimmed, take: 50);
 
-      List filtered = all.where((p) {
-        // filter op hele woord
-        final name =
-            "${p["product_name"] ?? ''} "
-            "${p["generic_name"] ?? ''} "
-            "${p["brands"] ?? ''}";
-        return wholeWord.hasMatch(name);
-      }).toList();
-
-      if (filtered.isEmpty) {
-        // als geen hele woord matches, filter op starts with
-        filtered = all.where((p) {
-          final name =
-              "${p["product_name"] ?? ''} "
-              "${p["generic_name"] ?? ''} "
-              "${p["brands"] ?? ''}";
-          return startsWith.hasMatch(name);
-        }).toList();
-      }
-
-      // fallback naar alle producten
-      final finalList = filtered.isNotEmpty ? filtered : all;
-
-      // limiet
-      const maxResults = 50;
-      final limited = finalList.length > maxResults
-          ? finalList.sublist(0, maxResults)
-          : finalList;
-
-      if (mounted) {
-        setState(() {
-          _searchResults = limited;
-        });
-      }
+      setState(() {
+        _searchResults = rankedProducts;
+      });
     } catch (e, stack) {
       debugPrint("Algemene fout in _searchProducts: $e");
       debugPrint(stack as String?);
@@ -892,10 +1012,20 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       }
                     }
 
-                    setModalState(() {
-                      ingredientEntries[index]['searchResults'] = all;
-                      ingredientEntries[index]['isSearching'] = false;
-                    });
+                      final ranked = _rankProducts(all, query, take: 50);
+                   setModalState(() {
+                     if (loadMore) {
+                       final existing =
+                           (ingredientEntries[index]['searchResults'] as List?) ??
+                               [];
+                       ingredientEntries[index]['searchResults'] =
+                           [...existing, ...ranked];
+                       ingredientEntries[index]['hasLoadedMore'] = true;
+                     } else {
+                       ingredientEntries[index]['searchResults'] = ranked;
+                     }
+                     ingredientEntries[index]['isSearching'] = false;
+                   });
                   } catch (e) {
                     setModalState(() {
                       ingredientEntries[index]['searchResults'] = [];
@@ -1095,14 +1225,29 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                           );
                                         }
                                         final product = results[resultIndex];
+                                        final imageUrl = (product['image_front_small_url'] ??
+                                                product['image_front_url'] ??
+                                                product['image_thumb_url']) as String?;
                                         return ListTile(
-                                          title: Text(
-                                            product['product_name'] ??
-                                                'Onbekend',
-                                          ),
-                                          subtitle: Text(
-                                            product['brands'] ?? 'Onbekend',
-                                          ),
+                                          leading: imageUrl != null
+                                              ? SizedBox(
+                                                  width: 50,
+                                                  height: 50,
+                                                  child: Image.network(
+                                                    imageUrl,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder:
+                                                        (context, error, stackTrace) =>
+                                                            const Icon(Icons.image_not_supported),
+                                                  ),
+                                                )
+                                              : const SizedBox(
+                                                  width: 50,
+                                                  height: 50,
+                                                  child: Icon(Icons.fastfood),
+                                                ),
+                                          title: Text(product['product_name'] ?? 'Onbekend'),
+                                          subtitle: Text(product['brands'] ?? 'Onbekend'),
                                           onTap: () async {
                                             final barcode =
                                                 (product['_id'] ??
@@ -3333,11 +3478,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final String? selectedMealType = await _showSelectMealTypeDialog(context);
     if (selectedMealType == null) return;
 
-/*final now = DateTime.now();
+    /*final now = DateTime.now();
     final todayDocId =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 */
-debugPrint("SELECTEDDATE: ${widget.selectedDate}");
+    debugPrint("SELECTEDDATE: ${widget.selectedDate}");
     final date = widget.selectedDate ?? DateTime.now();
     final todayDocId =
         "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
@@ -3589,10 +3734,20 @@ debugPrint("SELECTEDDATE: ${widget.selectedDate}");
                       }
                     }
 
-                    setModalState(() {
-                      ingredientEntries[index]['searchResults'] = all;
-                      ingredientEntries[index]['isSearching'] = false;
-                    });
+                   final ranked = _rankProducts(all, query, take: 50);
+                   setModalState(() {
+                     if (loadMore) {
+                       final existing =
+                           (ingredientEntries[index]['searchResults'] as List?) ??
+                               [];
+                       ingredientEntries[index]['searchResults'] =
+                           [...existing, ...ranked];
+                       ingredientEntries[index]['hasLoadedMore'] = true;
+                     } else {
+                       ingredientEntries[index]['searchResults'] = ranked;
+                     }
+                     ingredientEntries[index]['isSearching'] = false;
+                   });
                   } catch (e) {
                     setModalState(() {
                       ingredientEntries[index]['searchResults'] = [];
@@ -3812,14 +3967,32 @@ debugPrint("SELECTEDDATE: ${widget.selectedDate}");
                                           }
 
                                           final product = results[resultIndex];
-                                          return ListTile(
-                                            title: Text(
-                                              product['product_name'] ??
-                                                  'Onbekend',
-                                            ),
-                                            subtitle: Text(
-                                              product['brands'] ?? 'Onbekend',
-                                            ),
+                                   final imageUrl = (product['image_front_small_url'] ??
+                                                product['image_front_url'] ??
+                                                product['image_thumb_url']) as String?;
+                                        return ListTile(
+                                          leading: imageUrl != null
+                                              ? SizedBox(
+                                                  width: 50,
+                                                  height: 50,
+                                                  child: Image.network(
+                                                    imageUrl,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder:
+                                                        (context, error, stackTrace) =>
+                                                            const Icon(Icons.image_not_supported),
+                                                  ),
+                                                )
+                                              : const SizedBox(
+                                                  width: 50,
+                                                  height: 50,
+                                                  child: Icon(Icons.fastfood),
+                                                ),
+                                          title: Text(
+                                            product['product_name'] ?? 'Onbekend',
+                                          ),
+                                          subtitle: Text(product['brands'] ?? 'Onbekend'),
+                                         
                                             onTap: () async {
                                               final barcode =
                                                   (product['_id'] ??
