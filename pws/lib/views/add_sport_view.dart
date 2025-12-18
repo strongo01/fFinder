@@ -4,9 +4,24 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'crypto_class.dart';
 
+// MET-waardes per sport
+const Map<String, double> _metValues = {
+  'Hardlopen': 9.8,
+  'Fietsen': 7.5,
+  'Zwemmen': 8.0,
+  'Wandelen': 3.5,
+  'Fitness': 6.0,
+  'Voetbal': 7.0,
+  'Tennis': 7.3,
+  'Yoga': 2.5,
+};
+
+// Overig → snelle vuistregel (normaal)
+const double _defaultOverigMET = 5.0;
+
 class AddSportPage extends StatefulWidget {
   final DateTime? selectedDate;
-  const AddSportPage({super.key, this.selectedDate,});
+  const AddSportPage({super.key, this.selectedDate});
 
   @override
   State<AddSportPage> createState() => _AddSportPageState();
@@ -20,6 +35,8 @@ class _AddSportPageState extends State<AddSportPage> {
   final _customSportController = TextEditingController();
   bool _isLoading = false;
   String? _error;
+  bool _caloriesManuallyEdited = false;
+  double _overigIntensityMET = 5.0;
 
   final List<String> _sports = [
     'Hardlopen',
@@ -32,10 +49,54 @@ class _AddSportPageState extends State<AddSportPage> {
     'Yoga',
     'Overig',
   ];
+  Future<void> _updateCaloriesLive() async {
+    if (_caloriesManuallyEdited) return;
+    if (_selectedSport == null) return;
+    if (_durationController.text.isEmpty) return;
+
+    final duration = double.tryParse(_durationController.text);
+    if (duration == null || duration <= 0) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    if (userDEK == null) return;
+
+    try {
+      final weightKg = await _getDecryptedWeight(user.uid, userDEK);
+
+      final met = _selectedSport == 'Overig'
+          ? _overigIntensityMET
+          : (_metValues[_selectedSport] ?? _defaultOverigMET);
+
+      final calories = met * weightKg * (duration / 60);
+
+      // 👇 live invullen
+setState(() {
+  _caloriesController.text = calories.toStringAsFixed(0);
+});
+
+    } catch (_) {
+      // stil falen (geen UI-spam)
+    }
+  }
+
+  Future<double> _getDecryptedWeight(String uid, SecretKey userDEK) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    final encryptedWeight = doc['weight'];
+    debugPrint('Encrypted weight: $encryptedWeight');
+    return await decryptDouble(encryptedWeight, userDEK);
+  }
 
   Future<void> _saveSport() async {
     if (!_formKey.currentState!.validate()) return;
-    FocusScope.of(context).unfocus(); // Sluit het toetsenbord
+    FocusScope.of(context).unfocus();
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -63,15 +124,22 @@ class _AddSportPageState extends State<AddSportPage> {
       final sportName = _selectedSport == 'Overig'
           ? _customSportController.text.trim()
           : _selectedSport ?? '';
+
+      final durationMin = double.parse(_durationController.text);
+      final weightKg = await _getDecryptedWeight(user.uid, userDEK);
+
+      final met = _selectedSport == 'Overig'
+          ? _overigIntensityMET
+          : (_metValues[_selectedSport] ?? _defaultOverigMET);
+
+      final caloriesToSave = double.parse(_caloriesController.text);
+
+      // calorieveld automatisch vullen (zonder UI-wijziging)
+      _caloriesController.text = caloriesToSave.toStringAsFixed(0);
+
       final encryptedSport = await encryptValue(sportName, userDEK);
-      final encryptedDuration = await encryptDouble(
-        double.parse(_durationController.text),
-        userDEK,
-      );
-      final encryptedCalories = await encryptDouble(
-        double.parse(_caloriesController.text),
-        userDEK,
-      );
+      final encryptedDuration = await encryptDouble(durationMin, userDEK);
+      final encryptedCalories = await encryptDouble(caloriesToSave, userDEK);
 
       await FirebaseFirestore.instance
           .collection('users')
@@ -106,7 +174,7 @@ class _AddSportPageState extends State<AddSportPage> {
     super.dispose();
   }
 
-    @override
+  @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final user = FirebaseAuth.instance.currentUser;
@@ -132,7 +200,10 @@ class _AddSportPageState extends State<AddSportPage> {
             children: [
               Card(
                 elevation: 4,
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 32,
+                ),
                 color: cardColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
@@ -153,9 +224,9 @@ class _AddSportPageState extends State<AddSportPage> {
                         const SizedBox(height: 12),
                         Text(
                           'Nieuwe sportactiviteit',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: textColor,
-                              ),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleLarge?.copyWith(color: textColor),
                         ),
                         const SizedBox(height: 24),
                         DropdownButtonFormField<String>(
@@ -168,7 +239,9 @@ class _AddSportPageState extends State<AddSportPage> {
                                     children: [
                                       Icon(
                                         Icons.sports,
-                                        color: Theme.of(context).colorScheme.primary,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                         size: 20,
                                       ),
                                       const SizedBox(width: 8),
@@ -188,37 +261,86 @@ class _AddSportPageState extends State<AddSportPage> {
                             ),
                             filled: true,
                             fillColor: inputFillColor,
-                            prefixIcon: Icon(Icons.directions_run, color: textColor),
+                            prefixIcon: Icon(
+                              Icons.directions_run,
+                              color: textColor,
+                            ),
                             labelStyle: TextStyle(color: textColor),
                           ),
                           dropdownColor: cardColor,
-                          onChanged: (value) =>
-                              setState(() => _selectedSport = value),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedSport = value;
+                              _caloriesManuallyEdited = false;
+                            });
+                            _updateCaloriesLive();
+                          },
+
                           validator: (value) =>
                               value == null ? 'Kies een sport' : null,
                         ),
                         if (_selectedSport == 'Overig') ...[
                           const SizedBox(height: 18),
                           TextFormField(
-                            controller: _customSportController,
-                            style: TextStyle(color: textColor),
-                            decoration: InputDecoration(
-                              labelText: 'Naam van sport',
-                              border: OutlineInputBorder(
-                                borderSide: BorderSide(color: borderColor),
-                              ),
-                              filled: true,
-                              fillColor: inputFillColor,
-                              prefixIcon: Icon(Icons.edit, color: textColor),
-                              labelStyle: TextStyle(color: textColor),
+                          controller: _customSportController,
+                          style: TextStyle(color: textColor),
+                          decoration: InputDecoration(
+                            labelText: 'Naam van sport',
+                            border: OutlineInputBorder(
+                            borderSide: BorderSide(color: borderColor),
                             ),
-                            validator: (value) {
-                              if (_selectedSport == 'Overig' &&
-                                  (value == null || value.trim().isEmpty)) {
-                                return 'Voer een sportnaam in';
-                              }
-                              return null;
-                            },
+                            filled: true,
+                            fillColor: inputFillColor,
+                            prefixIcon: Icon(Icons.edit, color: textColor),
+                            labelStyle: TextStyle(color: textColor),
+                          ),
+                          validator: (value) {
+                            if (_selectedSport == 'Overig' &&
+                              (value == null || value.trim().isEmpty)) {
+                            return 'Voer een sportnaam in';
+                            }
+                            return null;
+                          },
+                          ),
+                          const SizedBox(height: 18),
+                          DropdownButtonFormField<double>(
+                          value: _overigIntensityMET,
+                          items: [
+                            DropdownMenuItem(
+                            value: 2.5,
+                            child: Text('Licht', style: TextStyle(color: textColor)),
+                            ),
+                            DropdownMenuItem(
+                            value: 5.0,
+                            child: Text('Normaal', style: TextStyle(color: textColor)),
+                            ),
+                            DropdownMenuItem(
+                            value: 7.5,
+                            child: Text('Zwaar', style: TextStyle(color: textColor)),
+                            ),
+                            DropdownMenuItem(
+                            value: 10.0,
+                            child: Text('Zeer zwaar', style: TextStyle(color: textColor)),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                            _overigIntensityMET = value!;
+                            _caloriesManuallyEdited = false;
+                            });
+                            _updateCaloriesLive();
+                          },
+                          decoration: InputDecoration(
+                            labelText: 'Intensiteit',
+                            border: OutlineInputBorder(
+                            borderSide: BorderSide(color: borderColor),
+                            ),
+                            filled: true,
+                            fillColor: inputFillColor,
+                            labelStyle: TextStyle(color: textColor),
+                          ),
+                          dropdownColor: cardColor,
+                          style: TextStyle(color: textColor),
                           ),
                         ],
                         const SizedBox(height: 18),
@@ -236,6 +358,11 @@ class _AddSportPageState extends State<AddSportPage> {
                             prefixIcon: Icon(Icons.timer, color: textColor),
                             labelStyle: TextStyle(color: textColor),
                           ),
+                          onChanged: (_) {
+                            _caloriesManuallyEdited = false;
+                            _updateCaloriesLive();
+                          },
+
                           validator: (value) {
                             if (value == null ||
                                 value.isEmpty ||
@@ -258,9 +385,16 @@ class _AddSportPageState extends State<AddSportPage> {
                             ),
                             filled: true,
                             fillColor: inputFillColor,
-                            prefixIcon: Icon(Icons.local_fire_department, color: textColor),
+                            prefixIcon: Icon(
+                              Icons.local_fire_department,
+                              color: textColor,
+                            ),
                             labelStyle: TextStyle(color: textColor),
                           ),
+                          onChanged: (_) {
+                            _caloriesManuallyEdited = true;
+                          },
+
                           validator: (value) {
                             if (value == null ||
                                 value.isEmpty ||
@@ -281,36 +415,42 @@ class _AddSportPageState extends State<AddSportPage> {
                             ),
                           ),
                         SizedBox(
-  width: double.infinity,
-  child: ElevatedButton.icon(
-    icon: const Icon(Icons.save),
-    label: _isLoading
-        ? const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          )
-        : Text(
-            'Opslaan',
-            style: TextStyle(
-              color: isDarkMode ? Colors.black : Colors.white,
-            ),
-          ),
-    onPressed: _isLoading ? null : _saveSport,
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      foregroundColor: isDarkMode ? Colors.black : Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      textStyle: const TextStyle(fontSize: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-  ),
-),
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.save),
+                            label: _isLoading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Opslaan',
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.black
+                                          : Colors.white,
+                                    ),
+                                  ),
+                            onPressed: _isLoading ? null : _saveSport,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              foregroundColor: isDarkMode
+                                  ? Colors.black
+                                  : Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              textStyle: const TextStyle(fontSize: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -320,7 +460,10 @@ class _AddSportPageState extends State<AddSportPage> {
               if (user != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: SportsOverviewList(userId: user.uid, isDarkMode: isDarkMode),
+                  child: SportsOverviewList(
+                    userId: user.uid,
+                    isDarkMode: isDarkMode,
+                  ),
                 ),
             ],
           ),
@@ -334,7 +477,11 @@ class _AddSportPageState extends State<AddSportPage> {
 class SportsOverviewList extends StatelessWidget {
   final String userId;
   final bool isDarkMode;
-  const SportsOverviewList({super.key, required this.userId, required this.isDarkMode});
+  const SportsOverviewList({
+    super.key,
+    required this.userId,
+    required this.isDarkMode,
+  });
 
   Future<SecretKey?> _getUserDEK() async {
     return await getUserDEKFromRemoteConfig(userId);
@@ -436,7 +583,11 @@ class SportsOverviewList extends StatelessWidget {
                       ),
                       elevation: 2,
                       child: ListTile(
-                        leading: Icon(Icons.sports, size: 32, color: Theme.of(context).colorScheme.primary),
+                        leading: Icon(
+                          Icons.sports,
+                          size: 32,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         title: Text(
                           sport,
                           style: TextStyle(
@@ -454,7 +605,10 @@ class SportsOverviewList extends StatelessWidget {
                                 '${timestamp.toDate().day.toString().padLeft(2, '0')}-'
                                 '${timestamp.toDate().month.toString().padLeft(2, '0')}-'
                                 '${timestamp.toDate().year}',
-                                style: TextStyle(fontSize: 13, color: subtitleColor),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: subtitleColor,
+                                ),
                               )
                             : null,
                       ),

@@ -1,13 +1,17 @@
+import 'dart:convert';
+
 import 'package:cryptography/cryptography.dart';
 import 'package:fFinder/views/crypto_class.dart';
 import 'package:fFinder/views/feedback_view.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import 'package:fFinder/views/barcode_scanner.dart';
 
 class AddDrinkPage extends StatefulWidget {
   final DateTime? selectedDate;
-  const AddDrinkPage({super.key, this.selectedDate,});
+  const AddDrinkPage({super.key, this.selectedDate});
 
   @override
   State<AddDrinkPage> createState() => _AddDrinkPageState();
@@ -282,15 +286,29 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
   }
 
   void _showAddPresetDialog() {
-    // toont dialoog om nieuwe drank standaard toe te voegen
-    //final nameController = TextEditingController();
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
-
     final kcalController = TextEditingController();
     final customNameController = TextEditingController();
     String? selectedDrink;
+    String? coffeeVariant; // voor koffie
     final drinkOptions = ['Water', 'Koffie', 'Thee', 'Frisdrank', 'Anders'];
+    final coffeeVariants = [
+      'Koffie zwart',
+      'Espresso',
+      'Ristretto',
+      'Lungo',
+      'Americano',
+      'Koffie met melk',
+      'Koffie met melk + suiker',
+      'Cappuccino',
+      'Latte',
+      'Flat White',
+      'Macchiato',
+      'Latte Macchiato',
+      'Iced Coffee',
+      'Andere koffie',
+    ];
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
@@ -298,7 +316,44 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            // gebruik StatefulBuilder om de diaaloog te updaten
+            void updateKcalForCoffee() {
+              switch (coffeeVariant) {
+                case 'Koffie zwart':
+                case 'Espresso':
+                case 'Ristretto':
+                case 'Lungo':
+                case 'Americano':
+                  kcalController.text = '2';
+                  break;
+                case 'Koffie met melk':
+                  kcalController.text = '12';
+                  break;
+                case 'Koffie met melk + suiker':
+                  kcalController.text = '25';
+                  break;
+                case 'Cappuccino':
+                  kcalController.text = '55';
+                  break;
+                case 'Latte':
+                case 'Flat White':
+                  kcalController.text = '45';
+                  break;
+                case 'Macchiato':
+                  kcalController.text = '10';
+                  break;
+                case 'Latte Macchiato':
+                  kcalController.text = '50';
+                  break;
+                case 'Iced Coffee':
+                  kcalController.text = '60';
+                  break;
+                case 'Andere koffie':
+                default:
+                  kcalController.text = '';
+                  break;
+              }
+            }
+
             return AlertDialog(
               title: Text(
                 'Nieuw Drankje Toevoegen',
@@ -317,9 +372,10 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       onChanged: (value) {
                         setStateDialog(() {
                           selectedDrink = value;
+                          coffeeVariant = null;
                           if (value == 'Water' || value == 'Thee') {
                             kcalController.text = '0';
-                          } else {
+                          } else if (value != 'Koffie') {
                             kcalController.text = '';
                           }
                         });
@@ -327,7 +383,6 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       items: drinkOptions
                           .map(
                             (drink) => DropdownMenuItem(
-                              // maak een dropdown item voor elke optie
                               value: drink,
                               child: Text(
                                 drink,
@@ -343,6 +398,39 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       validator: (value) =>
                           value == null ? 'Kies een drankje' : null,
                     ),
+
+                    // koffie variant dropdown
+                    if (selectedDrink == 'Koffie') ...[
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: coffeeVariant,
+                        hint: const Text('Kies koffiesoort'),
+                        onChanged: (value) {
+                          setStateDialog(() {
+                            coffeeVariant = value;
+                            updateKcalForCoffee();
+                          });
+                        },
+                        items: coffeeVariants
+                            .map(
+                              (v) => DropdownMenuItem(
+                                value: v,
+                                child: Text(
+                                  v,
+                                  style: TextStyle(
+                                    color: isDarkMode
+                                        ? Colors.white
+                                        : Colors.black,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        validator: (value) =>
+                            value == null ? 'Kies een koffiesoort' : null,
+                      ),
+                    ],
+
                     if (selectedDrink == 'Anders')
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),
@@ -351,7 +439,6 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                           style: TextStyle(
                             color: isDarkMode ? Colors.white : Colors.black,
                           ),
-                          cursorColor: isDarkMode ? Colors.white : Colors.black,
                           decoration: InputDecoration(
                             labelText: 'Naam van drankje',
                             labelStyle: TextStyle(
@@ -366,12 +453,12 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                               : null,
                         ),
                       ),
+
                     TextFormField(
                       controller: amountController,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
-                      cursorColor: isDarkMode ? Colors.white : Colors.black,
                       decoration: InputDecoration(
                         labelText: 'Hoeveelheid (ml)',
                         labelStyle: TextStyle(
@@ -381,20 +468,20 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       keyboardType: TextInputType.number,
                       validator: (value) {
                         if (value!.isEmpty) return 'Hoeveelheid is verplicht';
-                        if (int.tryParse(value) == null) {
+                        if (int.tryParse(value) == null)
                           return 'Voer een getal in';
-                        }
                         return null;
                       },
                     ),
+
+                    const SizedBox(height: 8),
                     TextFormField(
                       controller: kcalController,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
-                      cursorColor: isDarkMode ? Colors.white : Colors.black,
                       decoration: InputDecoration(
-                        labelText: 'Kcal per portie',
+                        labelText: 'Kcal per 100 ml',
                         labelStyle: TextStyle(
                           color: isDarkMode ? Colors.white70 : Colors.black54,
                         ),
@@ -402,9 +489,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       keyboardType: TextInputType.number,
                       validator: (value) {
                         if (value!.isEmpty) return 'Kcal is verplicht';
-                        if (double.tryParse(value) == null) {
+                        if (double.tryParse(value) == null)
                           return 'Voer een getal in';
-                        }
                         return null;
                       },
                     ),
@@ -413,34 +499,215 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () =>
-                      Navigator.of(context).pop(), // sluit de dialoog
+                  onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Annuleren'),
                 ),
                 ElevatedButton(
-                  onPressed: () {
-                    if (formKey.currentState!.validate()) {
-                      final name = selectedDrink == 'Anders'
-                          ? customNameController.text
-                          : selectedDrink!;
-                      setState(() {
-                        _drinkPresets.add({
-                          'name': name,
-                          'amount': int.parse(amountController.text),
-                          'kcal': double.parse(kcalController.text),
-                        });
-                      });
-                      _saveDrinkPresets();
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  child: const Text('Toevoegen'),
-                ),
+  onPressed: () {
+    if (formKey.currentState!.validate()) {
+      // naam bepalen
+      String name;
+      if (selectedDrink == 'Koffie' && coffeeVariant != null && coffeeVariant != 'Andere koffie') {
+        name = coffeeVariant!;
+      } else if (selectedDrink == 'Anders') {
+        name = customNameController.text;
+      } else {
+        name = selectedDrink!;
+      }
+
+      final amount = int.parse(amountController.text);
+      final kcalPer100 = double.parse(kcalController.text.replaceAll(',', '.'));
+      final kcalForPortion = (kcalPer100 * amount) / 100.0;
+
+      setState(() {
+        _drinkPresets.add({
+          'name': name,
+          'amount': amount,
+          'kcal': kcalForPortion,
+        });
+      });
+      _saveDrinkPresets();
+      Navigator.of(context).pop();
+    }
+  },
+  child: const Text('Toevoegen'),
+),
+
               ],
             );
           },
         );
       },
+    );
+  }
+
+  Future<double?> _fetchKcalFromBarcode(String barcode) async {
+    final url = Uri.parse(
+      'https://nl.openfoodfacts.org/api/v0/product/$barcode.json',
+    );
+    try {
+      final resp = await http.get(url).timeout(const Duration(seconds: 8));
+      if (resp.statusCode != 200) {
+        debugPrint('[fetchKcal] HTTP ${resp.statusCode}');
+        return null;
+      }
+      final data = json.decode(resp.body) as Map<String, dynamic>?;
+      if (data == null) return null;
+      final product = data['product'] as Map<String, dynamic>?;
+      if (product == null) return null;
+
+      // Try several possible nutriments maps/keys
+      final nutrimentsCandidates = <Map<String, dynamic>?>[
+        product['nutriments_per_100g'] as Map<String, dynamic>?,
+        product['nutriments'] as Map<String, dynamic>?,
+        product['nutriments_100g'] as Map<String, dynamic>?,
+      ];
+
+      Map<String, dynamic>? nutr;
+      for (final cand in nutrimentsCandidates) {
+        if (cand != null) {
+          nutr = cand;
+          break;
+        }
+      }
+      if (nutr == null) return null;
+
+      // Common key variants to check (lowercased for safety)
+      final keys = nutr.keys.map((k) => k.toString()).toList();
+      // prefer energy-kcal_100g, then energy-kcal, then energykcal_100g, etc.
+      final candidates = [
+        'energy-kcal_100g',
+        'energy-kcal',
+        'energy-kcal_100g_value',
+        'energykcal_100g',
+        'energykcal',
+        'energy-kcal_value',
+        'energy-kcal_100g_value',
+      ];
+
+      for (final k in candidates) {
+        if (nutr.containsKey(k)) {
+          final v = nutr[k];
+          if (v is num) return v.toDouble();
+          final parsed = double.tryParse(v?.toString() ?? '');
+          if (parsed != null) return parsed;
+        }
+      }
+
+      // fallback: try any key that contains 'energy' and 'kcal'
+      for (final key in keys) {
+        final lk = key.toLowerCase();
+        if (lk.contains('energy') && lk.contains('kcal')) {
+          final v = nutr[key];
+          if (v is num) return v.toDouble();
+          final parsed = double.tryParse(v?.toString() ?? '');
+          if (parsed != null) return parsed;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('[fetchKcal] error: $e');
+      return null;
+    }
+  }
+
+  Future<void> _promptForBarcodeAndFillKcal(
+    TextEditingController kcalController,
+  ) async {
+    final barcodeController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            'Scan / plak barcode',
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          ),
+          content: Form(
+            key: formKey,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: barcodeController,
+                    decoration: InputDecoration(
+                      labelText: 'Barcode (EAN/GTIN)',
+                      labelStyle: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Voer barcode in'
+                        : null,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // scan knop: opent jouw barcode_scanner pagina en plakt resultaat in het veld
+                IconButton(
+                  tooltip: 'Scan barcode',
+                  icon: Icon(
+                    Icons.qr_code_scanner,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
+                  onPressed: () async {
+                    // Pas de volgende regel aan naar de juiste scanner widget/class in jouw project.
+                    // Verwacht dat de scanner via Navigator.pop(barcodeString) het resultaat teruggeeft.
+                    final scanned = await Navigator.of(context).push<String>(
+                      MaterialPageRoute(
+                        builder: (_) => const SimpleBarcodeScannerPage(),
+                      ),
+                    );
+                    if (scanned != null && scanned.isNotEmpty) {
+                      barcodeController.text = scanned;
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annuleren'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                Navigator.of(context).pop(true);
+              },
+              child: const Text('Zoeken'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (res != true) return;
+    final bc = barcodeController.text.trim();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Zoeken...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    final kcal = await _fetchKcalFromBarcode(bc);
+    if (kcal == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Geen kcal-waarde gevonden voor barcode $bc')),
+      );
+      return;
+    }
+    kcalController.text = kcal.round().toString();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Gevonden: ${kcal.round()} kcal per 100g/ml')),
     );
   }
 
@@ -611,7 +878,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                 TextFormField(
                                   controller: kcalController,
                                   decoration: InputDecoration(
-                                    labelText: 'Kcal per portie',
+                                    labelText: 'Kcal per 100 ml',
                                     labelStyle: TextStyle(
                                       color: isDark
                                           ? Colors.white70
@@ -670,6 +937,25 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                             kcalController.text,
                                           ) ??
                                           0.0,
+                                    };
+                                  });
+                                  final amount =
+                                      int.tryParse(amountController.text) ?? 0;
+                                  final kcalPer100 =
+                                      double.tryParse(
+                                        kcalController.text.replaceAll(
+                                          ',',
+                                          '.',
+                                        ),
+                                      ) ??
+                                      0.0;
+                                  final kcalForPortion =
+                                      (kcalPer100 * amount) / 100.0;
+                                  setState(() {
+                                    _drinkPresets[index] = {
+                                      'name': nameController.text,
+                                      'amount': amount,
+                                      'kcal': kcalForPortion,
                                     };
                                   });
                                   _saveDrinkPresets();

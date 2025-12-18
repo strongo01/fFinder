@@ -2718,13 +2718,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const Divider(height: 20),
             ],
-            ...entries.map((entry) {
+            ...entries.asMap().entries.map((entryPair) {
+              final i = entryPair.key;
+              final entry = entryPair.value;
+
               final originalEncryptedEntry = originalEntriesMap[entry];
 
               // bouwt elke log entry
-              final productName = entry['product_name'] ?? 'Onbekend';
+              //final productName = entry['product_name'] ?? 'Onbekend';
               //final calories = (entry['nutriments']?['energy-kcal'] ?? 0.0)
               //  .round();
+              //             final timestamp = entry['timestamp'] as Timestamp?;
+              final productName = entry['product_name'] ?? 'Onbekend';
               final timestamp = entry['timestamp'] as Timestamp?;
 
               String rightSideText;
@@ -2738,7 +2743,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     ) ??
                     '0';
                 final amount = double.tryParse(quantityValue) ?? 0.0;
-                final kcalValue = entry['kcal']?.toString() ?? '0';
+                final kcalRaw = entry['kcal'];
+                final kcalNumber = kcalRaw is num
+                    ? kcalRaw.toDouble()
+                    : double.tryParse(kcalRaw?.toString() ?? '') ?? 0.0;
+                final kcalValue = kcalNumber.round().toString();
+
                 rightSideText = '${amount.round()} ml | ${kcalValue} kcal';
               } else {
                 final calories = (entry['nutrients']?['energy-kcal'] ?? 0.0)
@@ -2748,7 +2758,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
               return Dismissible(
                 // veeg om te verwijderen
-                key: Key(timestamp?.toString() ?? UniqueKey().toString()),
+                key: Key(
+                  'entry-${timestamp?.millisecondsSinceEpoch ?? 'noTs'}-$i',
+                ),
+
                 direction: DismissDirection.endToStart,
                 onDismissed: (direction) {
                   // Gebruik het originele versleutelde entry object voor arrayRemove
@@ -2933,78 +2946,155 @@ class _HomeScreenState extends State<HomeScreen> {
     Map<String, dynamic> decryptedEntry,
     Map<String, dynamic> encryptedEntry,
   ) async {
-    // toont dialoog om hoeveelheid aan te passen
+    // toont dialoog om hoeveelheid aan te passen (ondersteunt g en ml)
+    final isDrink = decryptedEntry.containsKey('quantity');
+    double initialAmount = 100;
+    String initialUnit = 'g';
+
+    if (isDrink) {
+      final qty = (decryptedEntry['quantity'] as String?) ?? '100 ml';
+      final match = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(qty);
+      if (match != null) {
+        initialAmount =
+            double.tryParse(match.group(1)!.replaceAll(',', '.')) ?? 100;
+      }
+      if (qty.toLowerCase().contains('ml'))
+        initialUnit = 'ml';
+      else if (qty.toLowerCase().contains('g'))
+        initialUnit = 'g';
+    } else {
+      initialAmount = (decryptedEntry['amount_g'] as num?)?.toDouble() ?? 100.0;
+      initialUnit = 'g';
+    }
+
     final amountController = TextEditingController(
-      text: (decryptedEntry['amount_g'] ?? '100').toString(),
-    ); // standaard 100gof ml
+      text: initialAmount.toString(),
+    );
     final formKey = GlobalKey<FormState>();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    String unit = initialUnit;
 
-    final newAmount = await showDialog<double>(
-      // toont dialoog en wacht op hoeveelheid
+    await showDialog<void>(
       context: context,
       builder: (context) {
-        // bouwt dialoog
-        return AlertDialog(
-          title: Text(
-            'Hoeveelheid aanpassen (gram of mililiter)',
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-          ),
-          content: Form(
-            key: formKey, // formulier sleutel voor validatie gebriiken
-            child: TextFormField(
-              controller: amountController,
-              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-              keyboardType: const TextInputType.numberWithOptions(
-                // numeriek toetsenbord
-                decimal: true,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                isDrink
+                    ? 'Hoeveelheid aanpassen (ml)'
+                    : 'Hoeveelheid aanpassen (g)',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
               ),
-              decoration: const InputDecoration(
-                labelText: 'Hoeveelheid (g of ml)',
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: amountController,
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: isDrink
+                            ? 'Hoeveelheid (ml)'
+                            : 'Hoeveelheid (g)',
+                        labelStyle: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: isDarkMode ? Colors.white12 : Colors.black12,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: isDarkMode ? Colors.white30 : Colors.black26,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null ||
+                            value.isEmpty ||
+                            double.tryParse(value.replaceAll(',', '.')) ==
+                                null ||
+                            double.parse(value.replaceAll(',', '.')) <= 0) {
+                          return 'Voer een geldig getal in';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    // Eenheid selectie - drinks default naar ml maar gebruiker kan wisselen
+                    InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Eenheid',
+                        labelStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: isDarkMode ? Colors.white12 : Colors.black12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        disabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: isDarkMode ? Colors.white12 : Colors.black12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        isDrink ? 'Milliliter (ml)' : 'Gram (g)',
+                        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              validator: (value) {
-                // validatie van invoer
-                if (value == null ||
-                    value.isEmpty ||
-                    double.tryParse(value) == null ||
-                    double.parse(value) <= 0) {
-                  return 'Voer een geldig getal in';
-                }
-                return null;
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annuleren'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (formKey.currentState!.validate()) {
-                  Navigator.of(context).pop(
-                    double.parse(amountController.text),
-                  ); // nieuwe hoeveelheid
-                }
-              },
-              child: const Text('Opslaan'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Annuleren'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    if (!formKey.currentState!.validate()) return;
+                    final newAmount = double.parse(
+                      amountController.text.replaceAll(',', '.'),
+                    );
+                    await _updateEntryAmount(
+                      decryptedEntry,
+                      encryptedEntry,
+                      newAmount,
+                      unit: unit,
+                    );
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Opslaan'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
-
-    if (newAmount != null) {
-      // als er een nieuwe hoeveelheid is opgegeven
-      _updateEntryAmount(decryptedEntry, encryptedEntry, newAmount);
-    }
   }
 
   Future<void> _updateEntryAmount(
     Map<String, dynamic> decryptedEntry,
     Map<String, dynamic> encryptedEntry,
-    double newAmount,
-  ) async {
+    double newAmount, {
+    String unit = 'g',
+  }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -3017,59 +3107,103 @@ class _HomeScreenState extends State<HomeScreen> {
         .collection('logs')
         .doc(docId);
 
-    final originalAmount = decryptedEntry['amount_g'] as num?;
-    final originalNutriments =
-        decryptedEntry['nutrients'] as Map<String, dynamic>?;
-
-    if (originalAmount == null ||
-        originalAmount <= 0 ||
-        originalNutriments == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Fout: Originele productgegevens zijn onvolledig om te herberekenen.',
-          ),
-        ),
-      );
-      return;
-    }
     final userDEK = await getUserDEKFromRemoteConfig(user.uid);
     if (userDEK == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kon encryptiesleutel niet ophalen.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kon encryptiesleutel niet ophalen.')),
+        );
+      }
       return;
     }
 
-    final factor =
-        newAmount / originalAmount.toDouble(); // bereken de schaalfactor
-
-    final newNutriments = <String, dynamic>{};
-    for (final key in originalNutriments.keys) {
-      final value = originalNutriments[key];
-      final newValue = (value is num ? value * factor : value);
-      newNutriments[key] = await encryptDouble(newValue ?? 0, userDEK);
-    } // herbereken de nutriments
-    final encryptedAmount = await encryptDouble(newAmount, userDEK);
-
-    final updatedEntry = {
-      ...encryptedEntry, // Gebruik de originele versleutelde entry als basis
-      'amount_g': encryptedAmount,
-      'nutrients': newNutriments,
-    };
-
     try {
-      // Verwijder het oude item en voeg het nieuwe toe
-      await docRef.update({
-        'entries': FieldValue.arrayRemove([encryptedEntry]),
-      });
-      await docRef.update({
-        'entries': FieldValue.arrayUnion([updatedEntry]),
-      });
+      if (decryptedEntry.containsKey('quantity')) {
+        // Drink: parse origineel amount & kcal en schaal beide
+        final qtyString = decryptedEntry['quantity'] as String? ?? '100 ml';
+        final origMatch = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(qtyString);
+        final origAmount = origMatch != null
+            ? double.tryParse(origMatch.group(1)!.replaceAll(',', '.')) ?? 0
+            : 0;
+        final origKcal =
+            double.tryParse((decryptedEntry['kcal'] ?? '0').toString()) ?? 0.0;
+
+        // bereken factor en nieuwe kcal
+        final factor = (origAmount > 0) ? (newAmount / origAmount) : 1.0;
+        final newKcal = origKcal * factor;
+
+        // bouw nieuw versleuteld entry (kopieer en overschrijf velden)
+        final updatedEntry = Map<String, dynamic>.from(encryptedEntry);
+        updatedEntry['quantity'] = await encryptValue(
+          '${newAmount.round()} $unit',
+          userDEK,
+        );
+        updatedEntry['kcal'] = await encryptDouble(newKcal, userDEK);
+
+        // update in firestore: verwijder oude en voeg nieuwe toe (atomiciteit via transaction eventueel)
+        await docRef.update({
+          'entries': FieldValue.arrayRemove([encryptedEntry]),
+        });
+        await docRef.update({
+          'entries': FieldValue.arrayUnion([updatedEntry]),
+        });
+      } else {
+        // Food: herbereken amount_g en nutriments proportioneel
+        final originalAmount = decryptedEntry['amount_g'] as num?;
+        final originalNutriments =
+            decryptedEntry['nutrients'] as Map<String, dynamic>?;
+
+        if (originalAmount == null ||
+            originalAmount <= 0 ||
+            originalNutriments == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Fout: Originele productgegevens zijn onvolledig om te herberekenen.',
+                ),
+              ),
+            );
+          }
+          return;
+        }
+
+        final factor = newAmount / originalAmount.toDouble();
+
+        final newNutriments = <String, dynamic>{};
+        for (final key in originalNutriments.keys) {
+          final value = originalNutriments[key];
+          final newValue = (value is num ? value * factor : value);
+          newNutriments[key] = await encryptDouble(newValue ?? 0, userDEK);
+        }
+        final encryptedAmount = await encryptDouble(newAmount, userDEK);
+
+        final updatedEntry = {
+          ...encryptedEntry,
+          'amount_g': encryptedAmount,
+          'nutrients': newNutriments,
+        };
+
+        await docRef.update({
+          'entries': FieldValue.arrayRemove([encryptedEntry]),
+        });
+        await docRef.update({
+          'entries': FieldValue.arrayUnion([updatedEntry]),
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Hoeveelheid bijgewerkt.')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Fout bij bijwerken: $e')));
+      debugPrint("[UPDATE_ENTRY] Fout bij bijwerken: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Fout bij bijwerken: $e')));
+      }
     }
   }
 }

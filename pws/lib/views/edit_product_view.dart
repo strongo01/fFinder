@@ -1,3 +1,4 @@
+import 'package:cryptography/cryptography.dart';
 import 'package:fFinder/views/crypto_class.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -114,12 +115,23 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     return <String>[v.toString()];
   }
 
-  String? _extractServingSize(dynamic v) {
-    if (v == null) return null;
-    if (v is num) return "${v.toString()} g";
+    String? _extractServingSize(dynamic v) {
+    debugPrint('[_extractServingSize] input: $v');
+    if (v == null) {
+      debugPrint('[_extractServingSize] result: null (input null)');
+      return null;
+    }
+    if (v is num) {
+      final res = "${v.toString()} g";
+      debugPrint('[_extractServingSize] result (num): $res');
+      return res;
+    }
     if (v is String) {
       final s = v.trim();
-      if (s.isEmpty) return null;
+      if (s.isEmpty) {
+        debugPrint('[_extractServingSize] result: null (empty string)');
+        return null;
+      }
       final unitMatch = RegExp(
         r'(\d+(?:[.,]\d+)?)\s*(g|gram|gr|ml)',
         caseSensitive: false,
@@ -127,15 +139,24 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       if (unitMatch != null) {
         final numPart = unitMatch.group(1)!.replaceAll(',', '.');
         final unit = unitMatch.group(2)!.toLowerCase();
-        if (unit == 'ml')
-          return "${double.tryParse(numPart)?.toString() ?? numPart} ml";
-        return "${double.tryParse(numPart)?.toString() ?? numPart} g";
+        final res = unit == 'ml'
+            ? "${double.tryParse(numPart)?.toString() ?? numPart} ml"
+            : "${double.tryParse(numPart)?.toString() ?? numPart} g";
+        debugPrint('[_extractServingSize] matched unit -> result: $res (from "$s")');
+        return res;
       }
       final numOnly = double.tryParse(s.replaceAll(',', '.'));
-      if (numOnly != null) return "${numOnly.toString()} g";
+      if (numOnly != null) {
+        final res = "${numOnly.toString()} g";
+        debugPrint('[_extractServingSize] numeric fallback -> result: $res (from "$s")');
+        return res;
+      }
+      debugPrint('[_extractServingSize] fallback -> returning original trimmed: "$s"');
       return s;
     }
-    return v.toString();
+    final res = v.toString();
+    debugPrint('[_extractServingSize] fallback (non-string/num) -> $res');
+    return res;
   }
 
   Map<String, dynamic> _mergeAndNormalizeNutriments(
@@ -370,25 +391,26 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       final nutrimentsData = _getNutrimentsFromControllers();
       final futures = <Future>[];
       if (isFavorite) {
-        futures.add(_addFavoriteProduct(
-          updatedProduct,
-          editedNutriments: nutrimentsData,
-        ));
+        futures.add(
+          _addFavoriteProduct(updatedProduct, editedNutriments: nutrimentsData),
+        );
       }
-      futures.add(_addRecentProduct(
-        updatedProduct,
-        editedNutriments: nutrimentsData,
-      ));
+      futures.add(
+        _addRecentProduct(updatedProduct, editedNutriments: nutrimentsData),
+      );
       await Future.wait(futures);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Naam opgeslagen.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Naam opgeslagen.')));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fout bij opslaan: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Fout bij opslaan: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -396,6 +418,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[build] servingSize="$servingSize" product?.servingSize="${product?.servingSize}"');
     if (isLoading) {
       return const SizedBox(
         height: 200,
@@ -458,6 +481,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                               child: isEditingName
                                   ? TextFormField(
                                       controller: productNameController,
+                                      autofocus: true,
                                       style: Theme.of(context)
                                           .textTheme
                                           .headlineSmall
@@ -478,30 +502,55 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                                             product!.productName ?? '';
                                         setState(() => isEditingName = true);
                                       },
-                                      child: Text(
-                                        (product!.productName == null ||
-                                                product!.productName!
-                                                    .trim()
-                                                    .isEmpty)
-                                            ? 'Onbekende naam'
-                                            : product!.productName!,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .headlineSmall
-                                            ?.copyWith(color: textColor),
-                                        overflow: TextOverflow.ellipsis,
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              (product!.productName == null ||
+                                                      product!.productName!
+                                                          .trim()
+                                                          .isEmpty)
+                                                  ? 'Onbekende naam'
+                                                  : product!.productName!,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .headlineSmall
+                                                  ?.copyWith(color: textColor),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Icon(
+                                            Icons.edit,
+                                            size: 18,
+                                            color: isDarkMode
+                                                ? Colors.white70
+                                                : Colors.black54,
+                                          ),
+                                        ],
                                       ),
                                     ),
                             ),
-                            // Toon vinkje alleen tijdens bewerken
+                            // Toon vinkje alleen tijdens bewerken; activeer pas als er wijziging is
                             if (isEditingName)
-                              IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                tooltip: 'Opslaan naam',
-
-                                icon: const Icon(Icons.check),
-onPressed: _saveEditedName,
+                              ValueListenableBuilder<TextEditingValue>(
+                                valueListenable: productNameController,
+                                builder: (_, value, __) {
+                                  final original =
+                                      (product!.productName ?? '').trim();
+                                  final changed = value.text.trim() != original;
+                                  return IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    tooltip:
+                                        changed ? 'Opslaan naam' : 'Geen wijzigingen',
+                                    icon: Icon(
+                                      Icons.check,
+                                      color: changed ? Colors.green : Colors.grey,
+                                    ),
+                                    onPressed: changed ? _saveEditedName : null,
+                                  );
+                                },
                               ),
                           ],
                         ),
@@ -575,6 +624,7 @@ onPressed: _saveEditedName,
                       ),
                     ],
                   ),
+                   _buildInfoRow('Portiegrootte', servingSize),
                   const SizedBox(height: 16),
                   Text(
                     'Voedingswaarden per 100g of ml',
@@ -584,7 +634,7 @@ onPressed: _saveEditedName,
                     ),
                   ),
 
-                  _buildInfoRow('Portiegrootte', servingSize),
+                 
 
                   const SizedBox(height: 8),
                   _buildEditableInfoRow(
@@ -799,7 +849,7 @@ onPressed: _saveEditedName,
 
     // final barcode = product.barcode;
     final barcode = product.barcode ?? widget.barcode;
-    if (barcode == null || barcode.isEmpty) return;
+    if (barcode.isEmpty) return;
 
     final userDEK = await getUserDEKFromRemoteConfig(user.uid);
     if (userDEK == null) return;
@@ -887,7 +937,7 @@ onPressed: _saveEditedName,
 
     //final barcode = product.barcode;
     final barcode = product.barcode ?? widget.barcode;
-    if (barcode == null || barcode.isEmpty) return;
+    if (barcode.isEmpty) return;
 
     final userDEK = await getUserDEKFromRemoteConfig(user.uid);
     if (userDEK == null) return;
@@ -1024,6 +1074,12 @@ onPressed: _saveEditedName,
       'Tussendoor',
     ];
 
+        String unit = (servingSize != null &&
+            servingSize.toLowerCase().contains('ml'))
+        ? 'ml'
+        : 'g';
+
+
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -1063,6 +1119,33 @@ onPressed: _saveEditedName,
                           return 'Voer een geldig getal in';
                         }
                         return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    // Eenheid-selectie (g of ml)
+                    DropdownButtonFormField<String>(
+                      value: unit,
+                      style: TextStyle(color: textColor),
+                      dropdownColor: isDarkMode ? Colors.grey[850] : Colors.white,
+                      decoration: InputDecoration(
+                      labelText: 'Eenheid',
+                      labelStyle: TextStyle(
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                      ),
+                      items: ['g', 'ml'].map((String u) {
+                      return DropdownMenuItem<String>(
+                        value: u,
+                        child: Text(
+                        u == 'g' ? 'Gram (g)' : 'Milliliter (ml)',
+                        style: TextStyle(color: textColor),
+                        ),
+                      );
+                      }).toList(),
+                      onChanged: (newValue) {
+                      setDialogState(() {
+                        unit = newValue ?? 'g';
+                      });
                       },
                     ),
                     const SizedBox(height: 16),
@@ -1165,6 +1248,17 @@ onPressed: _saveEditedName,
                       final todayDocId =
                           "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 */
+    if (unit == 'ml') {
+                        final kcal = (calculatedNutriments['energy-kcal']
+                                as num?)
+                            ?.toDouble() ??
+                            0.0;
+                        // _logDrink sluit dialog zelf en toont snackbar
+                        await _logDrink(dialogContext, productName,
+                            amount.round(), selectedMeal, kcal);
+                        return;
+                      }
+
                       debugPrint("SELECTEDDATE: ${widget.selectedDate}");
                       final date = widget.selectedDate ?? DateTime.now();
                       final todayDocId =
@@ -1230,5 +1324,95 @@ onPressed: _saveEditedName,
         );
       },
     );
+  }
+
+  Future<void> _logDrink(
+    BuildContext dialogContext,
+    String name,
+    int amount,
+    String drinkTime,
+    double kcal,
+  ) async {
+    // logt het drinken van een drankje
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(dialogContext).showSnackBar(
+        const SnackBar(content: Text('Je moet ingelogd zijn om te loggen.')),
+      );
+      return;
+    }
+
+    SecretKey? userDEK = await getUserDEKFromRemoteConfig(user.uid);
+
+    final date = widget.selectedDate ?? DateTime.now();
+    final todayDocId =
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
+    String productNameField = name;
+    String quantityField = '$amount ml';
+    String mealTypeField = drinkTime;
+    String drinkTimeField = drinkTime;
+    String kcalField = kcal.toString();
+
+    if (userDEK != null) {
+      try {
+        productNameField = await encryptValue(name, userDEK);
+      } catch (_) {
+        productNameField = name;
+      }
+      try {
+        quantityField = await encryptInt(amount, userDEK);
+      } catch (_) {
+        quantityField = '$amount ml';
+      }
+      try {
+        mealTypeField = await encryptValue(drinkTime, userDEK);
+      } catch (_) {
+        mealTypeField = drinkTime;
+      }
+      try {
+        drinkTimeField = await encryptValue(drinkTime, userDEK);
+      } catch (_) {
+        drinkTimeField = drinkTime;
+      }
+      try {
+        kcalField = await encryptDouble(kcal, userDEK);
+      } catch (_) {
+        kcalField = kcal.toString();
+      }
+    }
+
+    final logEntry = {
+      'product_name': productNameField,
+      'quantity': quantityField,
+      'meal_type': mealTypeField,
+      'drinkTime': drinkTimeField,
+      'timestamp': date,
+      'kcal': kcalField,
+      'nutriments': {
+        'energy-kcal': 0,
+        'fat': 0,
+        'saturated-fat': 0,
+        'carbohydrates': 0,
+        'sugars': 0,
+        'proteins': 0,
+        'salt': 0,
+      },
+    };
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('logs')
+        .doc(todayDocId)
+        .set({
+          'entries': FieldValue.arrayUnion([logEntry]),
+        }, SetOptions(merge: true));
+
+    if (mounted) {
+      ScaffoldMessenger.of(dialogContext).showSnackBar(
+        SnackBar(content: Text('$name ($amount ml) toegevoegd!')));
+      Navigator.of(dialogContext).pop(true);
+    }
   }
 }

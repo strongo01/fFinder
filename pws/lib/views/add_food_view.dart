@@ -983,6 +983,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
         final isDarkMode = Theme.of(modalContext).brightness == Brightness.dark;
         final textColor = isDarkMode ? Colors.white : Colors.black;
 
+        
+
         return DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.7,
@@ -3017,10 +3019,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           return const SizedBox.shrink();
                         }
                         final decryptedProduct = decryptedSnapshot.data!;
-                        final name =_displayProductName(
-                            decryptedProduct['product_name']);
-                        final brand =_displayString(
-                            decryptedProduct['brands']);
+                        final name = _displayProductName(
+                          decryptedProduct['product_name'],
+                        );
+                        final brand = _displayString(
+                          decryptedProduct['brands'],
+                        );
                         final imageUrl =
                             decryptedProduct['image_front_url'] as String?;
 
@@ -3742,6 +3746,99 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     Theme.of(context).brightness == Brightness.dark;
                 final textColor = isDarkMode ? Colors.white : Colors.black;
 
+                Future<void> _saveMeal() async {
+                  if (!formKey.currentState!.validate()) return;
+                  final user = FirebaseAuth.instance.currentUser;
+                  if (user == null) return;
+
+                  final userDEK =
+                      await getUserDEKFromRemoteConfig(user.uid);
+                  if (userDEK == null) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Kon encryptiesleutel niet ophalen.'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  List<Map<String, dynamic>> finalProducts = [];
+                  for (var entry in ingredientEntries) {
+                    if (entry['selectedProduct'] != null &&
+                        (entry['amountController'] as TextEditingController)
+                            .text
+                            .isNotEmpty) {
+                      final product =
+                          entry['selectedProduct'] as Map<String, dynamic>;
+                      final amount = double.tryParse(
+                        (entry['amountController'] as TextEditingController)
+                            .text
+                            .replaceAll(',', '.'),
+                      );
+                      if (amount != null) {
+                        finalProducts.add({
+                          'product_id': product['_id'],
+                          'product_name': await encryptValue(
+                            product['product_name'],
+                            userDEK,
+                          ),
+                          'brands': await encryptValue(
+                            product['brands'] ?? '',
+                            userDEK,
+                          ),
+                          'image_front_small_url':
+                              product['image_front_small_url'],
+                          'amount': amount,
+                          'nutriments_per_100g': {
+                            for (final key
+                                in (product['nutriments_per_100g']
+                                        as Map<String, dynamic>)
+                                    .keys)
+                              key: await encryptDouble(
+                                (product['nutriments_per_100g'][key]
+                                            as num?)
+                                        ?.toDouble() ??
+                                    0,
+                                userDEK,
+                              ),
+                          },
+                        });
+                      }
+                    }
+                  }
+
+                  if (finalProducts.isEmpty) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Voeg minimaal één product toe.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  final mealData = {
+                    'name': mealNameController.text,
+                    'ingredients': finalProducts,
+                    'timestamp': FieldValue.serverTimestamp(),
+                  };
+
+                  final collection = FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .collection('meals');
+
+                  if (mealId != null) {
+                    await collection.doc(mealId).update(mealData);
+                  } else {
+                    await collection.add(mealData);
+                  }
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
+                }
+
                 Future<void> searchProductsForIngredient(
                   String query,
                   int index, {
@@ -3834,21 +3931,43 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   }
                 }
 
-                return Padding(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 30,
-                    top: 20,
-                    left: 20,
-                    right: 20,
-                  ),
-                  child: Form(
-                    key: formKey,
-                    child: SingleChildScrollView(
-                      controller: scrollController,
-                      child: Column(
+               return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => FocusScope.of(context).unfocus(), // tik buiten om keyboard te sluiten
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 30,
+                      top: 20,
+                      left: 20,
+                      right: 20,
+                    ),
+                    child: Form(
+                      key: formKey,
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag, // veeg omlaag om keyboard te verbergen
+                        child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+
+                          Align(
+                            alignment: Alignment.topRight,
+                            child: ElevatedButton(
+                              onPressed: _saveMeal,
+                              child: Text(
+                                mealId != null ? 'Wijzigingen Opslaan' : 'Opslaan',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                textStyle: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ),
                           Text(
                             existingMeal != null
                                 ? 'Maaltijd Bewerken'
@@ -3981,6 +4100,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                           style: TextStyle(color: textColor),
                                           decoration: InputDecoration(
                                             labelText: 'Product ${index + 1}',
+                                            hintText: 'Typ om te zoeken of scan barcode',
                                             suffixIcon: IconButton(
                                               icon: const Icon(Icons.search),
                                               onPressed: () =>
@@ -3990,25 +4110,333 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                   ),
                                             ),
                                           ),
-                                          onSubmitted: (query) =>
-                                              searchProductsForIngredient(
-                                                query,
-                                                index,
-                                              ),
-                                        ),
-                                      ),
-                                      if (ingredientEntries.length > 1)
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.remove_circle_outline,
-                                            color: Colors.red,
-                                          ),
-                                          onPressed: () {
-                                            setModalState(() {
-                                              ingredientEntries.removeAt(index);
-                                            });
+                                          onSubmitted: (query) async {
+                                            await searchProductsForIngredient(
+                                              query,
+                                              index,
+                                            );
+                                            final results =
+                                                entry['searchResults'] as List?;
+                                            if (results != null &&
+                                                results.isNotEmpty) {
+                                              await showDialog(
+                                                context: context,
+                                                builder: (ctx) {
+                                                  return SimpleDialog(
+                                                    title: const Text(
+                                                      'Kies product',
+                                                    ),
+                                                    children: [
+                                                      SizedBox(
+                                                        width: double.maxFinite,
+                                                        height: 300,
+                                                        child: ListView.separated(
+                                                          itemCount:
+                                                              results.length,
+                                                          separatorBuilder:
+                                                              (_, __) =>
+                                                                  const Divider(
+                                                                    height: 1,
+                                                                  ),
+                                                          itemBuilder: (ctx2, ri) {
+                                                            final p =
+                                                                results[ri]
+                                                                    as Map<
+                                                                      String,
+                                                                      dynamic
+                                                                    >;
+                                                            final img =
+                                                                (p['image_front_small_url'] ??
+                                                                        p['image_front_url'] ??
+                                                                        p['image_thumb_url'])
+                                                                    as String?;
+                                                            return ListTile(
+                                                              leading:
+                                                                  img != null
+                                                                  ? SizedBox(
+                                                                      width: 50,
+                                                                      height:
+                                                                          50,
+                                                                      child: Image.network(
+                                                                        img,
+                                                                        fit: BoxFit
+                                                                            .cover,
+                                                                        errorBuilder:
+                                                                            (
+                                                                              _,
+                                                                              __,
+                                                                              ___,
+                                                                            ) => const Icon(
+                                                                              Icons.image_not_supported,
+                                                                            ),
+                                                                      ),
+                                                                    )
+                                                                  : const SizedBox(
+                                                                      width: 50,
+                                                                      height:
+                                                                          50,
+                                                                      child: Icon(
+                                                                        Icons
+                                                                            .fastfood,
+                                                                      ),
+                                                                    ),
+                                                              title: Text(
+                                                                _displayProductName(
+                                                                  p['product_name'],
+                                                                ),
+                                                              ),
+                                                              subtitle: Text(
+                                                                p['brands'] ??
+                                                                    '',
+                                                              ),
+                                                              onTap: () async {
+                                                                Navigator.of(
+                                                                  ctx,
+                                                                ).pop();
+                                                                final barcode =
+                                                                    (p['_id'] ??
+                                                                            p['code'] ??
+                                                                            p['barcode'])
+                                                                        as String?;
+                                                                final normalized =
+                                                                    Map<
+                                                                      String,
+                                                                      dynamic
+                                                                    >.from(p);
+                                                                normalized['allergens_tags'] =
+                                                                    _normalizeTags(
+                                                                      normalized['allergens_tags'],
+                                                                    );
+                                                                normalized['traces_tags'] =
+                                                                    _normalizeTags(
+                                                                      normalized['traces_tags'],
+                                                                    );
+                                                                normalized['additives_tags'] =
+                                                                    _normalizeTags(
+                                                                      normalized['additives_tags'],
+                                                                    );
+                                                                if (normalized['nutriments_per_100g'] ==
+                                                                        null &&
+                                                                    normalized['nutriments']
+                                                                        is Map) {
+                                                                  final n =
+                                                                      normalized['nutriments']
+                                                                          as Map<
+                                                                            String,
+                                                                            dynamic
+                                                                          >;
+                                                                  double
+                                                                  _asDouble(
+                                                                    dynamic v,
+                                                                  ) {
+                                                                    if (v ==
+                                                                        null)
+                                                                      return 0.0;
+                                                                    if (v
+                                                                        is num)
+                                                                      return v
+                                                                          .toDouble();
+                                                                    if (v
+                                                                        is String)
+                                                                      return double.tryParse(
+                                                                            v.replaceAll(
+                                                                              ',',
+                                                                              '.',
+                                                                            ),
+                                                                          ) ??
+                                                                          0.0;
+                                                                    return 0.0;
+                                                                  }
+
+                                                                  normalized['nutriments_per_100g'] = {
+                                                                    'energy-kcal':
+                                                                        _asDouble(
+                                                                          n['energy-kcal_100g'] ??
+                                                                              n['energy-kcal'],
+                                                                        ),
+                                                                    'fat': _asDouble(
+                                                                      n['fat_100g'] ??
+                                                                          n['fat'],
+                                                                    ),
+                                                                    'saturated-fat':
+                                                                        _asDouble(
+                                                                          n['saturated-fat_100g'] ??
+                                                                              n['saturated-fat'],
+                                                                        ),
+                                                                    'carbohydrates':
+                                                                        _asDouble(
+                                                                          n['carbohydrates_100g'] ??
+                                                                              n['carbohydrates'],
+                                                                        ),
+                                                                    'sugars': _asDouble(
+                                                                      n['sugars_100g'] ??
+                                                                          n['sugars'],
+                                                                    ),
+                                                                    'fiber': _asDouble(
+                                                                      n['fiber_100g'] ??
+                                                                          n['fiber'],
+                                                                    ),
+                                                                    'proteins': _asDouble(
+                                                                      n['proteins_100g'] ??
+                                                                          n['proteins'],
+                                                                    ),
+                                                                    'salt': _asDouble(
+                                                                      n['salt_100g'] ??
+                                                                          n['salt'],
+                                                                    ),
+                                                                  };
+                                                                }
+                                                                final result =
+                                                                    await _showProductDetails(
+                                                                      barcode ??
+                                                                          'unknown_${DateTime.now().millisecondsSinceEpoch}',
+                                                                      productData:
+                                                                          normalized,
+                                                                      isForMeal:
+                                                                          true,
+                                                                    );
+                                                                if (result !=
+                                                                        null &&
+                                                                    result['amount'] !=
+                                                                        null) {
+                                                                  setModalState(() {
+                                                                    (entry['amountController']
+                                                                            as TextEditingController)
+                                                                        .text = result['amount']
+                                                                        .toString();
+                                                                    entry['selectedProduct'] =
+                                                                        result['product'];
+                                                                    entry['searchResults'] =
+                                                                        null;
+                                                                  });
+                                                                }
+                                                              },
+                                                            );
+                                                          },
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                            }
                                           },
                                         ),
+                                      ),
+                                       const SizedBox(width: 8),
+                                      // Barcode scan per ingrediënt
+                                      IconButton(
+                                        icon: const Icon(Icons.qr_code_scanner),
+                                        tooltip: 'Scan barcode voor dit product',
+                                        onPressed: () async {
+                                          // Open barcode scanner page (verwacht String result)
+                                          final scanned = await Navigator.of(context).push<String>(
+                                            MaterialPageRoute(
+                                              builder: (_) => const SimpleBarcodeScannerPage(),
+                                            ),
+                                          );
+                                          if (scanned == null || scanned.isEmpty) return;
+                                          // geef korte feedback en zet loading state
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Zoeken op barcode...')),
+                                          );
+                                          setModalState(() {
+                                            entry['isSearching'] = true;
+                                          });
+                                          try {
+                                            final offUrl = Uri.parse(
+                                              'https://nl.openfoodfacts.org/api/v0/product/$scanned.json',
+                                            );
+                                            final resp = await http.get(offUrl).timeout(const Duration(seconds: 8));
+                                            if (resp.statusCode != 200) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Product niet gevonden op OpenFoodFacts')),
+                                              );
+                                            } else {
+                                              final j = jsonDecode(resp.body) as Map<String, dynamic>?;
+                                              if (j == null || j['status'] != 1 || j['product'] == null) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('Geen productgegevens gevonden')),
+                                                );
+                                              } else {
+                                                final p = Map<String, dynamic>.from(j['product'] as Map);
+                                                // normalize nutriments if needed (kopie van bestaande normalisatie)
+                                                double _asDouble(dynamic v) {
+                                                  if (v == null) return 0.0;
+                                                  if (v is num) return v.toDouble();
+                                                  if (v is String) return double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
+                                                  return 0.0;
+                                                }
+                                                if (p['nutriments_per_100g'] == null && p['nutriments'] is Map) {
+                                                  final n = p['nutriments'] as Map<String, dynamic>;
+                                                  p['nutriments_per_100g'] = {
+                                                    'energy-kcal': _asDouble(n['energy-kcal_100g'] ?? n['energy-kcal']),
+                                                    'fat': _asDouble(n['fat_100g'] ?? n['fat']),
+                                                    'saturated-fat': _asDouble(n['saturated-fat_100g'] ?? n['saturated-fat']),
+                                                    'carbohydrates': _asDouble(n['carbohydrates_100g'] ?? n['carbohydrates']),
+                                                    'sugars': _asDouble(n['sugars_100g'] ?? n['sugars']),
+                                                    'fiber': _asDouble(n['fiber_100g'] ?? n['fiber']),
+                                                    'proteins': _asDouble(n['proteins_100g'] ?? n['proteins']),
+                                                    'salt': _asDouble(n['salt_100g'] ?? n['salt']),
+                                                  };
+                                                } else if (p['nutriments_per_100g'] is Map) {
+                                                  final mp = Map<String, dynamic>.from(p['nutriments_per_100g'] as Map);
+                                                  final fixed = <String, dynamic>{};
+                                                  for (final k in mp.keys) {
+                                                    fixed[k] = _asDouble(mp[k]);
+                                                  }
+                                                  p['nutriments_per_100g'] = fixed;
+                                                }
+                                                // normalize tags
+                                                p['allergens_tags'] = _normalizeTags(p['allergens_tags'] ?? p['allergens']);
+                                                p['additives_tags'] = _normalizeTags(p['additives_tags'] ?? p['additives']);
+                                                p['traces_tags'] = _normalizeTags(p['traces_tags'] ?? p['traces']);
+                                                p['product_name'] = p['product_name'] ?? '';
+                                                p['brands'] = p['brands'] ?? '';
+                                                p['image_front_small_url'] = p['image_front_small_url'] ?? p['image_front_url'];
+                                                // vul geselecteerde product en eventueel hoeveelheid
+                                                setModalState(() {
+                                                  entry['selectedProduct'] = p;
+                                                  entry['searchResults'] = null;
+                                                });
+                                                // probeer portiegrootte te extraheren
+                                                final serving = _extractServingSize(
+                                                  p['serving_size'] ?? p['serving-size'] ?? p['servingSize'] ?? p['serving_quantity'],
+                                                );
+                                                if (serving != null) {
+                                                  final m = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(serving);
+                                                  if (m != null) {
+                                                    (entry['amountController'] as TextEditingController).text =
+                                                        m.group(1)!.replaceAll(',', '.');
+                                                  }
+                                                }
+                                                // Open details zodat gebruiker hoeveelheid/portie kan bevestigen
+                                                final result = await _showProductDetails(
+                                                  scanned,
+                                                  productData: p,
+                                                  isForMeal: true,
+                                                  initialAmount: double.tryParse((entry['amountController'] as TextEditingController).text.replaceAll(',', '.')),
+                                                );
+                                                if (result != null && result['amount'] != null) {
+                                                  setModalState(() {
+                                                    (entry['amountController'] as TextEditingController).text =
+                                                        result['amount'].toString();
+                                                    entry['selectedProduct'] = result['product'];
+                                                  });
+                                                }
+                                              }
+                                            }
+                                          } catch (e) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text('Fout bij barcode-zoekactie: $e')),
+                                            );
+                                          } finally {
+                                            setModalState(() {
+                                              entry['isSearching'] = false;
+                                            });
+                                          }
+                                        },
+                                      ),
                                     ],
                                   ),
                                   if (entry['isSearching'] as bool)
@@ -4251,105 +4679,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           ),
                           const SizedBox(height: 24),
                           ElevatedButton(
-                            onPressed: () async {
-                              if (formKey.currentState!.validate()) {
-                                final user = FirebaseAuth.instance.currentUser;
-                                if (user == null) return;
-
-                                final userDEK =
-                                    await getUserDEKFromRemoteConfig(user.uid);
-                                if (userDEK == null) {
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Kon encryptiesleutel niet ophalen.',
-                                      ),
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                List<Map<String, dynamic>> finalProducts = [];
-                                for (var entry in ingredientEntries) {
-                                  if (entry['selectedProduct'] != null &&
-                                      (entry['amountController']
-                                              as TextEditingController)
-                                          .text
-                                          .isNotEmpty) {
-                                    final product =
-                                        entry['selectedProduct']
-                                            as Map<String, dynamic>;
-                                    final amount = double.tryParse(
-                                      (entry['amountController']
-                                              as TextEditingController)
-                                          .text
-                                          .replaceAll(',', '.'),
-                                    );
-                                    if (amount != null) {
-                                      finalProducts.add({
-                                        'product_id': product['_id'],
-                                        'product_name': await encryptValue(
-                                          product['product_name'],
-                                          userDEK,
-                                        ),
-                                        'brands': await encryptValue(
-                                          product['brands'] ?? '',
-                                          userDEK,
-                                        ),
-                                        'image_front_small_url':
-                                            product['image_front_small_url'],
-                                        'amount': amount,
-                                        'nutriments_per_100g': {
-                                          for (final key
-                                              in (product['nutriments_per_100g']
-                                                      as Map<String, dynamic>)
-                                                  .keys)
-                                            key: await encryptDouble(
-                                              (product['nutriments_per_100g'][key]
-                                                          as num?)
-                                                      ?.toDouble() ??
-                                                  0,
-                                              userDEK,
-                                            ),
-                                        },
-                                      });
-                                    }
-                                  }
-                                }
-                                if (finalProducts.isEmpty) {
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Voeg minimaal één product toe.',
-                                      ),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                final mealData = {
-                                  'name': mealNameController.text,
-                                  'ingredients': finalProducts,
-                                  'timestamp': FieldValue.serverTimestamp(),
-                                };
-
-                                final collection = FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(user.uid)
-                                    .collection('meals');
-
-                                if (mealId != null) {
-                                  await collection.doc(mealId).update(mealData);
-                                } else {
-                                  await collection.add(mealData);
-                                }
-                                if (!context.mounted) return;
-                                Navigator.pop(context);
-                              }
-                            },
+                            onPressed: _saveMeal,
                             child: Text(
                               mealId != null
                                   ? 'Wijzigingen Opslaan'
@@ -4360,6 +4690,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         ],
                       ),
                     ),
+                  ),
                   ),
                 );
               },
