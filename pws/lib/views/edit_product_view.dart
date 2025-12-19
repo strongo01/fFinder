@@ -443,12 +443,11 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.6, // Beginhoogte van de sheet
-      minChildSize: 0.4, // Minimale hoogte van de sheet
-      maxChildSize: 0.9, // Maximale hoogte van de sheet
-      builder: (context, scrollController) {
+            return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.7, 
+          minChildSize: 0.5,
+          maxChildSize: 0.90,      builder: (context, scrollController) {
         return Container(
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,

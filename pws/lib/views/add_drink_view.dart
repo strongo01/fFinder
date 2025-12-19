@@ -361,140 +361,162 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                   color: isDarkMode ? Colors.white : Colors.black,
                 ),
               ),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownButtonFormField<String>(
-                      value: selectedDrink,
-                      hint: const Text('Kies een drankje'),
-                      onChanged: (value) {
-                        setStateDialog(() {
-                          selectedDrink = value;
-                          coffeeVariant = null;
-                          if (value == 'Water' || value == 'Thee') {
-                            kcalController.text = '0';
-                          } else if (value != 'Koffie') {
-                            kcalController.text = '';
-                          }
-                        });
-                      },
-                      items: drinkOptions
-                          .map(
-                            (drink) => DropdownMenuItem(
-                              value: drink,
-                              child: Text(
-                                drink,
-                                style: TextStyle(
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : Colors.black,
-                                ),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      validator: (value) =>
-                          value == null ? 'Kies een drankje' : null,
-                    ),
-
-                    // koffie variant dropdown
-                    if (selectedDrink == 'Koffie') ...[
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: coffeeVariant,
-                        hint: const Text('Kies koffiesoort'),
-                        onChanged: (value) {
-                          setStateDialog(() {
-                            coffeeVariant = value;
-                            updateKcalForCoffee();
-                          });
-                        },
-                        items: coffeeVariants
-                            .map(
-                              (v) => DropdownMenuItem(
-                                value: v,
-                                child: Text(
-                                  v,
-                                  style: TextStyle(
-                                    color: isDarkMode
-                                        ? Colors.white
-                                        : Colors.black,
+              content: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    // maximal hoogte zodat de dialog niet buiten scherm valt
+                    maxHeight: MediaQuery.of(context).size.height * 0.6,
+                  ),
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: selectedDrink,
+                          hint: const Text('Kies een drankje'),
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              selectedDrink = value;
+                              coffeeVariant = null;
+                              if (value == 'Water' || value == 'Thee') {
+                                kcalController.text = '0';
+                              } else if (value != 'Koffie') {
+                                kcalController.text = '';
+                              }
+                            });
+                          },
+                          items: drinkOptions
+                              .map(
+                                (drink) => DropdownMenuItem(
+                                  value: drink,
+                                  child: Text(
+                                    drink,
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            )
-                            .toList(),
-                        validator: (value) =>
-                            value == null ? 'Kies een koffiesoort' : null,
-                      ),
-                    ],
+                              )
+                              .toList(),
+                          validator: (value) =>
+                              value == null ? 'Kies een drankje' : null,
+                        ),
 
-                    if (selectedDrink == 'Anders')
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: TextFormField(
-                          controller: customNameController,
+                        // koffie variant dropdown
+                        if (selectedDrink == 'Koffie') ...[
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: coffeeVariant,
+                            hint: const Text('Kies koffiesoort'),
+                            onChanged: (value) {
+                              setStateDialog(() {
+                                coffeeVariant = value;
+                                updateKcalForCoffee();
+                              });
+                            },
+                            items: coffeeVariants
+                                .map(
+                                  (v) => DropdownMenuItem(
+                                    value: v,
+                                    child: Text(
+                                      v,
+                                      style: TextStyle(
+                                        color: isDarkMode
+                                            ? Colors.white
+                                            : Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            validator: (value) =>
+                                value == null ? 'Kies een koffiesoort' : null,
+                          ),
+                        ],
+
+                        if (selectedDrink == 'Anders')
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: TextFormField(
+                              controller: customNameController,
+                              style: TextStyle(
+                                color: isDarkMode ? Colors.white : Colors.black,
+                              ),
+                              decoration: InputDecoration(
+                                labelText: 'Naam van drankje',
+                                labelStyle: TextStyle(
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                              ),
+                              validator: (value) =>
+                                  (selectedDrink == 'Anders' && value!.isEmpty)
+                                  ? 'Naam is verplicht'
+                                  : null,
+                            ),
+                          ),
+
+                        TextFormField(
+                          controller: amountController,
                           style: TextStyle(
                             color: isDarkMode ? Colors.white : Colors.black,
                           ),
                           decoration: InputDecoration(
-                            labelText: 'Naam van drankje',
+                            labelText: 'Hoeveelheid (ml)',
                             labelStyle: TextStyle(
                               color: isDarkMode
                                   ? Colors.white70
                                   : Colors.black54,
                             ),
                           ),
-                          validator: (value) =>
-                              (selectedDrink == 'Anders' && value!.isEmpty)
-                              ? 'Naam is verplicht'
-                              : null,
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value!.isEmpty)
+                              return 'Hoeveelheid is verplicht';
+                            if (int.tryParse(value) == null)
+                              return 'Voer een getal in';
+                            return null;
+                          },
                         ),
-                      ),
 
-                    TextFormField(
-                      controller: amountController,
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Hoeveelheid (ml)',
-                        labelStyle: TextStyle(
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: kcalController,
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: 'Kcal per 100 ml',
+                            labelStyle: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white70
+                                  : Colors.black54,
+                            ),
+                            // toevoeging: barcode knop rechts
+                            suffixIcon: IconButton(
+                              tooltip: 'Zoek op barcode',
+                              icon: Icon(
+                                Icons.qr_code_scanner,
+                                color: isDarkMode ? Colors.white70 : Colors.black54,
+                              ),
+                              onPressed: () => _promptForBarcodeAndFillKcal(kcalController),
+                            ),
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value!.isEmpty) return 'Kcal is verplicht';
+                            if (double.tryParse(value) == null)
+                              return 'Voer een getal in';
+                            return null;
+                          },
                         ),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value!.isEmpty) return 'Hoeveelheid is verplicht';
-                        if (int.tryParse(value) == null)
-                          return 'Voer een getal in';
-                        return null;
-                      },
+                      ],
                     ),
-
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: kcalController,
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Kcal per 100 ml',
-                        labelStyle: TextStyle(
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value!.isEmpty) return 'Kcal is verplicht';
-                        if (double.tryParse(value) == null)
-                          return 'Voer een getal in';
-                        return null;
-                      },
-                    ),
-                  ],
+                  ),
                 ),
               ),
               actions: [
@@ -503,36 +525,39 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                   child: const Text('Annuleren'),
                 ),
                 ElevatedButton(
-  onPressed: () {
-    if (formKey.currentState!.validate()) {
-      // naam bepalen
-      String name;
-      if (selectedDrink == 'Koffie' && coffeeVariant != null && coffeeVariant != 'Andere koffie') {
-        name = coffeeVariant!;
-      } else if (selectedDrink == 'Anders') {
-        name = customNameController.text;
-      } else {
-        name = selectedDrink!;
-      }
+                  onPressed: () {
+                    if (formKey.currentState!.validate()) {
+                      // naam bepalen
+                      String name;
+                      if (selectedDrink == 'Koffie' &&
+                          coffeeVariant != null &&
+                          coffeeVariant != 'Andere koffie') {
+                        name = coffeeVariant!;
+                      } else if (selectedDrink == 'Anders') {
+                        name = customNameController.text;
+                      } else {
+                        name = selectedDrink!;
+                      }
 
-      final amount = int.parse(amountController.text);
-      final kcalPer100 = double.parse(kcalController.text.replaceAll(',', '.'));
-      final kcalForPortion = (kcalPer100 * amount) / 100.0;
+                      final amount = int.parse(amountController.text);
+                      final kcalPer100 = double.parse(
+                        kcalController.text.replaceAll(',', '.'),
+                      );
+                      final kcalForPortion = (kcalPer100 * amount) / 100.0;
 
-      setState(() {
-        _drinkPresets.add({
-          'name': name,
-          'amount': amount,
-          'kcal': kcalForPortion,
-        });
-      });
-      _saveDrinkPresets();
-      Navigator.of(context).pop();
-    }
-  },
-  child: const Text('Toevoegen'),
-),
-
+                      setState(() {
+                        _drinkPresets.add({
+                          'name': name,
+                          'amount': amount,
+                          'kcal': kcalForPortion,
+                        });
+                      });
+                      _saveDrinkPresets();
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Toevoegen'),
+                ),
               ],
             );
           },
@@ -875,7 +900,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                       ? Colors.white
                                       : Colors.black,
                                 ),
-                                TextFormField(
+                      TextFormField(
                                   controller: kcalController,
                                   decoration: InputDecoration(
                                     labelText: 'Kcal per 100 ml',
@@ -883,6 +908,14 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                       color: isDark
                                           ? Colors.white70
                                           : Colors.black54,
+                                    ),
+                                    suffixIcon: IconButton(
+                                      tooltip: 'Zoek op barcode',
+                                      icon: Icon(
+                                        Icons.qr_code_scanner,
+                                        color: isDark ? Colors.white70 : Colors.black54,
+                                      ),
+                                      onPressed: () => _promptForBarcodeAndFillKcal(kcalController),
                                     ),
                                   ),
                                   keyboardType: TextInputType.number,

@@ -706,10 +706,110 @@ class _AddFoodPageState extends State<AddFoodPage> {
           final data = jsonDecode(response.body);
           final foodsObject = data["foods"];
           if (foodsObject != null && foodsObject["food"] is List) {
-            final products = foodsObject["food"] as List;
+            final productsRaw = foodsObject["food"] as List;
+            // Maak een bewerkbare kopie (Map per item)
+            final products = productsRaw
+                .map((p) => p is Map ? Map<String, dynamic>.from(p) : {})
+                .toList();
+
+            // Toon direct de producten (zonder extra OFF-afbeeldingen)
+            setState(() {
+              _searchResults = _rankProducts(products, trimmed, take: 50);
+            });
+
+            // Asynchroon: verrijk elk product met afbeelding van OFF (indien barcode aanwezig)
+            for (int i = 0; i < products.length; i++) {
+              final raw = products[i];
+              try {
+                final code =
+                    raw['barcode'] ??
+                    raw['code'] ??
+                    raw['_id'] ??
+                    raw['gtin'] ??
+                    raw['ean'];
+                final barcode = code?.toString();
+                if (barcode == null || barcode.isEmpty) continue;
+
+                // Fire-and-forget fetch per product — kleine timeout en foutafhandeling
+                () async {
+                  try {
+                    final offUrl = Uri.parse(
+                      'https://nl.openfoodfacts.org/api/v0/product/$barcode.json',
+                    );
+                    final offResp = await http
+                        .get(offUrl)
+                        .timeout(const Duration(seconds: 6));
+                    if (offResp.statusCode != 200) return;
+                    final offJson =
+                        jsonDecode(offResp.body) as Map<String, dynamic>?;
+                    if (offJson == null ||
+                        offJson['status'] != 1 ||
+                        offJson['product'] is! Map)
+                      return;
+                    final offProd = offJson['product'] as Map<String, dynamic>;
+                    final img =
+                        offProd['image_front_small_url'] ??
+                        offProd['image_front_thumb_url'] ??
+                        offProd['image_front_url'];
+                    if (img is String && img.isNotEmpty) {
+                      // Update local copy
+                      raw['image_front_small_url'] = img;
+
+                      // Zoek en update in de getoonde lijst (indien nog zichtbaar)
+                      if (mounted) {
+                        setState(() {
+                          if (_searchResults != null &&
+                              _searchResults!.isNotEmpty) {
+                            // replace matching product by id/code if present, anders by identity
+                            for (int j = 0; j < _searchResults!.length; j++) {
+                              final p =
+                                  _searchResults![j] as Map<String, dynamic>;
+                              final idP =
+                                  (p['_id'] ?? p['code'] ?? p['barcode'])
+                                      ?.toString();
+                              final idRaw =
+                                  (raw['_id'] ?? raw['code'] ?? raw['barcode'])
+                                      ?.toString();
+                              if (idP != null &&
+                                  idRaw != null &&
+                                  idP == idRaw) {
+                                final updated = Map<String, dynamic>.from(p);
+                                updated['image_front_small_url'] = img;
+                                _searchResults![j] = updated;
+                                return;
+                              }
+                            }
+                            // fallback: update first occurrence of same product_name
+                            for (int j = 0; j < _searchResults!.length; j++) {
+                              final p =
+                                  _searchResults![j] as Map<String, dynamic>;
+                              if ((p['product_name'] ?? '') ==
+                                  (raw['product_name'] ?? '')) {
+                                final updated = Map<String, dynamic>.from(p);
+                                updated['image_front_small_url'] = img;
+                                _searchResults![j] = updated;
+                                return;
+                              }
+                            }
+                          }
+                        });
+                      }
+                    }
+                  } catch (e) {
+                    debugPrint(
+                      '[ffinder->OFF image async] failed for $barcode: $e',
+                    );
+                  }
+                }();
+              } catch (e) {
+                debugPrint('[ffinder processing] item error: $e');
+              }
+            }
+
+            // zet 'all' zodat fallback logic nog klopt
             all = products;
             debugPrint(
-              "Succes: ${products.length} producten gevonden via ffinder.nl",
+              "Succes: ${products.length} producten gevonden via ffinder.nl (direct getoond; images worden asynchroon verrijkt)",
             );
           } else {
             debugPrint(
@@ -740,27 +840,69 @@ class _AddFoodPageState extends State<AddFoodPage> {
             "Open Food Facts response body (preview): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}",
           );
           final data = jsonDecode(response.body);
-          final products = (data["products"] as List?) ?? [];
-          if (products.isNotEmpty) {
+          final rawProducts = (data["products"] as List?) ?? [];
+          if (rawProducts.isNotEmpty) {
+            // Normaliseer elk item naar Map<String,dynamic> om veilige casting te garanderen
+            final normalized = rawProducts
+                .map(
+                  (p) => p is Map
+                      ? Map<String, dynamic>.from(p)
+                      : <String, dynamic>{},
+                )
+                .toList();
             if (loadMore) {
-              // voeg nieuwe producten toe aan bestaande resultaten
-              all.addAll(products);
+              all.addAll(normalized);
             } else {
-              all = products;
+              all = normalized;
             }
             _hasLoadedMore = true; // geeft aan dat we extra hebben geladen
           }
         }
       }
 
-      final rankedProducts = _rankProducts(all, trimmed, take: 50);
+      final Map<String, Map<String, dynamic>> seen = {};
+      int _anonCounter = 0;
+      for (final item in all) {
+        if (item is! Map) continue;
+        final Map<String, dynamic> m = Map<String, dynamic>.from(item);
+        final id = (m['_id'] ?? m['code'] ?? m['barcode'] ?? m['gtin'])
+            ?.toString();
+        final key = (id != null && id.isNotEmpty)
+            ? id
+            : (m['product_name']?.toString() ?? 'anon_${_anonCounter++}');
 
+        if (!seen.containsKey(key)) {
+          seen[key] = m;
+        } else {
+          // Merge: vul ontbrekende nuttige velden in (image/url/brands/quantity)
+          final existing = seen[key]!;
+          void copyIfMissing(String k) {
+            final vNew = m[k];
+            if ((existing[k] == null || existing[k].toString().isEmpty) &&
+                vNew != null &&
+                vNew.toString().isNotEmpty) {
+              existing[k] = vNew;
+            }
+          }
+
+          copyIfMissing('image_front_small_url');
+          copyIfMissing('image_front_url');
+          copyIfMissing('image_thumb_url');
+          copyIfMissing('brands');
+          copyIfMissing('quantity');
+        }
+      }
+
+      final safeAll = seen.values
+          .map((p) => Map<String, dynamic>.from(p))
+          .toList(growable: false);
+      final rankedProducts = _rankProducts(safeAll, trimmed, take: 50);
       setState(() {
         _searchResults = rankedProducts;
       });
     } catch (e, stack) {
       debugPrint("Algemene fout in _searchProducts: $e");
-      debugPrint(stack as String?);
+      debugPrint(stack.toString());
       setState(() {
         _errorMessage = 'Fout bij ophalen: $e';
       });
@@ -983,13 +1125,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
         final isDarkMode = Theme.of(modalContext).brightness == Brightness.dark;
         final textColor = isDarkMode ? Colors.white : Colors.black;
 
-        
-
         return DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.7,
           minChildSize: 0.5,
-          maxChildSize: 0.85,
+          maxChildSize: 0.90,
           builder: (context, scrollController) {
             return StatefulBuilder(
               builder: (context, setModalState) {
@@ -2185,300 +2325,337 @@ class _AddFoodPageState extends State<AddFoodPage> {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         final textColor = isDarkMode ? Colors.white : Colors.black;
 
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 30,
-            top: 20,
-            left: 20,
-            right: 20,
-          ),
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Nieuw Product Toevoegen',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.headlineSmall?.copyWith(color: textColor),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _nameController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Productnaam'),
-                    validator: (value) => (value == null || value.isEmpty)
-                        ? 'Naam is verplicht'
-                        : null,
-                  ),
-                  TextFormField(
-                    controller: _brandController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Merk'),
-                  ),
-                  TextFormField(
-                    controller: _quantityController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(
-                      labelText: 'Hoeveelheid (bijv. 100g, 250ml)',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Voedingswaarden per 100g of ml',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleLarge?.copyWith(color: textColor),
-                  ),
-
-                  TextFormField(
-                    controller: _caloriesController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(
-                      labelText: 'Energie (kcal)',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                    validator: (value) => (value == null || value.isEmpty)
-                        ? 'Calorieën zijn verplicht'
-                        : null,
-                  ),
-                  TextFormField(
-                    controller: _fatController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Vetten'),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _saturatedFatController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(
-                      labelText: '  - Waarvan verzadigd',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _carbsController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(
-                      labelText: 'Koolhydraten',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _sugarsController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(
-                      labelText: '  - Waarvan suikers',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _fiberController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Vezels'),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _proteinsController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Eiwitten'),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _saltController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Zout'),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    // knop om product op te slaan
-                    onPressed: () async {
-                      if (_formKey.currentState!.validate()) {
-                        // valideer formulier
-                        final user = FirebaseAuth.instance.currentUser;
-                        if (user == null) return;
-
-                        final userDEK = await getUserDEKFromRemoteConfig(
-                          user.uid,
-                        );
-                        if (userDEK == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Fout: Kon encryptiesleutel niet ophalen.',
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-
-                        final dataToSave = {
-                          'product_name': await encryptValue(
-                            _nameController.text,
-                            userDEK,
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) {
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 30,
+                  top: 12,
+                  left: 20,
+                  right: 20,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Nieuw Product Toevoegen',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.headlineSmall?.copyWith(color: textColor),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        TextFormField(
+                          controller: _nameController,
+                          style: TextStyle(color: textColor),
+                          decoration: const InputDecoration(
+                            labelText: 'Productnaam',
                           ),
-                          'brands': await encryptValue(
-                            _brandController.text,
-                            userDEK,
+                          validator: (value) => (value == null || value.isEmpty)
+                              ? 'Naam is verplicht'
+                              : null,
+                        ),
+                        TextFormField(
+                          controller: _brandController,
+                          style: TextStyle(color: textColor),
+                          decoration: const InputDecoration(labelText: 'Merk'),
+                        ),
+                        TextFormField(
+                          controller: _quantityController,
+                          style: TextStyle(color: textColor),
+                          decoration: const InputDecoration(
+                            labelText: 'Hoeveelheid (bijv. 100g, 250ml)',
                           ),
-                          'quantity': await encryptValue(
-                            _quantityController.text,
-                            userDEK,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
-                          'timestamp': FieldValue.serverTimestamp(),
-                          'nutriments_per_100g': {
-                            'energy-kcal': await encryptDouble(
-                              double.tryParse(
-                                    _caloriesController.text.replaceAll(
-                                      ',',
-                                      '.',
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*[,.]?\d*'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Voedingswaarden per 100g of ml',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleLarge?.copyWith(color: textColor),
+                        ),
+                        TextFormField(
+                          controller: _caloriesController,
+                          style: TextStyle(color: textColor),
+                          decoration: const InputDecoration(
+                            labelText: 'Energie (kcal)',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*[,.]?\d*'),
+                            ),
+                          ],
+                          validator: (value) => (value == null || value.isEmpty)
+                              ? 'Calorieën zijn verplicht'
+                              : null,
+                        ),
+                        TextFormField(
+                          controller: _fatController,
+                          style: TextStyle(color: textColor),
+                          decoration: const InputDecoration(
+                            labelText: 'Vetten',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*[,.]?\d*'),
+                            ),
+                          ],
+                        ),
+                        TextFormField(
+                          controller: _saturatedFatController,
+                          style: TextStyle(color: textColor),
+                          decoration: const InputDecoration(
+                            labelText: '  - Waarvan verzadigd',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*[,.]?\d*'),
+                            ),
+                          ],
+                        ),
+                        TextFormField(
+                          controller: _carbsController,
+                          style: TextStyle(color: textColor),
+                          decoration: const InputDecoration(
+                            labelText: 'Koolhydraten',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*[,.]?\d*'),
+                            ),
+                          ],
+                        ),
+                        TextFormField(
+                          controller: _sugarsController,
+                          style: TextStyle(color: textColor),
+                          decoration: const InputDecoration(
+                            labelText: '  - Waarvan suikers',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*[,.]?\d*'),
+                            ),
+                          ],
+                        ),
+                        TextFormField(
+                          controller: _fiberController,
+                          style: TextStyle(color: textColor),
+                          decoration: const InputDecoration(
+                            labelText: 'Vezels',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*[,.]?\d*'),
+                            ),
+                          ],
+                        ),
+                        TextFormField(
+                          controller: _proteinsController,
+                          style: TextStyle(color: textColor),
+                          decoration: const InputDecoration(
+                            labelText: 'Eiwitten',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*[,.]?\d*'),
+                            ),
+                          ],
+                        ),
+                        TextFormField(
+                          controller: _saltController,
+                          style: TextStyle(color: textColor),
+                          decoration: const InputDecoration(labelText: 'Zout'),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*[,.]?\d*'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          // knop om product op te slaan
+                          onPressed: () async {
+                            if (_formKey.currentState!.validate()) {
+                              // valideer formulier
+                              final user = FirebaseAuth.instance.currentUser;
+                              if (user == null) return;
+
+                              final userDEK = await getUserDEKFromRemoteConfig(
+                                user.uid,
+                              );
+                              if (userDEK == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Fout: Kon encryptiesleutel niet ophalen.',
                                     ),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'fat': await encryptDouble(
-                              double.tryParse(
-                                    _fatController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'saturated-fat': await encryptDouble(
-                              double.tryParse(
-                                    _saturatedFatController.text.replaceAll(
-                                      ',',
-                                      '.',
-                                    ),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'carbohydrates': await encryptDouble(
-                              double.tryParse(
-                                    _carbsController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'sugars': await encryptDouble(
-                              double.tryParse(
-                                    _sugarsController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'fiber': await encryptDouble(
-                              double.tryParse(
-                                    _fiberController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'proteins': await encryptDouble(
-                              double.tryParse(
-                                    _proteinsController.text.replaceAll(
-                                      ',',
-                                      '.',
-                                    ),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'salt': await encryptDouble(
-                              double.tryParse(
-                                    _saltController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              final dataToSave = {
+                                'product_name': await encryptValue(
+                                  _nameController.text,
+                                  userDEK,
+                                ),
+                                'brands': await encryptValue(
+                                  _brandController.text,
+                                  userDEK,
+                                ),
+                                'quantity': await encryptValue(
+                                  _quantityController.text,
+                                  userDEK,
+                                ),
+                                'timestamp': FieldValue.serverTimestamp(),
+                                'nutriments_per_100g': {
+                                  'energy-kcal': await encryptDouble(
+                                    double.tryParse(
+                                          _caloriesController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ) ??
+                                        0,
+                                    userDEK,
+                                  ),
+                                  'fat': await encryptDouble(
+                                    double.tryParse(
+                                          _fatController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ) ??
+                                        0,
+                                    userDEK,
+                                  ),
+                                  'saturated-fat': await encryptDouble(
+                                    double.tryParse(
+                                          _saturatedFatController.text
+                                              .replaceAll(',', '.'),
+                                        ) ??
+                                        0,
+                                    userDEK,
+                                  ),
+                                  'carbohydrates': await encryptDouble(
+                                    double.tryParse(
+                                          _carbsController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ) ??
+                                        0,
+                                    userDEK,
+                                  ),
+                                  'sugars': await encryptDouble(
+                                    double.tryParse(
+                                          _sugarsController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ) ??
+                                        0,
+                                    userDEK,
+                                  ),
+                                  'fiber': await encryptDouble(
+                                    double.tryParse(
+                                          _fiberController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ) ??
+                                        0,
+                                    userDEK,
+                                  ),
+                                  'proteins': await encryptDouble(
+                                    double.tryParse(
+                                          _proteinsController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ) ??
+                                        0,
+                                    userDEK,
+                                  ),
+                                  'salt': await encryptDouble(
+                                    double.tryParse(
+                                          _saltController.text.replaceAll(
+                                            ',',
+                                            '.',
+                                          ),
+                                        ) ??
+                                        0,
+                                    userDEK,
+                                  ),
+                                },
+                              };
+
+                              await FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(user.uid)
+                                  .collection('my_products')
+                                  .add(dataToSave);
+                              Navigator.pop(
+                                context,
+                              ); // sluit de sheet na opslaan
+                            }
                           },
-                        };
-
-                        await FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(user.uid)
-                            .collection('my_products')
-                            .add(dataToSave);
-                        Navigator.pop(context); // sluit de sheet na opslaan
-                      }
-                    },
-                    child: const Text('Opslaan'),
+                          child: const Text('Opslaan'),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -3736,9 +3913,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
       builder: (modalContext) {
         return DraggableScrollableSheet(
           expand: false,
-          initialChildSize: 0.7, // 70% van het scherm
+          initialChildSize: 0.7,
           minChildSize: 0.5,
-          maxChildSize: 0.85, // maximaal 85%
+          maxChildSize: 0.90,
           builder: (sheetContext, scrollController) {
             return StatefulBuilder(
               builder: (BuildContext context, StateSetter setModalState) {
@@ -3751,8 +3928,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   final user = FirebaseAuth.instance.currentUser;
                   if (user == null) return;
 
-                  final userDEK =
-                      await getUserDEKFromRemoteConfig(user.uid);
+                  final userDEK = await getUserDEKFromRemoteConfig(user.uid);
                   if (userDEK == null) {
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -3796,8 +3972,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                         as Map<String, dynamic>)
                                     .keys)
                               key: await encryptDouble(
-                                (product['nutriments_per_100g'][key]
-                                            as num?)
+                                (product['nutriments_per_100g'][key] as num?)
                                         ?.toDouble() ??
                                     0,
                                 userDEK,
@@ -3931,9 +4106,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   }
                 }
 
-               return GestureDetector(
+                return GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => FocusScope.of(context).unfocus(), // tik buiten om keyboard te sluiten
+                  onTap: () => FocusScope.of(
+                    context,
+                  ).unfocus(), // tik buiten om keyboard te sluiten
                   child: Padding(
                     padding: EdgeInsets.only(
                       bottom: MediaQuery.of(context).viewInsets.bottom + 30,
@@ -3946,620 +4123,465 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       child: SingleChildScrollView(
                         controller: scrollController,
                         keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag, // veeg omlaag om keyboard te verbergen
+                            ScrollViewKeyboardDismissBehavior
+                                .onDrag, // veeg omlaag om keyboard te verbergen
                         child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-
-                          Align(
-                            alignment: Alignment.topRight,
-                            child: ElevatedButton(
-                              onPressed: _saveMeal,
-                              child: Text(
-                                mealId != null ? 'Wijzigingen Opslaan' : 'Opslaan',
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: ElevatedButton(
+                                onPressed: _saveMeal,
+                                child: Text(
+                                  mealId != null
+                                      ? 'Wijzigingen Opslaan'
+                                      : 'Opslaan',
                                 ),
-                                textStyle: const TextStyle(fontSize: 14),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  textStyle: const TextStyle(fontSize: 14),
+                                ),
                               ),
                             ),
-                          ),
-                          Text(
-                            existingMeal != null
-                                ? 'Maaltijd Bewerken'
-                                : 'Nieuwe Maaltijd Samenstellen',
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(color: textColor),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          TextFormField(
-                            controller: mealNameController,
-                            style: TextStyle(color: textColor),
-                            decoration: const InputDecoration(
-                              labelText: 'Naam van maaltijd',
+                            Text(
+                              existingMeal != null
+                                  ? 'Maaltijd Bewerken'
+                                  : 'Nieuwe Maaltijd Samenstellen',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(color: textColor),
+                              textAlign: TextAlign.center,
                             ),
-                            validator: (value) =>
-                                (value == null || value.isEmpty)
-                                ? 'Naam is verplicht'
-                                : null,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Ingrediënten',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.titleLarge?.copyWith(color: textColor),
-                          ),
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: ingredientEntries.length,
-                            itemBuilder: (context, index) {
-                              final entry = ingredientEntries[index];
-                              final searchController =
-                                  entry['searchController']
-                                      as TextEditingController;
-                              final amountController =
-                                  entry['amountController']
-                                      as TextEditingController;
-                              final selectedProduct =
-                                  entry['selectedProduct']
-                                      as Map<String, dynamic>?;
+                            const SizedBox(height: 24),
+                            TextFormField(
+                              controller: mealNameController,
+                              style: TextStyle(color: textColor),
+                              decoration: const InputDecoration(
+                                labelText: 'Naam van maaltijd',
+                              ),
+                              validator: (value) =>
+                                  (value == null || value.isEmpty)
+                                  ? 'Naam is verplicht'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Ingrediënten',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(color: textColor),
+                            ),
+                            ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: ingredientEntries.length,
+                              itemBuilder: (context, index) {
+                                final entry = ingredientEntries[index];
+                                final searchController =
+                                    entry['searchController']
+                                        as TextEditingController;
+                                final amountController =
+                                    entry['amountController']
+                                        as TextEditingController;
+                                final selectedProduct =
+                                    entry['selectedProduct']
+                                        as Map<String, dynamic>?;
 
-                              if (selectedProduct != null) {
-                                return Card(
-                                  margin: const EdgeInsets.symmetric(
-                                    vertical: 4.0,
-                                  ),
-                                  child: ListTile(
-                                    title: Text(
-                                      _displayProductName(
-                                        selectedProduct['product_name'],
-                                      ),
+                                if (selectedProduct != null) {
+                                  return Card(
+                                    margin: const EdgeInsets.symmetric(
+                                      vertical: 4.0,
                                     ),
-                                    subtitle: Text(
-                                      'Hoeveelheid: ${amountController.text}g',
-                                    ),
-                                    onTap: () async {
-                                      final barcode =
-                                          selectedProduct['_id'] as String? ??
-                                          'temp_${DateTime.now().millisecondsSinceEpoch}';
-
-                                      final currentAmount = double.tryParse(
-                                        amountController.text,
-                                      );
-
-                                      final normalizedProductData =
-                                          Map<String, dynamic>.from(
-                                            selectedProduct,
-                                          );
-
-                                      List<dynamic> toList(dynamic value) {
-                                        if (value is List) return value;
-                                        if (value is String && value.isNotEmpty)
-                                          return [value];
-                                        return [];
-                                      }
-
-                                      normalizedProductData['allergens_tags'] =
-                                          toList(
-                                            normalizedProductData['allergens_tags'],
-                                          );
-                                      normalizedProductData['traces_tags'] =
-                                          toList(
-                                            normalizedProductData['traces_tags'],
-                                          );
-                                      normalizedProductData['additives_tags'] =
-                                          toList(
-                                            normalizedProductData['additives_tags'],
-                                          );
-
-                                      final result = await _showProductDetails(
-                                        barcode,
-                                        productData:
-                                            normalizedProductData, // Gebruik genormaliseerde data
-                                        isForMeal: true,
-                                        initialAmount: currentAmount,
-                                      );
-
-                                      if (result != null &&
-                                          result['amount'] != null) {
-                                        setModalState(() {
-                                          amountController.text =
-                                              result['amount'].toString();
-                                          entry['selectedProduct'] =
-                                              result['product'];
-                                        });
-                                      }
-                                    },
-                                    trailing: IconButton(
-                                      icon: const Icon(Icons.close),
-                                      onPressed: () {
-                                        setModalState(() {
-                                          ingredientEntries.removeAt(index);
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextField(
-                                          controller: searchController,
-                                          style: TextStyle(color: textColor),
-                                          decoration: InputDecoration(
-                                            labelText: 'Product ${index + 1}',
-                                            hintText: 'Typ om te zoeken of scan barcode',
-                                            suffixIcon: IconButton(
-                                              icon: const Icon(Icons.search),
-                                              onPressed: () =>
-                                                  searchProductsForIngredient(
-                                                    searchController.text,
-                                                    index,
-                                                  ),
-                                            ),
-                                          ),
-                                          onSubmitted: (query) async {
-                                            await searchProductsForIngredient(
-                                              query,
-                                              index,
-                                            );
-                                            final results =
-                                                entry['searchResults'] as List?;
-                                            if (results != null &&
-                                                results.isNotEmpty) {
-                                              await showDialog(
-                                                context: context,
-                                                builder: (ctx) {
-                                                  return SimpleDialog(
-                                                    title: const Text(
-                                                      'Kies product',
-                                                    ),
-                                                    children: [
-                                                      SizedBox(
-                                                        width: double.maxFinite,
-                                                        height: 300,
-                                                        child: ListView.separated(
-                                                          itemCount:
-                                                              results.length,
-                                                          separatorBuilder:
-                                                              (_, __) =>
-                                                                  const Divider(
-                                                                    height: 1,
-                                                                  ),
-                                                          itemBuilder: (ctx2, ri) {
-                                                            final p =
-                                                                results[ri]
-                                                                    as Map<
-                                                                      String,
-                                                                      dynamic
-                                                                    >;
-                                                            final img =
-                                                                (p['image_front_small_url'] ??
-                                                                        p['image_front_url'] ??
-                                                                        p['image_thumb_url'])
-                                                                    as String?;
-                                                            return ListTile(
-                                                              leading:
-                                                                  img != null
-                                                                  ? SizedBox(
-                                                                      width: 50,
-                                                                      height:
-                                                                          50,
-                                                                      child: Image.network(
-                                                                        img,
-                                                                        fit: BoxFit
-                                                                            .cover,
-                                                                        errorBuilder:
-                                                                            (
-                                                                              _,
-                                                                              __,
-                                                                              ___,
-                                                                            ) => const Icon(
-                                                                              Icons.image_not_supported,
-                                                                            ),
-                                                                      ),
-                                                                    )
-                                                                  : const SizedBox(
-                                                                      width: 50,
-                                                                      height:
-                                                                          50,
-                                                                      child: Icon(
-                                                                        Icons
-                                                                            .fastfood,
-                                                                      ),
-                                                                    ),
-                                                              title: Text(
-                                                                _displayProductName(
-                                                                  p['product_name'],
-                                                                ),
-                                                              ),
-                                                              subtitle: Text(
-                                                                p['brands'] ??
-                                                                    '',
-                                                              ),
-                                                              onTap: () async {
-                                                                Navigator.of(
-                                                                  ctx,
-                                                                ).pop();
-                                                                final barcode =
-                                                                    (p['_id'] ??
-                                                                            p['code'] ??
-                                                                            p['barcode'])
-                                                                        as String?;
-                                                                final normalized =
-                                                                    Map<
-                                                                      String,
-                                                                      dynamic
-                                                                    >.from(p);
-                                                                normalized['allergens_tags'] =
-                                                                    _normalizeTags(
-                                                                      normalized['allergens_tags'],
-                                                                    );
-                                                                normalized['traces_tags'] =
-                                                                    _normalizeTags(
-                                                                      normalized['traces_tags'],
-                                                                    );
-                                                                normalized['additives_tags'] =
-                                                                    _normalizeTags(
-                                                                      normalized['additives_tags'],
-                                                                    );
-                                                                if (normalized['nutriments_per_100g'] ==
-                                                                        null &&
-                                                                    normalized['nutriments']
-                                                                        is Map) {
-                                                                  final n =
-                                                                      normalized['nutriments']
-                                                                          as Map<
-                                                                            String,
-                                                                            dynamic
-                                                                          >;
-                                                                  double
-                                                                  _asDouble(
-                                                                    dynamic v,
-                                                                  ) {
-                                                                    if (v ==
-                                                                        null)
-                                                                      return 0.0;
-                                                                    if (v
-                                                                        is num)
-                                                                      return v
-                                                                          .toDouble();
-                                                                    if (v
-                                                                        is String)
-                                                                      return double.tryParse(
-                                                                            v.replaceAll(
-                                                                              ',',
-                                                                              '.',
-                                                                            ),
-                                                                          ) ??
-                                                                          0.0;
-                                                                    return 0.0;
-                                                                  }
-
-                                                                  normalized['nutriments_per_100g'] = {
-                                                                    'energy-kcal':
-                                                                        _asDouble(
-                                                                          n['energy-kcal_100g'] ??
-                                                                              n['energy-kcal'],
-                                                                        ),
-                                                                    'fat': _asDouble(
-                                                                      n['fat_100g'] ??
-                                                                          n['fat'],
-                                                                    ),
-                                                                    'saturated-fat':
-                                                                        _asDouble(
-                                                                          n['saturated-fat_100g'] ??
-                                                                              n['saturated-fat'],
-                                                                        ),
-                                                                    'carbohydrates':
-                                                                        _asDouble(
-                                                                          n['carbohydrates_100g'] ??
-                                                                              n['carbohydrates'],
-                                                                        ),
-                                                                    'sugars': _asDouble(
-                                                                      n['sugars_100g'] ??
-                                                                          n['sugars'],
-                                                                    ),
-                                                                    'fiber': _asDouble(
-                                                                      n['fiber_100g'] ??
-                                                                          n['fiber'],
-                                                                    ),
-                                                                    'proteins': _asDouble(
-                                                                      n['proteins_100g'] ??
-                                                                          n['proteins'],
-                                                                    ),
-                                                                    'salt': _asDouble(
-                                                                      n['salt_100g'] ??
-                                                                          n['salt'],
-                                                                    ),
-                                                                  };
-                                                                }
-                                                                final result =
-                                                                    await _showProductDetails(
-                                                                      barcode ??
-                                                                          'unknown_${DateTime.now().millisecondsSinceEpoch}',
-                                                                      productData:
-                                                                          normalized,
-                                                                      isForMeal:
-                                                                          true,
-                                                                    );
-                                                                if (result !=
-                                                                        null &&
-                                                                    result['amount'] !=
-                                                                        null) {
-                                                                  setModalState(() {
-                                                                    (entry['amountController']
-                                                                            as TextEditingController)
-                                                                        .text = result['amount']
-                                                                        .toString();
-                                                                    entry['selectedProduct'] =
-                                                                        result['product'];
-                                                                    entry['searchResults'] =
-                                                                        null;
-                                                                  });
-                                                                }
-                                                              },
-                                                            );
-                                                          },
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  );
-                                                },
-                                              );
-                                            }
-                                          },
+                                    child: ListTile(
+                                      title: Text(
+                                        _displayProductName(
+                                          selectedProduct['product_name'],
                                         ),
                                       ),
-                                       const SizedBox(width: 8),
-                                      // Barcode scan per ingrediënt
-                                      IconButton(
-                                        icon: const Icon(Icons.qr_code_scanner),
-                                        tooltip: 'Scan barcode voor dit product',
-                                        onPressed: () async {
-                                          // Open barcode scanner page (verwacht String result)
-                                          final scanned = await Navigator.of(context).push<String>(
-                                            MaterialPageRoute(
-                                              builder: (_) => const SimpleBarcodeScannerPage(),
-                                            ),
-                                          );
-                                          if (scanned == null || scanned.isEmpty) return;
-                                          // geef korte feedback en zet loading state
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Zoeken op barcode...')),
-                                          );
+                                      subtitle: Text(
+                                        'Hoeveelheid: ${amountController.text}g',
+                                      ),
+                                      onTap: () async {
+                                        final barcode =
+                                            selectedProduct['_id'] as String? ??
+                                            'temp_${DateTime.now().millisecondsSinceEpoch}';
+
+                                        final currentAmount = double.tryParse(
+                                          amountController.text,
+                                        );
+
+                                        final normalizedProductData =
+                                            Map<String, dynamic>.from(
+                                              selectedProduct,
+                                            );
+
+                                        List<dynamic> toList(dynamic value) {
+                                          if (value is List) return value;
+                                          if (value is String &&
+                                              value.isNotEmpty)
+                                            return [value];
+                                          return [];
+                                        }
+
+                                        normalizedProductData['allergens_tags'] =
+                                            toList(
+                                              normalizedProductData['allergens_tags'],
+                                            );
+                                        normalizedProductData['traces_tags'] =
+                                            toList(
+                                              normalizedProductData['traces_tags'],
+                                            );
+                                        normalizedProductData['additives_tags'] =
+                                            toList(
+                                              normalizedProductData['additives_tags'],
+                                            );
+
+                                        final result = await _showProductDetails(
+                                          barcode,
+                                          productData:
+                                              normalizedProductData, // Gebruik genormaliseerde data
+                                          isForMeal: true,
+                                          initialAmount: currentAmount,
+                                        );
+
+                                        if (result != null &&
+                                            result['amount'] != null) {
                                           setModalState(() {
-                                            entry['isSearching'] = true;
+                                            amountController.text =
+                                                result['amount'].toString();
+                                            entry['selectedProduct'] =
+                                                result['product'];
                                           });
-                                          try {
-                                            final offUrl = Uri.parse(
-                                              'https://nl.openfoodfacts.org/api/v0/product/$scanned.json',
-                                            );
-                                            final resp = await http.get(offUrl).timeout(const Duration(seconds: 8));
-                                            if (resp.statusCode != 200) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Product niet gevonden op OpenFoodFacts')),
-                                              );
-                                            } else {
-                                              final j = jsonDecode(resp.body) as Map<String, dynamic>?;
-                                              if (j == null || j['status'] != 1 || j['product'] == null) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Geen productgegevens gevonden')),
-                                                );
-                                              } else {
-                                                final p = Map<String, dynamic>.from(j['product'] as Map);
-                                                // normalize nutriments if needed (kopie van bestaande normalisatie)
-                                                double _asDouble(dynamic v) {
-                                                  if (v == null) return 0.0;
-                                                  if (v is num) return v.toDouble();
-                                                  if (v is String) return double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
-                                                  return 0.0;
-                                                }
-                                                if (p['nutriments_per_100g'] == null && p['nutriments'] is Map) {
-                                                  final n = p['nutriments'] as Map<String, dynamic>;
-                                                  p['nutriments_per_100g'] = {
-                                                    'energy-kcal': _asDouble(n['energy-kcal_100g'] ?? n['energy-kcal']),
-                                                    'fat': _asDouble(n['fat_100g'] ?? n['fat']),
-                                                    'saturated-fat': _asDouble(n['saturated-fat_100g'] ?? n['saturated-fat']),
-                                                    'carbohydrates': _asDouble(n['carbohydrates_100g'] ?? n['carbohydrates']),
-                                                    'sugars': _asDouble(n['sugars_100g'] ?? n['sugars']),
-                                                    'fiber': _asDouble(n['fiber_100g'] ?? n['fiber']),
-                                                    'proteins': _asDouble(n['proteins_100g'] ?? n['proteins']),
-                                                    'salt': _asDouble(n['salt_100g'] ?? n['salt']),
-                                                  };
-                                                } else if (p['nutriments_per_100g'] is Map) {
-                                                  final mp = Map<String, dynamic>.from(p['nutriments_per_100g'] as Map);
-                                                  final fixed = <String, dynamic>{};
-                                                  for (final k in mp.keys) {
-                                                    fixed[k] = _asDouble(mp[k]);
-                                                  }
-                                                  p['nutriments_per_100g'] = fixed;
-                                                }
-                                                // normalize tags
-                                                p['allergens_tags'] = _normalizeTags(p['allergens_tags'] ?? p['allergens']);
-                                                p['additives_tags'] = _normalizeTags(p['additives_tags'] ?? p['additives']);
-                                                p['traces_tags'] = _normalizeTags(p['traces_tags'] ?? p['traces']);
-                                                p['product_name'] = p['product_name'] ?? '';
-                                                p['brands'] = p['brands'] ?? '';
-                                                p['image_front_small_url'] = p['image_front_small_url'] ?? p['image_front_url'];
-                                                // vul geselecteerde product en eventueel hoeveelheid
-                                                setModalState(() {
-                                                  entry['selectedProduct'] = p;
-                                                  entry['searchResults'] = null;
-                                                });
-                                                // probeer portiegrootte te extraheren
-                                                final serving = _extractServingSize(
-                                                  p['serving_size'] ?? p['serving-size'] ?? p['servingSize'] ?? p['serving_quantity'],
-                                                );
-                                                if (serving != null) {
-                                                  final m = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(serving);
-                                                  if (m != null) {
-                                                    (entry['amountController'] as TextEditingController).text =
-                                                        m.group(1)!.replaceAll(',', '.');
-                                                  }
-                                                }
-                                                // Open details zodat gebruiker hoeveelheid/portie kan bevestigen
-                                                final result = await _showProductDetails(
-                                                  scanned,
-                                                  productData: p,
-                                                  isForMeal: true,
-                                                  initialAmount: double.tryParse((entry['amountController'] as TextEditingController).text.replaceAll(',', '.')),
-                                                );
-                                                if (result != null && result['amount'] != null) {
-                                                  setModalState(() {
-                                                    (entry['amountController'] as TextEditingController).text =
-                                                        result['amount'].toString();
-                                                    entry['selectedProduct'] = result['product'];
-                                                  });
-                                                }
-                                              }
-                                            }
-                                          } catch (e) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(content: Text('Fout bij barcode-zoekactie: $e')),
-                                            );
-                                          } finally {
-                                            setModalState(() {
-                                              entry['isSearching'] = false;
-                                            });
-                                          }
+                                        }
+                                      },
+                                      trailing: IconButton(
+                                        icon: const Icon(Icons.close),
+                                        onPressed: () {
+                                          setModalState(() {
+                                            ingredientEntries.removeAt(index);
+                                          });
                                         },
                                       ),
-                                    ],
-                                  ),
-                                  if (entry['isSearching'] as bool)
-                                    const Padding(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
                                     ),
-                                  if (entry['searchResults'] != null)
-                                    SizedBox(
-                                      height: 150,
-                                      child: ListView.builder(
-                                        itemCount:
-                                            (entry['searchResults'] as List)
-                                                .length +
-                                            ((entry['hasLoadedMore'] as bool? ??
-                                                    false)
-                                                ? 0
-                                                : 1),
-                                        itemBuilder: (context, resultIndex) {
-                                          final results =
-                                              entry['searchResults'] as List;
-                                          if (resultIndex == results.length) {
-                                            return TextButton(
-                                              onPressed: () =>
-                                                  searchProductsForIngredient(
-                                                    searchController.text,
-                                                    index,
-                                                    loadMore: true,
+                                  );
+                                }
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextField(
+                                            controller: searchController,
+                                            style: TextStyle(color: textColor),
+                                            decoration: InputDecoration(
+                                              labelText: 'Product ${index + 1}',
+                                              hintText:
+                                                  'Typ om te zoeken of scan barcode',
+                                              suffixIcon: IconButton(
+                                                icon: const Icon(Icons.search),
+                                                onPressed: () =>
+                                                    searchProductsForIngredient(
+                                                      searchController.text,
+                                                      index,
+                                                    ),
+                                              ),
+                                            ),
+                                            onSubmitted: (query) async {
+                                              await searchProductsForIngredient(
+                                                query,
+                                                index,
+                                              );
+                                              final results =
+                                                  entry['searchResults']
+                                                      as List?;
+                                              if (results != null &&
+                                                  results.isNotEmpty) {
+                                                await showDialog(
+                                                  context: context,
+                                                  builder: (ctx) {
+                                                    return SimpleDialog(
+                                                      title: const Text(
+                                                        'Kies product',
+                                                      ),
+                                                      children: [
+                                                        SizedBox(
+                                                          width:
+                                                              double.maxFinite,
+                                                          height: 300,
+                                                          child: ListView.separated(
+                                                            itemCount:
+                                                                results.length,
+                                                            separatorBuilder:
+                                                                (_, __) =>
+                                                                    const Divider(
+                                                                      height: 1,
+                                                                    ),
+                                                            itemBuilder: (ctx2, ri) {
+                                                              final p =
+                                                                  results[ri]
+                                                                      as Map<
+                                                                        String,
+                                                                        dynamic
+                                                                      >;
+                                                              final img =
+                                                                  (p['image_front_small_url'] ??
+                                                                          p['image_front_url'] ??
+                                                                          p['image_thumb_url'])
+                                                                      as String?;
+                                                              return ListTile(
+                                                                leading:
+                                                                    img != null
+                                                                    ? SizedBox(
+                                                                        width:
+                                                                            50,
+                                                                        height:
+                                                                            50,
+                                                                        child: Image.network(
+                                                                          img,
+                                                                          fit: BoxFit
+                                                                              .cover,
+                                                                          errorBuilder:
+                                                                              (
+                                                                                _,
+                                                                                __,
+                                                                                ___,
+                                                                              ) => const Icon(
+                                                                                Icons.image_not_supported,
+                                                                              ),
+                                                                        ),
+                                                                      )
+                                                                    : const SizedBox(
+                                                                        width:
+                                                                            50,
+                                                                        height:
+                                                                            50,
+                                                                        child: Icon(
+                                                                          Icons
+                                                                              .fastfood,
+                                                                        ),
+                                                                      ),
+                                                                title: Text(
+                                                                  _displayProductName(
+                                                                    p['product_name'],
+                                                                  ),
+                                                                ),
+                                                                subtitle: Text(
+                                                                  p['brands'] ??
+                                                                      '',
+                                                                ),
+                                                                onTap: () async {
+                                                                  Navigator.of(
+                                                                    ctx,
+                                                                  ).pop();
+                                                                  final barcode =
+                                                                      (p['_id'] ??
+                                                                              p['code'] ??
+                                                                              p['barcode'])
+                                                                          as String?;
+                                                                  final normalized =
+                                                                      Map<
+                                                                        String,
+                                                                        dynamic
+                                                                      >.from(p);
+                                                                  normalized['allergens_tags'] =
+                                                                      _normalizeTags(
+                                                                        normalized['allergens_tags'],
+                                                                      );
+                                                                  normalized['traces_tags'] =
+                                                                      _normalizeTags(
+                                                                        normalized['traces_tags'],
+                                                                      );
+                                                                  normalized['additives_tags'] =
+                                                                      _normalizeTags(
+                                                                        normalized['additives_tags'],
+                                                                      );
+                                                                  if (normalized['nutriments_per_100g'] ==
+                                                                          null &&
+                                                                      normalized['nutriments']
+                                                                          is Map) {
+                                                                    final n =
+                                                                        normalized['nutriments']
+                                                                            as Map<
+                                                                              String,
+                                                                              dynamic
+                                                                            >;
+                                                                    double
+                                                                    _asDouble(
+                                                                      dynamic v,
+                                                                    ) {
+                                                                      if (v ==
+                                                                          null)
+                                                                        return 0.0;
+                                                                      if (v
+                                                                          is num)
+                                                                        return v
+                                                                            .toDouble();
+                                                                      if (v
+                                                                          is String)
+                                                                        return double.tryParse(
+                                                                              v.replaceAll(
+                                                                                ',',
+                                                                                '.',
+                                                                              ),
+                                                                            ) ??
+                                                                            0.0;
+                                                                      return 0.0;
+                                                                    }
+
+                                                                    normalized['nutriments_per_100g'] = {
+                                                                      'energy-kcal': _asDouble(
+                                                                        n['energy-kcal_100g'] ??
+                                                                            n['energy-kcal'],
+                                                                      ),
+                                                                      'fat': _asDouble(
+                                                                        n['fat_100g'] ??
+                                                                            n['fat'],
+                                                                      ),
+                                                                      'saturated-fat': _asDouble(
+                                                                        n['saturated-fat_100g'] ??
+                                                                            n['saturated-fat'],
+                                                                      ),
+                                                                      'carbohydrates': _asDouble(
+                                                                        n['carbohydrates_100g'] ??
+                                                                            n['carbohydrates'],
+                                                                      ),
+                                                                      'sugars': _asDouble(
+                                                                        n['sugars_100g'] ??
+                                                                            n['sugars'],
+                                                                      ),
+                                                                      'fiber': _asDouble(
+                                                                        n['fiber_100g'] ??
+                                                                            n['fiber'],
+                                                                      ),
+                                                                      'proteins': _asDouble(
+                                                                        n['proteins_100g'] ??
+                                                                            n['proteins'],
+                                                                      ),
+                                                                      'salt': _asDouble(
+                                                                        n['salt_100g'] ??
+                                                                            n['salt'],
+                                                                      ),
+                                                                    };
+                                                                  }
+                                                                  final result = await _showProductDetails(
+                                                                    barcode ??
+                                                                        'unknown_${DateTime.now().millisecondsSinceEpoch}',
+                                                                    productData:
+                                                                        normalized,
+                                                                    isForMeal:
+                                                                        true,
+                                                                  );
+                                                                  if (result !=
+                                                                          null &&
+                                                                      result['amount'] !=
+                                                                          null) {
+                                                                    setModalState(() {
+                                                                      (entry['amountController']
+                                                                              as TextEditingController)
+                                                                          .text = result['amount']
+                                                                          .toString();
+                                                                      entry['selectedProduct'] =
+                                                                          result['product'];
+                                                                      entry['searchResults'] =
+                                                                          null;
+                                                                    });
+                                                                  }
+                                                                },
+                                                              );
+                                                            },
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  },
+                                                );
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // Barcode scan per ingrediënt
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.qr_code_scanner,
+                                          ),
+                                          tooltip:
+                                              'Scan barcode voor dit product',
+                                          onPressed: () async {
+                                            // Open barcode scanner page (verwacht String result)
+                                            final scanned =
+                                                await Navigator.of(
+                                                  context,
+                                                ).push<String>(
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        const SimpleBarcodeScannerPage(),
                                                   ),
-                                              child: const Text(
-                                                'Meer producten laden...',
+                                                );
+                                            if (scanned == null ||
+                                                scanned.isEmpty)
+                                              return;
+                                            // geef korte feedback en zet loading state
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Zoeken op barcode...',
+                                                ),
                                               ),
                                             );
-                                          }
-
-                                          final product = results[resultIndex];
-                                          final imageUrl =
-                                              (product['image_front_small_url'] ??
-                                                      product['image_front_url'] ??
-                                                      product['image_thumb_url'])
-                                                  as String?;
-                                          return ListTile(
-                                            leading: imageUrl != null
-                                                ? SizedBox(
-                                                    width: 50,
-                                                    height: 50,
-                                                    child: Image.network(
-                                                      imageUrl,
-                                                      fit: BoxFit.cover,
-                                                      errorBuilder:
-                                                          (
-                                                            context,
-                                                            error,
-                                                            stackTrace,
-                                                          ) => const Icon(
-                                                            Icons
-                                                                .image_not_supported,
-                                                          ),
-                                                    ),
-                                                  )
-                                                : const SizedBox(
-                                                    width: 50,
-                                                    height: 50,
-                                                    child: Icon(Icons.fastfood),
-                                                  ),
-                                            title: Text(
-                                              _displayProductName(
-                                                product['product_name'],
-                                              ),
-                                            ),
-                                            subtitle: Text(
-                                              product['brands'] ?? 'Onbekend',
-                                            ),
-
-                                            onTap: () async {
-                                              final barcode =
-                                                  (product['_id'] ??
-                                                          product['code'] ??
-                                                          product['barcode'])
-                                                      as String?;
-                                              if (barcode == null) {
+                                            setModalState(() {
+                                              entry['isSearching'] = true;
+                                            });
+                                            try {
+                                              final offUrl = Uri.parse(
+                                                'https://nl.openfoodfacts.org/api/v0/product/$scanned.json',
+                                              );
+                                              final resp = await http
+                                                  .get(offUrl)
+                                                  .timeout(
+                                                    const Duration(seconds: 8),
+                                                  );
+                                              if (resp.statusCode != 200) {
                                                 ScaffoldMessenger.of(
                                                   context,
                                                 ).showSnackBar(
                                                   const SnackBar(
                                                     content: Text(
-                                                      'Geen barcode gevonden voor dit product.',
+                                                      'Product niet gevonden op OpenFoodFacts',
                                                     ),
                                                   ),
                                                 );
-                                                return;
-                                              }
-
-                                              final normalized =
-                                                  Map<String, dynamic>.from(
-                                                    product,
+                                              } else {
+                                                final j =
+                                                    jsonDecode(resp.body)
+                                                        as Map<
+                                                          String,
+                                                          dynamic
+                                                        >?;
+                                                if (j == null ||
+                                                    j['status'] != 1 ||
+                                                    j['product'] == null) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Geen productgegevens gevonden',
+                                                      ),
+                                                    ),
                                                   );
-
-                                              normalized['allergens_tags'] =
-                                                  _normalizeTags(
-                                                    normalized['allergens_tags'],
-                                                  );
-                                              normalized['traces_tags'] =
-                                                  _normalizeTags(
-                                                    normalized['traces_tags'],
-                                                  );
-                                              normalized['additives_tags'] =
-                                                  _normalizeTags(
-                                                    normalized['additives_tags'],
-                                                  );
-
-                                              if (normalized['nutriments_per_100g'] ==
-                                                  null) {
-                                                if (normalized['nutriments']
-                                                    is Map) {
-                                                  final n =
-                                                      normalized['nutriments']
-                                                          as Map<
-                                                            String,
-                                                            dynamic
-                                                          >;
+                                                } else {
+                                                  final p =
+                                                      Map<String, dynamic>.from(
+                                                        j['product'] as Map,
+                                                      );
+                                                  // normalize nutriments if needed (kopie van bestaande normalisatie)
                                                   double _asDouble(dynamic v) {
                                                     if (v == null) return 0.0;
                                                     if (v is num)
@@ -4575,122 +4597,427 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                     return 0.0;
                                                   }
 
-                                                  normalized['nutriments_per_100g'] = {
-                                                    'energy-kcal': _asDouble(
-                                                      n['energy-kcal_100g'] ??
-                                                          n['energy-kcal'],
+                                                  if (p['nutriments_per_100g'] ==
+                                                          null &&
+                                                      p['nutriments'] is Map) {
+                                                    final n =
+                                                        p['nutriments']
+                                                            as Map<
+                                                              String,
+                                                              dynamic
+                                                            >;
+                                                    p['nutriments_per_100g'] = {
+                                                      'energy-kcal': _asDouble(
+                                                        n['energy-kcal_100g'] ??
+                                                            n['energy-kcal'],
+                                                      ),
+                                                      'fat': _asDouble(
+                                                        n['fat_100g'] ??
+                                                            n['fat'],
+                                                      ),
+                                                      'saturated-fat': _asDouble(
+                                                        n['saturated-fat_100g'] ??
+                                                            n['saturated-fat'],
+                                                      ),
+                                                      'carbohydrates': _asDouble(
+                                                        n['carbohydrates_100g'] ??
+                                                            n['carbohydrates'],
+                                                      ),
+                                                      'sugars': _asDouble(
+                                                        n['sugars_100g'] ??
+                                                            n['sugars'],
+                                                      ),
+                                                      'fiber': _asDouble(
+                                                        n['fiber_100g'] ??
+                                                            n['fiber'],
+                                                      ),
+                                                      'proteins': _asDouble(
+                                                        n['proteins_100g'] ??
+                                                            n['proteins'],
+                                                      ),
+                                                      'salt': _asDouble(
+                                                        n['salt_100g'] ??
+                                                            n['salt'],
+                                                      ),
+                                                    };
+                                                  } else if (p['nutriments_per_100g']
+                                                      is Map) {
+                                                    final mp =
+                                                        Map<
+                                                          String,
+                                                          dynamic
+                                                        >.from(
+                                                          p['nutriments_per_100g']
+                                                              as Map,
+                                                        );
+                                                    final fixed =
+                                                        <String, dynamic>{};
+                                                    for (final k in mp.keys) {
+                                                      fixed[k] = _asDouble(
+                                                        mp[k],
+                                                      );
+                                                    }
+                                                    p['nutriments_per_100g'] =
+                                                        fixed;
+                                                  }
+                                                  // normalize tags
+                                                  p['allergens_tags'] =
+                                                      _normalizeTags(
+                                                        p['allergens_tags'] ??
+                                                            p['allergens'],
+                                                      );
+                                                  p['additives_tags'] =
+                                                      _normalizeTags(
+                                                        p['additives_tags'] ??
+                                                            p['additives'],
+                                                      );
+                                                  p['traces_tags'] =
+                                                      _normalizeTags(
+                                                        p['traces_tags'] ??
+                                                            p['traces'],
+                                                      );
+                                                  p['product_name'] =
+                                                      p['product_name'] ?? '';
+                                                  p['brands'] =
+                                                      p['brands'] ?? '';
+                                                  p['image_front_small_url'] =
+                                                      p['image_front_small_url'] ??
+                                                      p['image_front_url'];
+                                                  // vul geselecteerde product en eventueel hoeveelheid
+                                                  setModalState(() {
+                                                    entry['selectedProduct'] =
+                                                        p;
+                                                    entry['searchResults'] =
+                                                        null;
+                                                  });
+                                                  // probeer portiegrootte te extraheren
+                                                  final serving =
+                                                      _extractServingSize(
+                                                        p['serving_size'] ??
+                                                            p['serving-size'] ??
+                                                            p['servingSize'] ??
+                                                            p['serving_quantity'],
+                                                      );
+                                                  if (serving != null) {
+                                                    final m = RegExp(
+                                                      r'(\d+(?:[.,]\d+)?)',
+                                                    ).firstMatch(serving);
+                                                    if (m != null) {
+                                                      (entry['amountController']
+                                                              as TextEditingController)
+                                                          .text = m
+                                                          .group(1)!
+                                                          .replaceAll(',', '.');
+                                                    }
+                                                  }
+                                                  // Open details zodat gebruiker hoeveelheid/portie kan bevestigen
+                                                  final result = await _showProductDetails(
+                                                    scanned,
+                                                    productData: p,
+                                                    isForMeal: true,
+                                                    initialAmount: double.tryParse(
+                                                      (entry['amountController']
+                                                              as TextEditingController)
+                                                          .text
+                                                          .replaceAll(',', '.'),
                                                     ),
-                                                    'fat': _asDouble(
-                                                      n['fat_100g'] ?? n['fat'],
-                                                    ),
-                                                    'saturated-fat': _asDouble(
-                                                      n['saturated-fat_100g'] ??
-                                                          n['saturated-fat'],
-                                                    ),
-                                                    'carbohydrates': _asDouble(
-                                                      n['carbohydrates_100g'] ??
-                                                          n['carbohydrates'],
-                                                    ),
-                                                    'sugars': _asDouble(
-                                                      n['sugars_100g'] ??
-                                                          n['sugars'],
-                                                    ),
-                                                    'fiber': _asDouble(
-                                                      n['fiber_100g'] ??
-                                                          n['fiber'],
-                                                    ),
-                                                    'proteins': _asDouble(
-                                                      n['proteins_100g'] ??
-                                                          n['proteins'],
-                                                    ),
-                                                    'salt': _asDouble(
-                                                      n['salt_100g'] ??
-                                                          n['salt'],
-                                                    ),
-                                                  };
-                                                } else {
-                                                  normalized['nutriments_per_100g'] =
-                                                      (normalized['nutriments_per_100g']
-                                                          as Map<
-                                                            String,
-                                                            dynamic
-                                                          >?) ??
-                                                      {};
+                                                  );
+                                                  if (result != null &&
+                                                      result['amount'] !=
+                                                          null) {
+                                                    setModalState(() {
+                                                      (entry['amountController']
+                                                              as TextEditingController)
+                                                          .text = result['amount']
+                                                          .toString();
+                                                      entry['selectedProduct'] =
+                                                          result['product'];
+                                                    });
+                                                  }
                                                 }
                                               }
-
-                                              normalized['product_name'] =
-                                                  normalized['product_name'] ??
-                                                  '';
-                                              normalized['brands'] =
-                                                  normalized['brands'] ?? '';
-                                              normalized['quantity'] =
-                                                  normalized['quantity'] ?? '';
-                                              final result =
-                                                  await _showProductDetails(
-                                                    barcode,
-                                                    productData: normalized,
-                                                    isForMeal: true,
-                                                  );
-
-                                              if (result != null &&
-                                                  result['amount'] != null) {
-                                                setModalState(() {
-                                                  amountController.text =
-                                                      result['amount']
-                                                          .toString();
-                                                  entry['selectedProduct'] =
-                                                      result['product'];
-                                                  entry['searchResults'] = null;
-                                                });
-                                              }
-                                            },
-                                          );
-                                        },
-                                      ),
+                                            } catch (e) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'Fout bij barcode-zoekactie: $e',
+                                                  ),
+                                                ),
+                                              );
+                                            } finally {
+                                              setModalState(() {
+                                                entry['isSearching'] = false;
+                                              });
+                                            }
+                                          },
+                                        ),
+                                      ],
                                     ),
-                                ],
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.add_circle,
-                                color: Colors.green,
-                                size: 30,
-                              ),
-                              tooltip: 'Voeg nog een product toe',
-                              onPressed: () {
-                                setModalState(() {
-                                  ingredientEntries.add({
-                                    'searchController': TextEditingController(),
-                                    'amountController': TextEditingController(),
-                                    'searchResults': null,
-                                    'selectedProduct': null,
-                                    'hasLoadedMore': false,
-                                    'isSearching': false,
-                                  });
-                                });
+                                    if (entry['isSearching'] as bool)
+                                      const Padding(
+                                        padding: EdgeInsets.all(8.0),
+                                        child: Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      ),
+                                    if (entry['searchResults'] != null)
+                                      SizedBox(
+                                        height: 150,
+                                        child: ListView.builder(
+                                          itemCount:
+                                              (entry['searchResults'] as List)
+                                                  .length +
+                                              ((entry['hasLoadedMore']
+                                                          as bool? ??
+                                                      false)
+                                                  ? 0
+                                                  : 1),
+                                          itemBuilder: (context, resultIndex) {
+                                            final results =
+                                                entry['searchResults'] as List;
+                                            if (resultIndex == results.length) {
+                                              return TextButton(
+                                                onPressed: () =>
+                                                    searchProductsForIngredient(
+                                                      searchController.text,
+                                                      index,
+                                                      loadMore: true,
+                                                    ),
+                                                child: const Text(
+                                                  'Meer producten laden...',
+                                                ),
+                                              );
+                                            }
+
+                                            final product =
+                                                results[resultIndex];
+                                            final imageUrl =
+                                                (product['image_front_small_url'] ??
+                                                        product['image_front_url'] ??
+                                                        product['image_thumb_url'])
+                                                    as String?;
+                                            return ListTile(
+                                              leading: imageUrl != null
+                                                  ? SizedBox(
+                                                      width: 50,
+                                                      height: 50,
+                                                      child: Image.network(
+                                                        imageUrl,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder:
+                                                            (
+                                                              context,
+                                                              error,
+                                                              stackTrace,
+                                                            ) => const Icon(
+                                                              Icons
+                                                                  .image_not_supported,
+                                                            ),
+                                                      ),
+                                                    )
+                                                  : const SizedBox(
+                                                      width: 50,
+                                                      height: 50,
+                                                      child: Icon(
+                                                        Icons.fastfood,
+                                                      ),
+                                                    ),
+                                              title: Text(
+                                                _displayProductName(
+                                                  product['product_name'],
+                                                ),
+                                              ),
+                                              subtitle: Text(
+                                                product['brands'] ?? 'Onbekend',
+                                              ),
+
+                                              onTap: () async {
+                                                final barcode =
+                                                    (product['_id'] ??
+                                                            product['code'] ??
+                                                            product['barcode'])
+                                                        as String?;
+                                                if (barcode == null) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Geen barcode gevonden voor dit product.',
+                                                      ),
+                                                    ),
+                                                  );
+                                                  return;
+                                                }
+
+                                                final normalized =
+                                                    Map<String, dynamic>.from(
+                                                      product,
+                                                    );
+
+                                                normalized['allergens_tags'] =
+                                                    _normalizeTags(
+                                                      normalized['allergens_tags'],
+                                                    );
+                                                normalized['traces_tags'] =
+                                                    _normalizeTags(
+                                                      normalized['traces_tags'],
+                                                    );
+                                                normalized['additives_tags'] =
+                                                    _normalizeTags(
+                                                      normalized['additives_tags'],
+                                                    );
+
+                                                if (normalized['nutriments_per_100g'] ==
+                                                    null) {
+                                                  if (normalized['nutriments']
+                                                      is Map) {
+                                                    final n =
+                                                        normalized['nutriments']
+                                                            as Map<
+                                                              String,
+                                                              dynamic
+                                                            >;
+                                                    double _asDouble(
+                                                      dynamic v,
+                                                    ) {
+                                                      if (v == null) return 0.0;
+                                                      if (v is num)
+                                                        return v.toDouble();
+                                                      if (v is String)
+                                                        return double.tryParse(
+                                                              v.replaceAll(
+                                                                ',',
+                                                                '.',
+                                                              ),
+                                                            ) ??
+                                                            0.0;
+                                                      return 0.0;
+                                                    }
+
+                                                    normalized['nutriments_per_100g'] = {
+                                                      'energy-kcal': _asDouble(
+                                                        n['energy-kcal_100g'] ??
+                                                            n['energy-kcal'],
+                                                      ),
+                                                      'fat': _asDouble(
+                                                        n['fat_100g'] ??
+                                                            n['fat'],
+                                                      ),
+                                                      'saturated-fat': _asDouble(
+                                                        n['saturated-fat_100g'] ??
+                                                            n['saturated-fat'],
+                                                      ),
+                                                      'carbohydrates': _asDouble(
+                                                        n['carbohydrates_100g'] ??
+                                                            n['carbohydrates'],
+                                                      ),
+                                                      'sugars': _asDouble(
+                                                        n['sugars_100g'] ??
+                                                            n['sugars'],
+                                                      ),
+                                                      'fiber': _asDouble(
+                                                        n['fiber_100g'] ??
+                                                            n['fiber'],
+                                                      ),
+                                                      'proteins': _asDouble(
+                                                        n['proteins_100g'] ??
+                                                            n['proteins'],
+                                                      ),
+                                                      'salt': _asDouble(
+                                                        n['salt_100g'] ??
+                                                            n['salt'],
+                                                      ),
+                                                    };
+                                                  } else {
+                                                    normalized['nutriments_per_100g'] =
+                                                        (normalized['nutriments_per_100g']
+                                                            as Map<
+                                                              String,
+                                                              dynamic
+                                                            >?) ??
+                                                        {};
+                                                  }
+                                                }
+
+                                                normalized['product_name'] =
+                                                    normalized['product_name'] ??
+                                                    '';
+                                                normalized['brands'] =
+                                                    normalized['brands'] ?? '';
+                                                normalized['quantity'] =
+                                                    normalized['quantity'] ??
+                                                    '';
+                                                final result =
+                                                    await _showProductDetails(
+                                                      barcode,
+                                                      productData: normalized,
+                                                      isForMeal: true,
+                                                    );
+
+                                                if (result != null &&
+                                                    result['amount'] != null) {
+                                                  setModalState(() {
+                                                    amountController.text =
+                                                        result['amount']
+                                                            .toString();
+                                                    entry['selectedProduct'] =
+                                                        result['product'];
+                                                    entry['searchResults'] =
+                                                        null;
+                                                  });
+                                                }
+                                              },
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                  ],
+                                );
                               },
                             ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: _saveMeal,
-                            child: Text(
-                              mealId != null
-                                  ? 'Wijzigingen Opslaan'
-                                  : 'Maaltijd Opslaan',
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.add_circle,
+                                  color: Colors.green,
+                                  size: 30,
+                                ),
+                                tooltip: 'Voeg nog een product toe',
+                                onPressed: () {
+                                  setModalState(() {
+                                    ingredientEntries.add({
+                                      'searchController':
+                                          TextEditingController(),
+                                      'amountController':
+                                          TextEditingController(),
+                                      'searchResults': null,
+                                      'selectedProduct': null,
+                                      'hasLoadedMore': false,
+                                      'isSearching': false,
+                                    });
+                                  });
+                                },
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: _saveMeal,
+                              child: Text(
+                                mealId != null
+                                    ? 'Wijzigingen Opslaan'
+                                    : 'Maaltijd Opslaan',
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                   ),
                 );
               },
@@ -4748,299 +5075,326 @@ class _AddFoodPageState extends State<AddFoodPage> {
       builder: (context) {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         final textColor = isDarkMode ? Colors.white : Colors.black;
-
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 30,
-            top: 20,
-            left: 20,
-            right: 20,
-          ),
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Product Bewerken',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.headlineSmall?.copyWith(color: textColor),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _nameController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Productnaam'),
-                    validator: (value) => (value == null || value.isEmpty)
-                        ? 'Naam is verplicht'
-                        : null,
-                  ),
-                  TextFormField(
-                    controller: _brandController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Merk'),
-                  ),
-                  TextFormField(
-                    controller: _quantityController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(
-                      labelText: 'Hoeveelheid (bijv. 100g, 250ml)',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Voedingswaarden per 100g of ml',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleLarge?.copyWith(color: textColor),
-                  ),
-                  TextFormField(
-                    controller: _caloriesController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(
-                      labelText: 'Energie (kcal)',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                    validator: (value) => (value == null || value.isEmpty)
-                        ? 'Calorieën zijn verplicht'
-                        : null,
-                  ),
-                  TextFormField(
-                    controller: _fatController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Vetten'),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _saturatedFatController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(
-                      labelText: '  - Waarvan verzadigd',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _carbsController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(
-                      labelText: 'Koolhydraten',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _sugarsController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(
-                      labelText: '  - Waarvan suikers',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _fiberController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Vezels'),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _proteinsController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Eiwitten'),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  TextFormField(
-                    controller: _saltController,
-                    style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Zout'),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*[,.]?\d*'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () async {
-                      if (_formKey.currentState!.validate()) {
-                        final user = FirebaseAuth.instance.currentUser;
-                        if (user == null) return;
-
-                        final userDEK = await getUserDEKFromRemoteConfig(
-                          user.uid,
-                        );
-                        if (userDEK == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Kon encryptiesleutel niet ophalen.',
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-
-                        final updatedData = {
-                          'product_name': await encryptValue(
-                            _nameController.text,
-                            userDEK,
-                          ),
-                          'brands': await encryptValue(
-                            _brandController.text,
-                            userDEK,
-                          ),
-                          'quantity': await encryptValue(
-                            _quantityController.text,
-                            userDEK,
-                          ),
-                          'timestamp': FieldValue.serverTimestamp(),
-                          'nutriments_per_100g': {
-                            'energy-kcal': await encryptDouble(
-                              double.tryParse(
-                                    _caloriesController.text.replaceAll(
-                                      ',',
-                                      '.',
-                                    ),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'fat': await encryptDouble(
-                              double.tryParse(
-                                    _fatController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'saturated-fat': await encryptDouble(
-                              double.tryParse(
-                                    _saturatedFatController.text.replaceAll(
-                                      ',',
-                                      '.',
-                                    ),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'carbohydrates': await encryptDouble(
-                              double.tryParse(
-                                    _carbsController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'sugars': await encryptDouble(
-                              double.tryParse(
-                                    _sugarsController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'fiber': await encryptDouble(
-                              double.tryParse(
-                                    _fiberController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'proteins': await encryptDouble(
-                              double.tryParse(
-                                    _proteinsController.text.replaceAll(
-                                      ',',
-                                      '.',
-                                    ),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                            'salt': await encryptDouble(
-                              double.tryParse(
-                                    _saltController.text.replaceAll(',', '.'),
-                                  ) ??
-                                  0,
-                              userDEK,
-                            ),
-                          },
-                        };
-
-                        await FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(user.uid)
-                            .collection('my_products')
-                            .doc(docId)
-                            .update(updatedData);
-                        Navigator.pop(context); // sluit de sheet
-                      }
-                    },
-                    child: const Text('Opslaan'),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.90,
+          builder: (context, scrollController) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 30,
+                top: 12,
+                left: 20,
+                right: 20,
               ),
-            ),
-          ),
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Product Bewerken',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.headlineSmall?.copyWith(color: textColor),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _nameController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(
+                          labelText: 'Productnaam',
+                        ),
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? 'Naam is verplicht'
+                            : null,
+                      ),
+                      TextFormField(
+                        controller: _brandController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(labelText: 'Merk'),
+                      ),
+                      TextFormField(
+                        controller: _quantityController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(
+                          labelText: 'Hoeveelheid (bijv. 100g, 250ml)',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*[,.]?\d*'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Voedingswaarden per 100g of ml',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleLarge?.copyWith(color: textColor),
+                      ),
+                      TextFormField(
+                        controller: _caloriesController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(
+                          labelText: 'Energie (kcal)',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*[,.]?\d*'),
+                          ),
+                        ],
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? 'Calorieën zijn verplicht'
+                            : null,
+                      ),
+                      TextFormField(
+                        controller: _fatController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(labelText: 'Vetten'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*[,.]?\d*'),
+                          ),
+                        ],
+                      ),
+                      TextFormField(
+                        controller: _saturatedFatController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(
+                          labelText: '  - Waarvan verzadigd',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*[,.]?\d*'),
+                          ),
+                        ],
+                      ),
+                      TextFormField(
+                        controller: _carbsController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(
+                          labelText: 'Koolhydraten',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*[,.]?\d*'),
+                          ),
+                        ],
+                      ),
+                      TextFormField(
+                        controller: _sugarsController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(
+                          labelText: '  - Waarvan suikers',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*[,.]?\d*'),
+                          ),
+                        ],
+                      ),
+                      TextFormField(
+                        controller: _fiberController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(labelText: 'Vezels'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*[,.]?\d*'),
+                          ),
+                        ],
+                      ),
+                      TextFormField(
+                        controller: _proteinsController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(
+                          labelText: 'Eiwitten',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*[,.]?\d*'),
+                          ),
+                        ],
+                      ),
+                      TextFormField(
+                        controller: _saltController,
+                        style: TextStyle(color: textColor),
+                        decoration: const InputDecoration(labelText: 'Zout'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*[,.]?\d*'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () async {
+                          if (_formKey.currentState!.validate()) {
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user == null) return;
+
+                            final userDEK = await getUserDEKFromRemoteConfig(
+                              user.uid,
+                            );
+                            if (userDEK == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Kon encryptiesleutel niet ophalen.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+
+                            final updatedData = {
+                              'product_name': await encryptValue(
+                                _nameController.text,
+                                userDEK,
+                              ),
+                              'brands': await encryptValue(
+                                _brandController.text,
+                                userDEK,
+                              ),
+                              'quantity': await encryptValue(
+                                _quantityController.text,
+                                userDEK,
+                              ),
+                              'timestamp': FieldValue.serverTimestamp(),
+                              'nutriments_per_100g': {
+                                'energy-kcal': await encryptDouble(
+                                  double.tryParse(
+                                        _caloriesController.text.replaceAll(
+                                          ',',
+                                          '.',
+                                        ),
+                                      ) ??
+                                      0,
+                                  userDEK,
+                                ),
+                                'fat': await encryptDouble(
+                                  double.tryParse(
+                                        _fatController.text.replaceAll(
+                                          ',',
+                                          '.',
+                                        ),
+                                      ) ??
+                                      0,
+                                  userDEK,
+                                ),
+                                'saturated-fat': await encryptDouble(
+                                  double.tryParse(
+                                        _saturatedFatController.text.replaceAll(
+                                          ',',
+                                          '.',
+                                        ),
+                                      ) ??
+                                      0,
+                                  userDEK,
+                                ),
+                                'carbohydrates': await encryptDouble(
+                                  double.tryParse(
+                                        _carbsController.text.replaceAll(
+                                          ',',
+                                          '.',
+                                        ),
+                                      ) ??
+                                      0,
+                                  userDEK,
+                                ),
+                                'sugars': await encryptDouble(
+                                  double.tryParse(
+                                        _sugarsController.text.replaceAll(
+                                          ',',
+                                          '.',
+                                        ),
+                                      ) ??
+                                      0,
+                                  userDEK,
+                                ),
+                                'fiber': await encryptDouble(
+                                  double.tryParse(
+                                        _fiberController.text.replaceAll(
+                                          ',',
+                                          '.',
+                                        ),
+                                      ) ??
+                                      0,
+                                  userDEK,
+                                ),
+                                'proteins': await encryptDouble(
+                                  double.tryParse(
+                                        _proteinsController.text.replaceAll(
+                                          ',',
+                                          '.',
+                                        ),
+                                      ) ??
+                                      0,
+                                  userDEK,
+                                ),
+                                'salt': await encryptDouble(
+                                  double.tryParse(
+                                        _saltController.text.replaceAll(
+                                          ',',
+                                          '.',
+                                        ),
+                                      ) ??
+                                      0,
+                                  userDEK,
+                                ),
+                              },
+                            };
+
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .collection('my_products')
+                                .doc(docId)
+                                .update(updatedData);
+                            Navigator.pop(context); // sluit de sheet
+                          }
+                        },
+                        child: const Text('Opslaan'),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -5067,10 +5421,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
             productData['nutriments_per_100g'] as Map<String, dynamic>? ?? {};
 
         return DraggableScrollableSheet(
-          // maak de sheet sleepbaar
-          expand: false, // niet volledig uitvouwen
-          initialChildSize: 0.8,
-          maxChildSize: 0.9,
+          expand: false,
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.90,
           builder: (_, scrollController) {
             return SingleChildScrollView(
               controller: scrollController,

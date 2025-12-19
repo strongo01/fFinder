@@ -2612,7 +2612,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } else {
       topText = 'Je hebt';
-      bottomText = 'calorieën geconsumeerd';
+      bottomText = 'calorieën\ngeconsumeerd';
     }
 
     return Column(
@@ -2627,7 +2627,11 @@ class _HomeScreenState extends State<HomeScreen> {
             color: valueColor,
           ),
         ),
-        Text(bottomText, style: labelStyle),
+        Text(
+          bottomText,
+          style: labelStyle,
+          textAlign: TextAlign.center, 
+        ),
       ],
     );
   }
