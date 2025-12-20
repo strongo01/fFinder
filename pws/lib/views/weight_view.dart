@@ -675,7 +675,6 @@ class _WeightViewState extends State<WeightView> {
                                   onPressed: _saving ? null : _saveWeight,
                                 ),
                               ),
-                              
                             ],
                           ),
                         ),
@@ -903,6 +902,71 @@ class _WeightViewState extends State<WeightView> {
   ) {
     final reversed = _entries.reversed.toList();
 
+    final rows = <Widget>[];
+    for (var i = 0; i < reversed.length; i++) {
+      final e = reversed[i];
+      rows.add(
+        Dismissible(
+          key: Key('${e.date.toIso8601String()}_${e.weight}_$i'),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            color: Colors.redAccent,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: const Icon(Icons.delete, color: Colors.white),
+          ),
+          confirmDismiss: (direction) async {
+            return await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Verwijderen?'),
+                content: const Text(
+                  'Weet je zeker dat je deze meting wilt verwijderen?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('Annuleren'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const Text('Verwijderen'),
+                  ),
+                ],
+              ),
+            );
+          },
+          onDismissed: (direction) async {
+            await _deleteEntry(e);
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Meting verwijderd')));
+          },
+          child: ListTile(
+            dense: true,
+            title: Text(
+              _formatDate(e.date),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: primaryTextColor,
+              ),
+            ),
+            trailing: Text(
+              '${e.weight.toStringAsFixed(1)} kg',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: primaryTextColor,
+              ),
+            ),
+            subtitle: Text(
+              _formatShortMonth(e.date),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: secondaryTextColor,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Card(
       margin: const EdgeInsets.only(top: 8),
       child: Column(
@@ -914,66 +978,7 @@ class _WeightViewState extends State<WeightView> {
             ),
           ),
           const Divider(height: 1),
-          ...reversed.map(
-            (e) => Dismissible(
-              key: Key('${e.date.toIso8601String()}_${e.weight}'),
-              direction: DismissDirection.endToStart,
-              background: Container(
-                color: Colors.redAccent,
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: const Icon(Icons.delete, color: Colors.white),
-              ),
-              confirmDismiss: (direction) async {
-                return await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Verwijderen?'),
-                    content: const Text(
-                      'Weet je zeker dat je deze meting wilt verwijderen?',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(false),
-                        child: const Text('Annuleren'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('Verwijderen'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              onDismissed: (direction) async {
-                await _deleteEntry(e);
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Meting verwijderd')));
-              },
-              child: ListTile(
-                dense: true,
-                title: Text(
-                  _formatDate(e.date),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: primaryTextColor,
-                  ),
-                ),
-                trailing: Text(
-                  '${e.weight.toStringAsFixed(1)} kg',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: primaryTextColor,
-                  ),
-                ),
-                subtitle: Text(
-                  _formatShortMonth(e.date),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: secondaryTextColor,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          ...rows,
         ],
       ),
     );
@@ -1134,7 +1139,6 @@ class _WeightViewState extends State<WeightView> {
     );
   }
 
-
   Widget _buildTargetWeightEstimate(
     ThemeData theme,
     Color primaryTextColor,
@@ -1147,10 +1151,28 @@ class _WeightViewState extends State<WeightView> {
       );
     }
 
-    final sorted = _entries.toList()..sort((a, b) => a.date.compareTo(b.date));
+    // ===== CONFIG =====
+    const int lookbackMonths = 1;
+    const int minRecentPoints = 3;
+    const double slopeThreshold = 0.001; // kg/dag (≈ 1g/dag)
+    const int maxReasonableDays = 3650; // 10 jaar
+    const double halfLifeDays = 14; // exponentiële halfwaardetijd
+
+    final now = DateTime.now();
+    final cutoffDate = DateTime(now.year, now.month - lookbackMonths, now.day);
+
+    // Sorteer alle metingen
+    final allSorted = _entries.toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    // Gebruik recente data indien mogelijk
+    final recent = allSorted.where((e) => e.date.isAfter(cutoffDate)).toList();
+
+    final sorted = recent.length >= minRecentPoints ? recent : allSorted;
+
     final lastWeight = sorted.last.weight;
 
-    // ✅ Check of je op je streefgewicht bent
+    // Op streefgewicht?
     if ((lastWeight - _targetWeight!).abs() < 0.01) {
       return Text(
         'Goed zo! Je bent op je streefgewicht.',
@@ -1167,27 +1189,43 @@ class _WeightViewState extends State<WeightView> {
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
       );
     }
+
     final firstDate = sorted.first.date;
     final n = sorted.length;
 
-    // x = dagen sinds eerste meting, y = gewicht
-    final xs = List.generate(
-      n,
-      (i) => sorted[i].date.difference(firstDate).inDays.toDouble(),
-    );
-    final ys = List.generate(n, (i) => sorted[i].weight.toDouble());
+    // x = dagen sinds eerste meting (fractioneel)
+    final xs = List<double>.generate(n, (i) {
+      final ms = sorted[i].date.difference(firstDate).inMilliseconds;
+      return ms / Duration.millisecondsPerDay;
+    });
+    final ys = List<double>.generate(n, (i) => sorted[i].weight.toDouble());
 
-    // Ongewogen lineaire regressie (betrouwbaar voor kleine datasets)
-    final meanX = xs.reduce((a, b) => a + b) / n;
-    final meanY = ys.reduce((a, b) => a + b) / n;
+    // ===== Exponentiële gewichten =====
+    // Recentere punten krijgen meer gewicht
+    final lastX = xs.last;
+    final lambda = log(2) / halfLifeDays;
+
+    final ws = List<double>.generate(n, (i) {
+      final ageDays = lastX - xs[i];
+      return exp(-lambda * ageDays);
+    });
+
+    final wSum = ws.reduce((a, b) => a + b);
+
+    // Gewogen gemiddelden
+    final meanX =
+        List.generate(n, (i) => ws[i] * xs[i]).reduce((a, b) => a + b) / wSum;
+    final meanY =
+        List.generate(n, (i) => ws[i] * ys[i]).reduce((a, b) => a + b) / wSum;
 
     double num = 0.0;
     double den = 0.0;
+
     for (int i = 0; i < n; i++) {
       final dx = xs[i] - meanX;
       final dy = ys[i] - meanY;
-      num += dx * dy;
-      den += dx * dx;
+      num += ws[i] * dx * dy;
+      den += ws[i] * dx * dx;
     }
 
     if (den == 0) {
@@ -1200,16 +1238,16 @@ class _WeightViewState extends State<WeightView> {
     final slope = num / den; // kg per dag
     final intercept = meanY - slope * meanX;
 
-    // Residuals voor variatie-inschatting
+    // ===== Residuals (onzekerheid) =====
     double varNum = 0.0;
     for (int i = 0; i < n; i++) {
-      final res = ys[i] - (intercept + slope * xs[i]);
-      varNum += res * res;
+      final pred = intercept + slope * xs[i];
+      final res = ys[i] - pred;
+      varNum += ws[i] * res * res;
     }
-    final weightedStd = sqrt(varNum / n);
+    final residualStd = sqrt(varNum / wSum);
 
-    // Drempel om 'stabiel' te melden
-    const slopeThreshold = 0.001; // 1 gram/dag
+    // Stabiel?
     if (slope.abs() < slopeThreshold) {
       return Text(
         'Je gewicht is redelijk stabiel, geen betrouwbare trend.',
@@ -1217,9 +1255,9 @@ class _WeightViewState extends State<WeightView> {
       );
     }
 
-   final remaining = _targetWeight! - lastWeight;
+    final remaining = _targetWeight! - lastWeight;
 
-    // Correcte check richting streefgewicht
+    // Verkeerde richting?
     if ((remaining > 0 && slope <= 0) || (remaining < 0 && slope >= 0)) {
       return Text(
         'Met de huidige trend beweeg je van je streefgewicht af.',
@@ -1227,9 +1265,25 @@ class _WeightViewState extends State<WeightView> {
       );
     }
 
-    final remainingDays = (remaining / slope).abs().ceil();
-    final weeks = remainingDays ~/ 7;
-    final daysLeft = remainingDays % 7;
+    final daysNeeded = (remaining / slope).abs();
+
+    if (daysNeeded.isNaN || daysNeeded.isInfinite) {
+      return Text(
+        'Er is onvoldoende trendinformatie om een realistische inschatting te maken.',
+        style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
+      );
+    }
+
+    if (daysNeeded > maxReasonableDays) {
+      return Text(
+        'Op basis van de huidige trend is het onwaarschijnlijk dat je je streefgewicht binnen 10 jaar bereikt.',
+        style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
+      );
+    }
+
+    final totalDays = daysNeeded.ceil();
+    final weeks = totalDays ~/ 7;
+    final daysLeft = totalDays % 7;
 
     String timeStr = '';
     if (weeks > 0) {
@@ -1237,22 +1291,32 @@ class _WeightViewState extends State<WeightView> {
     }
     if (daysLeft > 0) {
       if (timeStr.isNotEmpty) timeStr += ' en ';
-      timeStr += '$daysLeft dag${daysLeft > 1 ? 'en' : ''}';
+      timeStr += '$daysLeft dag${daysLeft == 1 ? '' : 'en'}';
     }
     if (timeStr.isEmpty) timeStr = 'minder dan een dag';
 
-    // Onzekerheidsmelding
+    final targetDate = DateTime.now().add(Duration(days: totalDays));
+    final dateStr = '${targetDate.day}-${targetDate.month}-${targetDate.year}';
+
+    // Onzekerheidstekst
     String uncertaintyNote = '';
-    if (weightedStd >= 0.5) {
+    if (residualStd >= 1.0) {
       uncertaintyNote =
-          '\nLet op: flinke schommelingen in je metingen maken deze schatting onzeker.';
-    } else if (weightedStd >= 0.25) {
+          '\nLet op: zeer grote schommelingen maken deze schatting onbetrouwbaar.';
+    } else if (residualStd >= 0.5) {
       uncertaintyNote =
-          '\nOpmerking: enige variatie in je weegwaarden — schatting kan afwijken.';
+          '\nLet op: flinke schommelingen maken deze schatting onzeker.';
+    } else if (residualStd >= 0.25) {
+      uncertaintyNote = '\nOpmerking: enige variatie — schatting kan afwijken.';
     }
 
+    final basisStr = recent.length >= minRecentPoints
+        ? 'op basis van de afgelopen maand'
+        : 'op basis van alle metingen';
+
     return Text(
-      'Als je zo doorgaat, bereik je je streefgewicht over ongeveer $timeStr.$uncertaintyNote',
+      'Als je zo doorgaat ($basisStr), bereik je je streefgewicht over ongeveer '
+      '$timeStr (rond $dateStr).$uncertaintyNote',
       style: theme.textTheme.bodySmall?.copyWith(
         color: secondaryTextColor,
         fontWeight: FontWeight.w600,

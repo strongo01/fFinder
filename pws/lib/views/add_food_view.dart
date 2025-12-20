@@ -17,6 +17,11 @@ import 'barcode_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 
+enum SourceStatus { idle, loading, success, error }
+
+SourceStatus _ffinderStatus = SourceStatus.idle;
+SourceStatus _offStatus = SourceStatus.idle;
+
 class AddFoodPage extends StatefulWidget {
   final String? scannedBarcode;
   final Map<String, dynamic>?
@@ -58,6 +63,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       false; // Vlag om te controleren of de sheet al is getoond
 
   late TutorialCoachMark tutorialCoachMark;
+  int _searchToken = 0;
 
   bool _hasLoadedMore = false;
 
@@ -678,7 +684,38 @@ class _AddFoodPageState extends State<AddFoodPage> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+
+      _ffinderStatus = SourceStatus.loading;
+      _offStatus = SourceStatus.loading;
     });
+    final int currentToken = ++_searchToken;
+
+    _searchOffParallel(trimmed)
+        .then((offProducts) {
+          if (!mounted || offProducts.isEmpty) return;
+          if (currentToken != _searchToken) return; // voorkom oude resultaten
+          if (offProducts.isNotEmpty) {
+            setState(() {
+              _offStatus = SourceStatus.success;
+              final merged = _mergeProductsPreserveLogic(
+                _searchResults ?? [],
+                offProducts,
+              );
+              _searchResults = _rankProducts(merged, trimmed, take: 50);
+            });
+          } else {
+            // lege lijst of timeout -> markeer als error
+            setState(() {
+              _offStatus = SourceStatus.error;
+            });
+          }
+        })
+        .catchError((e) {
+          if (!mounted) return;
+          setState(() {
+            _offStatus = SourceStatus.error;
+          });
+        });
 
     try {
       List all = []; // Lege lijst om producten op te slaan
@@ -715,6 +752,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
             // Toon direct de producten (zonder extra OFF-afbeeldingen)
             setState(() {
               _searchResults = _rankProducts(products, trimmed, take: 50);
+              _ffinderStatus = products.isNotEmpty
+                  ? SourceStatus.success
+                  : SourceStatus.error;
             });
 
             // Asynchroon: verrijk elk product met afbeelding van OFF (indien barcode aanwezig)
@@ -815,6 +855,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
             debugPrint(
               "ffinder.nl gaf een leeg resultaat of verkeerde structuur.",
             );
+            setState(() {
+              _ffinderStatus = SourceStatus.error;
+            });
           }
         } else {
           debugPrint("ffinder.nl gaf een foutstatus: ${response.statusCode}");
@@ -823,6 +866,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
       } catch (e, stack) {
         debugPrint("Fout bij het aanroepen van ffinder.nl: $e");
         debugPrint(stack.toString());
+        setState(() {
+          _ffinderStatus = SourceStatus.error;
+        });
       }
 
       // Fallback naar Open Food Facts
@@ -850,13 +896,24 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       : <String, dynamic>{},
                 )
                 .toList();
+            setState(() {
+              _offStatus = SourceStatus.success;
+            });
             if (loadMore) {
               all.addAll(normalized);
             } else {
               all = normalized;
             }
             _hasLoadedMore = true; // geeft aan dat we extra hebben geladen
+          } else {
+            setState(() {
+              _offStatus = SourceStatus.error;
+            });
           }
+        } else {
+          setState(() {
+            _offStatus = SourceStatus.error;
+          });
         }
       }
 
@@ -911,6 +968,76 @@ class _AddFoodPageState extends State<AddFoodPage> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<List<Map<String, dynamic>>> _searchOffParallel(String query) async {
+    try {
+      final url = Uri.parse(
+        "https://nl.openfoodfacts.org/cgi/search.pl"
+        "?search_terms=${Uri.encodeComponent(query)}"
+        "&search_simple=1&json=1&action=process",
+      );
+
+      final response = await http.get(url).timeout(const Duration(seconds: 60));
+      if (response.statusCode != 200) return [];
+
+      final data = jsonDecode(response.body);
+      final products = data['products'];
+      if (products is! List) return [];
+
+      return products
+          .whereType<Map>()
+          .map((p) => Map<String, dynamic>.from(p))
+          .toList();
+    } catch (e) {
+      debugPrint('[OFF parallel] error: $e');
+      return [];
+    }
+  }
+
+  List<Map<String, dynamic>> _mergeProductsPreserveLogic(
+    List existing,
+    List incoming,
+  ) {
+    final Map<String, Map<String, dynamic>> seen = {};
+    int anonCounter = 0;
+
+    void add(Map<String, dynamic> m) {
+      final id = (m['_id'] ?? m['code'] ?? m['barcode'] ?? m['gtin'])
+          ?.toString();
+      final key = (id != null && id.isNotEmpty)
+          ? id
+          : (m['product_name']?.toString() ?? 'anon_${anonCounter++}');
+
+      if (!seen.containsKey(key)) {
+        seen[key] = Map<String, dynamic>.from(m);
+      } else {
+        final existing = seen[key]!;
+        void copyIfMissing(String k) {
+          final vNew = m[k];
+          if ((existing[k] == null || existing[k].toString().isEmpty) &&
+              vNew != null &&
+              vNew.toString().isNotEmpty) {
+            existing[k] = vNew;
+          }
+        }
+
+        copyIfMissing('image_front_small_url');
+        copyIfMissing('image_front_url');
+        copyIfMissing('image_thumb_url');
+        copyIfMissing('brands');
+        copyIfMissing('quantity');
+      }
+    }
+
+    for (final p in existing) {
+      if (p is Map<String, dynamic>) add(p);
+    }
+    for (final p in incoming) {
+      if (p is Map<String, dynamic>) add(p);
+    }
+
+    return seen.values.map((p) => Map<String, dynamic>.from(p)).toList();
   }
 
   Future<void> _scanImage() async {
@@ -2111,10 +2238,37 @@ class _AddFoodPageState extends State<AddFoodPage> {
   Widget _buildSearchResults() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
+    final sourceStatusRow = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Links: ffinder
+          _statusBadge(_ffinderStatus, 'fFinder'),
+          // Rechts: Open Food Facts
+          _statusBadge(_offStatus, 'OpenFoodFacts'),
+        ],
+      ),
+    );
+
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Column(
+        children: [
+          sourceStatusRow,
+          const Expanded(child: Center(child: CircularProgressIndicator())),
+        ],
+      );
     }
 
+    return Column(
+      children: [
+        sourceStatusRow,
+        Expanded(child: _buildResultsListOrPlaceholder(isDarkMode)),
+      ],
+    );
+  }
+
+  Widget _buildResultsListOrPlaceholder(bool isDarkMode) {
     if (_searchResults == null) {
       return Center(
         child: Text(
@@ -2186,6 +2340,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             _displayString(product['brands'], fallback: 'Onbekend merk'),
           ),
           onTap: () {
+            // bestaande onTap logic — keep unchanged
             final barcode =
                 (product['_id'] ?? product['code'] ?? product['barcode'])
                     as String?;
@@ -2258,6 +2413,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         ),
       );
     }
+
     // "Meer laden" knop
     if (!_hasLoadedMore) {
       resultWidgets.add(
@@ -2300,6 +2456,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
 
     return ListView(children: resultWidgets);
+  }
+  Widget _statusBadge(SourceStatus status, String label) {
+    return _AnimatedStatusBadge(status: status, label: label);
   }
 
   Future<void> _showAddMyProductSheet() async {
@@ -5878,3 +6037,121 @@ class _AILoadingDialogState extends State<_AILoadingDialog>
     );
   }
 }
+
+
+class _AnimatedStatusBadge extends StatefulWidget {
+    final SourceStatus status;
+    final String label;
+    const _AnimatedStatusBadge({
+      Key? key,
+      required this.status,
+      required this.label,
+    }) : super(key: key);
+
+    @override
+    State<_AnimatedStatusBadge> createState() => _AnimatedStatusBadgeState();
+  }
+
+  class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
+      with SingleTickerProviderStateMixin {
+    late AnimationController _rotationController;
+    late Animation<double> _scaleAnim;
+
+    @override
+    void initState() {
+      super.initState();
+      _rotationController = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 900),
+      );
+      _scaleAnim = Tween<double>(begin: 0.9, end: 1.0)
+          .animate(CurvedAnimation(parent: _rotationController, curve: Curves.easeOut));
+      if (widget.status == SourceStatus.loading) {
+        _rotationController.repeat();
+      } else {
+        // korte forward/back voor entrance effect
+        _rotationController.forward(from: 0.0);
+      }
+    }
+
+    @override
+    void didUpdateWidget(covariant _AnimatedStatusBadge oldWidget) {
+      super.didUpdateWidget(oldWidget);
+      if (widget.status == SourceStatus.loading && !_rotationController.isAnimating) {
+        _rotationController.repeat();
+      } else if (widget.status != SourceStatus.loading && _rotationController.isAnimating) {
+        _rotationController.stop();
+        // trigger a brief scale "pop" for status change
+        _rotationController.forward(from: 0.0);
+      }
+    }
+
+    @override
+    void dispose() {
+      _rotationController.dispose();
+      super.dispose();
+    }
+
+    @override
+    Widget build(BuildContext context) {
+      IconData icon;
+      Color color;
+      switch (widget.status) {
+        case SourceStatus.success:
+          icon = Icons.check_circle;
+          color = Colors.green;
+          break;
+        case SourceStatus.error:
+          icon = Icons.cancel;
+          color = Colors.red;
+          break;
+        case SourceStatus.loading:
+        case SourceStatus.idle:
+        default:
+          icon = Icons.access_time;
+          color = Colors.grey;
+      }
+
+      // Animatie: draaiend icoon bij loading, anders kleine scale/fade
+      final iconWidget = widget.status == SourceStatus.loading
+          ? RotationTransition(
+              turns: _rotationController,
+              child: Icon(icon, color: color, size: 18),
+            )
+          : ScaleTransition(
+              scale: Tween<double>(begin: 0.85, end: 1.0)
+                  .animate(CurvedAnimation(parent: _rotationController, curve: Curves.elasticOut)),
+              child: Icon(icon, color: color, size: 18),
+            );
+
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+            child: SizedBox(
+              key: ValueKey(widget.status),
+              width: 18,
+              height: 18,
+              child: iconWidget,
+            ),
+          ),
+          const SizedBox(width: 6),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            transitionBuilder: (child, anim) =>
+                FadeTransition(opacity: anim, child: SlideTransition(position: Tween<Offset>(begin: const Offset(0,0.05), end: Offset.zero).animate(anim), child: child)),
+            child: Text(
+              widget.label,
+              key: ValueKey<String>(widget.label + widget.status.toString()),
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+  }
