@@ -36,42 +36,32 @@ Future<void> main() async {
 
   if (!kIsWeb) {
     try {
-      debugPrint('--- APP CHECK START ---');
-
-      // App Check instellen
-      await FirebaseAppCheck.instance.activate(
-        androidProvider: kDebugMode
-            ? AndroidProvider
-                  .debug // Android debug token
-            : AndroidProvider.playIntegrity, // Android release
-        appleProvider: kDebugMode
-            ? AppleProvider
-                  .debug // iOS DEBUG TOKEN gebruiken
-            : AppleProvider.appAttest, // iOS release
-      );
-
-      debugPrint('[DEBUG] Firebase App Check successfully activated.');
-
-      // Extra: haal token op en luister naar veranderingen
-      final token = await FirebaseAppCheck.instance.getToken(true);
-      debugPrint('[DEBUG] App Check token retrieved: $token');
+      if (kReleaseMode) {
+        // In release: gebruik echte providers
+        await FirebaseAppCheck.instance.activate(
+          androidProvider: AndroidProvider.playIntegrity,
+          appleProvider: AppleProvider.appAttest,
+        );
+        debugPrint('[DEBUG] Firebase App Check (release) activated.');
+      } else {
+        // In debug: gebruik debug-provider (registreer dit token in Firebase Console)
+        await FirebaseAppCheck.instance.activate(
+          androidProvider: AndroidProvider.debug,
+          appleProvider: AppleProvider.debug,
+        );
+        final token = await FirebaseAppCheck.instance.getToken(true);
+        debugPrint('DEBUG App Check debug token: $token');
+      }
 
       FirebaseAppCheck.instance.onTokenChange.listen((token) {
         debugPrint('[DEBUG] App Check token changed: $token');
       });
-      debugPrint('--- APP CHECK END ---');
     } catch (e) {
       debugPrint('[ERROR] Error activating Firebase App Check: $e');
-
-      // Print meer details over de fout
       if (e is FirebaseException) {
-        debugPrint(
-          '[ERROR DETAIL] Platform: ${e.plugin}, Code: ${e.code}, Message: ${e.message}',
-        );
+        debugPrint('[ERROR DETAIL] Platform: ${e.plugin}, Code: ${e.code}, Message: ${e.message}');
       }
     }
-  } else {
-    debugPrint('[DEBUG] Running on web, App Check skipped');
   }
 
   await GoogleSignIn.instance
