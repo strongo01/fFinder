@@ -58,6 +58,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
   final GlobalKey _maaltijdenKey = GlobalKey();
   final GlobalKey _maaltijdenAddKey = GlobalKey();
   final GlobalKey _maaltijdenLogKey = GlobalKey();
+  
+  
+
 
   bool _isSheetShown =
       false; // Vlag om te controleren of de sheet al is getoond
