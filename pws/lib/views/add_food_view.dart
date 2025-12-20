@@ -58,9 +58,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
   final GlobalKey _maaltijdenKey = GlobalKey();
   final GlobalKey _maaltijdenAddKey = GlobalKey();
   final GlobalKey _maaltijdenLogKey = GlobalKey();
-  
-  
-
 
   bool _isSheetShown =
       false; // Vlag om te controleren of de sheet al is getoond
@@ -1263,12 +1260,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
           builder: (context, scrollController) {
             return StatefulBuilder(
               builder: (context, setModalState) {
-                Future<void> searchProductsForIngredient(
+                                                Future<void> searchProductsForIngredient(
                   String query,
                   int index, {
                   bool loadMore = false,
                 }) async {
-                  if (query.length < 2) {
+                  final trimmed = query.trim();
+                  if (trimmed.length < 2) {
                     setModalState(() {
                       ingredientEntries[index]['searchResults'] = null;
                     });
@@ -1282,63 +1280,49 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     }
                   });
 
-                  List all = [];
-                  if (loadMore) {
-                    all.addAll(ingredientEntries[index]['searchResults'] ?? []);
-                  }
                   final appKey = dotenv.env["APP_KEY"] ?? "";
+                  List existingResults = [];
+                  if (loadMore) {
+                    existingResults.addAll(ingredientEntries[index]['searchResults'] ?? []);
+                  }
 
                   try {
-                    // ffinder.nl
-                    try {
-                      final ffinderUrl = Uri.parse(
-                        "https://ffinder.nl/product?q=${Uri.encodeComponent(query)}",
-                      );
-                      final ffinderResponse = await http.get(
-                        ffinderUrl,
-                        headers: {"x-app-key": appKey},
-                      );
-                      if (ffinderResponse.statusCode == 200) {
-                        final data = jsonDecode(ffinderResponse.body);
-                        final foodsObject = data["foods"];
-                        if (foodsObject != null &&
-                            foodsObject["food"] is List) {
-                          all = foodsObject["food"] as List;
+                    // start beide requests parallel
+                    final ffinderFuture = () async {
+                      try {
+                        final ffinderUrl = Uri.parse(
+                          "https://ffinder.nl/product?q=${Uri.encodeComponent(trimmed)}",
+                        );
+                        final resp = await http.get(ffinderUrl, headers: {"x-app-key": appKey}).timeout(const Duration(seconds: 10));
+                        if (resp.statusCode != 200) return <Map<String, dynamic>>[];
+                        final data = jsonDecode(resp.body);
+                        final foods = data["foods"];
+                        if (foods != null && foods["food"] is List) {
+                          return (foods["food"] as List)
+                              .map((p) => p is Map ? Map<String, dynamic>.from(p) : <String, dynamic>{})
+                              .toList();
                         }
+                        return <Map<String, dynamic>>[];
+                      } catch (_) {
+                        return <Map<String, dynamic>>[];
                       }
-                    } catch (_) {}
+                    }();
 
-                    // OpenFoodFacts fallback
-                    if (all.isEmpty || loadMore) {
-                      final offUrl = Uri.parse(
-                        "https://nl.openfoodfacts.org/cgi/search.pl"
-                        "?search_terms=${Uri.encodeComponent(query)}"
-                        "&search_simple=1"
-                        "&json=1"
-                        "&action=process",
-                      );
-                      final offResponse = await http.get(offUrl);
-                      if (offResponse.statusCode == 200) {
-                        final data = jsonDecode(offResponse.body);
-                        final newProducts = (data["products"] as List?) ?? [];
-                        all.addAll(newProducts);
-                        if (loadMore) {
-                          setModalState(() {
-                            ingredientEntries[index]['hasLoadedMore'] = true;
-                          });
-                        }
-                      }
-                    }
+                    final offFuture = _searchOffParallel(trimmed).catchError((_) => <Map<String, dynamic>>[]);
 
-                    final ranked = _rankProducts(all, query, take: 50);
+                    final resultsPair = await Future.wait([ffinderFuture, offFuture]);
+                    final List<Map<String, dynamic>> ffinderProducts = resultsPair[0] as List<Map<String, dynamic>>;
+                    final List<Map<String, dynamic>> offProducts = resultsPair[1] as List<Map<String, dynamic>>;
+
+                    // merge (preserve logic de-dup + fill missing fields)
+                    final merged = _mergeProductsPreserveLogic(ffinderProducts, offProducts);
+
+                    // als loadMore: voeg bij bestaande, anders vervang
+                    final ranked = _rankProducts(merged, trimmed, take: 50);
                     setModalState(() {
                       if (loadMore) {
-                        final existing =
-                            (ingredientEntries[index]['searchResults']
-                                as List?) ??
-                            [];
                         ingredientEntries[index]['searchResults'] = [
-                          ...existing,
+                          ...existingResults,
                           ...ranked,
                         ];
                         ingredientEntries[index]['hasLoadedMore'] = true;
@@ -1347,6 +1331,49 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       }
                       ingredientEntries[index]['isSearching'] = false;
                     });
+
+                    // asynchrone extra OFF-image verrijking voor items zonder afbeelding (fire-and-forget)
+                    for (final raw in ffinderProducts) {
+                      final code = raw['barcode'] ?? raw['code'] ?? raw['_id'] ?? raw['gtin'] ?? raw['ean'];
+                      final barcode = code?.toString();
+                      if (barcode == null || barcode.isEmpty) continue;
+
+                      () async {
+                        try {
+                          final offUrl = Uri.parse('https://nl.openfoodfacts.org/api/v0/product/$barcode.json');
+                          final offResp = await http.get(offUrl).timeout(const Duration(seconds: 6));
+                          if (offResp.statusCode != 200) return;
+                          final offJson = jsonDecode(offResp.body) as Map<String, dynamic>?;
+                          if (offJson == null || offJson['status'] != 1 || offJson['product'] is! Map) return;
+                          final offProd = offJson['product'] as Map<String, dynamic>;
+                          final img = offProd['image_front_small_url'] ?? offProd['image_front_thumb_url'] ?? offProd['image_front_url'];
+                          if (img is String && img.isNotEmpty) {
+                            raw['image_front_small_url'] = img;
+                            if (mounted) {
+                              setModalState(() {
+                                final list = (ingredientEntries[index]['searchResults'] as List?) ?? [];
+                                for (int j = 0; j < list.length; j++) {
+                                  final p = list[j] as Map<String, dynamic>;
+                                  final idP = (p['_id'] ?? p['code'] ?? p['barcode'])?.toString();
+                                  final idRaw = (raw['_id'] ?? raw['code'] ?? raw['barcode'])?.toString();
+                                  if (idP != null && idRaw != null && idP == idRaw) {
+                                    final updated = Map<String, dynamic>.from(p);
+                                    updated['image_front_small_url'] = img;
+                                    list[j] = updated;
+                                    break;
+                                  }
+                                }
+                                ingredientEntries[index]['searchResults'] = list;
+                              });
+                            }
+                          }
+                        } catch (_) {
+                          // ignore per-item image errors
+                        }
+                      }();
+                    }
+
+                    return;
                   } catch (e) {
                     setModalState(() {
                       ingredientEntries[index]['searchResults'] = [];
@@ -1354,7 +1381,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     });
                   }
                 }
-
                 return SingleChildScrollView(
                   controller: scrollController,
                   child: Padding(
@@ -2460,6 +2486,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
     return ListView(children: resultWidgets);
   }
+
   Widget _statusBadge(SourceStatus status, String label) {
     return _AnimatedStatusBadge(status: status, label: label);
   }
@@ -4176,12 +4203,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   Navigator.pop(context);
                 }
 
-                Future<void> searchProductsForIngredient(
+                  Future<void> searchProductsForIngredient(
                   String query,
                   int index, {
                   bool loadMore = false,
                 }) async {
-                  if (query.length < 2) {
+                  final trimmed = query.trim();
+                  if (trimmed.length < 2) {
                     setModalState(() {
                       ingredientEntries[index]['searchResults'] = null;
                     });
@@ -4195,63 +4223,48 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     }
                   });
 
-                  List all = [];
-                  if (loadMore) {
-                    all.addAll(ingredientEntries[index]['searchResults'] ?? []);
-                  }
                   final appKey = dotenv.env["APP_KEY"] ?? "";
+                  List existingResults = [];
+                  if (loadMore) {
+                    existingResults.addAll(ingredientEntries[index]['searchResults'] ?? []);
+                  }
 
                   try {
-                    try {
-                      final ffinderUrl = Uri.parse(
-                        "https://ffinder.nl/product?q=${Uri.encodeComponent(query)}",
-                      );
-                      final ffinderResponse = await http.get(
-                        ffinderUrl,
-                        headers: {"x-app-key": appKey},
-                      );
-                      if (ffinderResponse.statusCode == 200) {
-                        final data = jsonDecode(ffinderResponse.body);
-                        final foodsObject = data["foods"];
-                        if (foodsObject != null &&
-                            foodsObject["food"] is List) {
-                          all = foodsObject["food"] as List;
+                    // start beide requests parallel (ffinder + OFF)
+                    final ffinderFuture = () async {
+                      try {
+                        final ffinderUrl = Uri.parse(
+                          "https://ffinder.nl/product?q=${Uri.encodeComponent(trimmed)}",
+                        );
+                        final resp = await http.get(ffinderUrl, headers: {"x-app-key": appKey}).timeout(const Duration(seconds: 10));
+                        if (resp.statusCode != 200) return <Map<String, dynamic>>[];
+                        final data = jsonDecode(resp.body);
+                        final foods = data["foods"];
+                        if (foods != null && foods["food"] is List) {
+                          return (foods["food"] as List)
+                              .map((p) => p is Map ? Map<String, dynamic>.from(p) : <String, dynamic>{})
+                              .toList();
                         }
+                        return <Map<String, dynamic>>[];
+                      } catch (_) {
+                        return <Map<String, dynamic>>[];
                       }
-                    } catch (e) {
-                      // laat 'all' leeg zodat fallback wordt gebruikt
-                    }
+                    }();
 
-                    if (all.isEmpty || loadMore) {
-                      final offUrl = Uri.parse(
-                        "https://nl.openfoodfacts.org/cgi/search.pl"
-                        "?search_terms=${Uri.encodeComponent(query)}"
-                        "&search_simple=1"
-                        "&json=1"
-                        "&action=process",
-                      );
-                      final offResponse = await http.get(offUrl);
-                      if (offResponse.statusCode == 200) {
-                        final data = jsonDecode(offResponse.body);
-                        final newProducts = (data["products"] as List?) ?? [];
-                        all.addAll(newProducts);
-                        if (loadMore) {
-                          setModalState(() {
-                            ingredientEntries[index]['hasLoadedMore'] = true;
-                          });
-                        }
-                      }
-                    }
+                    final offFuture = _searchOffParallel(trimmed).catchError((_) => <Map<String, dynamic>>[]);
 
-                    final ranked = _rankProducts(all, query, take: 50);
+                    final resultsPair = await Future.wait([ffinderFuture, offFuture]);
+                    final List<Map<String, dynamic>> ffinderProducts = resultsPair[0] as List<Map<String, dynamic>>;
+                    final List<Map<String, dynamic>> offProducts = resultsPair[1] as List<Map<String, dynamic>>;
+
+                    // merge (de-dup + fill missing fields)
+                    final merged = _mergeProductsPreserveLogic(ffinderProducts, offProducts);
+
+                    final ranked = _rankProducts(merged, trimmed, take: 50);
                     setModalState(() {
                       if (loadMore) {
-                        final existing =
-                            (ingredientEntries[index]['searchResults']
-                                as List?) ??
-                            [];
                         ingredientEntries[index]['searchResults'] = [
-                          ...existing,
+                          ...existingResults,
                           ...ranked,
                         ];
                         ingredientEntries[index]['hasLoadedMore'] = true;
@@ -4260,6 +4273,49 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       }
                       ingredientEntries[index]['isSearching'] = false;
                     });
+
+                    // async: verrijk ffinder-items met OFF-afbeelding waar mogelijk (fire-and-forget)
+                    for (final raw in ffinderProducts) {
+                      final code = raw['barcode'] ?? raw['code'] ?? raw['_id'] ?? raw['gtin'] ?? raw['ean'];
+                      final barcode = code?.toString();
+                      if (barcode == null || barcode.isEmpty) continue;
+
+                      () async {
+                        try {
+                          final offUrl = Uri.parse('https://nl.openfoodfacts.org/api/v0/product/$barcode.json');
+                          final offResp = await http.get(offUrl).timeout(const Duration(seconds: 6));
+                          if (offResp.statusCode != 200) return;
+                          final offJson = jsonDecode(offResp.body) as Map<String, dynamic>?;
+                          if (offJson == null || offJson['status'] != 1 || offJson['product'] is! Map) return;
+                          final offProd = offJson['product'] as Map<String, dynamic>;
+                          final img = offProd['image_front_small_url'] ?? offProd['image_front_thumb_url'] ?? offProd['image_front_url'];
+                          if (img is String && img.isNotEmpty) {
+                            raw['image_front_small_url'] = img;
+                            if (mounted) {
+                              setModalState(() {
+                                final list = (ingredientEntries[index]['searchResults'] as List?) ?? [];
+                                for (int j = 0; j < list.length; j++) {
+                                  final p = list[j] as Map<String, dynamic>;
+                                  final idP = (p['_id'] ?? p['code'] ?? p['barcode'])?.toString();
+                                  final idRaw = (raw['_id'] ?? raw['code'] ?? raw['barcode'])?.toString();
+                                  if (idP != null && idRaw != null && idP == idRaw) {
+                                    final updated = Map<String, dynamic>.from(p);
+                                    updated['image_front_small_url'] = img;
+                                    list[j] = updated;
+                                    break;
+                                  }
+                                }
+                                ingredientEntries[index]['searchResults'] = list;
+                              });
+                            }
+                          }
+                        } catch (_) {
+                          // ignore per-item image errors
+                        }
+                      }();
+                    }
+
+                    return;
                   } catch (e) {
                     setModalState(() {
                       ingredientEntries[index]['searchResults'] = [];
@@ -6041,120 +6097,135 @@ class _AILoadingDialogState extends State<_AILoadingDialog>
   }
 }
 
-
 class _AnimatedStatusBadge extends StatefulWidget {
-    final SourceStatus status;
-    final String label;
-    const _AnimatedStatusBadge({
-      Key? key,
-      required this.status,
-      required this.label,
-    }) : super(key: key);
+  final SourceStatus status;
+  final String label;
+  const _AnimatedStatusBadge({
+    Key? key,
+    required this.status,
+    required this.label,
+  }) : super(key: key);
 
-    @override
-    State<_AnimatedStatusBadge> createState() => _AnimatedStatusBadgeState();
+  @override
+  State<_AnimatedStatusBadge> createState() => _AnimatedStatusBadgeState();
+}
+
+class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _rotationController;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _scaleAnim = Tween<double>(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(parent: _rotationController, curve: Curves.easeOut),
+    );
+    if (widget.status == SourceStatus.loading) {
+      _rotationController.repeat();
+    } else {
+      // korte forward/back voor entrance effect
+      _rotationController.forward(from: 0.0);
+    }
   }
 
-  class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
-      with SingleTickerProviderStateMixin {
-    late AnimationController _rotationController;
-    late Animation<double> _scaleAnim;
+  @override
+  void didUpdateWidget(covariant _AnimatedStatusBadge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.status == SourceStatus.loading &&
+        !_rotationController.isAnimating) {
+      _rotationController.repeat();
+    } else if (widget.status != SourceStatus.loading &&
+        _rotationController.isAnimating) {
+      _rotationController.stop();
+      // trigger a brief scale "pop" for status change
+      _rotationController.forward(from: 0.0);
+    }
+  }
 
-    @override
-    void initState() {
-      super.initState();
-      _rotationController = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 900),
-      );
-      _scaleAnim = Tween<double>(begin: 0.9, end: 1.0)
-          .animate(CurvedAnimation(parent: _rotationController, curve: Curves.easeOut));
-      if (widget.status == SourceStatus.loading) {
-        _rotationController.repeat();
-      } else {
-        // korte forward/back voor entrance effect
-        _rotationController.forward(from: 0.0);
-      }
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    IconData icon;
+    Color color;
+    switch (widget.status) {
+      case SourceStatus.success:
+        icon = Icons.check_circle;
+        color = Colors.green;
+        break;
+      case SourceStatus.error:
+        icon = Icons.cancel;
+        color = Colors.red;
+        break;
+      case SourceStatus.loading:
+      case SourceStatus.idle:
+      default:
+        icon = Icons.access_time;
+        color = Colors.grey;
     }
 
-    @override
-    void didUpdateWidget(covariant _AnimatedStatusBadge oldWidget) {
-      super.didUpdateWidget(oldWidget);
-      if (widget.status == SourceStatus.loading && !_rotationController.isAnimating) {
-        _rotationController.repeat();
-      } else if (widget.status != SourceStatus.loading && _rotationController.isAnimating) {
-        _rotationController.stop();
-        // trigger a brief scale "pop" for status change
-        _rotationController.forward(from: 0.0);
-      }
-    }
-
-    @override
-    void dispose() {
-      _rotationController.dispose();
-      super.dispose();
-    }
-
-    @override
-    Widget build(BuildContext context) {
-      IconData icon;
-      Color color;
-      switch (widget.status) {
-        case SourceStatus.success:
-          icon = Icons.check_circle;
-          color = Colors.green;
-          break;
-        case SourceStatus.error:
-          icon = Icons.cancel;
-          color = Colors.red;
-          break;
-        case SourceStatus.loading:
-        case SourceStatus.idle:
-        default:
-          icon = Icons.access_time;
-          color = Colors.grey;
-      }
-
-      // Animatie: draaiend icoon bij loading, anders kleine scale/fade
-      final iconWidget = widget.status == SourceStatus.loading
-          ? RotationTransition(
-              turns: _rotationController,
-              child: Icon(icon, color: color, size: 18),
-            )
-          : ScaleTransition(
-              scale: Tween<double>(begin: 0.85, end: 1.0)
-                  .animate(CurvedAnimation(parent: _rotationController, curve: Curves.elasticOut)),
-              child: Icon(icon, color: color, size: 18),
-            );
-
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
-            child: SizedBox(
-              key: ValueKey(widget.status),
-              width: 18,
-              height: 18,
-              child: iconWidget,
-            ),
-          ),
-          const SizedBox(width: 6),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            transitionBuilder: (child, anim) =>
-                FadeTransition(opacity: anim, child: SlideTransition(position: Tween<Offset>(begin: const Offset(0,0.05), end: Offset.zero).animate(anim), child: child)),
-            child: Text(
-              widget.label,
-              key: ValueKey<String>(widget.label + widget.status.toString()),
-              style: TextStyle(
-                fontSize: 14,
-                color: Theme.of(context).textTheme.bodyMedium?.color,
+    // Animatie: draaiend icoon bij loading, anders kleine scale/fade
+    final iconWidget = widget.status == SourceStatus.loading
+        ? RotationTransition(
+            turns: _rotationController,
+            child: Icon(icon, color: color, size: 18),
+          )
+        : ScaleTransition(
+            scale: Tween<double>(begin: 0.85, end: 1.0).animate(
+              CurvedAnimation(
+                parent: _rotationController,
+                curve: Curves.elasticOut,
               ),
             ),
+            child: Icon(icon, color: color, size: 18),
+          );
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          transitionBuilder: (child, anim) =>
+              FadeTransition(opacity: anim, child: child),
+          child: SizedBox(
+            key: ValueKey(widget.status),
+            width: 18,
+            height: 18,
+            child: iconWidget,
           ),
-        ],
-      );
-    }
+        ),
+        const SizedBox(width: 6),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          transitionBuilder: (child, anim) => FadeTransition(
+            opacity: anim,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.05),
+                end: Offset.zero,
+              ).animate(anim),
+              child: child,
+            ),
+          ),
+          child: Text(
+            widget.label,
+            key: ValueKey<String>(widget.label + widget.status.toString()),
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).textTheme.bodyMedium?.color,
+            ),
+          ),
+        ),
+      ],
+    );
   }
+}
