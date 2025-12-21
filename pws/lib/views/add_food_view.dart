@@ -1311,8 +1311,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     final offFuture = _searchOffParallel(trimmed).catchError((_) => <Map<String, dynamic>>[]);
 
                     final resultsPair = await Future.wait([ffinderFuture, offFuture]);
-                    final List<Map<String, dynamic>> ffinderProducts = resultsPair[0] as List<Map<String, dynamic>>;
-                    final List<Map<String, dynamic>> offProducts = resultsPair[1] as List<Map<String, dynamic>>;
+                    final List<Map<String, dynamic>> ffinderProducts = resultsPair[0];
+                    final List<Map<String, dynamic>> offProducts = resultsPair[1];
 
                     // merge (preserve logic de-dup + fill missing fields)
                     final merged = _mergeProductsPreserveLogic(ffinderProducts, offProducts);
@@ -4254,8 +4254,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     final offFuture = _searchOffParallel(trimmed).catchError((_) => <Map<String, dynamic>>[]);
 
                     final resultsPair = await Future.wait([ffinderFuture, offFuture]);
-                    final List<Map<String, dynamic>> ffinderProducts = resultsPair[0] as List<Map<String, dynamic>>;
-                    final List<Map<String, dynamic>> offProducts = resultsPair[1] as List<Map<String, dynamic>>;
+                    final List<Map<String, dynamic>> ffinderProducts = resultsPair[0];
+                    final List<Map<String, dynamic>> offProducts = resultsPair[1];
 
                     // merge (de-dup + fill missing fields)
                     final merged = _mergeProductsPreserveLogic(ffinderProducts, offProducts);
@@ -6113,7 +6113,6 @@ class _AnimatedStatusBadge extends StatefulWidget {
 class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
     with SingleTickerProviderStateMixin {
   late AnimationController _rotationController;
-  late Animation<double> _scaleAnim;
 
   @override
   void initState() {
@@ -6122,13 +6121,9 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    _scaleAnim = Tween<double>(begin: 0.9, end: 1.0).animate(
-      CurvedAnimation(parent: _rotationController, curve: Curves.easeOut),
-    );
     if (widget.status == SourceStatus.loading) {
       _rotationController.repeat();
     } else {
-      // korte forward/back voor entrance effect
       _rotationController.forward(from: 0.0);
     }
   }
@@ -6142,7 +6137,6 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
     } else if (widget.status != SourceStatus.loading &&
         _rotationController.isAnimating) {
       _rotationController.stop();
-      // trigger a brief scale "pop" for status change
       _rotationController.forward(from: 0.0);
     }
   }
@@ -6155,25 +6149,28 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     IconData icon;
     Color color;
+
     switch (widget.status) {
       case SourceStatus.success:
         icon = Icons.check_circle;
-        color = Colors.green;
+        color = Colors.green; // of colorScheme.secondary
         break;
       case SourceStatus.error:
         icon = Icons.cancel;
-        color = Colors.red;
+        color = colorScheme.error;
         break;
       case SourceStatus.loading:
+        icon = Icons.autorenew;
+        color = colorScheme.primary;
+        break;
       case SourceStatus.idle:
-      default:
-        icon = Icons.access_time;
-        color = Colors.grey;
+      icon = Icons.access_time;
+        color = colorScheme.onSurface.withOpacity(0.6);
     }
 
-    // Animatie: draaiend icoon bij loading, anders kleine scale/fade
     final iconWidget = widget.status == SourceStatus.loading
         ? RotationTransition(
             turns: _rotationController,
@@ -6181,10 +6178,7 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
           )
         : ScaleTransition(
             scale: Tween<double>(begin: 0.85, end: 1.0).animate(
-              CurvedAnimation(
-                parent: _rotationController,
-                curve: Curves.elasticOut,
-              ),
+              CurvedAnimation(parent: _rotationController, curve: Curves.easeOut),
             ),
             child: Icon(icon, color: color, size: 18),
           );

@@ -59,7 +59,9 @@ Future<void> main() async {
     } catch (e) {
       debugPrint('[ERROR] Error activating Firebase App Check: $e');
       if (e is FirebaseException) {
-        debugPrint('[ERROR DETAIL] Platform: ${e.plugin}, Code: ${e.code}, Message: ${e.message}');
+        debugPrint(
+          '[ERROR DETAIL] Platform: ${e.plugin}, Code: ${e.code}, Message: ${e.message}',
+        );
       }
     }
   }
@@ -97,9 +99,7 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('nl', 'NL'),
-      ],
+      supportedLocales: const [Locale('nl', 'NL')],
       debugShowCheckedModeBanner: false, //verbergt de debug banner
       themeMode: ThemeMode.system, // systeem instelling voor light of darkmode
       //thema voor lightmode

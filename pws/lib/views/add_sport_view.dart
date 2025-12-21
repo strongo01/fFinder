@@ -126,11 +126,11 @@ setState(() {
           : _selectedSport ?? '';
 
       final durationMin = double.parse(_durationController.text);
-      final weightKg = await _getDecryptedWeight(user.uid, userDEK);
+      //final weightKg = await _getDecryptedWeight(user.uid, userDEK);
 
-      final met = _selectedSport == 'Overig'
-          ? _overigIntensityMET
-          : (_metValues[_selectedSport] ?? _defaultOverigMET);
+      //final met = _selectedSport == 'Overig'
+        //  ? _overigIntensityMET
+          //: (_metValues[_selectedSport] ?? _defaultOverigMET);
 
       final caloriesToSave = double.parse(_caloriesController.text);
 
