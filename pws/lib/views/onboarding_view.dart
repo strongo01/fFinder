@@ -33,7 +33,10 @@ class _OnboardingViewState extends State<OnboardingView> {
   DateTime? _birthDate;
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
+  final TextEditingController _waistController = TextEditingController();
   double _sleepHours = 8.0;
+  static const int minWaistCm = 30;
+  static const int maxWaistCm = 200;
   String _activityLevel = 'Weinig actief';
   String _goal = 'Afvallen';
   final TextEditingController _targetWeightController = TextEditingController();
@@ -43,7 +46,7 @@ class _OnboardingViewState extends State<OnboardingView> {
   static const int minWeightKg = 20;
   static const int maxWeightKg = 800;
 
-  final int _totalQuestions = 10;
+  final int _totalQuestions = 11;
 
   String _rangeText = '';
   bool _rangeLoading = false;
@@ -81,6 +84,7 @@ class _OnboardingViewState extends State<OnboardingView> {
     _firstNameController.dispose();
     _heightController.dispose();
     _weightController.dispose();
+    _waistController.dispose();
     _targetWeightController.dispose();
     _debounceTimer?.cancel();
     _focusNode.dispose();
@@ -163,6 +167,24 @@ class _OnboardingViewState extends State<OnboardingView> {
         if (weight <= minWeightKg || weight >= maxWeightKg) {
           _showError(
             'Uw gewicht moet tussen $minWeightKg kg en $maxWeightKg kg liggen.',
+          );
+          return false;
+        }
+        break;
+      case 5: // Taille omtrek
+        final waistText = _waistController.text.trim();
+        if (waistText.isEmpty) {
+          _showError('Vul alsjeblieft je tailleomtrek in.');
+          return false;
+        }
+        final value = double.tryParse(waistText.replaceAll(',', '.'));
+        if (value == null) {
+          _showError('Voer een geldig getal in voor tailleomtrek.');
+          return false;
+        }
+        if (value < minWaistCm || value > maxWaistCm) {
+          _showError(
+            'Tailleomtrek moet tussen $minWaistCm cm en $maxWaistCm cm liggen.',
           );
           return false;
         }
@@ -261,6 +283,9 @@ class _OnboardingViewState extends State<OnboardingView> {
       // --- De rest van je logica blijft hetzelfde ---
       final heightCm = double.tryParse(_heightController.text);
       final weightKg = double.tryParse(_weightController.text);
+      final waistCm =
+          double.tryParse(_waistController.text.replaceAll(',', '.'));
+
       final birthDate = _birthDate;
       final gender = _gender;
       final activityFull = _activityLevel;
@@ -271,6 +296,11 @@ class _OnboardingViewState extends State<OnboardingView> {
       double? proteinGoal;
       double? fatGoal;
       double? carbGoal;
+double? absi;
+      double? heightM;
+      if (heightCm != null && heightCm > 0) {
+        heightM = heightCm / 100;
+      }
 
       if (heightCm != null &&
           heightCm > 0 &&
@@ -278,8 +308,7 @@ class _OnboardingViewState extends State<OnboardingView> {
           weightKg > 0 &&
           birthDate != null) {
         // Bereken BMI
-        final heightM = heightCm / 100;
-        bmi = weightKg / (heightM * heightM);
+        bmi = weightKg / (heightM! * heightM);
 
         // Bereken caloriebehoefte
         final age = DateTime.now().year - birthDate.year;
@@ -338,6 +367,11 @@ class _OnboardingViewState extends State<OnboardingView> {
         carbGoal = carbCalories / 4; // 1 gram per 4 kcal koolhydraten
       }
 
+      if (waistCm != null && bmi != null && bmi > 0 && heightM != null && heightM > 0) {
+        final waistM = waistCm / 100.0;
+        absi = waistM / (pow(bmi, 2.0 / 3.0) * pow(heightM, 0.5));
+      }
+
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'firstName': await encryptValue(
           _firstNameController.text.trim(),
@@ -350,6 +384,9 @@ class _OnboardingViewState extends State<OnboardingView> {
         ),
         'height': await encryptDouble(heightCm ?? 0, userDEK),
         'weight': await encryptDouble(weightKg ?? 0, userDEK),
+        'waist': await encryptDouble(waistCm ?? 0, userDEK),
+         'absi': await encryptDouble(absi ?? 0, userDEK),
+         
         'calorieGoal': await encryptDouble(calorieGoal ?? 0, userDEK),
         'proteinGoal': await encryptDouble(proteinGoal ?? 0, userDEK),
         'fatGoal': await encryptDouble(fatGoal ?? 0, userDEK),
@@ -838,7 +875,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                         decoration: const InputDecoration(
                           labelText: 'Lengte in cm',
                           border: OutlineInputBorder(),
-                          suffixText: 'cm'
+                          suffixText: 'cm',
                         ),
                       ),
                     ),
@@ -861,6 +898,28 @@ class _OnboardingViewState extends State<OnboardingView> {
                           labelText: 'Gewicht in kg',
                           border: OutlineInputBorder(),
                           suffixText: 'kg',
+                        ),
+                      ),
+                    ),
+                    //taille
+                    _buildQuestionPage(
+                      title: 'Wat is je tailleomtrek (cm)?',
+                      content: TextField(
+                        controller: _waistController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          CommaToPeriodTextInputFormatter(), // Vervangt ',' door '.'
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*\.?\d*'),
+                          ), // Sta alleen cijfers en één punt toe
+                        ],
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => _nextPage(),
+                        style: inputTextStyle,
+                        decoration: const InputDecoration(
+                          labelText: 'Tailleomtrek in cm',
+                          border: OutlineInputBorder(),
+                          suffixText: 'cm',
                         ),
                       ),
                     ),
