@@ -96,6 +96,61 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
     }
   }
 
+  //handler voor inloggen met google
+  Future<void> _signInWithGoogleHandler() async {
+    setState(() => _loading = true);
+    try {
+      final userCredential = await signInWithGoogle();
+
+      final user = userCredential.user;
+      if (user != null) {
+        final usersRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid);
+        final doc = await usersRef.get();
+        if (!doc.exists) {
+          await usersRef.set({
+            'uid': user.uid,
+            'email': user.email,
+            'name': user.displayName,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
+      if (!mounted) return;
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      String message;
+      switch (e.code) {
+        case 'account-exists-with-different-credential':
+          message =
+              'Er bestaat al een account met dit e-mailadres. Log in met een andere methode.';
+          break;
+        case 'sign_in_cancelled':
+        case 'popup-closed-by-user':
+          message = 'Het inloggen is geannuleerd.';
+          break;
+        default:
+          message =
+              'Er is een onbekende fout opgetreden bij het inloggen met Google.';
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Er is een onbekende fout opgetreden.')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   //hulpfunctie voor apple sign in wat een willekeurig string maakt
   String generateNonce([int length = 32]) {
     const charset =
@@ -283,61 +338,6 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
             'Er is een onbekende fout opgetreden bij het inloggen met GitHub.',
           ),
         ),
-      );
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  //handler voor inloggen met google
-  Future<void> _signInWithGoogleHandler() async {
-    setState(() => _loading = true);
-    try {
-      final userCredential = await signInWithGoogle();
-
-      final user = userCredential.user;
-      if (user != null) {
-        final usersRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid);
-        final doc = await usersRef.get();
-        if (!doc.exists) {
-          await usersRef.set({
-            'uid': user.uid,
-            'email': user.email,
-            'name': user.displayName,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-      }
-
-      if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      String message;
-      switch (e.code) {
-        case 'account-exists-with-different-credential':
-          message =
-              'Er bestaat al een account met dit e-mailadres. Log in met een andere methode.';
-          break;
-        case 'sign_in_cancelled':
-        case 'popup-closed-by-user':
-          message = 'Het inloggen is geannuleerd.';
-          break;
-        default:
-          message =
-              'Er is een onbekende fout opgetreden bij het inloggen met Google.';
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Er is een onbekende fout opgetreden.')),
       );
     } finally {
       if (mounted) setState(() => _loading = false);

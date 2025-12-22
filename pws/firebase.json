@@ -1,1 +1,41 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"pwsmt-fd851","appId":"1:308332286849:android:cee2703cb9ccc4b8744e80","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"pwsmt-fd851","configurations":{"android":"1:308332286849:android:cee2703cb9ccc4b8744e80","ios":"1:308332286849:ios:0c34a050f4747298744e80","macos":"1:308332286849:ios:b3b92f6467819ee0744e80","web":"1:308332286849:web:8744b0524b1264f1744e80","windows":"1:308332286849:web:8744b0524b1264f1744e80"}}},"ios":{"default":{"projectId":"pwsmt-fd851","appId":"1:308332286849:ios:0c34a050f4747298744e80","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"pwsmt-fd851","appId":"1:308332286849:ios:b3b92f6467819ee0744e80","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}}}}}
+{
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "pwsmt-fd851",
+                    "appId": "1:308332286849:android:cee2703cb9ccc4b8744e80",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "pwsmt-fd851",
+                    "configurations": {
+                        "android": "1:308332286849:android:cee2703cb9ccc4b8744e80",
+                        "ios": "1:308332286849:ios:0c34a050f4747298744e80",
+                        "macos": "1:308332286849:ios:b3b92f6467819ee0744e80",
+                        "web": "1:308332286849:web:8744b0524b1264f1744e80",
+                        "windows": "1:308332286849:web:8744b0524b1264f1744e80"
+                    }
+                }
+            },
+            "ios": {
+                "default": {
+                    "projectId": "pwsmt-fd851",
+                    "appId": "1:308332286849:ios:0c34a050f4747298744e80",
+                    "uploadDebugSymbols": false,
+                    "fileOutput": "ios/Runner/GoogleService-Info.plist"
+                }
+            },
+            "macos": {
+                "default": {
+                    "projectId": "pwsmt-fd851",
+                    "appId": "1:308332286849:ios:b3b92f6467819ee0744e80",
+                    "uploadDebugSymbols": false,
+                    "fileOutput": "macos/Runner/GoogleService-Info.plist"
+                }
+            }
+        }
+    }
+}
