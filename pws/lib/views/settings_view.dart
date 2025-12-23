@@ -1,7 +1,11 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:fFinder/views/crypto_class.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'login_register_view.dart';
 import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _currentWeight = 72;
   double _targetWeight = 68;
   double _height = 180;
+  double _waist = 85;
   double _sleepHours = 8.0;
   String _activityLevel = 'Weinig actief';
   String _goal = 'Afvallen';
@@ -35,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _targetWeightController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
+  final TextEditingController _waistController = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
@@ -132,6 +138,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final currentWeight = await decryptDouble(data['weight'], userDEK);
         final targetWeight = await decryptDouble(data['targetWeight'], userDEK);
         final height = await decryptDouble(data['height'], userDEK);
+        final waist = await decryptDouble(data['waist'], userDEK);
+     
         final sleepHours = await decryptDouble(data['sleepHours'], userDEK);
         final activityLevel = await decryptValue(
           data['activityLevel'] ?? '',
@@ -153,6 +161,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _currentWeight = currentWeight > 0 ? currentWeight : _currentWeight;
           _targetWeight = targetWeight > 0 ? targetWeight : _targetWeight;
           _height = height > 0 ? height : _height;
+          _waist = waist > 0 ? waist : _waist;
           _sleepHours = sleepHours > 0 ? sleepHours : _sleepHours;
           _activityLevel = validActivityLevel;
           _goal = validGoal;
@@ -161,6 +170,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _weightController.text = _currentWeight.toStringAsFixed(1);
           _targetWeightController.text = _targetWeight.toStringAsFixed(1);
           _heightController.text = _height.toStringAsFixed(0);
+          _waistController.text = _waist.toStringAsFixed(1);
         });
       }
     } catch (e) {
@@ -180,6 +190,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _weightController.dispose();
     _targetWeightController.dispose();
     _heightController.dispose();
+    _waistController.dispose();
     super.dispose();
   }
 
@@ -205,6 +216,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _targetWeightController.text.replaceAll(',', '.'),
       );
       _height = double.parse(_heightController.text.replaceAll(',', '.'));
+      _waist = double.parse(_waistController.text.replaceAll(',', '.'));
 
       final doc = await FirebaseFirestore.instance
           .collection('users')
@@ -230,6 +242,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       double? proteinGoal;
       double? fatGoal;
       double? carbGoal;
+      double? absi;
+      double? absiZ;
+     String? absiRange;
 
       if (_height > 0 && _currentWeight > 0 && birthDate != null) {
         //  Berekeningen
@@ -297,11 +312,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
         carbGoal = carbCalories / 4;
       }
 
+      if (_waist > 0 && bmi != null && bmi > 0 && _height > 0) {
+        final heightM = _height / 100.0;
+        final waistM = _waist / 100.0;
+        absi = waistM / (pow(bmi, 2.0 / 3.0) * pow(heightM, 0.5));
+
+        // probeer referentietabel te laden en z-score te berekenen
+        try {
+          final jsonString = await rootBundle
+              .loadString('assets/absi_reference/absi_reference.json');
+          final table = json.decode(jsonString) as List<dynamic>;
+          final ages = table.map((e) => e['age'] as int).toList()..sort();
+          final age = birthDate != null ? DateTime.now().year - birthDate.year : ages.last;
+          final clampedAge = ages.contains(age) ? age : ages.last;
+          final entry = table.firstWhere((e) => e['age'] == clampedAge);
+          final isFemale = (gender).toLowerCase() == 'vrouw';
+          final data = isFemale ? entry['female'] : entry['male'];
+          final mean = (data['mean'] as num).toDouble();
+          final sd = (data['sd'] as num).toDouble();
+          if (sd != 0) {
+            absiZ = (absi - mean) / sd;
+            if (absiZ <= -1.0) {
+              absiRange = 'zeer_laag risico';
+            } else if (absiZ <= -0.5) {
+              absiRange = 'laag risico';
+            } else if (absiZ <= 0.5) {
+              absiRange = 'gemiddeld risico';
+            } else if (absiZ <= 1.0) {
+              absiRange = 'verhoogd risico';
+            } else {
+              absiRange = 'hoog';
+            }
+          }
+        } catch (e) {
+          // als referentietabel niet beschikbaar is, laat z en range null
+          debugPrint('Kon ABSI referentie niet laden: $e');
+        }
+      }
+
       // Alles naar Firestore
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'weight': await encryptDouble(_currentWeight, userDEK),
         'targetWeight': await encryptDouble(_targetWeight, userDEK),
         'height': await encryptDouble(_height, userDEK),
+        'absi': absi != null ? await encryptDouble(absi, userDEK) : null,
+       'absiZ': absiZ != null ? await encryptDouble(absiZ, userDEK) : null,
+       'absiRange': absiRange != null ? await encryptValue(absiRange, userDEK) : null,
+       
+        'waist': await encryptDouble(_waist, userDEK),
         'sleepHours': await encryptDouble(_sleepHours, userDEK),
         'activityLevel': await encryptValue(_activityLevel, userDEK),
         'goal': await encryptValue(_goal, userDEK),
@@ -704,11 +762,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           final shouldLeave = await showDialog<bool>(
             context: context,
             builder: (context) {
+              final theme = Theme.of(context);
+            final isDark = theme.colorScheme.brightness == Brightness.dark;
+             
               return AlertDialog(
-                title: const Text('Niet-opgeslagen wijzigingen'),
-                content: const Text(
+               title: Text(
+                  'Niet-opgeslagen wijzigingen',
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                ),
+                content: Text(
                   'Je hebt wijzigingen aangebracht die nog niet zijn opgeslagen. '
                   'Weet je zeker dat je wilt afsluiten zonder op te slaan?',
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 ),
                 actions: [
                   TextButton(
@@ -1060,6 +1125,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     );
                                     if (v == null || v < 100 || v > 250) {
                                       return 'Voer een lengte tussen 100 en 250 cm in';
+                                    }
+                                    return null;
+                                  },
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _hasUnsavedChanges = true;
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+TextFormField(
+                                  controller: _waistController,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(decimal: true),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: primaryTextColor,
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: 'Tailleomtrek (cm)',
+                                    labelStyle: TextStyle(
+                                      color: secondaryTextColor,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.straighten,
+                                      color: secondaryTextColor,
+                                    ),
+                                    border: const OutlineInputBorder(),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Vul je tailleomtrek in';
+                                    }
+                                    final v = double.tryParse(
+                                      value.replaceAll(',', '.'),
+                                    );
+                                    if (v == null || v <= 0 || v < 30 || v > 200) {
+                                      return 'Voer een tailleomtrek tussen 30 en 200 cm in';
                                     }
                                     return null;
                                   },

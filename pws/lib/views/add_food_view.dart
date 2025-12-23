@@ -691,32 +691,33 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final int currentToken = ++_searchToken;
 
     _searchOffParallel(trimmed)
-        .then((offProducts) {
-          if (!mounted || offProducts.isEmpty) return;
-          if (currentToken != _searchToken) return; // voorkom oude resultaten
+
+.then((offProducts) {
+          // check token first (voorkom oude async resultaten)
+          if (currentToken != _searchToken) return;
+          if (!mounted) return;
+
           if (offProducts.isNotEmpty) {
+            final merged = _mergeProductsPreserveLogic(
+              _searchResults ?? [],
+              offProducts,
+            );
             setState(() {
               _offStatus = SourceStatus.success;
-              final merged = _mergeProductsPreserveLogic(
-                _searchResults ?? [],
-                offProducts,
-              );
               _searchResults = _rankProducts(merged, trimmed, take: 50);
             });
           } else {
-            // lege lijst of timeout -> markeer als error
+            // lege lijst => expliciet error zodat UI niet groen blijft
             setState(() {
               _offStatus = SourceStatus.error;
             });
           }
-        })
-        .catchError((e) {
+        }).catchError((e) {
           if (!mounted) return;
           setState(() {
             _offStatus = SourceStatus.error;
           });
         });
-
     try {
       List all = []; // Lege lijst om producten op te slaan
 
@@ -6147,16 +6148,18 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
     super.dispose();
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     IconData icon;
     Color color;
 
     switch (widget.status) {
       case SourceStatus.success:
         icon = Icons.check_circle;
-        color = Colors.green; // of colorScheme.secondary
+        color = Colors.green;
         break;
       case SourceStatus.error:
         icon = Icons.cancel;
@@ -6167,7 +6170,7 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
         color = colorScheme.primary;
         break;
       case SourceStatus.idle:
-      icon = Icons.access_time;
+        icon = Icons.access_time;
         color = colorScheme.onSurface.withOpacity(0.6);
     }
 
@@ -6182,6 +6185,9 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
             ),
             child: Icon(icon, color: color, size: 18),
           );
+
+    // Gebruik theme colorScheme.onSurface voor consistente contrastkleur in dark/light mode
+    final textColor = colorScheme.onSurface;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -6215,7 +6221,7 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
             key: ValueKey<String>(widget.label + widget.status.toString()),
             style: TextStyle(
               fontSize: 14,
-              color: Theme.of(context).textTheme.bodyMedium?.color,
+              color: textColor,
             ),
           ),
         ),

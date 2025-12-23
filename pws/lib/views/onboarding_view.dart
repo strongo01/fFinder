@@ -15,6 +15,12 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class AbsiReference {
+  final double mean;
+  final double sd;
+  AbsiReference(this.mean, this.sd);
+}
+
 class OnboardingView extends StatefulWidget {
   const OnboardingView({super.key});
 
@@ -45,7 +51,7 @@ class _OnboardingViewState extends State<OnboardingView> {
   static const int maxHeightCm = 300;
   static const int minWeightKg = 20;
   static const int maxWeightKg = 800;
-
+bool _waistUnknown = false;
   final int _totalQuestions = 11;
 
   String _rangeText = '';
@@ -93,10 +99,19 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   late FocusNode _focusNode; // focus node voor keyboard events
 
+  List<dynamic> _absiReferenceTable = [];
+  Future<void> _loadAbsiReference() async {
+    final jsonString = await rootBundle.loadString(
+      'assets/absi_reference/absi_reference.json',
+    );
+    _absiReferenceTable = json.decode(jsonString);
+  }
+
   @override
   void initState() {
     super.initState();
     _focusNode = FocusNode();
+    _loadAbsiReference();
 
     _ensureCdcLmsLoaded() // zorgt dat LMS-data geladen is bij start
         .then((_) {
@@ -172,6 +187,7 @@ class _OnboardingViewState extends State<OnboardingView> {
         }
         break;
       case 5: // Taille omtrek
+      if (_waistUnknown) break;
         final waistText = _waistController.text.trim();
         if (waistText.isEmpty) {
           _showError('Vul alsjeblieft je tailleomtrek in.');
@@ -189,7 +205,7 @@ class _OnboardingViewState extends State<OnboardingView> {
           return false;
         }
         break;
-      case 7: // Streefgewicht
+case 8: // Streefgewicht (index aangepast)
         final targetWeightText = _targetWeightController.text.trim();
         if (targetWeightText.isEmpty) {
           _showError('Vul alsjeblieft je streefgewicht in.');
@@ -253,6 +269,36 @@ class _OnboardingViewState extends State<OnboardingView> {
     }
   }
 
+  String absiCategory(double z) {
+    if (z <= -1.0) return 'zeer_laag risico';
+    if (z <= -0.5) return 'laag risico';
+    if (z <= 0.5) return 'gemiddeld risico';
+    if (z <= 1.0) return 'verhoogd risico';
+    return 'hoog';
+  }
+
+  AbsiReference getAbsiReference(int age, String gender) {
+    if (_absiReferenceTable.isEmpty) {
+      throw Exception('ABSI reference table not loaded');
+    }
+
+    // beschikbare leeftijden
+    final ages = _absiReferenceTable.map((e) => e["age"] as int).toList()
+      ..sort();
+
+    final clampedAge = ages.contains(age) ? age : ages.last;
+
+    final entry = _absiReferenceTable.firstWhere((e) => e["age"] == clampedAge);
+
+    final isFemale = gender.toLowerCase() == 'vrouw';
+    final data = isFemale ? entry["female"] : entry["male"];
+
+    return AbsiReference(
+      (data["mean"] as num).toDouble(),
+      (data["sd"] as num).toDouble(),
+    );
+  }
+
   // Data opslaan in Firestore
   Future<void> _finishOnboarding() async {
     final user = FirebaseAuth.instance.currentUser; // Huidige gebruiker ophalen
@@ -283,8 +329,9 @@ class _OnboardingViewState extends State<OnboardingView> {
       // --- De rest van je logica blijft hetzelfde ---
       final heightCm = double.tryParse(_heightController.text);
       final weightKg = double.tryParse(_weightController.text);
-      final waistCm =
-          double.tryParse(_waistController.text.replaceAll(',', '.'));
+      final waistCm = double.tryParse(
+        _waistController.text.replaceAll(',', '.'),
+      );
 
       final birthDate = _birthDate;
       final gender = _gender;
@@ -296,7 +343,7 @@ class _OnboardingViewState extends State<OnboardingView> {
       double? proteinGoal;
       double? fatGoal;
       double? carbGoal;
-double? absi;
+      double? absi;
       double? heightM;
       if (heightCm != null && heightCm > 0) {
         heightM = heightCm / 100;
@@ -367,11 +414,31 @@ double? absi;
         carbGoal = carbCalories / 4; // 1 gram per 4 kcal koolhydraten
       }
 
-      if (waistCm != null && bmi != null && bmi > 0 && heightM != null && heightM > 0) {
+      if (waistCm != null &&
+          bmi != null &&
+          bmi > 0 &&
+          heightM != null &&
+          heightM > 0) {
         final waistM = waistCm / 100.0;
         absi = waistM / (pow(bmi, 2.0 / 3.0) * pow(heightM, 0.5));
       }
 
+      double? absiZ;
+      String? absiRange;
+
+      if (absi != null && birthDate != null) {
+        final age = DateTime.now().year - birthDate.year;
+
+        // 👇 lookup uit jouw JSON (voorbeeldfunctie)
+        final ref = getAbsiReference(age, gender);
+        // ref.mean, ref.sd
+
+        absiZ = (absi - ref.mean) / ref.sd;
+        absiRange = absiCategory(absiZ);
+      }
+      debugPrint(
+        "[DEBUG ABSI] waist: $waistCm, absi: $absi, absiZ: $absiZ, absiRange: $absiRange",
+      );
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'firstName': await encryptValue(
           _firstNameController.text.trim(),
@@ -385,8 +452,9 @@ double? absi;
         'height': await encryptDouble(heightCm ?? 0, userDEK),
         'weight': await encryptDouble(weightKg ?? 0, userDEK),
         'waist': await encryptDouble(waistCm ?? 0, userDEK),
-         'absi': await encryptDouble(absi ?? 0, userDEK),
-         
+        'absi': await encryptDouble(absi ?? 0, userDEK),
+        'absiZ': await encryptDouble(absiZ ?? 0, userDEK),
+        'absiRange': await encryptValue(absiRange ?? 'onbekend', userDEK),
         'calorieGoal': await encryptDouble(calorieGoal ?? 0, userDEK),
         'proteinGoal': await encryptDouble(proteinGoal ?? 0, userDEK),
         'fatGoal': await encryptDouble(fatGoal ?? 0, userDEK),
@@ -904,23 +972,43 @@ double? absi;
                     //taille
                     _buildQuestionPage(
                       title: 'Wat is je tailleomtrek (cm)?',
-                      content: TextField(
-                        controller: _waistController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          CommaToPeriodTextInputFormatter(), // Vervangt ',' door '.'
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*\.?\d*'),
-                          ), // Sta alleen cijfers en één punt toe
+                     content: Column(
+                        children: [
+                          TextField(
+                            controller: _waistController,
+                            enabled: !_waistUnknown,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              CommaToPeriodTextInputFormatter(), // Vervangt ',' door '.'
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*\.?\d*'),
+                              ), // Sta alleen cijfers en één punt toe
+                            ],
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) => _nextPage(),
+                            style: inputTextStyle,
+                            decoration: const InputDecoration(
+                              labelText: 'Tailleomtrek in cm',
+                              border: OutlineInputBorder(),
+                              suffixText: 'cm',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          CheckboxListTile(
+                            title: Text('Ik weet het niet', style: inputTextStyle),
+                            value: _waistUnknown,
+                            onChanged: (val) {
+                              setState(() {
+                                _waistUnknown = val ?? false;
+                                if (_waistUnknown) {
+                                  _waistController.clear();
+                                }
+                                _scheduleRangeUpdate();
+                              });
+                            },
+                            controlAffinity: ListTileControlAffinity.leading,
+                          ),
                         ],
-                        textInputAction: TextInputAction.next,
-                        onSubmitted: (_) => _nextPage(),
-                        style: inputTextStyle,
-                        decoration: const InputDecoration(
-                          labelText: 'Tailleomtrek in cm',
-                          border: OutlineInputBorder(),
-                          suffixText: 'cm',
-                        ),
                       ),
                     ),
                     // Vraag 6: Slaap

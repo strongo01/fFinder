@@ -69,16 +69,21 @@ class FeedbackButton extends StatelessWidget {
     showModalBottomSheet<void>(
       context: outerContext,
       isScrollControlled: true,
-      useSafeArea: false, // Sheet gaat nu tot helemaal bovenaan
+      useSafeArea: false,
       backgroundColor: Theme.of(outerContext).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
         final isDarkMode = Theme.of(ctx).brightness == Brightness.dark;
-final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
+        final Color textColor = isDarkMode ? Colors.white : Colors.black;
+        final Color hintColor =
+            isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700;
+        final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
+
         Future<void> send() async {
           if (!formKey.currentState!.validate()) return;
+          // Attempt to show sending state if possible — we'll rely on rebuilds via Navigator pop for UX simplicity
           isSending = true;
           try {
             final user = FirebaseAuth.instance.currentUser;
@@ -117,7 +122,10 @@ final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                label,
+                style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
+              ),
               Row(
                 children: List.generate(5, (i) {
                   return IconButton(
@@ -130,15 +138,17 @@ final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
                       Icons.star,
                       color: i < (ratings[label] ?? 0)
                           ? Colors.amber
-                          : Colors.grey[500],
+                          : (isDarkMode ? Colors.grey[600] : Colors.grey[500]),
                     ),
                   );
                 }),
               ),
               TextFormField(
                 controller: comments[label],
+                style: TextStyle(color: textColor),
                 decoration: InputDecoration(
                   hintText: 'Opmerking bij $label (optioneel)',
+                  hintStyle: TextStyle(color: hintColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -156,7 +166,8 @@ final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
               left: 16,
               right: 16,
               top: 0,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + sysBottomPadding + 20, // vergroot onder-padding
+              bottom:
+                  MediaQuery.of(ctx).viewInsets.bottom + sysBottomPadding + 20,
             ),
             child: Form(
               key: formKey,
@@ -171,9 +182,7 @@ final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
                         height: 5,
                         margin: const EdgeInsets.only(bottom: 20),
                         decoration: BoxDecoration(
-                          color: isDarkMode
-                              ? Colors.grey[500]
-                              : Colors.grey[300],
+                          color: isDarkMode ? Colors.grey[500] : Colors.grey[300],
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
@@ -183,7 +192,7 @@ final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : Colors.black,
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -191,8 +200,12 @@ final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
                       return ExpansionTile(
                         title: Text(
                           entry.key,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
                         ),
+                        textColor: textColor,
+                        collapsedTextColor: textColor,
+                        iconColor: textColor,
+                        collapsedIconColor: textColor,
                         children: entry.value.map((label) {
                           return Padding(
                             padding: const EdgeInsets.only(
@@ -205,25 +218,32 @@ final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
                         }).toList(),
                       );
                     }).toList(),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
                           onPressed: () => Navigator.of(ctx).pop(),
-                          child: const Text('Annuleren'),
+                          child: Text(
+                            'Annuleren',
+                            style: TextStyle(color: textColor),
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         ElevatedButton(
-                          onPressed: isSending ? null : send,
+                          onPressed: isSending
+                              ? null
+                              : () {
+                                  // ensure visual update for sending
+                                  setState(() => isSending = true);
+                                  send().whenComplete(() => setState(() => isSending = false));
+                                },
                           child: isSending
                               ? SizedBox(
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: isDarkMode
-                                        ? Colors.white
-                                        : Colors.black,
+                                    color: textColor,
                                   ),
                                 )
                               : const Text('Versturen'),
@@ -276,13 +296,18 @@ final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
       ),
       builder: (ctx) {
         final isDarkMode = Theme.of(ctx).brightness == Brightness.dark;
-final sysBottomPadding = MediaQuery.of(ctx).padding.bottom; // nav bar hoogte
+        final sysBottomPadding = MediaQuery.of(
+          ctx,
+        ).padding.bottom; // nav bar hoogte
         return Padding(
           padding: EdgeInsets.only(
             left: 16,
             right: 16,
             top: 16,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + sysBottomPadding + 20, // vergroot onder-padding
+            bottom:
+                MediaQuery.of(ctx).viewInsets.bottom +
+                sysBottomPadding +
+                20, // vergroot onder-padding
           ),
           child: StatefulBuilder(
             builder: (innerCtx, setState) {
@@ -437,7 +462,7 @@ final sysBottomPadding = MediaQuery.of(ctx).padding.bottom; // nav bar hoogte
                     Text(
                       "Hier kan je elk moment je feedback geven.",
                       style: TextStyle(
-                      color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                        color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
                       ),
                     ),
 

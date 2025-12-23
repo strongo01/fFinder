@@ -6,6 +6,7 @@ import 'package:fFinder/views/crypto_class.dart';
 import 'package:fFinder/views/feedback_view.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class WeightView extends StatefulWidget {
   const WeightView({super.key});
@@ -23,11 +24,15 @@ class _WeightViewState extends State<WeightView> {
   double? _targetWeight;
   double _height = 180;
   double? _bmi;
-
+  double _waist = 85.0; // cm
+  double? _absi;
+  double? _absiZ;
+  String? _absiRange;
+  List<dynamic> _absiReferenceTable = [];
   List<WeightEntry> _entries = [];
 
   String _viewMode = 'table';
-
+  final TextEditingController _waistController = TextEditingController();
   int _currentMonthIndex = 0;
 
   static const double _bmiMin = 10.0;
@@ -52,6 +57,7 @@ class _WeightViewState extends State<WeightView> {
   void initState() {
     super.initState();
     _loadUserData();
+    _loadAbsiReference();
   }
 
   @override
@@ -59,8 +65,20 @@ class _WeightViewState extends State<WeightView> {
     _weightController.dispose();
     _targetWeightController.dispose();
     _weightFocusNode.dispose();
+    _waistController.dispose();
     _targetWeightFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadAbsiReference() async {
+    try {
+      final jsonString = await rootBundle.loadString(
+        'assets/absi_reference/absi_reference.json',
+      );
+      _absiReferenceTable = json.decode(jsonString) as List<dynamic>;
+    } catch (_) {
+      _absiReferenceTable = [];
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -104,6 +122,17 @@ class _WeightViewState extends State<WeightView> {
         }
       } else {
         _height = _parseDouble(data['height']) ?? _height;
+      }
+
+      if (userDEK != null && data['waist'] is String) {
+        try {
+          final dec = await decryptValue(data['waist'] as String, userDEK);
+          _waist = double.tryParse(dec.replaceAll(',', '.')) ?? _waist;
+        } catch (_) {
+          _waist = _parseDouble(data['waist']) ?? _waist;
+        }
+      } else {
+        _waist = _parseDouble(data['waist']) ?? _waist;
       }
 
       if (userDEK != null && data['targetWeight'] is String) {
@@ -178,6 +207,7 @@ class _WeightViewState extends State<WeightView> {
       if (_targetWeight != null) {
         _targetWeightController.text = _targetWeight!.toStringAsFixed(1);
       }
+      _waistController.text = _waist.toStringAsFixed(1);
       _recalculateBMI();
     } catch (e) {
       if (!mounted) return;
@@ -202,11 +232,117 @@ class _WeightViewState extends State<WeightView> {
   void _recalculateBMI() {
     if (_height <= 0 || _weight <= 0) {
       setState(() => _bmi = null);
+      setState(() {
+        _absi = null;
+        _absiZ = null;
+        _absiRange = null;
+      });
       return;
     }
     final hMeters = _height / 100;
     final bmi = _weight / (hMeters * hMeters);
     setState(() => _bmi = bmi);
+    _computeAbsi();
+  }
+
+  Future<void> _computeAbsi() async {
+    if (_waist <= 0 || _bmi == null || _height <= 0) {
+      setState(() {
+        _absi = null;
+        _absiZ = null;
+        _absiRange = null;
+      });
+      return;
+    }
+
+    final heightM = _height / 100.0;
+    final waistM = _waist / 100.0;
+    final absi = waistM / (pow(_bmi!, 2.0 / 3.0) * pow(heightM, 0.5));
+
+    String? range;
+    double? z;
+    // try compute z-score if reference table available and birthDate/gender loaded in _loadUserData
+    try {
+      if (_absiReferenceTable.isNotEmpty) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final doc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+          final data = doc.data() ?? {};
+          String gender = (data['gender'] is String)
+              ? (data['gender'] as String)
+              : 'Man';
+          DateTime? birthDate;
+          if (data['birthDate'] is String) {
+            String birthStr = data['birthDate'] as String;
+            try {
+              // try decrypt if encrypted
+              final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+              if (userDEK != null) {
+                try {
+                  birthStr = await decryptValue(birthStr, userDEK);
+                } catch (_) {}
+              }
+            } catch (_) {}
+            birthDate = birthStr.isNotEmpty
+                ? DateTime.tryParse(birthStr)
+                : null;
+          }
+
+          if (birthDate != null) {
+            final ages =
+                _absiReferenceTable.map((e) => e['age'] as int).toList()
+                  ..sort();
+            final age = DateTime.now().year - birthDate.year;
+            final clampedAge = ages.contains(age) ? age : ages.last;
+            final entry = _absiReferenceTable.firstWhere(
+              (e) => e['age'] == clampedAge,
+            );
+            final isFemale = (gender).toLowerCase() == 'vrouw';
+            final data = isFemale ? entry['female'] : entry['male'];
+            final mean = (data['mean'] as num).toDouble();
+            final sd = (data['sd'] as num).toDouble();
+            if (sd != 0) {
+              z = (absi - mean) / sd;
+              if (z <= -1.0) {
+                range = 'zeer_laag risico';
+              } else if (z <= -0.5) {
+                range = 'laag risico';
+              } else if (z <= 0.5) {
+                range = 'gemiddeld risico';
+              } else if (z <= 1.0) {
+                range = 'verhoogd risico';
+              } else {
+                range = 'hoog';
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    setState(() {
+      _absi = absi;
+      _absiZ = z;
+      _absiRange = range;
+    });
+  }
+
+  Color _absiCategoryColor(String? range, bool isDark) {
+    if (range == null) return isDark ? Colors.white : Colors.black;
+    switch (range) {
+      case 'zeer_laag risico':
+      case 'laag risico':
+        return Colors.green;
+      case 'gemiddeld risico':
+        return Colors.orange;
+      case 'verhoogd risico':
+      case 'hoog':
+      default:
+        return Colors.redAccent;
+    }
   }
 
   Future<void> _saveWeight() async {
@@ -235,6 +371,14 @@ class _WeightViewState extends State<WeightView> {
       _entries.sort((a, b) => a.date.compareTo(b.date));
 
       _currentMonthIndex = 0;
+
+      final waistText = _waistController.text.trim();
+      if (waistText.isNotEmpty) {
+        final parsed = double.tryParse(waistText.replaceAll(',', '.'));
+        if (parsed != null && parsed > 0) {
+          _waist = parsed;
+        }
+      }
 
       final docRef = FirebaseFirestore.instance
           .collection('users')
@@ -372,6 +516,11 @@ class _WeightViewState extends State<WeightView> {
       if (userDEK != null) {
         saveMap['weight'] = await encryptDouble(_weight, userDEK);
         saveMap['height'] = await encryptDouble(heightVal, userDEK);
+        saveMap['waist'] = await encryptDouble(_waist, userDEK);
+       if (_absi != null) saveMap['absi'] = await encryptDouble(_absi!, userDEK);
+       if (_absiZ != null) saveMap['absiZ'] = await encryptDouble(_absiZ!, userDEK);
+       if (_absiRange != null) saveMap['absiRange'] = await encryptValue(_absiRange!, userDEK);
+    
         saveMap['bmi'] = await encryptDouble(bmi ?? 0, userDEK);
         saveMap['calorieGoal'] = await encryptDouble(calorieGoal ?? 0, userDEK);
         saveMap['proteinGoal'] = await encryptDouble(proteinGoal ?? 0, userDEK);
@@ -397,6 +546,11 @@ class _WeightViewState extends State<WeightView> {
         // store plaintext
         saveMap['weight'] = _weight;
         saveMap['height'] = heightVal;
+        saveMap['waist'] = _waist;
+       if (_absi != null) saveMap['absi'] = _absi;
+       if (_absiZ != null) saveMap['absiZ'] = _absiZ;
+       if (_absiRange != null) saveMap['absiRange'] = _absiRange;
+     
         saveMap['bmi'] = bmi;
         saveMap['calorieGoal'] = calorieGoal;
         saveMap['proteinGoal'] = proteinGoal;
@@ -724,6 +878,141 @@ class _WeightViewState extends State<WeightView> {
                           ),
                         ),
                       ),
+
+                      const SizedBox(height: 16),
+
+                      Card(
+                        color: cardColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: isDark ? 0 : 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'Taille / ABSI',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: primaryTextColor,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _waistController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: primaryTextColor,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: 'Tailleomtrek (cm)',
+                                  labelStyle: TextStyle(
+                                    color: secondaryTextColor,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.straighten,
+                                    color: secondaryTextColor,
+                                  ),
+                                  border: const OutlineInputBorder(),
+                                ),
+                                onChanged: (value) {
+                                  final v = double.tryParse(
+                                    value.replaceAll(',', '.'),
+                                  );
+                                  if (v != null && v > 0) {
+                                    setState(() => _waist = v);
+                                    _computeAbsi();
+                                  } else {
+                                    setState(() {
+                                      _absi = null;
+                                      _absiZ = null;
+                                      _absiRange = null;
+                                    });
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              if (_absi == null)
+                                Text(
+                                  'Onvoldoende gegevens om ABSI te berekenen. Vul taille, lengte en gewicht in.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: secondaryTextColor,
+                                  ),
+                                )
+                              else
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Jouw ABSI: ${_absi!.toStringAsFixed(4)}'
+                                      '${_absiRange != null ? ' (${_absiRange})' : ''}',
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color: _absiCategoryColor(
+                                              _absiRange,
+                                              isDark,
+                                            ),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 12,
+                                      runSpacing: 8,
+                                      children: [
+                                                    _absiLegendItem(
+                                          context,
+                                          Colors.green,
+                                          'Laag risico',
+                                        ),
+                                        _absiLegendItem(
+                                          context,
+                                          Colors.orange,
+                                          'Gemiddeld risico',
+                                        ),
+                                        _absiLegendItem(
+                                          context,
+                                          Colors.redAccent,
+                                          'Hoog risico',
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: isDark
+                                              ? Colors.black
+                                              : colorScheme.primary,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        icon: _saving
+                                            ? const SizedBox(
+                                                width: 16,
+                                                height: 16,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Colors.white,
+                                                ),
+                                              )
+                                            : const Icon(Icons.save),
+                                        label: Text(
+                                            _saving ? 'Opslaan...' : 'Taille opslaan'),
+                                        onPressed: _saving ? null : _saveWeight,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                       const SizedBox(height: 24),
 
                       Row(
@@ -845,6 +1134,27 @@ class _WeightViewState extends State<WeightView> {
           );
         },
       ),
+    );
+  }
+
+  Widget _absiLegendItem(BuildContext context, Color color, String label) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: theme.textTheme.bodySmall?.copyWith(color: textColor)),
+      ],
     );
   }
 
