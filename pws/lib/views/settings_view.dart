@@ -1494,6 +1494,32 @@ TextFormField(
                             ? null
                             : _confirmDeleteAccount,
                       ),
+
+                      const SizedBox(height: 12),
+
+
+                      OutlinedButton.icon(
+                        icon: Icon(Icons.info_outline, color: colorScheme.primary),
+                        label: Text(
+                          'Credits',
+                          style: TextStyle(color: colorScheme.primary),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: colorScheme.primary),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const CreditsView()),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -1502,6 +1528,71 @@ TextFormField(
     );
   }
 }
+
+class CreditsView extends StatelessWidget {
+  const CreditsView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = cs.brightness == Brightness.dark;
+    final textColor = cs.onSurface;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Credits'),
+        backgroundColor: isDark ? Colors.black : Colors.white,
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'ABSI Data Attribution',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(color: textColor, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Body Shape Index (ABSI) referentietabel is gebaseerd op:\n\n'
+                'Y. Krakauer, Nir; C. Krakauer, Jesse (2015).\n'
+                'Table S1 - A New Body Shape Index Predicts Mortality Hazard Independently of Body Mass Index.\n'
+                'PLOS ONE. Dataset.\n'
+                'https://doi.org/10.1371/journal.pone.0039504.s001\n\n'
+                'Deze dataset wordt gebruikt voor het berekenen van ABSI Z-scores en categorieën in deze app.',
+                style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
+              ),
+              const Spacer(),
+              Text(
+                'Datum: ${DateFormat.yMMMMd().format(DateTime.now())}',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: textColor.withOpacity(0.7)),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: cs.primary,
+                    foregroundColor: cs.onPrimary,
+                  ),
+                  icon: const Icon(Icons.close),
+                  label: const Text('Sluiten'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class ManageAnnouncementsView extends StatefulWidget {
   const ManageAnnouncementsView({super.key});
