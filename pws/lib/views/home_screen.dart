@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _settingsKey = GlobalKey();
   final GlobalKey _weightKey = GlobalKey();
 
-  static const String _appVersion = '1.0.6';
+  static const String _appVersion = '1.0.7';
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -808,6 +808,16 @@ class _HomeScreenState extends State<HomeScreen> {
         return; // Stop de functie hier
       }
 
+            String? _rawWaterGoal;
+      if (data.containsKey('waterGoal')) {
+        _rawWaterGoal = await decryptValue(data['waterGoal'], userDEK);
+      } else {
+        _rawWaterGoal = null;
+      }
+      final double? parsedWaterGoal =
+          _rawWaterGoal != null ? double.tryParse(_rawWaterGoal) : null;
+
+
       // 4️⃣ Decrypt alle geëncryptte velden
       final decryptedData = {
         'firstName': await decryptValue(data['firstName'], userDEK),
@@ -836,6 +846,7 @@ class _HomeScreenState extends State<HomeScreen> {
               await decryptValue(data['targetWeight'], userDEK),
             ) ??
             0,
+        'waterGoal': parsedWaterGoal,
         'notificationsEnabled': data['notificationsEnabled'],
         'onboardingaf': data['onboardingaf'],
         'activityLevel': await decryptValue(data['activityLevel'], userDEK),
@@ -940,6 +951,103 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return calories;
+  }
+
+  Future<void> _showEditWaterGoalDialog(double currentGoal) async {
+    final amountController = TextEditingController(
+      text: currentGoal.round().toString(),
+    );
+    final formKey = GlobalKey<FormState>();
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final newGoal = await showDialog<double>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            'Waterdoel aanpassen (ml)',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+          ),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: amountController,
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: false,
+              ),
+              decoration: const InputDecoration(labelText: 'Nieuw doel (ml)'),
+              validator: (value) {
+                if (value == null ||
+                    value.isEmpty ||
+                    double.tryParse(value) == null ||
+                    double.parse(value) <= 0) {
+                  return 'Voer een geldig getal in';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Annuleren'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(
+                    context,
+                  ).pop(double.parse(amountController.text));
+                }
+              },
+              child: const Text('Opslaan'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (newGoal != null && newGoal != currentGoal) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // update lokaal direct voor snellere UI feedback
+      setState(() {
+        if (_userData == null) _userData = {};
+        _userData!['waterGoal'] = newGoal.toString();
+      });
+
+      try {
+        final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+        if (userDEK == null) throw Exception("DEK niet gevonden");
+
+        final encrypted = await encryptValue(newGoal.toString(), userDEK);
+
+        // Schrijf naar Firestore in veld 'goal' zoals je aangaf
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({'waterGoal': encrypted});
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Waterdoel bijgewerkt!')),
+          );
+        }
+      } catch (e) {
+        debugPrint("[WATER_GOAL] Fout bij opslaan: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Fout bij opslaan waterdoel: $e')),
+          );
+          // revert lokaal
+          setState(() {
+            _userData!['waterGoal'] = currentGoal.toString();
+          });
+        }
+      }
+    }
   }
 
   @override
@@ -1767,7 +1875,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           }
                         }
                         final weight = _userData?['weight'] as num? ?? 70;
-                        final waterGoal = weight * 32.5;
+                        double waterGoal = weight * 32.5;
+                        try {
+                          final rawGoal = _userData?['waterGoal'];
+                          if (rawGoal != null) {
+                            final parsed = double.tryParse(rawGoal.toString());
+                            if (parsed != null && parsed > 0) {
+                              waterGoal = parsed;
+                            }
+                          }
+                        } catch (_) {
+                          // fallback blijft behouden
+                        }
 
                         final motivationalMessage = _getMotivationalMessage(
                           totalCalories,
@@ -1968,11 +2087,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                         const SizedBox(height: 20),
                                         Container(
                                           key: _waterCircleKey,
-                                          child: _buildWaterCircle(
-                                            totalWater,
-                                            waterGoal.toDouble(),
-                                            drinkBreakdown,
-                                            isDarkMode,
+                                          child: GestureDetector(
+                                            onTap: () =>
+                                                _showEditWaterGoalDialog(
+                                                  waterGoal,
+                                                ),
+                                            child: _buildWaterCircle(
+                                              totalWater,
+                                              waterGoal,
+                                              drinkBreakdown,
+                                              isDarkMode,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -2085,11 +2210,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                           flex: 1,
                                           child: Container(
                                             key: _waterCircleKey,
-                                            child: _buildWaterCircle(
-                                              totalWater,
-                                              waterGoal.toDouble(),
-                                              drinkBreakdown,
-                                              isDarkMode,
+                                            child: GestureDetector(
+                                              onTap: () =>
+                                                  _showEditWaterGoalDialog(
+                                                    waterGoal,
+                                                  ),
+                                              child: _buildWaterCircle(
+                                                totalWater,
+                                                waterGoal,
+                                                drinkBreakdown,
+                                                isDarkMode,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -2627,11 +2758,7 @@ class _HomeScreenState extends State<HomeScreen> {
             color: valueColor,
           ),
         ),
-        Text(
-          bottomText,
-          style: labelStyle,
-          textAlign: TextAlign.center, 
-        ),
+        Text(bottomText, style: labelStyle, textAlign: TextAlign.center),
       ],
     );
   }
@@ -3045,20 +3172,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     InputDecorator(
                       decoration: InputDecoration(
                         labelText: 'Eenheid',
-                        labelStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        labelStyle: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                         enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: isDarkMode ? Colors.white12 : Colors.black12),
+                          borderSide: BorderSide(
+                            color: isDarkMode ? Colors.white12 : Colors.black12,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         disabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: isDarkMode ? Colors.white12 : Colors.black12),
+                          borderSide: BorderSide(
+                            color: isDarkMode ? Colors.white12 : Colors.black12,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                       child: Text(
                         isDrink ? 'Milliliter (ml)' : 'Gram (g)',
-                        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
                       ),
                     ),
                   ],
