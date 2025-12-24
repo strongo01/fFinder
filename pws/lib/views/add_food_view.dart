@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cryptography/cryptography.dart';
 import 'package:fFinder/views/crypto_class.dart';
 import 'package:fFinder/views/feedback_view.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -691,8 +692,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final int currentToken = ++_searchToken;
 
     _searchOffParallel(trimmed)
-
-.then((offProducts) {
+        .then((offProducts) {
           // check token first (voorkom oude async resultaten)
           if (currentToken != _searchToken) return;
           if (!mounted) return;
@@ -712,7 +712,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
               _offStatus = SourceStatus.error;
             });
           }
-        }).catchError((e) {
+        })
+        .catchError((e) {
           if (!mounted) return;
           setState(() {
             _offStatus = SourceStatus.error;
@@ -1084,9 +1085,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
 
     try {
-      final model = FirebaseAI.googleAI().generativeModel(
-        model: 'gemini-2.5-flash',
-      );
+      final model = FirebaseAI.googleAI(
+        appCheck: FirebaseAppCheck.instance,
+      ).generativeModel(model: 'gemini-2.5-flash');
       final prompt = TextPart(
         "Wat voor ingrediënten zie je hier? Antwoord in het Nederlands. "
         "Negeer marketingtermen, productnamen, en niet-relevante woorden zoals 'zero', 'light', etc. "
@@ -1261,7 +1262,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
           builder: (context, scrollController) {
             return StatefulBuilder(
               builder: (context, setModalState) {
-                                                Future<void> searchProductsForIngredient(
+                Future<void> searchProductsForIngredient(
                   String query,
                   int index, {
                   bool loadMore = false,
@@ -1284,7 +1285,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   final appKey = dotenv.env["APP_KEY"] ?? "";
                   List existingResults = [];
                   if (loadMore) {
-                    existingResults.addAll(ingredientEntries[index]['searchResults'] ?? []);
+                    existingResults.addAll(
+                      ingredientEntries[index]['searchResults'] ?? [],
+                    );
                   }
 
                   try {
@@ -1294,13 +1297,20 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         final ffinderUrl = Uri.parse(
                           "https://ffinder.nl/product?q=${Uri.encodeComponent(trimmed)}",
                         );
-                        final resp = await http.get(ffinderUrl, headers: {"x-app-key": appKey}).timeout(const Duration(seconds: 10));
-                        if (resp.statusCode != 200) return <Map<String, dynamic>>[];
+                        final resp = await http
+                            .get(ffinderUrl, headers: {"x-app-key": appKey})
+                            .timeout(const Duration(seconds: 10));
+                        if (resp.statusCode != 200)
+                          return <Map<String, dynamic>>[];
                         final data = jsonDecode(resp.body);
                         final foods = data["foods"];
                         if (foods != null && foods["food"] is List) {
                           return (foods["food"] as List)
-                              .map((p) => p is Map ? Map<String, dynamic>.from(p) : <String, dynamic>{})
+                              .map(
+                                (p) => p is Map
+                                    ? Map<String, dynamic>.from(p)
+                                    : <String, dynamic>{},
+                              )
                               .toList();
                         }
                         return <Map<String, dynamic>>[];
@@ -1309,14 +1319,24 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       }
                     }();
 
-                    final offFuture = _searchOffParallel(trimmed).catchError((_) => <Map<String, dynamic>>[]);
+                    final offFuture = _searchOffParallel(
+                      trimmed,
+                    ).catchError((_) => <Map<String, dynamic>>[]);
 
-                    final resultsPair = await Future.wait([ffinderFuture, offFuture]);
-                    final List<Map<String, dynamic>> ffinderProducts = resultsPair[0];
-                    final List<Map<String, dynamic>> offProducts = resultsPair[1];
+                    final resultsPair = await Future.wait([
+                      ffinderFuture,
+                      offFuture,
+                    ]);
+                    final List<Map<String, dynamic>> ffinderProducts =
+                        resultsPair[0];
+                    final List<Map<String, dynamic>> offProducts =
+                        resultsPair[1];
 
                     // merge (preserve logic de-dup + fill missing fields)
-                    final merged = _mergeProductsPreserveLogic(ffinderProducts, offProducts);
+                    final merged = _mergeProductsPreserveLogic(
+                      ffinderProducts,
+                      offProducts,
+                    );
 
                     // als loadMore: voeg bij bestaande, anders vervang
                     final ranked = _rankProducts(merged, trimmed, take: 50);
@@ -1335,36 +1355,67 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
                     // asynchrone extra OFF-image verrijking voor items zonder afbeelding (fire-and-forget)
                     for (final raw in ffinderProducts) {
-                      final code = raw['barcode'] ?? raw['code'] ?? raw['_id'] ?? raw['gtin'] ?? raw['ean'];
+                      final code =
+                          raw['barcode'] ??
+                          raw['code'] ??
+                          raw['_id'] ??
+                          raw['gtin'] ??
+                          raw['ean'];
                       final barcode = code?.toString();
                       if (barcode == null || barcode.isEmpty) continue;
 
                       () async {
                         try {
-                          final offUrl = Uri.parse('https://nl.openfoodfacts.org/api/v0/product/$barcode.json');
-                          final offResp = await http.get(offUrl).timeout(const Duration(seconds: 6));
+                          final offUrl = Uri.parse(
+                            'https://nl.openfoodfacts.org/api/v0/product/$barcode.json',
+                          );
+                          final offResp = await http
+                              .get(offUrl)
+                              .timeout(const Duration(seconds: 6));
                           if (offResp.statusCode != 200) return;
-                          final offJson = jsonDecode(offResp.body) as Map<String, dynamic>?;
-                          if (offJson == null || offJson['status'] != 1 || offJson['product'] is! Map) return;
-                          final offProd = offJson['product'] as Map<String, dynamic>;
-                          final img = offProd['image_front_small_url'] ?? offProd['image_front_thumb_url'] ?? offProd['image_front_url'];
+                          final offJson =
+                              jsonDecode(offResp.body) as Map<String, dynamic>?;
+                          if (offJson == null ||
+                              offJson['status'] != 1 ||
+                              offJson['product'] is! Map)
+                            return;
+                          final offProd =
+                              offJson['product'] as Map<String, dynamic>;
+                          final img =
+                              offProd['image_front_small_url'] ??
+                              offProd['image_front_thumb_url'] ??
+                              offProd['image_front_url'];
                           if (img is String && img.isNotEmpty) {
                             raw['image_front_small_url'] = img;
                             if (mounted) {
                               setModalState(() {
-                                final list = (ingredientEntries[index]['searchResults'] as List?) ?? [];
+                                final list =
+                                    (ingredientEntries[index]['searchResults']
+                                        as List?) ??
+                                    [];
                                 for (int j = 0; j < list.length; j++) {
                                   final p = list[j] as Map<String, dynamic>;
-                                  final idP = (p['_id'] ?? p['code'] ?? p['barcode'])?.toString();
-                                  final idRaw = (raw['_id'] ?? raw['code'] ?? raw['barcode'])?.toString();
-                                  if (idP != null && idRaw != null && idP == idRaw) {
-                                    final updated = Map<String, dynamic>.from(p);
+                                  final idP =
+                                      (p['_id'] ?? p['code'] ?? p['barcode'])
+                                          ?.toString();
+                                  final idRaw =
+                                      (raw['_id'] ??
+                                              raw['code'] ??
+                                              raw['barcode'])
+                                          ?.toString();
+                                  if (idP != null &&
+                                      idRaw != null &&
+                                      idP == idRaw) {
+                                    final updated = Map<String, dynamic>.from(
+                                      p,
+                                    );
                                     updated['image_front_small_url'] = img;
                                     list[j] = updated;
                                     break;
                                   }
                                 }
-                                ingredientEntries[index]['searchResults'] = list;
+                                ingredientEntries[index]['searchResults'] =
+                                    list;
                               });
                             }
                           }
@@ -1382,6 +1433,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     });
                   }
                 }
+
                 return SingleChildScrollView(
                   controller: scrollController,
                   child: Padding(
@@ -4204,7 +4256,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   Navigator.pop(context);
                 }
 
-                  Future<void> searchProductsForIngredient(
+                Future<void> searchProductsForIngredient(
                   String query,
                   int index, {
                   bool loadMore = false,
@@ -4227,7 +4279,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   final appKey = dotenv.env["APP_KEY"] ?? "";
                   List existingResults = [];
                   if (loadMore) {
-                    existingResults.addAll(ingredientEntries[index]['searchResults'] ?? []);
+                    existingResults.addAll(
+                      ingredientEntries[index]['searchResults'] ?? [],
+                    );
                   }
 
                   try {
@@ -4237,13 +4291,20 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         final ffinderUrl = Uri.parse(
                           "https://ffinder.nl/product?q=${Uri.encodeComponent(trimmed)}",
                         );
-                        final resp = await http.get(ffinderUrl, headers: {"x-app-key": appKey}).timeout(const Duration(seconds: 10));
-                        if (resp.statusCode != 200) return <Map<String, dynamic>>[];
+                        final resp = await http
+                            .get(ffinderUrl, headers: {"x-app-key": appKey})
+                            .timeout(const Duration(seconds: 10));
+                        if (resp.statusCode != 200)
+                          return <Map<String, dynamic>>[];
                         final data = jsonDecode(resp.body);
                         final foods = data["foods"];
                         if (foods != null && foods["food"] is List) {
                           return (foods["food"] as List)
-                              .map((p) => p is Map ? Map<String, dynamic>.from(p) : <String, dynamic>{})
+                              .map(
+                                (p) => p is Map
+                                    ? Map<String, dynamic>.from(p)
+                                    : <String, dynamic>{},
+                              )
                               .toList();
                         }
                         return <Map<String, dynamic>>[];
@@ -4252,14 +4313,24 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       }
                     }();
 
-                    final offFuture = _searchOffParallel(trimmed).catchError((_) => <Map<String, dynamic>>[]);
+                    final offFuture = _searchOffParallel(
+                      trimmed,
+                    ).catchError((_) => <Map<String, dynamic>>[]);
 
-                    final resultsPair = await Future.wait([ffinderFuture, offFuture]);
-                    final List<Map<String, dynamic>> ffinderProducts = resultsPair[0];
-                    final List<Map<String, dynamic>> offProducts = resultsPair[1];
+                    final resultsPair = await Future.wait([
+                      ffinderFuture,
+                      offFuture,
+                    ]);
+                    final List<Map<String, dynamic>> ffinderProducts =
+                        resultsPair[0];
+                    final List<Map<String, dynamic>> offProducts =
+                        resultsPair[1];
 
                     // merge (de-dup + fill missing fields)
-                    final merged = _mergeProductsPreserveLogic(ffinderProducts, offProducts);
+                    final merged = _mergeProductsPreserveLogic(
+                      ffinderProducts,
+                      offProducts,
+                    );
 
                     final ranked = _rankProducts(merged, trimmed, take: 50);
                     setModalState(() {
@@ -4277,36 +4348,67 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
                     // async: verrijk ffinder-items met OFF-afbeelding waar mogelijk (fire-and-forget)
                     for (final raw in ffinderProducts) {
-                      final code = raw['barcode'] ?? raw['code'] ?? raw['_id'] ?? raw['gtin'] ?? raw['ean'];
+                      final code =
+                          raw['barcode'] ??
+                          raw['code'] ??
+                          raw['_id'] ??
+                          raw['gtin'] ??
+                          raw['ean'];
                       final barcode = code?.toString();
                       if (barcode == null || barcode.isEmpty) continue;
 
                       () async {
                         try {
-                          final offUrl = Uri.parse('https://nl.openfoodfacts.org/api/v0/product/$barcode.json');
-                          final offResp = await http.get(offUrl).timeout(const Duration(seconds: 6));
+                          final offUrl = Uri.parse(
+                            'https://nl.openfoodfacts.org/api/v0/product/$barcode.json',
+                          );
+                          final offResp = await http
+                              .get(offUrl)
+                              .timeout(const Duration(seconds: 6));
                           if (offResp.statusCode != 200) return;
-                          final offJson = jsonDecode(offResp.body) as Map<String, dynamic>?;
-                          if (offJson == null || offJson['status'] != 1 || offJson['product'] is! Map) return;
-                          final offProd = offJson['product'] as Map<String, dynamic>;
-                          final img = offProd['image_front_small_url'] ?? offProd['image_front_thumb_url'] ?? offProd['image_front_url'];
+                          final offJson =
+                              jsonDecode(offResp.body) as Map<String, dynamic>?;
+                          if (offJson == null ||
+                              offJson['status'] != 1 ||
+                              offJson['product'] is! Map)
+                            return;
+                          final offProd =
+                              offJson['product'] as Map<String, dynamic>;
+                          final img =
+                              offProd['image_front_small_url'] ??
+                              offProd['image_front_thumb_url'] ??
+                              offProd['image_front_url'];
                           if (img is String && img.isNotEmpty) {
                             raw['image_front_small_url'] = img;
                             if (mounted) {
                               setModalState(() {
-                                final list = (ingredientEntries[index]['searchResults'] as List?) ?? [];
+                                final list =
+                                    (ingredientEntries[index]['searchResults']
+                                        as List?) ??
+                                    [];
                                 for (int j = 0; j < list.length; j++) {
                                   final p = list[j] as Map<String, dynamic>;
-                                  final idP = (p['_id'] ?? p['code'] ?? p['barcode'])?.toString();
-                                  final idRaw = (raw['_id'] ?? raw['code'] ?? raw['barcode'])?.toString();
-                                  if (idP != null && idRaw != null && idP == idRaw) {
-                                    final updated = Map<String, dynamic>.from(p);
+                                  final idP =
+                                      (p['_id'] ?? p['code'] ?? p['barcode'])
+                                          ?.toString();
+                                  final idRaw =
+                                      (raw['_id'] ??
+                                              raw['code'] ??
+                                              raw['barcode'])
+                                          ?.toString();
+                                  if (idP != null &&
+                                      idRaw != null &&
+                                      idP == idRaw) {
+                                    final updated = Map<String, dynamic>.from(
+                                      p,
+                                    );
                                     updated['image_front_small_url'] = img;
                                     list[j] = updated;
                                     break;
                                   }
                                 }
-                                ingredientEntries[index]['searchResults'] = list;
+                                ingredientEntries[index]['searchResults'] =
+                                    list;
                               });
                             }
                           }
@@ -6148,10 +6250,9 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
     super.dispose();
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     IconData icon;
     Color color;
@@ -6181,7 +6282,10 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
           )
         : ScaleTransition(
             scale: Tween<double>(begin: 0.85, end: 1.0).animate(
-              CurvedAnimation(parent: _rotationController, curve: Curves.easeOut),
+              CurvedAnimation(
+                parent: _rotationController,
+                curve: Curves.easeOut,
+              ),
             ),
             child: Icon(icon, color: color, size: 18),
           );
@@ -6219,10 +6323,7 @@ class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
           child: Text(
             widget.label,
             key: ValueKey<String>(widget.label + widget.status.toString()),
-            style: TextStyle(
-              fontSize: 14,
-              color: textColor,
-            ),
+            style: TextStyle(fontSize: 14, color: textColor),
           ),
         ),
       ],
