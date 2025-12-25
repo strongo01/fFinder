@@ -525,6 +525,10 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                   child: const Text('Annuleren'),
                 ),
                 ElevatedButton(
+                   style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue, 
+                    foregroundColor: Colors.white,
+                  ),
                   onPressed: () {
                     if (formKey.currentState!.validate()) {
                       // naam bepalen
@@ -557,6 +561,97 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                     }
                   },
                   child: const Text('Toevoegen'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue, 
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () async {
+                    if (!formKey.currentState!.validate()) return;
+
+                    // bepaal naam en waarden
+                    String name;
+                    if (selectedDrink == 'Koffie' &&
+                        coffeeVariant != null &&
+                        coffeeVariant != 'Andere koffie') {
+                      name = coffeeVariant!;
+                    } else if (selectedDrink == 'Anders') {
+                      name = customNameController.text;
+                    } else {
+                      name = selectedDrink!;
+                    }
+
+                    final amount = int.parse(amountController.text);
+                    final kcalPer100 = double.parse(
+                      kcalController.text.replaceAll(',', '.'),
+                    );
+                    final kcalForPortion = (kcalPer100 * amount) / 100.0;
+
+                    // voeg preset toe en sla op
+                    setState(() {
+                      _drinkPresets.add({
+                        'name': name,
+                        'amount': amount,
+                        'kcal': kcalForPortion,
+                      });
+                    });
+                    await _saveDrinkPresets();
+
+                    // zorg dat we de pagina-context hebben (niet de dialog-context)
+                    final pageContext = this.context;
+
+                    // sluit de add-preset dialog
+                    Navigator.of(context).pop();
+
+                    // vraag wanneer gedronken (ontbijt/lunch/...)
+                    final mealOptions = [
+                      'Ontbijt',
+                      'Lunch',
+                      'Avondeten',
+                      'Tussendoor',
+                    ];
+                    final selectedMeal = await showDialog<String>(
+                      context: pageContext,
+                      builder: (context) {
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
+                        return AlertDialog(
+                          title: Text(
+                            'Wanneer gedronken?',
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: mealOptions.map((m) {
+                              return ListTile(
+                                title: Text(
+                                  m,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                                onTap: () => Navigator.of(context).pop(m),
+                              );
+                            }).toList(),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Annuleren'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+
+                    // als er een tijd gekozen is, log het drankje
+                    if (selectedMeal != null) {
+                      await _logDrink(name, amount, selectedMeal, kcalForPortion);
+                    }
+                  },
+                  child: const Text('Toevoegen en loggen'),
                 ),
               ],
             );
