@@ -30,6 +30,8 @@ class _WeightViewState extends State<WeightView> {
   String? _absiRange;
   List<dynamic> _absiReferenceTable = [];
   List<WeightEntry> _entries = [];
+  List<WeightEntry> _waistEntries = [];
+  String _measurementType = 'weight';
 
   String _viewMode = 'table';
   final TextEditingController _waistController = TextEditingController();
@@ -201,7 +203,61 @@ class _WeightViewState extends State<WeightView> {
         } catch (_) {}
       }
 
+      final tailleRaw = data['taille'] as List<dynamic>? ?? [];
+      final List<WeightEntry> loadedWaists = [];
+      for (final item in tailleRaw) {
+        try {
+          if (item is String && userDEK != null) {
+            final dec = await decryptValue(item, userDEK);
+            final Map<String, dynamic> m = Map<String, dynamic>.from(
+              jsonDecode(dec),
+            );
+            final date =
+                DateTime.tryParse(m['date'] as String? ?? '') ?? DateTime.now();
+            final w = _parseDouble(m['weight']) ?? 0.0;
+            loadedWaists.add(WeightEntry(date: date, weight: w));
+          } else if (item is Map<String, dynamic>) {
+            final dateField = item['date'];
+            DateTime date;
+            if (dateField is String) {
+              if (userDEK != null) {
+                try {
+                  final decDate = await decryptValue(dateField, userDEK);
+                 date = DateTime.parse(decDate);
+                } catch (_) {
+                  date = DateTime.tryParse(dateField) ?? DateTime.now();
+                }
+              } else {
+                date = DateTime.tryParse(dateField) ?? DateTime.now();
+              }
+            } else {
+              date = DateTime.now();
+            }
+
+            final weightField = item['weight'];
+            double weightVal = 0.0;
+            if (weightField is String) {
+              if (userDEK != null) {
+                try {
+                  final decW = await decryptValue(weightField, userDEK);
+                  weightVal = double.tryParse(decW.replaceAll(',', '.')) ?? 0.0;
+                } catch (_) {
+                  weightVal = _parseDouble(weightField) ?? 0.0;
+                }
+              } else {
+                weightVal = _parseDouble(weightField) ?? 0.0;
+              }
+            } else if (weightField is num) {
+              weightVal = weightField.toDouble();
+            }
+            loadedWaists.add(WeightEntry(date: date, weight: weightVal));
+          }
+        } catch (_) {}
+      }
+
+
       _entries = loaded..sort((a, b) => a.date.compareTo(b.date));
+      _waistEntries = loadedWaists..sort((a, b) => a.date.compareTo(b.date));
       _currentMonthIndex = 0;
       _weightController.text = _weight.toStringAsFixed(1);
       if (_targetWeight != null) {
@@ -513,14 +569,25 @@ class _WeightViewState extends State<WeightView> {
       // Build save map with optional encryption
       final Map<String, dynamic> saveMap = {};
 
+            
+      final onlyDate = DateTime(now.year, now.month, now.day);
+      final newWaistEntry = WeightEntry(date: onlyDate, weight: _waist);
+      _waistEntries.removeWhere((e) => _isSameDay(e.date, newWaistEntry.date));
+      _waistEntries.add(newWaistEntry);
+      _waistEntries.sort((a, b) => a.date.compareTo(b.date));
+
+
       if (userDEK != null) {
         saveMap['weight'] = await encryptDouble(_weight, userDEK);
         saveMap['height'] = await encryptDouble(heightVal, userDEK);
         saveMap['waist'] = await encryptDouble(_waist, userDEK);
-       if (_absi != null) saveMap['absi'] = await encryptDouble(_absi!, userDEK);
-       if (_absiZ != null) saveMap['absiZ'] = await encryptDouble(_absiZ!, userDEK);
-       if (_absiRange != null) saveMap['absiRange'] = await encryptValue(_absiRange!, userDEK);
-    
+        if (_absi != null)
+          saveMap['absi'] = await encryptDouble(_absi!, userDEK);
+        if (_absiZ != null)
+          saveMap['absiZ'] = await encryptDouble(_absiZ!, userDEK);
+        if (_absiRange != null)
+          saveMap['absiRange'] = await encryptValue(_absiRange!, userDEK);
+
         saveMap['bmi'] = await encryptDouble(bmi ?? 0, userDEK);
         saveMap['calorieGoal'] = await encryptDouble(calorieGoal ?? 0, userDEK);
         saveMap['proteinGoal'] = await encryptDouble(proteinGoal ?? 0, userDEK);
@@ -542,15 +609,26 @@ class _WeightViewState extends State<WeightView> {
           weightsToSave.add({'date': encDate, 'weight': encWeight});
         }
         saveMap['weights'] = weightsToSave;
+                final List<dynamic> waistsToSave = [];
+        for (final e in _waistEntries) {
+          final m = e.toMap();
+          final encDate = await encryptValue(m['date'] as String, userDEK);
+          final encWeight = await encryptDouble(
+            (m['weight'] as num).toDouble(),
+            userDEK,
+          );
+          waistsToSave.add({'date': encDate, 'weight': encWeight});
+        }
+        saveMap['taille'] = waistsToSave;
       } else {
         // store plaintext
         saveMap['weight'] = _weight;
         saveMap['height'] = heightVal;
         saveMap['waist'] = _waist;
-       if (_absi != null) saveMap['absi'] = _absi;
-       if (_absiZ != null) saveMap['absiZ'] = _absiZ;
-       if (_absiRange != null) saveMap['absiRange'] = _absiRange;
-     
+        if (_absi != null) saveMap['absi'] = _absi;
+        if (_absiZ != null) saveMap['absiZ'] = _absiZ;
+        if (_absiRange != null) saveMap['absiRange'] = _absiRange;
+
         saveMap['bmi'] = bmi;
         saveMap['calorieGoal'] = calorieGoal;
         saveMap['proteinGoal'] = proteinGoal;
@@ -560,6 +638,8 @@ class _WeightViewState extends State<WeightView> {
         saveMap['goal'] = goal;
         saveMap['targetWeight'] = targetWeightVal;
         saveMap['weights'] = _entries.map((e) => e.toMap()).toList();
+        saveMap['taille'] = _waistEntries.map((e) => e.toMap()).toList();
+
       }
 
       // keep notificationsEnabled and other booleans untouched if present
@@ -618,6 +698,31 @@ class _WeightViewState extends State<WeightView> {
     return groups.reversed.toList();
   }
 
+    List<_MonthGroup> _groupEntriesByMonthFor(List<WeightEntry> entries) {
+    if (entries.isEmpty) return [];
+    final Map<String, List<WeightEntry>> byMonth = {};
+    for (final e in entries) {
+      final key = '${e.date.year}-${e.date.month.toString().padLeft(2, '0')}';
+      byMonth.putIfAbsent(key, () => []).add(e);
+    }
+
+    final groups = <_MonthGroup>[];
+    byMonth.forEach((key, list) {
+      list.sort((a, b) => a.date.compareTo(b.date));
+      final parts = key.split('-');
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      groups.add(_MonthGroup(year: year, month: month, entries: list));
+    });
+
+    groups.sort((a, b) {
+      final da = DateTime(a.year, a.month);
+      final db = DateTime(b.year, b.month);
+      return da.compareTo(db);
+    });
+    return groups.reversed.toList();
+  }
+
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
@@ -646,7 +751,10 @@ class _WeightViewState extends State<WeightView> {
     final primaryTextColor = isDark ? Colors.white : Colors.black;
     final secondaryTextColor = isDark ? Colors.grey[300] : Colors.grey[700];
     final cardColor = theme.cardColor;
-
+      final selectedEntries =
+                          _measurementType == 'weight' ? _entries : _waistEntries;
+                      final unit = _measurementType == 'weight' ? 'kg' : 'cm';
+                     
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -964,7 +1072,7 @@ class _WeightViewState extends State<WeightView> {
                                       spacing: 12,
                                       runSpacing: 8,
                                       children: [
-                                                    _absiLegendItem(
+                                        _absiLegendItem(
                                           context,
                                           Colors.green,
                                           'Laag risico',
@@ -995,14 +1103,18 @@ class _WeightViewState extends State<WeightView> {
                                             ? const SizedBox(
                                                 width: 16,
                                                 height: 16,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  color: Colors.white,
-                                                ),
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.white,
+                                                    ),
                                               )
                                             : const Icon(Icons.save),
                                         label: Text(
-                                            _saving ? 'Opslaan...' : 'Taille opslaan'),
+                                          _saving
+                                              ? 'Opslaan...'
+                                              : 'Taille opslaan',
+                                        ),
                                         onPressed: _saving ? null : _saveWeight,
                                       ),
                                     ),
@@ -1015,9 +1127,31 @@ class _WeightViewState extends State<WeightView> {
 
                       const SizedBox(height: 24),
 
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
+                      SizedBox(
+                        height: 40,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ChoiceChip(
+                            label: const Text('Gewicht'),
+                            selected: _measurementType == 'weight',
+                            onSelected: (_) {
+                              setState(() => _measurementType = 'weight');
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Taille'),
+                            selected: _measurementType == 'taille',
+                            onSelected: (_) {
+                              setState(() => _measurementType = 'taille');
+                            },
+                          ),
+                          const SizedBox(width: 12),
+
                           ChoiceChip(
                             label: const Text('Tabel'),
                             selected: _viewMode == 'table',
@@ -1032,14 +1166,20 @@ class _WeightViewState extends State<WeightView> {
                             onSelected: (_) {
                               setState(() => _viewMode = 'chart');
                             },
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
+                           
+
                       const SizedBox(height: 12),
 
-                      if (_entries.isEmpty)
+                 if (selectedEntries.isEmpty)
                         Text(
-                          'Nog geen metingen opgeslagen.',
+                          _measurementType == 'weight'
+                              ? 'Nog geen metingen opgeslagen.'
+                              : 'Nog geen taillemetingen opgeslagen.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: secondaryTextColor,
@@ -1050,12 +1190,16 @@ class _WeightViewState extends State<WeightView> {
                           theme,
                           primaryTextColor,
                           secondaryTextColor,
+                          entries: selectedEntries,
+                          unit: unit,
                         )
                       else
                         _buildChartView(
                           theme,
                           primaryTextColor,
                           secondaryTextColor,
+                          entries: selectedEntries,
+                          unit: unit,
                         ),
                     ],
                   ),
@@ -1153,7 +1297,10 @@ class _WeightViewState extends State<WeightView> {
           ),
         ),
         const SizedBox(width: 6),
-        Text(label, style: theme.textTheme.bodySmall?.copyWith(color: textColor)),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(color: textColor),
+        ),
       ],
     );
   }
@@ -1206,11 +1353,13 @@ class _WeightViewState extends State<WeightView> {
   }
 
   Widget _buildTableView(
-    ThemeData theme,
+ThemeData theme,
     Color primaryTextColor,
-    Color? secondaryTextColor,
-  ) {
-    final reversed = _entries.reversed.toList();
+    Color? secondaryTextColor, {
+    required List<WeightEntry> entries,
+    required String unit,
+  }) {
+    final reversed = entries.reversed.toList();
 
     final rows = <Widget>[];
     for (var i = 0; i < reversed.length; i++) {
@@ -1261,7 +1410,7 @@ class _WeightViewState extends State<WeightView> {
               ),
             ),
             trailing: Text(
-              '${e.weight.toStringAsFixed(1)} kg',
+             '${e.weight.toStringAsFixed(1)} $unit',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: primaryTextColor,
               ),
@@ -1283,7 +1432,7 @@ class _WeightViewState extends State<WeightView> {
         children: [
           ListTile(
             title: Text(
-              'Tabel metingen',
+              'Tabel metingen (${unit})',
               style: TextStyle(color: primaryTextColor),
             ),
           ),
@@ -1296,12 +1445,20 @@ class _WeightViewState extends State<WeightView> {
 
   Future<void> _deleteEntry(WeightEntry entry) async {
     setState(() {
-      _entries.removeWhere(
-        (e) => e.date == entry.date && e.weight == entry.weight,
-      );
-      _weight = _entries.isNotEmpty ? _entries.last.weight : 0.0;
-      _weightController.text = _weight.toStringAsFixed(1);
-      _recalculateBMI();
+      if (_entries.any((e) => e.date == entry.date && e.weight == entry.weight)) {
+        _entries.removeWhere(
+          (e) => e.date == entry.date && e.weight == entry.weight,
+        );
+        _weight = _entries.isNotEmpty ? _entries.last.weight : 0.0;
+        _weightController.text = _weight.toStringAsFixed(1);
+        _recalculateBMI();
+      } else {
+        _waistEntries.removeWhere(
+          (e) => e.date == entry.date && e.weight == entry.weight,
+        );
+        _waist = _waistEntries.isNotEmpty ? _waistEntries.last.weight : _waist;
+        _waistController.text = _waist.toStringAsFixed(1);
+      }
     });
 
     final user = FirebaseAuth.instance.currentUser;
@@ -1328,9 +1485,23 @@ class _WeightViewState extends State<WeightView> {
         weightsToSave.add({'date': encDate, 'weight': encWeight});
       }
       await docRef.set({'weights': weightsToSave}, SetOptions(merge: true));
+   final List<dynamic> waistsToSave = [];
+      for (final e in _waistEntries) {
+        final m = e.toMap();
+        final encDate = await encryptValue(m['date'] as String, userDEK);
+        final encWeight = await encryptDouble(
+          (m['weight'] as num).toDouble(),
+          userDEK,
+        );
+        waistsToSave.add({'date': encDate, 'weight': encWeight});
+      }
+      await docRef.set({'taille': waistsToSave}, SetOptions(merge: true));
+
     } else {
       await docRef.set({
         'weights': _entries.map((e) => e.toMap()).toList(),
+        'taille': _waistEntries.map((e) => e.toMap()).toList(),
+
       }, SetOptions(merge: true));
     }
   }
@@ -1338,9 +1509,12 @@ class _WeightViewState extends State<WeightView> {
   Widget _buildChartView(
     ThemeData theme,
     Color primaryTextColor,
-    Color? secondaryTextColor,
-  ) {
-    final monthGroups = _groupEntriesByMonth();
+    Color? secondaryTextColor, {
+    required List<WeightEntry> entries,
+    required String unit,
+  }) {
+final monthGroups = _groupEntriesByMonthFor(entries);
+
     if (monthGroups.isEmpty) {
       return Text(
         'Nog geen metingen voor een grafiek.',
@@ -1395,8 +1569,8 @@ class _WeightViewState extends State<WeightView> {
                       : null,
                 ),
                 Text(
-                  'Grafiek – ${_formatMonthYear(displayedDate)}',
-                  style: theme.textTheme.titleMedium?.copyWith(
+                  'Grafiek – ${_formatMonthYear(displayedDate)} (${unit})',
+                   style: theme.textTheme.titleMedium?.copyWith(
                     color: primaryTextColor,
                   ),
                 ),
@@ -1437,8 +1611,8 @@ class _WeightViewState extends State<WeightView> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Horizontaal: dagen van de maand, Verticaal: gewicht (kg)',
-                style: theme.textTheme.bodySmall?.copyWith(
+                'Horizontaal: dagen van de maand, Verticaal: waarde ($unit)',
+                  style: theme.textTheme.bodySmall?.copyWith(
                   color: secondaryTextColor,
                 ),
               ),
