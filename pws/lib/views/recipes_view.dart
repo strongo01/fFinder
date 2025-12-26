@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 class RecipesScreen extends StatelessWidget {
   const RecipesScreen({super.key});
@@ -6,6 +7,8 @@ class RecipesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final loc = AppLocalizations.of(context)!;
+
     return Scaffold(
       body: Center(
         child: Column(
@@ -18,7 +21,7 @@ class RecipesScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Recepten komen binnenkort!',
+              loc.recipesTitle,
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -30,7 +33,7 @@ class RecipesScreen extends StatelessWidget {
               opacity: 1,
               duration: const Duration(seconds: 2),
               child: Text(
-                'We werken hard aan deze pagina.\nKom snel terug!',
+                loc.recipesSubtitle,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,

@@ -6,10 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:timezone/timezone.dart';
 import 'login_register_view.dart';
 import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+
+import '../l10n/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -124,7 +127,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final userDEK = await getUserDEKFromRemoteConfig(user.uid);
       if (userDEK == null) {
-        throw Exception("Kon de encryptiesleutel niet laden.");
+        final errorMsg =
+            AppLocalizations.of(context)?.encryptionKeyLoadError ??
+            'Kon encryptiesleutel niet laden';
+        throw Exception(errorMsg);
       }
 
       final doc = await FirebaseFirestore.instance
@@ -139,7 +145,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final targetWeight = await decryptDouble(data['targetWeight'], userDEK);
         final height = await decryptDouble(data['height'], userDEK);
         final waist = await decryptDouble(data['waist'], userDEK);
-     
+
         final sleepHours = await decryptDouble(data['sleepHours'], userDEK);
         final activityLevel = await decryptValue(
           data['activityLevel'] ?? '',
@@ -203,7 +209,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final userDEK = await getUserDEKFromRemoteConfig(user.uid);
     if (userDEK == null) {
-      throw Exception("Kon de encryptiesleutel niet laden voor opslaan.");
+      throw Exception(AppLocalizations.of(context)!.encryptionKeyLoadSaveError);
     }
 
     setState(() => _saving = true);
@@ -244,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       double? carbGoal;
       double? absi;
       double? absiZ;
-     String? absiRange;
+      String? absiRange;
 
       if (_height > 0 && _currentWeight > 0 && birthDate != null) {
         //  Berekeningen
@@ -319,11 +325,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         // probeer referentietabel te laden en z-score te berekenen
         try {
-          final jsonString = await rootBundle
-              .loadString('assets/absi_reference/absi_reference.json');
+          final jsonString = await rootBundle.loadString(
+            'assets/absi_reference/absi_reference.json',
+          );
           final table = json.decode(jsonString) as List<dynamic>;
           final ages = table.map((e) => e['age'] as int).toList()..sort();
-          final age = birthDate != null ? DateTime.now().year - birthDate.year : ages.last;
+          final age = birthDate != null
+              ? DateTime.now().year - birthDate.year
+              : ages.last;
           final clampedAge = ages.contains(age) ? age : ages.last;
           final entry = table.firstWhere((e) => e['age'] == clampedAge);
           final isFemale = (gender).toLowerCase() == 'vrouw';
@@ -356,9 +365,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'targetWeight': await encryptDouble(_targetWeight, userDEK),
         'height': await encryptDouble(_height, userDEK),
         'absi': absi != null ? await encryptDouble(absi, userDEK) : null,
-       'absiZ': absiZ != null ? await encryptDouble(absiZ, userDEK) : null,
-       'absiRange': absiRange != null ? await encryptValue(absiRange, userDEK) : null,
-       
+        'absiZ': absiZ != null ? await encryptDouble(absiZ, userDEK) : null,
+        'absiRange': absiRange != null
+            ? await encryptValue(absiRange, userDEK)
+            : null,
+
         'waist': await encryptDouble(_waist, userDEK),
         'sleepHours': await encryptDouble(_sleepHours, userDEK),
         'activityLevel': await encryptValue(_activityLevel, userDEK),
@@ -763,10 +774,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             context: context,
             builder: (context) {
               final theme = Theme.of(context);
-            final isDark = theme.colorScheme.brightness == Brightness.dark;
-             
+              final isDark = theme.colorScheme.brightness == Brightness.dark;
+
               return AlertDialog(
-               title: Text(
+                title: Text(
                   'Niet-opgeslagen wijzigingen',
                   style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 ),
@@ -795,7 +806,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            'Instellingen',
+            AppLocalizations.of(context)!.settingsTitle,
             style: TextStyle(color: isDark ? Colors.white : Colors.black),
           ),
           centerTitle: true,
@@ -863,7 +874,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Maaltijdherinneringen',
+                                AppLocalizations.of(context)!.mealNotifications,
                                 style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(
                                       color: isDark
@@ -872,7 +883,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                               ),
                               SwitchListTile(
-                                title: const Text('Herinneringen inschakelen'),
+                                title: Text(AppLocalizations.of(context)!.enableMealNotifications),
                                 value: _mealNotificationsEnabled,
                                 onChanged: (bool value) async {
                                   final prefs =
@@ -889,7 +900,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               const Divider(),
                               ListTile(
-                                title: const Text('Ontbijt'),
+                                title: Text(AppLocalizations.of(context)!.breakfast),
                                 trailing: Text(_breakfastTime.format(context)),
                                 onTap: () => _pickTime(
                                   context,
@@ -911,7 +922,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                               ListTile(
-                                title: const Text('Lunch'),
+                                title: Text(AppLocalizations.of(context)!.lunch),
                                 trailing: Text(_lunchTime.format(context)),
                                 onTap: () => _pickTime(context, _lunchTime, (
                                   newTime,
@@ -928,7 +939,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 }),
                               ),
                               ListTile(
-                                title: const Text('Avondeten'),
+                                title: Text(AppLocalizations.of(context)!.dinner),
                                 trailing: Text(_dinnerTime.format(context)),
                                 onTap: () => _pickTime(context, _dinnerTime, (
                                   newTime,
@@ -974,8 +985,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 gifEnabled = data['gif'] == true;
                               }
                               return SwitchListTile(
-                                title: const Text(
-                                  'Mascotte animatie (GIF) tonen',
+                                title: Text(
+                                  AppLocalizations.of(context)!.enableGifs,
                                 ),
                                 value: gifEnabled,
                                 onChanged: (val) async {
@@ -995,7 +1006,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Reset uitleg'),
+                        label: Text(AppLocalizations.of(context)!.restartTutorial),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blueAccent,
                           foregroundColor: Colors.white,
@@ -1028,14 +1039,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Persoonlijke gegevens',
+                        AppLocalizations.of(context)!.personalInfo,
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Pas je gewicht, lengte, doel en activiteit aan.',
+                        AppLocalizations.of(context)!.personalInfoDescription,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: secondaryTextColor,
                         ),
@@ -1068,7 +1079,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     color: primaryTextColor,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: 'Huidig gewicht (kg)',
+                                    labelText: AppLocalizations.of(context)!.currentWeightKg,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1080,13 +1091,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.trim().isEmpty) {
-                                      return 'Vul je huidige gewicht in';
+                                      return AppLocalizations.of(context)!.enterCurrentWeight;
                                     }
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
                                     );
                                     if (v == null || v <= 0) {
-                                      return 'Voer een geldig gewicht in';
+                                      return AppLocalizations.of(context)!.enterValidWeight;
                                     }
                                     return null;
                                   },
@@ -1106,7 +1117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     color: primaryTextColor,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: 'Lengte (cm)',
+                                    labelText: AppLocalizations.of(context)!.heightCm,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1118,13 +1129,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.trim().isEmpty) {
-                                      return 'Vul je lengte in';
+                                      return AppLocalizations.of(context)!.enterHeight;
                                     }
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
                                     );
                                     if (v == null || v < 100 || v > 250) {
-                                      return 'Voer een lengte tussen 100 en 250 cm in';
+                                      return AppLocalizations.of(context)!.enterHeightBetween100And250;
                                     }
                                     return null;
                                   },
@@ -1135,15 +1146,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   },
                                 ),
                                 const SizedBox(height: 16),
-TextFormField(
+                                TextFormField(
                                   controller: _waistController,
                                   keyboardType:
-                                      const TextInputType.numberWithOptions(decimal: true),
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: primaryTextColor,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: 'Tailleomtrek (cm)',
+                                    labelText: AppLocalizations.of(context)!.waistCircumferenceCm,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1155,13 +1168,16 @@ TextFormField(
                                   ),
                                   validator: (value) {
                                     if (value == null || value.trim().isEmpty) {
-                                      return 'Vul je tailleomtrek in';
+                                      return AppLocalizations.of(context)!.enterWaistCircumference;
                                     }
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
                                     );
-                                    if (v == null || v <= 0 || v < 30 || v > 200) {
-                                      return 'Voer een tailleomtrek tussen 30 en 200 cm in';
+                                    if (v == null ||
+                                        v <= 0 ||
+                                        v < 30 ||
+                                        v > 200) {
+                                      return AppLocalizations.of(context)!.enterValidWaistCircumference;
                                     }
                                     return null;
                                   },
@@ -1184,7 +1200,7 @@ TextFormField(
                                     color: primaryTextColor,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: 'Doelgewicht (kg)',
+                                    labelText: AppLocalizations.of(context)!.targetWeightKg,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1196,13 +1212,13 @@ TextFormField(
                                   ),
                                   validator: (value) {
                                     if (value == null || value.trim().isEmpty) {
-                                      return 'Vul je doelgewicht in';
+                                      return AppLocalizations.of(context)!.enterTargetWeight;
                                     }
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
                                     );
                                     if (v == null || v <= 0) {
-                                      return 'Voer een geldig doelgewicht in';
+                                      return AppLocalizations.of(context)!.enterValidTargetWeight;
                                     }
                                     return null;
                                   },
@@ -1219,7 +1235,7 @@ TextFormField(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Slaap (uur per nacht)',
+                                      AppLocalizations.of(context)!.sleepHoursPerNight,
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(color: primaryTextColor),
                                     ),
@@ -1229,7 +1245,7 @@ TextFormField(
                                           MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
-                                          '${_sleepHours.toStringAsFixed(1)} uur',
+                                          '${_sleepHours.toStringAsFixed(1)} ${AppLocalizations.of(context)!.hours}',
                                           style: theme.textTheme.bodyMedium
                                               ?.copyWith(
                                                 fontWeight: FontWeight.bold,
@@ -1270,7 +1286,7 @@ TextFormField(
                                   isExpanded: true,
                                   value: _activityLevel,
                                   decoration: InputDecoration(
-                                    labelText: 'Activiteitsniveau',
+                                    labelText: AppLocalizations.of(context)!.activityLevel,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1307,7 +1323,7 @@ TextFormField(
                                 DropdownButtonFormField<String>(
                                   value: _goal,
                                   decoration: InputDecoration(
-                                    labelText: 'Doel',
+                                    labelText: AppLocalizations.of(context)!.goal,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1361,8 +1377,8 @@ TextFormField(
                                         : const Icon(Icons.save),
                                     label: Text(
                                       _saving
-                                          ? 'Opslaan...'
-                                          : 'Instellingen opslaan',
+                                          ? AppLocalizations.of(context)!.savingSettings
+                                          : AppLocalizations.of(context)!.saveSettings,
                                     ),
                                     onPressed: _saving ? null : _saveProfile,
                                   ),
@@ -1384,7 +1400,7 @@ TextFormField(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Admin Acties',
+                                  AppLocalizations.of(context)!.adminAnnouncements,
                                   style: Theme.of(context).textTheme.titleLarge
                                       ?.copyWith(
                                         color: isDark
@@ -1395,18 +1411,18 @@ TextFormField(
                                 const SizedBox(height: 16),
                                 ListTile(
                                   leading: const Icon(Icons.campaign),
-                                  title: const Text('Nieuw bericht maken'),
-                                  subtitle: const Text(
-                                    'Publiceer een bericht voor alle gebruikers.',
+                                  title: Text(AppLocalizations.of(context)!.createAnnouncement),
+                                  subtitle: Text(
+                                    AppLocalizations.of(context)!.createAnnouncementSubtitle,
                                   ),
                                   onTap: _showCreateAnnouncementDialog,
                                 ),
                                 const Divider(),
                                 ListTile(
                                   leading: const Icon(Icons.edit_note),
-                                  title: const Text('Berichten beheren'),
-                                  subtitle: const Text(
-                                    'Bekijk, deactiveer of verwijder berichten.',
+                                  title: Text(AppLocalizations.of(context)!.manageAnnouncements),
+                                  subtitle:  Text(
+                                    AppLocalizations.of(context)!.manageAnnouncementsSubtitle,
                                   ),
                                   onTap: () {
                                     Navigator.of(context).push(
@@ -1420,9 +1436,9 @@ TextFormField(
                                 const Divider(),
                                 ListTile(
                                   leading: const Icon(Icons.edit_note),
-                                  title: const Text('Decrypten'),
-                                  subtitle: const Text(
-                                    'Decrypt waardes voor gebruiker als ze account willen overzetten naar andere email.',
+                                  title: Text(AppLocalizations.of(context)!.decryptValues),
+                                  subtitle: Text(
+                                    AppLocalizations.of(context)!.decryptValuesSubtitle,
                                   ),
                                   onTap: () {
                                     Navigator.of(context).push(
@@ -1442,7 +1458,7 @@ TextFormField(
 
                       // Account / uitloggen
                       Text(
-                        'Account',
+                        AppLocalizations.of(context)!.account,
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: primaryTextColor,
                         ),
@@ -1451,7 +1467,7 @@ TextFormField(
                       OutlinedButton.icon(
                         icon: Icon(Icons.logout, color: colorScheme.error),
                         label: Text(
-                          'Uitloggen',
+                          AppLocalizations.of(context)!.signOut,
                           style: TextStyle(color: colorScheme.error),
                         ),
                         style: OutlinedButton.styleFrom(
@@ -1475,8 +1491,8 @@ TextFormField(
                         ),
                         label: Text(
                           _deletingAccount
-                              ? 'Account verwijderen...'
-                              : 'Account verwijderen',
+                              ? AppLocalizations.of(context)!.deletingAccount
+                              : AppLocalizations.of(context)!.deleteAccount,
                           style: TextStyle(color: Colors.red.shade700),
                         ),
                         style: OutlinedButton.styleFrom(
@@ -1497,11 +1513,13 @@ TextFormField(
 
                       const SizedBox(height: 12),
 
-
                       OutlinedButton.icon(
-                        icon: Icon(Icons.info_outline, color: colorScheme.primary),
+                        icon: Icon(
+                          Icons.info_outline,
+                          color: colorScheme.primary,
+                        ),
                         label: Text(
-                          'Credits',
+                          AppLocalizations.of(context)!.credits,
                           style: TextStyle(color: colorScheme.primary),
                         ),
                         style: OutlinedButton.styleFrom(
@@ -1516,7 +1534,9 @@ TextFormField(
                         ),
                         onPressed: () {
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const CreditsView()),
+                            MaterialPageRoute(
+                              builder: (_) => const CreditsView(),
+                            ),
                           );
                         },
                       ),
@@ -1541,7 +1561,7 @@ class CreditsView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Credits'),
+        title: Text(AppLocalizations.of(context)!.credits),
         backgroundColor: isDark ? Colors.black : Colors.white,
         iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
       ),
@@ -1553,24 +1573,22 @@ class CreditsView extends StatelessWidget {
             children: [
               Text(
                 'ABSI Data Attribution',
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(color: textColor, fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: textColor,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Body Shape Index (ABSI) referentietabel is gebaseerd op:\n\n'
-                'Y. Krakauer, Nir; C. Krakauer, Jesse (2015).\n'
-                'Table S1 - A New Body Shape Index Predicts Mortality Hazard Independently of Body Mass Index.\n'
-                'PLOS ONE. Dataset.\n'
-                'https://doi.org/10.1371/journal.pone.0039504.s001\n\n'
-                'Deze dataset wordt gebruikt voor het berekenen van ABSI Z-scores en categorieën in deze app.',
+                AppLocalizations.of(context)!.absiAttribution,
                 style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
               ),
               const Spacer(),
               Text(
-                'Datum: ${DateFormat.yMMMMd().format(DateTime.now())}',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: textColor.withOpacity(0.7)),
+                '${AppLocalizations.of(context)!.date}: ${DateFormat.yMMMMd().format(DateTime.now())}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: textColor.withOpacity(0.7),
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
@@ -1581,7 +1599,7 @@ class CreditsView extends StatelessWidget {
                     foregroundColor: cs.onPrimary,
                   ),
                   icon: const Icon(Icons.close),
-                  label: const Text('Sluiten'),
+                  label: Text(AppLocalizations.of(context)!.close),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ),
@@ -1592,7 +1610,6 @@ class CreditsView extends StatelessWidget {
     );
   }
 }
-
 
 class ManageAnnouncementsView extends StatefulWidget {
   const ManageAnnouncementsView({super.key});
@@ -1628,7 +1645,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
         return AlertDialog(
           backgroundColor: isDark ? Colors.black : Colors.white,
           title: Text(
-            'Bericht bewerken',
+            AppLocalizations.of(context)!.editAnnouncement,
             style: theme.textTheme.titleMedium?.copyWith(
               color: isDark ? Colors.white : Colors.black,
               fontWeight: FontWeight.w600,
@@ -1643,7 +1660,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                   controller: titleController,
                   style: TextStyle(color: isDark ? Colors.white : Colors.black),
                   decoration: InputDecoration(
-                    labelText: 'Titel',
+                    labelText: AppLocalizations.of(context)!.title,
                     labelStyle: TextStyle(
                       color: isDark ? Colors.grey[300] : Colors.grey[800],
                     ),
@@ -1661,7 +1678,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Titel mag niet leeg zijn.';
+                      return AppLocalizations.of(context)!.titleCannotBeEmpty;
                     }
                     return null;
                   },
@@ -1672,7 +1689,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                   maxLines: 3,
                   style: TextStyle(color: isDark ? Colors.white : Colors.black),
                   decoration: InputDecoration(
-                    labelText: 'Bericht',
+                    labelText: AppLocalizations.of(context)!.message,
                     labelStyle: TextStyle(
                       color: isDark ? Colors.grey[300] : Colors.grey[800],
                     ),
@@ -1690,7 +1707,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Bericht mag niet leeg zijn.';
+                      return AppLocalizations.of(context)!.messageCannotBeEmpty;
                     }
                     return null;
                   },
@@ -1702,7 +1719,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
-                'Annuleren',
+                AppLocalizations.of(context)!.cancel,
                 style: TextStyle(color: isDark ? Colors.white : cs.primary),
               ),
             ),
@@ -1720,12 +1737,12 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                   if (mounted) {
                     Navigator.of(context).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Bericht bijgewerkt.')),
+                     SnackBar(content: Text(AppLocalizations.of(context)!.announcementUpdated)),
                     );
                   }
                 }
               },
-              child: const Text('Opslaan'),
+              child: Text(AppLocalizations.of(context)!.saveChanges),
             ),
           ],
         );
@@ -1738,7 +1755,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
     if (mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Bericht verwijderd.')));
+      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.announcementDeleted)));
     }
   }
 
@@ -1753,7 +1770,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
             ? Colors.black
             : Colors.white,
         title: Text(
-          'Berichten Beheren',
+          AppLocalizations.of(context)!.manageAnnouncements,
           style: TextStyle(
             color: Theme.of(context).brightness == Brightness.dark
                 ? Colors.white
@@ -1775,7 +1792,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
           if (snapshot.hasError) {
             return Center(
               child: Text(
-                'Er is een fout opgetreden.',
+                AppLocalizations.of(context)!.errorLoadingAnnouncements,
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.white
@@ -1790,7 +1807,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
           if (snapshot.data!.docs.isEmpty) {
             return Center(
               child: Text(
-                'Geen berichten gevonden.',
+                AppLocalizations.of(context)!.noAnnouncementsFound,
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.white
@@ -1814,7 +1831,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
               final timestamp = data['createdAt'] as Timestamp?;
               final date = timestamp != null
                   ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate())
-                  : 'Onbekende datum';
+                  : AppLocalizations.of(context)!.unknownDate;
 
               return Card(
                 margin: const EdgeInsets.symmetric(
@@ -1843,7 +1860,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Gemaakt op: $date',
+                        '${AppLocalizations.of(context)!.createdAt}: $date',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: (isDark ? Colors.white : Colors.black)
                               .withOpacity(0.7),
@@ -1852,7 +1869,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                       const SizedBox(height: 8),
                       Chip(
                         label: Text(
-                          isActive ? 'Actief' : 'Inactief',
+                          isActive ? AppLocalizations.of(context)!.active : AppLocalizations.of(context)!.inactive,
                           style: TextStyle(
                             color: isActive
                                 ? cs.onPrimaryContainer
@@ -1876,7 +1893,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                           Icons.edit,
                           color: isDark ? Colors.white : cs.primary,
                         ),
-                        tooltip: 'Bewerken',
+                        tooltip: AppLocalizations.of(context)!.editAnnouncementTooltip,
                         onPressed: () => _editAnnouncement(doc),
                       ),
                       IconButton(
@@ -1886,7 +1903,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                               ? (isDark ? Colors.white : cs.primary)
                               : (isDark ? Colors.white70 : cs.onSurfaceVariant),
                         ),
-                        tooltip: isActive ? 'Deactiveren' : 'Activeren',
+                        tooltip: isActive ? AppLocalizations.of(context)!.deactivate : AppLocalizations.of(context)!.activate,
                         onPressed: () => _toggleActive(doc),
                       ),
                       IconButton(
@@ -1939,7 +1956,9 @@ class _DecryptViewState extends State<DecryptView> {
       final targetUid = _uidController.text.trim();
       final encryptedJson = _encryptedController.text.trim();
       final requesterUid = FirebaseAuth.instance.currentUser!.uid;
-      final requestsCollection = FirebaseFirestore.instance.collection('decryption_requests');
+      final requestsCollection = FirebaseFirestore.instance.collection(
+        'decryption_requests',
+      );
 
       // 1. Check for duplicate pending requests
       final existing = await requestsCollection
@@ -1952,7 +1971,11 @@ class _DecryptViewState extends State<DecryptView> {
       if (existing.docs.isNotEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Er bestaat al een openstaande aanvraag voor deze waarde.')),
+          const SnackBar(
+            content: Text(
+              'Er bestaat al een openstaande aanvraag voor deze waarde.',
+            ),
+          ),
         );
         return;
       }
@@ -1969,7 +1992,9 @@ class _DecryptViewState extends State<DecryptView> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Decryptie-aanvraag ingediend voor goedkeuring.')),
+        const SnackBar(
+          content: Text('Decryptie-aanvraag ingediend voor goedkeuring.'),
+        ),
       );
       _encryptedController.clear(); // Clear field after submission
     } catch (e) {
@@ -1985,7 +2010,9 @@ class _DecryptViewState extends State<DecryptView> {
   Future<void> _approveRequest(String requestId) async {
     try {
       final approverUid = FirebaseAuth.instance.currentUser!.uid;
-      final reqRef = FirebaseFirestore.instance.collection('decryption_requests').doc(requestId);
+      final reqRef = FirebaseFirestore.instance
+          .collection('decryption_requests')
+          .doc(requestId);
 
       final reqSnap = await reqRef.get();
       if (!reqSnap.exists) throw Exception('Aanvraag niet gevonden.');
@@ -1996,7 +2023,9 @@ class _DecryptViewState extends State<DecryptView> {
 
       if (requesterUid == approverUid) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Je kunt je eigen aanvraag niet goedkeuren.')),
+          const SnackBar(
+            content: Text('Je kunt je eigen aanvraag niet goedkeuren.'),
+          ),
         );
         return;
       }
@@ -2015,17 +2044,23 @@ class _DecryptViewState extends State<DecryptView> {
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aanvraag goedgekeurd.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Aanvraag goedgekeurd.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Goedkeuren mislukt: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Goedkeuren mislukt: $e')));
     }
   }
 
   Future<void> _rejectRequest(String requestId) async {
     try {
       final approverUid = FirebaseAuth.instance.currentUser!.uid;
-      final reqRef = FirebaseFirestore.instance.collection('decryption_requests').doc(requestId);
+      final reqRef = FirebaseFirestore.instance
+          .collection('decryption_requests')
+          .doc(requestId);
 
       final reqSnap = await reqRef.get();
       if (!reqSnap.exists) throw Exception('Aanvraag niet gevonden.');
@@ -2033,7 +2068,9 @@ class _DecryptViewState extends State<DecryptView> {
       final data = reqSnap.data() as Map<String, dynamic>;
       if (data['requesterUid'] == approverUid) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Je kunt je eigen aanvraag niet afkeuren.')),
+          const SnackBar(
+            content: Text('Je kunt je eigen aanvraag niet afkeuren.'),
+          ),
         );
         return;
       }
@@ -2045,10 +2082,14 @@ class _DecryptViewState extends State<DecryptView> {
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aanvraag afgekeurd.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Aanvraag afgekeurd.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Afkeuren mislukt: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Afkeuren mislukt: $e')));
     }
   }
 
@@ -2063,7 +2104,10 @@ class _DecryptViewState extends State<DecryptView> {
       backgroundColor: isDark ? Colors.black : cs.background,
       appBar: AppBar(
         backgroundColor: isDark ? Colors.black : cs.background,
-        title: Text('Decrypten', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+        title: Text(
+          'Decrypten',
+          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+        ),
         centerTitle: true,
         iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
       ),
@@ -2073,7 +2117,10 @@ class _DecryptViewState extends State<DecryptView> {
             left: 16,
             right: 16,
             top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 16,
+            bottom:
+                MediaQuery.of(context).viewInsets.bottom +
+                MediaQuery.of(context).padding.bottom +
+                16,
           ),
           child: Column(
             children: [
@@ -2083,33 +2130,51 @@ class _DecryptViewState extends State<DecryptView> {
                   children: [
                     TextFormField(
                       controller: _uidController,
-                      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                       cursorColor: isDark ? Colors.white : cs.primary,
                       decoration: InputDecoration(
                         labelText: 'UID',
-                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+                        labelStyle: TextStyle(
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
                         filled: true,
                         fillColor: isDark ? Colors.white10 : cs.surfaceVariant,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Vul een UID in' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Vul een UID in'
+                          : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _encryptedController,
                       maxLines: 5,
-                      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                       cursorColor: isDark ? Colors.white : cs.primary,
                       decoration: InputDecoration(
-                        labelText: 'Versleutelde JSON (nonce/cipher/tag)',
+                        labelText: AppLocalizations.of(context)!.encryptedJson,
                         hintText: '{"nonce":"...","cipher":"...","tag":"..."}',
-                        hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
-                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.white54 : Colors.black54,
+                        ),
+                        labelStyle: TextStyle(
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
                         filled: true,
                         fillColor: isDark ? Colors.white10 : cs.surfaceVariant,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Plak de versleutelde JSON' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Plak de versleutelde JSON'
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
@@ -2120,12 +2185,23 @@ class _DecryptViewState extends State<DecryptView> {
                           backgroundColor: isDark ? Colors.black : cs.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         icon: _loading
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Icon(Icons.send),
-                        label: Text(_loading ? 'Indienen...' : 'Aanvraag indienen'),
+                        label: Text(
+                          _loading ? 'Indienen...' : 'Aanvraag indienen',
+                        ),
                       ),
                     ),
                   ],
@@ -2134,14 +2210,25 @@ class _DecryptViewState extends State<DecryptView> {
               const SizedBox(height: 24),
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Openstaande aanvragen', style: theme.textTheme.titleMedium?.copyWith(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.w600)),
+                child: Text(
+                  'Openstaande aanvragen',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
               StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('decryption_requests').orderBy('requestedAt', descending: true).snapshots(),
+                stream: FirebaseFirestore.instance
+                    .collection('decryption_requests')
+                    .orderBy('requestedAt', descending: true)
+                    .snapshots(),
                 builder: (context, snap) {
-                  if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-                  if (snap.data!.docs.isEmpty) return const Text('Geen aanvragen gevonden.');
+                  if (!snap.hasData)
+                    return const Center(child: CircularProgressIndicator());
+                  if (snap.data!.docs.isEmpty)
+                    return const Text('Geen aanvragen gevonden.');
 
                   return ListView.builder(
                     shrinkWrap: true,
@@ -2157,7 +2244,8 @@ class _DecryptViewState extends State<DecryptView> {
                       final encryptedJson = data['encryptedJson'] as String?;
 
                       final isPending = status == 'pending';
-                      final canApprove = isPending && requesterUid != currentAdminUid;
+                      final canApprove =
+                          isPending && requesterUid != currentAdminUid;
 
                       return Card(
                         color: isDark ? Colors.grey.shade900 : theme.cardColor,
@@ -2168,34 +2256,79 @@ class _DecryptViewState extends State<DecryptView> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Voor UID: $targetUid', style: theme.textTheme.labelLarge?.copyWith(color: isDark ? Colors.white : Colors.black)),
+                              Text(
+                                'Voor UID: $targetUid',
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              Text('Aangevraagd door: $requesterUid', style: theme.textTheme.bodySmall?.copyWith(color: isDark ? Colors.white70 : Colors.black87)),
+                              Text(
+                                'Aangevraagd door: $requesterUid',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black87,
+                                ),
+                              ),
                               if (encryptedJson != null) ...[
                                 const SizedBox(height: 8),
                                 Text(
                                   'Versleutelde waarde:',
-                                  style: theme.textTheme.bodySmall?.copyWith(color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.bold),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black87,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 SelectableText(
                                   encryptedJson,
-                                  style: theme.textTheme.bodySmall?.copyWith(color: isDark ? Colors.white54 : Colors.black54, fontFamily: 'monospace'),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: isDark
+                                        ? Colors.white54
+                                        : Colors.black54,
+                                    fontFamily: 'monospace',
+                                  ),
                                   maxLines: 3,
                                 ),
                               ],
                               const Divider(height: 16),
-                              if (status == 'approved' && decryptedValue != null)
+                              if (status == 'approved' &&
+                                  decryptedValue != null)
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green,
+                                      size: 18,
+                                    ),
                                     const SizedBox(width: 8),
-                                    Expanded(child: SelectableText(decryptedValue, style: TextStyle(color: isDark ? Colors.white : Colors.black))),
+                                    Expanded(
+                                      child: SelectableText(
+                                        decryptedValue,
+                                        style: TextStyle(
+                                          color: isDark
+                                              ? Colors.white
+                                              : Colors.black,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 )
                               else
-                                Text('Status: $status', style: TextStyle(color: status == 'rejected' ? cs.error : (isDark ? Colors.yellow : Colors.orange))),
+                                Text(
+                                  'Status: $status',
+                                  style: TextStyle(
+                                    color: status == 'rejected'
+                                        ? cs.error
+                                        : (isDark
+                                              ? Colors.yellow
+                                              : Colors.orange),
+                                  ),
+                                ),
                               if (canApprove)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 8.0),
@@ -2205,15 +2338,21 @@ class _DecryptViewState extends State<DecryptView> {
                                       TextButton.icon(
                                         icon: const Icon(Icons.close),
                                         label: const Text('Afkeuren'),
-                                        style: TextButton.styleFrom(foregroundColor: cs.error),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: cs.error,
+                                        ),
                                         onPressed: () => _rejectRequest(doc.id),
                                       ),
                                       const SizedBox(width: 8),
                                       ElevatedButton.icon(
                                         icon: const Icon(Icons.check),
                                         label: const Text('Goedkeuren'),
-                                        style: ElevatedButton.styleFrom(backgroundColor: cs.primary, foregroundColor: cs.onPrimary),
-                                        onPressed: () => _approveRequest(doc.id),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: cs.primary,
+                                          foregroundColor: cs.onPrimary,
+                                        ),
+                                        onPressed: () =>
+                                            _approveRequest(doc.id),
                                       ),
                                     ],
                                   ),
