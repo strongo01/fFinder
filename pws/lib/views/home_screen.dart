@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _settingsKey = GlobalKey();
   final GlobalKey _weightKey = GlobalKey();
 
-  static const String _appVersion = '1.0.8';
+  static const String _appVersion = '1.0.9';
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -2245,27 +2245,36 @@ class _HomeScreenState extends State<HomeScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            'Sportactiviteiten',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              color: isDarkMode
-                                                  ? Colors.white
-                                                  : Colors.black,
+                                                                                children: [
+                                          Expanded(
+                                            child: Text(
+                                              'Sportactiviteiten',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: isDarkMode
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
                                             ),
                                           ),
-                                          Text(
-                                            'Totaal verbrand: ${totalBurnedCalories.round()} kcal',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: isDarkMode
-                                                  ? Colors.white
-                                                  : Colors.black,
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            fit: FlexFit.loose,
+                                            child: Text(
+                                              'Totaal verbrand: ${totalBurnedCalories.round()} kcal',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: isDarkMode
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                              ),
+                                              textAlign: TextAlign.end,
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
                                             ),
                                           ),
                                         ],

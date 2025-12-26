@@ -94,6 +94,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+        builder: (context, child) {
+    final mediaQuery = MediaQuery.of(context);
+
+    return MediaQuery(
+      data: mediaQuery.copyWith(
+        textScaleFactor: mediaQuery.textScaleFactor.clamp(1.0, 1.3),
+      ),
+      child: child!,
+    );
+  },
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

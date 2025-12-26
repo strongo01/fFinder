@@ -1106,29 +1106,45 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       shadowColor: isDarkMode ? Colors.black : Colors.grey[400],
                     ),
                     child: Column(
+             mainAxisSize: MainAxisSize.max,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           _getIconForDrink(preset['name']),
-                          size: 30,
+                          size: 28,
                           color: colors['foreground'],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          preset['name'],
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 6),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Text(
+                            preset['name']?.toString() ?? '',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
-                        Text(
-                          '${preset['amount']} ml',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 12),
+                        const SizedBox(height: 4),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Text(
+                            '${preset['amount']} ml',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
-                        Text(
-                          '${preset['kcal'] ?? 0} kcal',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 12),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Text(
+                            '${preset['kcal'] ?? 0} kcal',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
                       ],
                     ),
