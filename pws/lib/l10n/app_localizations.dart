@@ -3232,6 +3232,306 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Invalid number'**
   String get invalidNumber;
+
+  /// No description provided for @today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get today;
+
+  /// No description provided for @yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get yesterday;
+
+  /// No description provided for @done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
+  /// No description provided for @logs.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs'**
+  String get logs;
+
+  /// No description provided for @add_food_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Add food'**
+  String get add_food_label;
+
+  /// No description provided for @add_drink_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Add drink'**
+  String get add_drink_label;
+
+  /// No description provided for @add_sport_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Add sport'**
+  String get add_sport_label;
+
+  /// No description provided for @tutorial_date_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Date picker'**
+  String get tutorial_date_title;
+
+  /// No description provided for @tutorial_date_text.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap here to choose the date or quickly jump to today.'**
+  String get tutorial_date_text;
+
+  /// No description provided for @tutorial_barcode_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan barcode'**
+  String get tutorial_barcode_title;
+
+  /// No description provided for @tutorial_barcode_text.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan barcodes to quickly add products to your daily log.'**
+  String get tutorial_barcode_text;
+
+  /// No description provided for @tutorial_settings_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get tutorial_settings_title;
+
+  /// No description provided for @tutorial_settings_text.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust your personal settings, notifications, and more.'**
+  String get tutorial_settings_text;
+
+  /// No description provided for @tutorial_feedback_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback'**
+  String get tutorial_feedback_title;
+
+  /// No description provided for @tutorial_feedback_text.
+  ///
+  /// In en, this message translates to:
+  /// **'Here you can give feedback or report issues.'**
+  String get tutorial_feedback_text;
+
+  /// No description provided for @tutorial_calorie_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Calorie overview'**
+  String get tutorial_calorie_title;
+
+  /// No description provided for @tutorial_calorie_text.
+  ///
+  /// In en, this message translates to:
+  /// **'Here you can see how much you\'ve eaten and what your calorie goal is.'**
+  String get tutorial_calorie_text;
+
+  /// No description provided for @tutorial_mascot_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Mascot'**
+  String get tutorial_mascot_title;
+
+  /// No description provided for @tutorial_mascot_text.
+  ///
+  /// In en, this message translates to:
+  /// **'Our mascot gives tips. Tap it for a new message.'**
+  String get tutorial_mascot_text;
+
+  /// No description provided for @tutorial_water_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Water intake'**
+  String get tutorial_water_title;
+
+  /// No description provided for @tutorial_water_text.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to adjust your daily water goal.'**
+  String get tutorial_water_text;
+
+  /// No description provided for @tutorial_additems_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Add items'**
+  String get tutorial_additems_title;
+
+  /// No description provided for @tutorial_additems_text.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this button to quickly add meals, drinks, or sports.'**
+  String get tutorial_additems_text;
+
+  /// No description provided for @tutorial_meals_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Meals'**
+  String get tutorial_meals_title;
+
+  /// No description provided for @tutorial_meals_text.
+  ///
+  /// In en, this message translates to:
+  /// **'View your meals and add new meals or log existing ones.'**
+  String get tutorial_meals_text;
+
+  /// No description provided for @updateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'A newer version of the app is available.'**
+  String get updateAvailable;
+
+  /// No description provided for @announcement_default.
+  ///
+  /// In en, this message translates to:
+  /// **'Announcement'**
+  String get announcement_default;
+
+  /// No description provided for @water_goal_dialog_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Set water goal'**
+  String get water_goal_dialog_title;
+
+  /// No description provided for @water_goal_dialog_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal (ml)'**
+  String get water_goal_dialog_label;
+
+  /// No description provided for @enter_valid_number.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid number'**
+  String get enter_valid_number;
+
+  /// No description provided for @water_goal_updated.
+  ///
+  /// In en, this message translates to:
+  /// **'Water goal updated'**
+  String get water_goal_updated;
+
+  /// No description provided for @error_saving_water_goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Error saving water goal: '**
+  String get error_saving_water_goal;
+
+  /// No description provided for @calorie_goal_dialog_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Set calorie goal'**
+  String get calorie_goal_dialog_title;
+
+  /// No description provided for @calorie_goal_dialog_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily goal (kcal)'**
+  String get calorie_goal_dialog_label;
+
+  /// No description provided for @calorie_goal_updated.
+  ///
+  /// In en, this message translates to:
+  /// **'Calorie goal updated'**
+  String get calorie_goal_updated;
+
+  /// No description provided for @error_saving_prefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Save failed: '**
+  String get error_saving_prefix;
+
+  /// No description provided for @eaten.
+  ///
+  /// In en, this message translates to:
+  /// **'Eaten'**
+  String get eaten;
+
+  /// No description provided for @remaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining'**
+  String get remaining;
+
+  /// No description provided for @over_goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Above goal'**
+  String get over_goal;
+
+  /// No description provided for @calories_over_goal.
+  ///
+  /// In en, this message translates to:
+  /// **'kcal over goal'**
+  String get calories_over_goal;
+
+  /// No description provided for @calories_remaining.
+  ///
+  /// In en, this message translates to:
+  /// **'kcal remaining'**
+  String get calories_remaining;
+
+  /// No description provided for @calories_consumed.
+  ///
+  /// In en, this message translates to:
+  /// **'kcal consumed'**
+  String get calories_consumed;
+
+  /// No description provided for @carbs.
+  ///
+  /// In en, this message translates to:
+  /// **'Carbs'**
+  String get carbs;
+
+  /// No description provided for @fats.
+  ///
+  /// In en, this message translates to:
+  /// **'Fats'**
+  String get fats;
+
+  /// No description provided for @unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get unit;
+
+  /// No description provided for @edit_amount_dialog_title_ml.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit amount (ml)'**
+  String get edit_amount_dialog_title_ml;
+
+  /// No description provided for @edit_amount_dialog_title_g.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit amount (g)'**
+  String get edit_amount_dialog_title_g;
+
+  /// No description provided for @edit_amount_label_ml.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount (ml)'**
+  String get edit_amount_label_ml;
+
+  /// No description provided for @edit_amount_label_g.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount (g)'**
+  String get edit_amount_label_g;
+
+  /// No description provided for @totalConsumed.
+  ///
+  /// In en, this message translates to:
+  /// **'Total consumed'**
+  String get totalConsumed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

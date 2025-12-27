@@ -1578,4 +1578,154 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get invalidNumber => 'Invalid number';
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String get yesterday => 'Yesterday';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get logs => 'Logs';
+
+  @override
+  String get add_food_label => 'Add food';
+
+  @override
+  String get add_drink_label => 'Add drink';
+
+  @override
+  String get add_sport_label => 'Add sport';
+
+  @override
+  String get tutorial_date_title => 'Date picker';
+
+  @override
+  String get tutorial_date_text => 'Tap here to choose the date or quickly jump to today.';
+
+  @override
+  String get tutorial_barcode_title => 'Scan barcode';
+
+  @override
+  String get tutorial_barcode_text => 'Scan barcodes to quickly add products to your daily log.';
+
+  @override
+  String get tutorial_settings_title => 'Settings';
+
+  @override
+  String get tutorial_settings_text => 'Adjust your personal settings, notifications, and more.';
+
+  @override
+  String get tutorial_feedback_title => 'Feedback';
+
+  @override
+  String get tutorial_feedback_text => 'Here you can give feedback or report issues.';
+
+  @override
+  String get tutorial_calorie_title => 'Calorie overview';
+
+  @override
+  String get tutorial_calorie_text => 'Here you can see how much you\'ve eaten and what your calorie goal is.';
+
+  @override
+  String get tutorial_mascot_title => 'Mascot';
+
+  @override
+  String get tutorial_mascot_text => 'Our mascot gives tips. Tap it for a new message.';
+
+  @override
+  String get tutorial_water_title => 'Water intake';
+
+  @override
+  String get tutorial_water_text => 'Tap to adjust your daily water goal.';
+
+  @override
+  String get tutorial_additems_title => 'Add items';
+
+  @override
+  String get tutorial_additems_text => 'Use this button to quickly add meals, drinks, or sports.';
+
+  @override
+  String get tutorial_meals_title => 'Meals';
+
+  @override
+  String get tutorial_meals_text => 'View your meals and add new meals or log existing ones.';
+
+  @override
+  String get updateAvailable => 'A newer version of the app is available.';
+
+  @override
+  String get announcement_default => 'Announcement';
+
+  @override
+  String get water_goal_dialog_title => 'Set water goal';
+
+  @override
+  String get water_goal_dialog_label => 'Goal (ml)';
+
+  @override
+  String get enter_valid_number => 'Enter a valid number';
+
+  @override
+  String get water_goal_updated => 'Water goal updated';
+
+  @override
+  String get error_saving_water_goal => 'Error saving water goal: ';
+
+  @override
+  String get calorie_goal_dialog_title => 'Set calorie goal';
+
+  @override
+  String get calorie_goal_dialog_label => 'Daily goal (kcal)';
+
+  @override
+  String get calorie_goal_updated => 'Calorie goal updated';
+
+  @override
+  String get error_saving_prefix => 'Save failed: ';
+
+  @override
+  String get eaten => 'Eaten';
+
+  @override
+  String get remaining => 'Remaining';
+
+  @override
+  String get over_goal => 'Above goal';
+
+  @override
+  String get calories_over_goal => 'kcal over goal';
+
+  @override
+  String get calories_remaining => 'kcal remaining';
+
+  @override
+  String get calories_consumed => 'kcal consumed';
+
+  @override
+  String get carbs => 'Carbs';
+
+  @override
+  String get fats => 'Fats';
+
+  @override
+  String get unit => 'Unit';
+
+  @override
+  String get edit_amount_dialog_title_ml => 'Edit amount (ml)';
+
+  @override
+  String get edit_amount_dialog_title_g => 'Edit amount (g)';
+
+  @override
+  String get edit_amount_label_ml => 'Amount (ml)';
+
+  @override
+  String get edit_amount_label_g => 'Amount (g)';
+
+  @override
+  String get totalConsumed => 'Total consumed';
 }

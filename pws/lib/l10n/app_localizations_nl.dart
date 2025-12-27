@@ -1578,4 +1578,154 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get invalidNumber => 'Ongeldig nummer';
+
+  @override
+  String get today => 'Vandaag';
+
+  @override
+  String get yesterday => 'Gisteren';
+
+  @override
+  String get done => 'Gereed';
+
+  @override
+  String get logs => 'Logs';
+
+  @override
+  String get add_food_label => 'Voedsel toevoegen';
+
+  @override
+  String get add_drink_label => 'Drankje toevoegen';
+
+  @override
+  String get add_sport_label => 'Sport toevoegen';
+
+  @override
+  String get tutorial_date_title => 'Datumkiezer';
+
+  @override
+  String get tutorial_date_text => 'Tik hier om de datum te kiezen of snel naar vandaag te springen.';
+
+  @override
+  String get tutorial_barcode_title => 'Barcode scannen';
+
+  @override
+  String get tutorial_barcode_text => 'Scan barcodes om producten snel toe te voegen aan je daglogboek.';
+
+  @override
+  String get tutorial_settings_title => 'Instellingen';
+
+  @override
+  String get tutorial_settings_text => 'Pas je persoonlijke instellingen aan, notificaties en meer.';
+
+  @override
+  String get tutorial_feedback_title => 'Feedback';
+
+  @override
+  String get tutorial_feedback_text => 'Hier kun je feedback geven of problemen rapporteren.';
+
+  @override
+  String get tutorial_calorie_title => 'Calorieën overzicht';
+
+  @override
+  String get tutorial_calorie_text => 'Hier zie je hoeveel je hebt gegeten en wat je calorieën-doel is.';
+
+  @override
+  String get tutorial_mascot_title => 'Mascotte';
+
+  @override
+  String get tutorial_mascot_text => 'Onze mascotte geeft tips. Tik erop voor een nieuw bericht.';
+
+  @override
+  String get tutorial_water_title => 'Waterinname';
+
+  @override
+  String get tutorial_water_text => 'Tik om je dagelijkse waterdoel aan te passen.';
+
+  @override
+  String get tutorial_additems_title => 'Items toevoegen';
+
+  @override
+  String get tutorial_additems_text => 'Gebruik deze knop om snel maaltijden, drankjes of sport toe te voegen.';
+
+  @override
+  String get tutorial_meals_title => 'Maaltijden';
+
+  @override
+  String get tutorial_meals_text => 'Bekijk je maaltijden en voeg nieuwe maaltijden toe of log bestaande maaltijden.';
+
+  @override
+  String get updateAvailable => 'Er is een nieuwere versie van de app beschikbaar.';
+
+  @override
+  String get announcement_default => 'Mededeling';
+
+  @override
+  String get water_goal_dialog_title => 'Waterdoel instellen';
+
+  @override
+  String get water_goal_dialog_label => 'Doel (ml)';
+
+  @override
+  String get enter_valid_number => 'Voer een geldig getal in';
+
+  @override
+  String get water_goal_updated => 'Waterdoel bijgewerkt';
+
+  @override
+  String get error_saving_water_goal => 'Fout bij opslaan waterdoel: ';
+
+  @override
+  String get calorie_goal_dialog_title => 'Caloriedoel instellen';
+
+  @override
+  String get calorie_goal_dialog_label => 'Dagelijks doel (kcal)';
+
+  @override
+  String get calorie_goal_updated => 'Calorieëndoel bijgewerkt';
+
+  @override
+  String get error_saving_prefix => 'Opslaan mislukt: ';
+
+  @override
+  String get eaten => 'Genoten';
+
+  @override
+  String get remaining => 'Resterend';
+
+  @override
+  String get over_goal => 'Boven doel';
+
+  @override
+  String get calories_over_goal => 'kcal boven doel';
+
+  @override
+  String get calories_remaining => 'kcal resterend';
+
+  @override
+  String get calories_consumed => 'kcal geconsumeerd';
+
+  @override
+  String get carbs => 'Koolhydraten';
+
+  @override
+  String get fats => 'Vetten';
+
+  @override
+  String get unit => 'Eenheid';
+
+  @override
+  String get edit_amount_dialog_title_ml => 'Hoeveelheid aanpassen (ml)';
+
+  @override
+  String get edit_amount_dialog_title_g => 'Hoeveelheid aanpassen (g)';
+
+  @override
+  String get edit_amount_label_ml => 'Hoeveelheid (ml)';
+
+  @override
+  String get edit_amount_label_g => 'Hoeveelheid (g)';
+
+  @override
+  String get totalConsumed => 'Totaal inname';
 }

@@ -25,6 +25,7 @@ import 'recipes_view.dart';
 import 'feedback_view.dart';
 import 'weight_view.dart';
 import 'package:collection/collection.dart';
+import 'package:fFinder/l10n/app_localizations.dart';
 
 //homescreen is een statefulwidget omdat de inhoud verandert
 class HomeScreen extends StatefulWidget {
@@ -207,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      announcement['title'] ?? 'Mededeling',
+                      announcement['title'] ?? AppLocalizations.of(context)!.announcement_default,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                         fontWeight: FontWeight.bold,
@@ -292,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Er is een nieuwe update uit! Update de app via TestFlight voor Apple of via Google Play Store of App Distribution voor Android.',
+                    AppLocalizations.of(context)!.updateAvailable,
                     style: TextStyle(
                       color: isDarkMode ? Colors.white : Colors.black87,
                       fontWeight: FontWeight.w600,
@@ -382,56 +383,14 @@ class _HomeScreenState extends State<HomeScreen> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Datum wisselen',
-              'Hier kan je naar een andere dag gaan.',
+              AppLocalizations.of(context)!.tutorial_date_title,
+              AppLocalizations.of(context)!.tutorial_date_text,
               isDarkMode,
             ),
           ),
         ],
       ),
     );
-
-    //Receptenkiezer
-    /* targets.add(
-      TargetFocus(
-        identify: "recipes-key",
-        keyTarget: _recipesKey,
-
-        shape: ShapeLightFocus.RRect,
-        color: Colors.blue,
-        contents: [
-          TargetContent(
-            align: ContentAlign.top,
-            child: _buildTutorialContent(
-              'Recepten',
-              'Deze pagina is om naar recepten te zoeken.',
-              isDarkMode,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    //Weight
-    targets.add(
-      TargetFocus(
-        identify: "weight-key",
-        keyTarget: _weightKey,
-
-        shape: ShapeLightFocus.RRect,
-        color: Colors.blue,
-        contents: [
-          TargetContent(
-            align: ContentAlign.top,
-            child: _buildTutorialContent(
-              'Gewicht',
-              'Deze pagina is om je gewicht toe te voegen en je bmi te bekijken. Door grafieken en tabellen kan je je gewicht bijhouden.',
-              isDarkMode,
-            ),
-          ),
-        ],
-      ),
-    );*/
 
     //Barcode
     targets.add(
@@ -442,8 +401,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Barcode scannen',
-              'Tik hier om een product te scannen en snel toe te voegen aan je dag.',
+              AppLocalizations.of(context)!.tutorial_barcode_title,
+              AppLocalizations.of(context)!.tutorial_barcode_text,
               isDarkMode,
             ),
           ),
@@ -459,8 +418,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Instellingen',
-              'Deze pagina is om uw gegevens aan te passen, de tijd van de meldingen of andere instellingen te wijzigen.',
+              AppLocalizations.of(context)!.tutorial_settings_title,
+              AppLocalizations.of(context)!.tutorial_settings_text,
               isDarkMode,
             ),
           ),
@@ -477,8 +436,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TargetContent(
             align: ContentAlign.top,
             child: _buildTutorialContent(
-              'Feedback geven',
-              'Hier kan je feedback geven over de app. Werkt er iets niet of iets wat je graag nog wilt zien in de app? We horen graag van je!',
+              AppLocalizations.of(context)!.tutorial_feedback_title,
+              AppLocalizations.of(context)!.tutorial_feedback_text,
               isDarkMode,
             ),
           ),
@@ -497,8 +456,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Calorieën overzicht',
-              'Hier zie je een samenvatting van je calorie-inname voor de dag.',
+              AppLocalizations.of(context)!.tutorial_calorie_title,
+              AppLocalizations.of(context)!.tutorial_calorie_text,
               isDarkMode,
             ),
           ),
@@ -515,8 +474,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TargetContent(
             align: ContentAlign.top,
             child: _buildTutorialContent(
-              'Reppy',
-              'Reppy geeft persoonlijke motivatie en tips!',
+              AppLocalizations.of(context)!.tutorial_mascot_title,
+              AppLocalizations.of(context)!.tutorial_mascot_text,
               isDarkMode,
             ),
           ),
@@ -533,8 +492,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TargetContent(
             align: ContentAlign.top,
             child: _buildTutorialContent(
-              'Drinken',
-              'Houd hier bij hoeveel je per dag drinkt. De cirkel laat ziet hoeveel je nog moet drinken om je doel te bereiken.',
+              AppLocalizations.of(context)!.tutorial_water_title,
+              AppLocalizations.of(context)!.tutorial_water_text,
               isDarkMode,
             ),
           ),
@@ -552,8 +511,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TargetContent(
             align: ContentAlign.top,
             child: _buildTutorialContent(
-              'Items toevoegen',
-              'Gebruik deze knop om snel een maaltijd of drankje aan je dag toe te voegen.',
+              AppLocalizations.of(context)!.tutorial_additems_title,
+              AppLocalizations.of(context)!.tutorial_additems_text,
               isDarkMode,
             ),
           ),
@@ -572,8 +531,8 @@ class _HomeScreenState extends State<HomeScreen> {
           TargetContent(
             align: ContentAlign.top,
             child: _buildTutorialContent(
-              'Logs', //TODO: verander titel
-              'Hier onderaan het scherm verschijnen al het voedsel en alle drankjes die je toevoegt.',
+              AppLocalizations.of(context)!.tutorial_meals_title,
+              AppLocalizations.of(context)!.tutorial_meals_text,
               isDarkMode,
             ),
           ),
@@ -616,16 +575,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(BuildContext context, DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final selected = DateTime(date.year, date.month, date.day);
 
     if (selected == today) {
-      return 'Vandaag';
+      return AppLocalizations.of(context)!.today;
     } else if (selected == yesterday) {
-      return 'Gisteren';
+      return AppLocalizations.of(context)!.yesterday;
     } else {
       return '${date.day}-${date.month}-${date.year}';
     }
@@ -670,7 +629,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               CupertinoButton(
-                child: const Text('Vandaag'),
+                child: Text(AppLocalizations.of(context)!.today),
                 onPressed: () {
                   setState(() {
                     _selectedDate = todayWithoutTime;
@@ -680,7 +639,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               CupertinoButton(
-                child: const Text('Klaar'),
+                child: Text(AppLocalizations.of(context)!.done),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ],
@@ -704,7 +663,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: ElevatedButton(
-                    child: const Text('Vandaag'),
+                    child: Text(AppLocalizations.of(context)!.today),
                     onPressed: () {
                       setState(() {
                         _selectedDate = todayWithoutTime;
@@ -965,7 +924,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         return AlertDialog(
           title: Text(
-            'Waterdoel aanpassen (ml)',
+            AppLocalizations.of(context)!.water_goal_dialog_title,
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           ),
           content: Form(
@@ -976,13 +935,13 @@ class _HomeScreenState extends State<HomeScreen> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: false,
               ),
-              decoration: const InputDecoration(labelText: 'Nieuw doel (ml)'),
+              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.water_goal_dialog_label),
               validator: (value) {
                 if (value == null ||
                     value.isEmpty ||
                     double.tryParse(value) == null ||
                     double.parse(value) <= 0) {
-                  return 'Voer een geldig getal in';
+                  return AppLocalizations.of(context)!.enter_valid_number;
                 }
                 return null;
               },
@@ -991,7 +950,7 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annuleren'),
+              child: Text(AppLocalizations.of(context)!.cancel),
             ),
             TextButton(
               onPressed: () {
@@ -1001,7 +960,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ).pop(double.parse(amountController.text));
                 }
               },
-              child: const Text('Opslaan'),
+              child: Text(AppLocalizations.of(context)!.save),
             ),
           ],
         );
@@ -1032,14 +991,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Waterdoel bijgewerkt!')),
+            SnackBar(content: Text(AppLocalizations.of(context)!.water_goal_updated)),
           );
         }
       } catch (e) {
         debugPrint("[WATER_GOAL] Fout bij opslaan: $e");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Fout bij opslaan waterdoel: $e')),
+            SnackBar(content: Text(AppLocalizations.of(context)!.error_saving_water_goal + e.toString())),
           );
           // revert lokaal
           setState(() {
@@ -1092,19 +1051,19 @@ class _HomeScreenState extends State<HomeScreen> {
       // Tab scaffold voor iOS stijl tabs
       tabBar: CupertinoTabBar(
         items: [
-          const BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.home),
-            label: 'Logs',
+          BottomNavigationBarItem(
+            icon: const Icon(CupertinoIcons.home),
+            label: AppLocalizations.of(context)!.logs,
           ),
           BottomNavigationBarItem(
             key: _recipesKey,
             icon: const Icon(CupertinoIcons.book),
-            label: 'Recepten',
+            label: AppLocalizations.of(context)!.recipesTitle,
           ),
           BottomNavigationBarItem(
             key: _weightKey,
             icon: const Icon(CupertinoIcons.chart_bar),
-            label: 'Gewicht',
+            label: AppLocalizations.of(context)!.weightTitle,
           ),
         ],
       ),
@@ -1130,7 +1089,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(_formatDate(_selectedDate)),
+                      Text(_formatDate(context, _selectedDate)),
                       const SizedBox(width: 8),
                       const Icon(CupertinoIcons.calendar, size: 22),
                     ],
@@ -1310,7 +1269,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(_formatDate(_selectedDate)),
+                      Text(_formatDate(context, _selectedDate)),
                       const SizedBox(width: 8),
                       const Icon(Icons.calendar_today, size: 20),
                     ],
@@ -1338,7 +1297,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             )
           : AppBar(
-              title: Text(_selectedIndex == 1 ? 'Recepten' : 'Gewicht'),
+              title: Text(_selectedIndex == 1
+                  ? AppLocalizations.of(context)!.recipesTitle
+                  : AppLocalizations.of(context)!.weightTitle),
               centerTitle: true,
             ),
       body: body,
@@ -1356,16 +1317,17 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Logs'),
+          BottomNavigationBarItem(
+              icon: const Icon(Icons.home), label: AppLocalizations.of(context)!.logs),
           BottomNavigationBarItem(
             icon: const Icon(Icons.menu_book),
-            label: 'Recepten',
+            label: AppLocalizations.of(context)!.recipesTitle,
             key: _recipesKey,
           ),
           BottomNavigationBarItem(
             key: _weightKey,
             icon: const Icon(Icons.monitor_weight),
-            label: 'Gewicht',
+            label: AppLocalizations.of(context)!.weightTitle,
           ),
         ],
       ),
@@ -1391,7 +1353,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         SpeedDialChild(
           child: const Icon(Icons.restaurant),
-          label: 'Voedsel',
+          label: AppLocalizations.of(context)!.add_food_label,
           backgroundColor: childBackgroundColor,
           labelStyle: TextStyle(color: fabForegroundColor),
           onTap: () {
@@ -1405,7 +1367,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         SpeedDialChild(
           child: const Icon(Icons.local_drink),
-          label: 'Drinken',
+          label: AppLocalizations.of(context)!.add_drink_label,
           backgroundColor: childBackgroundColor,
           labelStyle: TextStyle(color: fabForegroundColor),
           onTap: () {
@@ -1418,7 +1380,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         SpeedDialChild(
           child: const Icon(Icons.fitness_center),
-          label: 'Sport',
+          label: AppLocalizations.of(context)!.add_sport_label,
           backgroundColor: childBackgroundColor,
           labelStyle: TextStyle(color: fabForegroundColor),
           onTap: () {
@@ -1975,17 +1937,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                           MainAxisAlignment.spaceBetween,
                                       children: [
                                         _buildCalorieInfo(
-                                          'Gegeten',
+                                          AppLocalizations.of(context)!.eaten,
                                           totalCalories,
                                           isDarkMode,
                                         ),
                                         _buildCalorieInfo(
-                                          'Doel',
+                                          AppLocalizations.of(context)!.goal,
                                           adjustedCalorieGoal, // Gebruik het aangepaste doel
                                           isDarkMode,
                                         ),
                                         _buildCalorieInfo(
-                                          'Over',
+                                          AppLocalizations.of(context)!.remaining,
                                           remainingCalories,
                                           isDarkMode,
                                           isRemaining: true,
@@ -2014,14 +1976,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                           MainAxisAlignment.spaceAround,
                                       children: [
                                         _buildMacroCircle(
-                                          'Koolhydraten',
+                                          AppLocalizations.of(context)!.carbs,
                                           totalCarbs,
                                           carbGoal.toDouble(),
                                           isDarkMode,
                                           Colors.orange,
                                         ),
                                         _buildMacroCircle(
-                                          'Eiwitten',
+                                          AppLocalizations.of(context)!.proteins,
                                           totalProteins,
                                           proteinGoal.toDouble(),
                                           isDarkMode,
@@ -2033,7 +1995,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           ),
                                         ),
                                         _buildMacroCircle(
-                                          'Vetten',
+                                          AppLocalizations.of(context)!.fats,
                                           totalFats,
                                           fatGoal.toDouble(),
                                           isDarkMode,
@@ -2449,7 +2411,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         return AlertDialog(
           title: Text(
-            'Calorieëndoel aanpassen',
+            AppLocalizations.of(context)!.calorie_goal_dialog_title,
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           ),
           content: Form(
@@ -2460,13 +2422,13 @@ class _HomeScreenState extends State<HomeScreen> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: false,
               ),
-              decoration: const InputDecoration(labelText: 'Nieuw doel (kcal)'),
+              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.calorie_goal_dialog_label),
               validator: (value) {
                 if (value == null ||
                     value.isEmpty ||
                     double.tryParse(value) == null ||
                     double.parse(value) <= 0) {
-                  return 'Voer een geldig getal in';
+                  return AppLocalizations.of(context)!.enter_valid_number;
                 }
                 return null;
               },
@@ -2475,7 +2437,7 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annuleren'),
+              child: Text(AppLocalizations.of(context)!.cancel),
             ),
             TextButton(
               onPressed: () {
@@ -2485,7 +2447,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ).pop(double.parse(amountController.text));
                 }
               },
-              child: const Text('Opslaan'),
+              child: Text(AppLocalizations.of(context)!.save),
             ),
           ],
         );
@@ -2513,14 +2475,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Calorieëndoel bijgewerkt!')),
+            SnackBar(content: Text(AppLocalizations.of(context)!.calorie_goal_updated)),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text('Fout bij opslaan: $e')));
+          ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.error_saving_prefix + e.toString())));
           // Herstel de oude waarde in de UI bij een fout
           setState(() {
             _calorieAllowance = currentGoal;
@@ -2676,7 +2638,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Doel: ${goal.round()} ml', // Toon doel
+              '${AppLocalizations.of(context)!.goal}: ${goal.round()} ml', // Toon doel
               style: TextStyle(
                 fontSize: 14,
                 color: isDarkMode ? Colors.white70 : Colors.black87,
@@ -2769,7 +2731,7 @@ class _HomeScreenState extends State<HomeScreen> {
       color: isDarkMode ? Colors.white70 : Colors.black87,
     );
 
-    if (title == 'Doel') {
+    if (title == AppLocalizations.of(context)!.goal) {
       return GestureDetector(
         onTap: () => _showEditGoalDialog(value),
         child: Column(
@@ -2798,17 +2760,17 @@ class _HomeScreenState extends State<HomeScreen> {
     if (isRemaining) {
       // als er nog calorieen over zijn
       if (value < 0) {
-        topText = 'Je bent';
-        bottomText = 'calorieën over je doel';
+        topText = AppLocalizations.of(context)!.over_goal;
+        bottomText = AppLocalizations.of(context)!.calories_over_goal;
         displayValue = value.abs(); // maak positief voor weergave
         valueColor = Colors.red;
       } else {
-        topText = 'Nog';
-        bottomText = 'calorieën over';
+        topText = AppLocalizations.of(context)!.remaining;
+        bottomText = AppLocalizations.of(context)!.calories_remaining;
       }
     } else {
-      topText = 'Je hebt';
-      bottomText = 'calorieën\ngeconsumeerd';
+      topText = AppLocalizations.of(context)!.eaten;
+      bottomText = AppLocalizations.of(context)!.calories_consumed;
     }
 
     return Column(
@@ -2874,7 +2836,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   totalMealCalories == 0
                       ? '0 kcal'
-                      : 'Totale inname: ${totalMealCalories.abs().round()} kcal',
+                      : '${AppLocalizations.of(context)!.totalConsumed}: ${totalMealCalories.abs().round()} kcal',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.white,
@@ -3178,8 +3140,8 @@ class _HomeScreenState extends State<HomeScreen> {
             return AlertDialog(
               title: Text(
                 isDrink
-                    ? 'Hoeveelheid aanpassen (ml)'
-                    : 'Hoeveelheid aanpassen (g)',
+                    ? AppLocalizations.of(context)!.edit_amount_dialog_title_ml
+                    : AppLocalizations.of(context)!.edit_amount_dialog_title_g,
                 style: TextStyle(
                   color: isDarkMode ? Colors.white : Colors.black,
                 ),
@@ -3199,8 +3161,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       decoration: InputDecoration(
                         labelText: isDrink
-                            ? 'Hoeveelheid (ml)'
-                            : 'Hoeveelheid (g)',
+                            ? AppLocalizations.of(context)!.edit_amount_label_ml
+                            : AppLocalizations.of(context)!.edit_amount_label_g,
                         labelStyle: TextStyle(
                           color: isDarkMode ? Colors.white70 : Colors.black54,
                         ),
@@ -3227,7 +3189,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             double.tryParse(value.replaceAll(',', '.')) ==
                                 null ||
                             double.parse(value.replaceAll(',', '.')) <= 0) {
-                          return 'Voer een geldig getal in';
+                          return AppLocalizations.of(context)!.enter_valid_number;
                         }
                         return null;
                       },
@@ -3236,7 +3198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Eenheid selectie - drinks default naar ml maar gebruiker kan wisselen
                     InputDecorator(
                       decoration: InputDecoration(
-                        labelText: 'Eenheid',
+                        labelText: AppLocalizations.of(context)!.unit,
                         labelStyle: TextStyle(
                           color: isDarkMode ? Colors.white70 : Colors.black54,
                         ),
@@ -3270,7 +3232,7 @@ class _HomeScreenState extends State<HomeScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Annuleren'),
+                  child: Text(AppLocalizations.of(context)!.cancel),
                 ),
                 TextButton(
                   onPressed: () async {
@@ -3286,7 +3248,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                     Navigator.of(context).pop();
                   },
-                  child: const Text('Opslaan'),
+                  child: Text(AppLocalizations.of(context)!.save),
                 ),
               ],
             );
