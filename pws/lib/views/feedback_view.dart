@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/app_localizations.dart';
+
 class FeedbackButton extends StatelessWidget {
   final double bottom; // afstand vanaf de onderkant
   final double right; // afstand vanaf de rechterkant
@@ -29,30 +31,12 @@ class FeedbackButton extends StatelessWidget {
     final outerContext = context;
     final formKey = GlobalKey<FormState>();
     final Map<String, List<String>> categories = {
-      'Functionaliteit': [
-        'Functies',
-        'Functionaliteit',
-        'Gebruiksgemak',
-        'Overzichtelijkheid',
-        'Nauwkeurigheid',
-        'Navigatie',
-      ],
-      'Performance': ['Snelheid', 'Laadtijden', 'Stabiliteit'],
-      'Interface & Design': [
-        'Layout',
-        'Kleuren & Thema',
-        'Iconen & Design',
-        'Leesbaarheid',
-      ],
-      'Communicatie': ['Foutmeldingen', 'Uitleg & Instructies'],
-      'App Onderdelen': [
-        'Dashboard',
-        'Inloggen / Registratie',
-        'Gewicht',
-        'Statistieken',
-        'Kalender',
-      ],
-      'Overig': ['Algemene Tevredenheid'],
+      'functionality': ['features', 'functionality_item', 'usability', 'clarity', 'accuracy', 'navigation'],
+      'performance': ['speed', 'loading_times', 'stability'],
+      'interface_design': ['layout', 'colors_theme', 'icons_design', 'readability'],
+      'communication': ['errors', 'explanation'],
+      'app_parts': ['dashboard', 'login', 'weight', 'statistics', 'calendar'],
+      'other': ['general_satisfaction'],
     };
     final Map<String, int> ratings = {
       for (var group in categories.values)
@@ -77,13 +61,15 @@ class FeedbackButton extends StatelessWidget {
       builder: (ctx) {
         final isDarkMode = Theme.of(ctx).brightness == Brightness.dark;
         final Color textColor = isDarkMode ? Colors.white : Colors.black;
-        final Color hintColor =
-            isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700;
+        final Color hintColor = isDarkMode
+            ? Colors.grey.shade400
+            : Colors.grey.shade700;
         final sysBottomPadding = MediaQuery.of(ctx).padding.bottom;
+
+        final loc = AppLocalizations.of(ctx)!;
 
         Future<void> send() async {
           if (!formKey.currentState!.validate()) return;
-          // Attempt to show sending state if possible — we'll rely on rebuilds via Navigator pop for UX simplicity
           isSending = true;
           try {
             final user = FirebaseAuth.instance.currentUser;
@@ -101,14 +87,14 @@ class FeedbackButton extends StatelessWidget {
             if (ctx.mounted) {
               Navigator.of(ctx).pop();
               ScaffoldMessenger.of(outerContext).showSnackBar(
-                const SnackBar(content: Text('Bedankt voor je rapport!')),
+                SnackBar(content: Text(loc.reportThanks)),
               );
             }
           } catch (e) {
             if (ctx.mounted) {
               ScaffoldMessenger.of(
                 outerContext,
-              ).showSnackBar(SnackBar(content: Text('Fout bij verzenden: $e')));
+              ).showSnackBar(SnackBar(content: Text('${loc.errorSending}: $e')));
             }
           } finally {
             isSending = false;
@@ -116,14 +102,15 @@ class FeedbackButton extends StatelessWidget {
         }
 
         Widget buildRatingRow(
-          String label,
+          String keyLabel,
+          String displayLabel,
           void Function(void Function()) setState,
         ) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                label,
+                displayLabel,
                 style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
               ),
               Row(
@@ -131,12 +118,12 @@ class FeedbackButton extends StatelessWidget {
                   return IconButton(
                     onPressed: () {
                       setState(() {
-                        ratings[label] = i + 1;
+                        ratings[keyLabel] = i + 1;
                       });
                     },
                     icon: Icon(
                       Icons.star,
-                      color: i < (ratings[label] ?? 0)
+                      color: i < (ratings[keyLabel] ?? 0)
                           ? Colors.amber
                           : (isDarkMode ? Colors.grey[600] : Colors.grey[500]),
                     ),
@@ -144,10 +131,10 @@ class FeedbackButton extends StatelessWidget {
                 }),
               ),
               TextFormField(
-                controller: comments[label],
+                controller: comments[keyLabel],
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
-                  hintText: 'Opmerking bij $label (optioneel)',
+                  hintText: loc.commentOptional.replaceAll('{label}', displayLabel),
                   hintStyle: TextStyle(color: hintColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -160,108 +147,157 @@ class FeedbackButton extends StatelessWidget {
           );
         }
 
-        return StatefulBuilder(
-          builder: (ctx, setState) => Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 0,
-              bottom:
-                  MediaQuery.of(ctx).viewInsets.bottom + sysBottomPadding + 20,
-            ),
-            child: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 5,
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: isDarkMode ? Colors.grey[500] : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                    ),
-                    Text(
-                      'Rapporteer onderdelen',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ...categories.entries.map((entry) {
-                      return ExpansionTile(
-                        title: Text(
-                          entry.key,
-                          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-                        ),
-                        textColor: textColor,
-                        collapsedTextColor: textColor,
-                        iconColor: textColor,
-                        collapsedIconColor: textColor,
-                        children: entry.value.map((label) {
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                              left: 12,
-                              right: 12,
-                              bottom: 12,
-                            ),
-                            child: buildRatingRow(label, setState),
-                          );
-                        }).toList(),
-                      );
-                    }).toList(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (sheetCtx, scrollController) {
+            return StatefulBuilder(
+              builder: (ctx, setState) => Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 0,
+                  bottom:
+                      MediaQuery.of(ctx).viewInsets.bottom +
+                      sysBottomPadding +
+                      20,
+                ),
+                child: Form(
+                  key: formKey,
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          child: Text(
-                            'Annuleren',
-                            style: TextStyle(color: textColor),
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 5,
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? Colors.grey[500]
+                                  : Colors.grey[300],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: isSending
-                              ? null
-                              : () {
-                                  // ensure visual update for sending
-                                  setState(() => isSending = true);
-                                  send().whenComplete(() => setState(() => isSending = false));
-                                },
-                          child: isSending
-                              ? SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: textColor,
-                                  ),
-                                )
-                              : const Text('Versturen'),
+                        Text(
+                          loc.reportTitle,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ...categories.entries.map((entry) {
+                          String catLabel;
+                          List<String> itemDisplayLabels = [];
+                          switch (entry.key) {
+                            case 'functionality':
+                              catLabel = loc.categoryFunctionality;
+                              itemDisplayLabels = [
+                                loc.itemFeatures,
+                                loc.itemFunctionality,
+                                loc.itemUsability,
+                                loc.itemClarity,
+                                loc.itemAccuracy,
+                                loc.itemNavigation,
+                              ];
+                              break;
+                            case 'performance':
+                              catLabel = loc.categoryPerformance;
+                              itemDisplayLabels = [loc.itemSpeed, loc.itemLoadingTimes, loc.itemStability];
+                              break;
+                            case 'interface_design':
+                              catLabel = loc.categoryInterfaceDesign;
+                              itemDisplayLabels = [loc.itemLayout, loc.itemColorsTheme, loc.itemIconsDesign, loc.itemReadability];
+                              break;
+                            case 'communication':
+                              catLabel = loc.categoryCommunication;
+                              itemDisplayLabels = [loc.itemErrors, loc.itemExplanation];
+                              break;
+                            case 'app_parts':
+                              catLabel = loc.categoryAppParts;
+                              itemDisplayLabels = [loc.itemDashboard, loc.itemLogin, loc.itemWeight, loc.itemStatistics, loc.itemCalendar];
+                              break;
+                            default:
+                              catLabel = loc.categoryOther;
+                              itemDisplayLabels = [loc.itemGeneralSatisfaction];
+                          }
+
+                          return ExpansionTile(
+                            title: Text(
+                              catLabel,
+                              style: TextStyle(
+                                color: textColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            textColor: textColor,
+                            collapsedTextColor: textColor,
+                            iconColor: textColor,
+                            collapsedIconColor: textColor,
+                            children: List.generate(entry.value.length, (i) {
+                              final internalKey = entry.value[i];
+                              final displayLabel = itemDisplayLabels.length > i ? itemDisplayLabels[i] : internalKey;
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+                                child: buildRatingRow(internalKey, displayLabel, setState),
+                              );
+                            }),
+                          );
+                        }).toList(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: Text(
+                                loc.cancel,
+                                style: TextStyle(color: textColor),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: isSending
+                                  ? null
+                                  : () {
+                                      setState(() => isSending = true);
+                                      send().whenComplete(
+                                        () => setState(() => isSending = false),
+                                      );
+                                    },
+                              child: isSending
+                                  ? SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: textColor,
+                                      ),
+                                    )
+                                  : Text(loc.send),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
   }
 
   void _openFeedbackSheet(BuildContext context) async {
-    // Maak de functie async
     final outerContext = context;
     final formKey = GlobalKey<FormState>();
     final messageController = TextEditingController();
@@ -270,8 +306,8 @@ class FeedbackButton extends StatelessWidget {
     int rating = 0;
     bool isSending = false;
     String selectedType = 'bug';
+    String languageReported = Localizations.localeOf(context).languageCode;
 
-    // Controleer of de gebruiker een admin is
     final user = FirebaseAuth.instance.currentUser;
     bool isAdmin = false;
     if (user != null) {
@@ -287,7 +323,6 @@ class FeedbackButton extends StatelessWidget {
     }
 
     showModalBottomSheet<void>(
-      // Voeg het return type toe
       context: outerContext,
       isScrollControlled: true,
       backgroundColor: Theme.of(outerContext).scaffoldBackgroundColor,
@@ -295,280 +330,322 @@ class FeedbackButton extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        final isDarkMode = Theme.of(ctx).brightness == Brightness.dark;
-        final sysBottomPadding = MediaQuery.of(
-          ctx,
-        ).padding.bottom; // nav bar hoogte
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom:
-                MediaQuery.of(ctx).viewInsets.bottom +
-                sysBottomPadding +
-                20, // vergroot onder-padding
-          ),
-          child: StatefulBuilder(
-            builder: (innerCtx, setState) {
-              // Gebruik innerCtx voor de builder context. dat betekent dat we outerContext kunnen gebruiken voor snackbar etc.
-              Future<void> send() async {
-                if (!formKey.currentState!.validate()) return;
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (sheetCtx, scrollController) {
+            final isDarkMode = Theme.of(sheetCtx).brightness == Brightness.dark;
+            final sysBottomPadding = MediaQuery.of(sheetCtx).padding.bottom;
+            final loc = AppLocalizations.of(sheetCtx)!;
 
-                setState(() => isSending = true);
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom:
+                    MediaQuery.of(sheetCtx).viewInsets.bottom +
+                    sysBottomPadding +
+                    20,
+              ),
+              child: StatefulBuilder(
+                builder: (innerCtx, setState) {
+                  Future<void> send() async {
+                    if (!formKey.currentState!.validate()) return;
 
-                try {
-                  final user = FirebaseAuth.instance.currentUser;
+                    setState(() => isSending = true);
 
-                  await FirebaseFirestore.instance.collection('feedback').add({
-                    'uid': user?.uid,
-                    'email': emailController.text.trim().isEmpty
-                        ? null
-                        : emailController.text.trim(),
-                    'message': messageController.text.trim(),
-                    'rating': rating,
-                    'type': selectedType,
-                    'timestamp': FieldValue.serverTimestamp(),
-                    'platform': Theme.of(outerContext).platform.name,
-                  });
+                    try {
+                      final user = FirebaseAuth.instance.currentUser;
+                      final appLanguage = Localizations.localeOf(
+                        outerContext,
+                      ).languageCode;
 
-                  if (ctx.mounted) {
-                    // Controleer of de context nog gemount is
-                    Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(outerContext).showSnackBar(
-                      const SnackBar(
-                        content: Text('Bedankt voor je feedback!'),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(outerContext).showSnackBar(
-                      SnackBar(content: Text('Fout bij verzenden: $e')),
-                    );
-                  }
-                } finally {
-                  if (ctx.mounted) setState(() => isSending = false);
-                }
-              }
+                      await FirebaseFirestore.instance
+                          .collection('feedback')
+                          .add({
+                            'uid': user?.uid,
+                            'email': emailController.text.trim().isEmpty
+                                ? null
+                                : emailController.text.trim(),
+                            'message': messageController.text.trim(),
+                            'rating': rating,
+                            'type': selectedType,
+                            'languageReported': selectedType == 'language'
+                                ? languageReported
+                                : null,
+                            'appLanguage': appLanguage,
+                            'timestamp': FieldValue.serverTimestamp(),
+                            'platform': Theme.of(outerContext).platform.name,
+                          });
 
-              Widget buildTypeChip(String value, String label) {
-                final bool selected = selectedType == value;
-                return ChoiceChip(
-                  // Gebruik ChoiceChip voor selecteerbare chips
-                  label: Text(label),
-                  selected: selected,
-                  onSelected: (_) {
-                    setState(() => selectedType = value);
-                  },
-                );
-              }
-
-              return SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 5,
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: isDarkMode
-                              ? Colors.grey[500]
-                              : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                    ),
-
-                    Text(
-                      'Geef je feedback',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),
-
-                    if (isAdmin) ...[
-                      const SizedBox(height: 16),
-                      ListTile(
-                        leading: const Icon(
-                          Icons.admin_panel_settings_outlined,
-                        ),
-                        title: const Text('Bekijk alle feedback'),
-                        onTap: () {
-                          Navigator.of(ctx).pop(); // Sluit de sheet
-                          Navigator.of(outerContext).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const AllFeedbackView(), // Navigeer met outerContext
-                            ),
-                          );
-                        },
-                        tileColor: Theme.of(
-                          ctx,
-                        ).colorScheme.primary.withOpacity(0.1),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      ListTile(
-                        leading: const Icon(
-                          Icons.assignment_turned_in_outlined,
-                        ),
-                        title: const Text('Bekijk alle rapport feedback'),
-                        onTap: () {
-                          Navigator.of(ctx).pop();
-                          Navigator.of(outerContext).push(
-                            MaterialPageRoute(
-                              builder: (_) => const AllRapportFeedbackView(),
-                            ),
-                          );
-                        },
-                        tileColor: Theme.of(
-                          ctx,
-                        ).colorScheme.primary.withOpacity(0.1),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      const Divider(height: 24),
-                    ],
-
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.assignment_outlined),
-                      label: const Text(
-                        'Tik om het rapport in te vullen!\nLet op: dit is een uitgebreide vragenlijst. Vul deze pas in als je de app meerdere dagen goed hebt getest.',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () => _openRapportFeedbackSheet(context),
-                    ),
-                    const Divider(height: 16),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Hier kan je elk moment je feedback geven.",
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
-                      ),
-                    ),
-
-                    /// ⭐ Rating
-                    Row(
-                      children: List.generate(5, (i) {
-                        // 5 sterren
-                        return IconButton(
-                          onPressed: () => setState(() => rating = i + 1),
-                          icon: Icon(
-                            Icons.star,
-                            color: i < rating ? Colors.amber : Colors.grey[500],
+                      if (ctx.mounted) {
+                        Navigator.of(ctx).pop();
+                        ScaffoldMessenger.of(outerContext).showSnackBar(
+                          SnackBar(
+                            content: Text(loc.thanksFeedback),
                           ),
                         );
-                      }),
-                    ),
+                      }
+                    } catch (e) {
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(outerContext).showSnackBar(
+                          SnackBar(content: Text('${loc.errorSending}: $e')),
+                        );
+                      }
+                    } finally {
+                      if (ctx.mounted) setState(() => isSending = false);
+                    }
+                  }
 
-                    const SizedBox(height: 8),
+                  Widget buildTypeChip(String value, String label) {
+                    final bool selected = selectedType == value;
+                    return ChoiceChip(
+                      label: Text(label),
+                      selected: selected,
+                      onSelected: (_) {
+                        setState(() => selectedType = value);
+                      },
+                    );
+                  }
 
-                    // 4 opties op een rij
-                    Wrap(
-                      spacing: 8,
+                  return SingleChildScrollView(
+                    controller: scrollController,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        buildTypeChip('bug', 'Bug'),
-                        buildTypeChip('feature', 'Nieuwe functie'),
-                        buildTypeChip('layout', 'Layout'),
-                        buildTypeChip('other', 'Anders'),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    Form(
-                      key: formKey,
-                      child: Column(
-                        children: [
-                          TextFormField(
-                            controller: messageController,
-                            maxLines: 5,
-                            minLines: 3,
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 5,
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? Colors.grey[500]
+                                  : Colors.grey[300],
+                              borderRadius: BorderRadius.circular(20),
                             ),
+                          ),
+                        ),
+                        Text(
+                          loc.feedbackTitle,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        if (isAdmin) ...[
+                          const SizedBox(height: 16),
+                          ListTile(
+                            leading: const Icon(
+                              Icons.admin_panel_settings_outlined,
+                            ),
+                            title: Text(loc.viewAllFeedback),
+                            onTap: () {
+                              Navigator.of(ctx).pop();
+                              Navigator.of(outerContext).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const AllFeedbackView(),
+                                ),
+                              );
+                            },
+                            tileColor: Theme.of(
+                              ctx,
+                            ).colorScheme.primary.withOpacity(0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          ListTile(
+                            leading: const Icon(
+                              Icons.assignment_turned_in_outlined,
+                            ),
+                            title: Text(loc.viewAllRapportFeedback),
+                            onTap: () {
+                              Navigator.of(ctx).pop();
+                              Navigator.of(outerContext).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const AllRapportFeedbackView(),
+                                ),
+                              );
+                            },
+                            tileColor: Theme.of(
+                              ctx,
+                            ).colorScheme.primary.withOpacity(0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          const Divider(height: 24),
+                        ],
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.assignment_outlined),
+                          label: Text(loc.openRapportButton),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () => _openRapportFeedbackSheet(context),
+                        ),
+                        const Divider(height: 16),
+                        const SizedBox(height: 16),
+                        Text(
+                          loc.feedbackIntro,
+                          style: TextStyle(
+                            color: isDarkMode
+                                ? Colors.grey[300]
+                                : Colors.grey[700],
+                          ),
+                        ),
+                        Row(
+                          children: List.generate(5, (i) {
+                            return IconButton(
+                              onPressed: () => setState(() => rating = i + 1),
+                              icon: Icon(
+                                Icons.star,
+                                color: i < rating
+                                    ? Colors.amber
+                                    : Colors.grey[500],
+                              ),
+                            );
+                          }),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            buildTypeChip('bug', loc.choiceBug),
+                            buildTypeChip('feature', loc.choiceFeature),
+                            buildTypeChip('language', loc.choiceLanguage),
+                            buildTypeChip('layout', loc.choiceLayout),
+                            buildTypeChip('other', loc.choiceOther),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (selectedType == 'language') ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            loc.languageSectionInstruction,
+                            style: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            value: languageReported,
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'nl',
+                                child: Text('Nederlands (nl)'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'en',
+                                child: Text('English (en)'),
+                              ),
+                            ],
+                            onChanged: (v) => setState(() {
+                              if (v != null) languageReported = v;
+                            }),
                             decoration: InputDecoration(
-                              hintText: 'Wat wil je ons vertellen?',
+                              labelText: loc.dropdownLabelLanguage,
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            validator: (v) =>
-                                (v == null ||
-                                    v
-                                        .trim()
-                                        .isEmpty) //  Validator voor leeg bericht
-                                ? 'Voer een bericht in'
-                                : null,
                           ),
                           const SizedBox(height: 12),
-                          TextFormField(
-                            controller: emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'E-mail (optioneel)',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
                         ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          child: const Text('Annuleren'),
-                        ),
-                        ElevatedButton(
-                          onPressed: isSending ? null : send,
-                          child: isSending
-                              ? SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: isDarkMode
-                                        ? Colors.white
-                                        : Colors.black,
+                        const SizedBox(height: 16),
+                        Form(
+                          key: formKey,
+                          child: Column(
+                            children: [
+                              TextFormField(
+                                controller: messageController,
+                                maxLines: 5,
+                                minLines: 3,
+                                style: TextStyle(
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: loc.messageHint,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                )
-                              : const Text('Versturen'),
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                    ? loc.enterMessage
+                                    : null,
+                              ),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                style: TextStyle(
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: loc.emailHintOptional,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: Text(loc.cancel),
+                            ),
+                            ElevatedButton(
+                              onPressed: isSending ? null : send,
+                              child: isSending
+                                  ? SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: isDarkMode
+                                            ? Colors.white
+                                            : Colors.black,
+                                      ),
+                                    )
+                                  : Text(loc.send),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  );
+                },
+              ),
+            );
+          },
         );
       },
     );
@@ -580,8 +657,10 @@ class AllFeedbackView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Alle Feedback')),
+      appBar: AppBar(title: Text(loc.allFeedbackTitle)),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('feedback')
@@ -589,16 +668,13 @@ class AllFeedbackView extends StatelessWidget {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            // Wacht op data
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            // Geen feedback
-            return const Center(child: Text('Geen feedback gevonden.'));
+            return Center(child: Text(loc.noFeedbackFound));
           }
           if (snapshot.hasError) {
-            // Fout bij ophalen
-            return const Center(child: Text('Er is een fout opgetreden.'));
+            return Center(child: Text(loc.errorOccurred));
           }
 
           return ListView(
@@ -607,11 +683,13 @@ class AllFeedbackView extends StatelessWidget {
               final data = doc.data() as Map<String, dynamic>;
               final uid = data['uid'] as String?;
               final platform = data['platform'] as String?;
+              final appLanguage = data['appLanguage'] as String?;
+              final languageReported = data['languageReported'] as String?;
 
               final timestamp = data['timestamp'] as Timestamp?;
               final date = timestamp != null
                   ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate())
-                  : 'Onbekende datum';
+                  : loc.unknownDate;
 
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -621,7 +699,7 @@ class AllFeedbackView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        data['message'] ?? 'Geen bericht',
+                        data['message'] ?? loc.noMessage,
                         style: TextStyle(
                           fontSize: 16,
                           color: Theme.of(context).brightness == Brightness.dark
@@ -634,12 +712,8 @@ class AllFeedbackView extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 4,
                         children: [
-                          Chip(
-                            label: Text(data['type'] ?? 'onbekend'),
-                          ), // Type feedback
-                          if (data['rating'] != null &&
-                              data['rating'] >
-                                  0) // Rating weergeven als die er is
+                          Chip(label: Text(data['type'] ?? loc.unknownType)),
+                          if (data['rating'] != null && data['rating'] > 0)
                             Chip(
                               avatar: const Icon(
                                 Icons.star,
@@ -648,19 +722,23 @@ class AllFeedbackView extends StatelessWidget {
                               ),
                               label: Text('${data['rating']}/5'),
                             ),
-
-                          if (platform !=
-                              null) //  Platform weergeven als die er is
+                          if (platform != null)
                             Chip(
                               avatar: const Icon(Icons.devices, size: 16),
                               label: Text(platform),
                             ),
-
-                          if (uid != null)
-                            UserDetailChip(
-                              uid: uid,
-                            ), // Toon gebruikerschip als UID er is
-
+                          if (appLanguage != null && appLanguage.isNotEmpty)
+                            Chip(
+                              avatar: const Icon(Icons.language, size: 16),
+                              label: Text('${loc.appLanguagePrefix}$appLanguage'),
+                            ),
+                          if (languageReported != null &&
+                              languageReported.isNotEmpty)
+                            Chip(
+                              avatar: const Icon(Icons.translate, size: 16),
+                              label: Text('${loc.reportedLanguagePrefix}$languageReported'),
+                            ),
+                          if (uid != null) UserDetailChip(uid: uid),
                           if (data['email'] != null &&
                               (data['email'] as String).isNotEmpty)
                             Chip(
@@ -674,9 +752,8 @@ class AllFeedbackView extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Ingezonden op: $date',
+                        '${loc.submittedOnPrefix}$date',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          // Datum stijl
                           color: Theme.of(context).brightness == Brightness.dark
                               ? Colors.grey[300]
                               : Colors.grey[700],
@@ -686,7 +763,7 @@ class AllFeedbackView extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: 4.0),
                           child: Text(
-                            'UID: $uid',
+                            '${loc.uidLabelPrefix}$uid',
                             style: Theme.of(
                               context,
                             ).textTheme.bodySmall?.copyWith(color: Colors.grey),
@@ -725,7 +802,7 @@ class _UserDetailChipState extends State<UserDetailChip> {
   }
 
   Future<void> _launchEmail(String email) async {
-    // E-mail app openen
+    final loc = AppLocalizations.of(context)!;
     final String subject = 'Reactie op je feedback - fFinder';
     final String body = 'Hoi $email,\n\n\nGroetjes,\nHet fFinder team';
 
@@ -741,7 +818,7 @@ class _UserDetailChipState extends State<UserDetailChip> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Kon de mail-app niet openen: $e')),
+          SnackBar(content: Text('${loc.couldNotOpenMailAppPrefix}$e')),
         );
       }
     }
@@ -753,10 +830,10 @@ class _UserDetailChipState extends State<UserDetailChip> {
       future: _userFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Chip(label: Text('Laden...'));
+          return Chip(label: Text(AppLocalizations.of(context)!.loading));
         }
         if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const SizedBox.shrink(); // Verberg als gebruiker niet gevonden is
+          return const SizedBox.shrink();
         }
 
         final userData = snapshot.data!.data() as Map<String, dynamic>;
@@ -782,8 +859,10 @@ class AllRapportFeedbackView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Alle Rapport Feedback')),
+      appBar: AppBar(title: Text(loc.allRapportFeedbackTitle)),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('rapport_feedback')
@@ -794,10 +873,10 @@ class AllRapportFeedbackView extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('Geen rapport feedback gevonden.'));
+            return Center(child: Text(loc.noRapportFeedbackFound));
           }
           if (snapshot.hasError) {
-            return const Center(child: Text('Er is een fout opgetreden.'));
+            return Center(child: Text(loc.errorOccurred));
           }
 
           return ListView(
@@ -809,7 +888,7 @@ class AllRapportFeedbackView extends StatelessWidget {
               final timestamp = data['timestamp'] as Timestamp?;
               final date = timestamp != null
                   ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate())
-                  : 'Onbekende datum';
+                  : loc.unknownDate;
 
               final ratings = data['ratings'] as Map<String, dynamic>? ?? {};
               final comments = data['comments'] as Map<String, dynamic>? ?? {};
@@ -822,7 +901,7 @@ class AllRapportFeedbackView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Rapport feedback',
+                        loc.rapportFeedbackTitle,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -898,7 +977,7 @@ class AllRapportFeedbackView extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Ingezonden op: $date',
+                        '${loc.submittedOnPrefix}$date',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).brightness == Brightness.dark
                               ? Colors.grey[300]
@@ -909,7 +988,7 @@ class AllRapportFeedbackView extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: 4.0),
                           child: Text(
-                            'UID: $uid',
+                            '${loc.uidLabelPrefix}$uid',
                             style: Theme.of(
                               context,
                             ).textTheme.bodySmall?.copyWith(color: Colors.grey),

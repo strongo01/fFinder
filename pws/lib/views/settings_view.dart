@@ -6,12 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
-import 'package:timezone/timezone.dart';
 import 'login_register_view.dart';
 import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-
+import '../locale_notifier.dart';
 import '../l10n/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -30,8 +29,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _height = 180;
   double _waist = 85;
   double _sleepHours = 8.0;
-  String _activityLevel = 'Weinig actief';
-  String _goal = 'Afvallen';
+  String _activityKey = 'weinig_actief';
+  String _goalKey = 'afvallen';
   bool _hasUnsavedChanges = false;
 
   bool _mealNotificationsEnabled = false;
@@ -50,27 +49,111 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _deletingAccount = false;
   bool _isAdmin = false;
 
-  final List<String> _activityOptions = [
-    'Weinig actief: zittend werk, nauwelijks beweging, geen sport',
-    'Licht actief: 1–3x per week lichte training of dagelijks 30–45 min wandelen',
-    'Gemiddeld actief: 3–5x per week sporten of een actief beroep (horeca, zorg, postbezorger)',
-    'Zeer actief: 6–7x per week intensieve training of fysiek zwaar werk (bouw, magazijn)',
-    'Extreem actief: topsporttraining 2× per dag of extreem fysiek zwaar werk (militair, bosbouw)',
+  final List<String> _activityOptionKeys = [
+    'weinig_actief',
+    'licht_actief',
+    'gemiddeld_actief',
+    'zeer_actief',
+    'extreem_actief',
   ];
 
-  final List<String> _goalOptions = [
-    // opties voor doelen
-    'Afvallen',
-    'Op gewicht blijven',
-    'Aankomen (spiermassa)',
-    'Aankomen (algemeen)',
+  final List<String> _goalOptionKeys = [
+    'afvallen',
+    'op_gewicht_blijven',
+    'aankomen_spiermassa',
+    'aankomen_algemeen',
   ];
+
+  // Map key -> Dutch text (this is what will be saved to Firestore)
+  String _dutchActivityForKey(String key) {
+    switch (key) {
+      case 'licht_actief':
+        return 'Licht actief: 1–3x per week lichte training of dagelijks 30–45 min wandelen';
+      case 'gemiddeld_actief':
+        return 'Gemiddeld actief: 3–5x per week sporten of een actief beroep (horeca, zorg, postbezorger)';
+      case 'zeer_actief':
+        return 'Zeer actief: 6–7x per week intensieve training of fysiek zwaar werk (bouw, magazijn)';
+      case 'extreem_actief':
+        return 'Extreem actief: topsporttraining 2× per dag of extreem fysiek zwaar werk (militair, bosbouw)';
+      case 'weinig_actief':
+      default:
+        return 'Weinig actief: zittend werk, nauwelijks beweging, geen sport';
+    }
+  }
+
+  String _dutchGoalForKey(String key) {
+    switch (key) {
+      case 'op_gewicht_blijven':
+        return 'Op gewicht blijven';
+      case 'aankomen_spiermassa':
+        return 'Aankomen (spiermassa)';
+      case 'aankomen_algemeen':
+        return 'Aankomen (algemeen)';
+      case 'afvallen':
+      default:
+        return 'Afvallen';
+    }
+  }
+
+  // Map key -> localized label for display (must be defined in ARB files)
+  String _localizedActivityLabel(BuildContext ctx, String key) {
+    final t = AppLocalizations.of(ctx)!;
+    switch (key) {
+      case 'licht_actief':
+        return t.activityLight;
+      case 'gemiddeld_actief':
+        return t.activityMedium;
+      case 'zeer_actief':
+        return t.activityVery;
+      case 'extreem_actief':
+        return t.activityExtreme;
+      case 'weinig_actief':
+      default:
+        return t.activityLow;
+    }
+  }
+
+  String _localizedGoalLabel(BuildContext ctx, String key) {
+    final t = AppLocalizations.of(ctx)!;
+    switch (key) {
+      case 'op_gewicht_blijven':
+        return t.goalMaintain;
+      case 'aankomen_spiermassa':
+        return t.goalGainMuscle;
+      case 'aankomen_algemeen':
+        return t.goalGainGeneral;
+      case 'afvallen':
+      default:
+        return t.goalLose;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
     _loadProfile();
+    _loadLocaleFromPrefs();
+  }
+
+  Future<void> _loadLocaleFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final code = prefs.getString('locale');
+    if (code != null && code.isNotEmpty) {
+      appLocale.value = Locale(code);
+    }
+  }
+
+  Future<void> _setLocale(String? code) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (code == null || code.isEmpty) {
+      await prefs.remove('locale');
+      appLocale.value = null;
+    } else {
+      await prefs.setString('locale', code);
+      appLocale.value = Locale(code);
+    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadSettings() async {
@@ -147,21 +230,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final waist = await decryptDouble(data['waist'], userDEK);
 
         final sleepHours = await decryptDouble(data['sleepHours'], userDEK);
-        final activityLevel = await decryptValue(
+        final activityLevelDutch = await decryptValue(
           data['activityLevel'] ?? '',
           userDEK,
         );
-        final goal = await decryptValue(data['goal'] ?? '', userDEK);
+        final goalDutch = await decryptValue(data['goal'] ?? '', userDEK);
 
-        // Controleer of de opgeslagen waarden nog geldig zijn. Zo niet, gebruik de eerste optie als fallback.
-        final validActivityLevel = _activityOptions.contains(activityLevel)
-            ? activityLevel
-            : _activityOptions.first;
+        // Find the key that matches the stored Dutch text, fallback to first key
+        String findActivityKey(String dutch) {
+          for (final k in _activityOptionKeys) {
+            if (_dutchActivityForKey(k) == dutch) return k;
+          }
+          return _activityOptionKeys.first;
+        }
 
-        final validGoal = _goalOptions.contains(goal)
-            ? goal
-            : _goalOptions.first;
+        String findGoalKey(String dutch) {
+          for (final k in _goalOptionKeys) {
+            if (_dutchGoalForKey(k) == dutch) return k;
+          }
+          return _goalOptionKeys.first;
+        }
 
+        final validActivityKey = findActivityKey(activityLevelDutch);
+        final validGoalKey = findGoalKey(goalDutch);
         setState(() {
           _isAdmin = data['admin'] ?? false;
           _currentWeight = currentWeight > 0 ? currentWeight : _currentWeight;
@@ -169,8 +260,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _height = height > 0 ? height : _height;
           _waist = waist > 0 ? waist : _waist;
           _sleepHours = sleepHours > 0 ? sleepHours : _sleepHours;
-          _activityLevel = validActivityLevel;
-          _goal = validGoal;
+          _activityKey = validActivityKey;
+          _goalKey = validGoalKey;
 
           // Werk ook de controllers hier bij
           _weightController.text = _currentWeight.toStringAsFixed(1);
@@ -181,9 +272,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Kon profiel niet laden: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context)!.profileLoadFailedMessage}: $e',
+          ),
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -270,7 +365,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
         }
 
-        final activity = _activityLevel.split(':')[0].trim();
+        final activity = _dutchActivityForKey(
+          _activityKey,
+        ).split(':')[0].trim();
         double activityFactor;
         switch (activity) {
           case 'Weinig actief':
@@ -294,16 +391,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         double calories = bmr * activityFactor;
 
-        // Doel toepassen
-        switch (_goal) {
-          case 'Afvallen':
+        // Doel toepassen (gebruik de opgeslagen sleutel)
+        switch (_goalKey) {
+          case 'afvallen':
             calories -= 500;
             break;
-          case 'Aankomen (spiermassa)':
-          case 'Aankomen (algemeen)':
+          case 'aankomen_spiermassa':
+          case 'aankomen_algemeen':
             calories += 300;
             break;
-          case 'Op gewicht blijven':
+          case 'op_gewicht_blijven':
           default:
             break;
         }
@@ -372,8 +469,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         'waist': await encryptDouble(_waist, userDEK),
         'sleepHours': await encryptDouble(_sleepHours, userDEK),
-        'activityLevel': await encryptValue(_activityLevel, userDEK),
-        'goal': await encryptValue(_goal, userDEK),
+        'activityLevel': await encryptValue(
+          _dutchActivityForKey(_activityKey),
+          userDEK,
+        ),
+        'goal': await encryptValue(_dutchGoalForKey(_goalKey), userDEK),
+
         'bmi': bmi != null ? await encryptDouble(bmi, userDEK) : null,
         'calorieGoal': calorieGoal != null
             ? await encryptDouble(calorieGoal, userDEK)
@@ -394,14 +495,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Instellingen opgeslagen')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.settingsSavedSuccessMessage,
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Opslaan mislukt: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context)!.settingsSaveFailedMessage}: $e',
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -425,21 +534,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final isDark = colorScheme.brightness == Brightness.dark;
         return AlertDialog(
           title: Text(
-            'Uitloggen',
+            AppLocalizations.of(context)!.confirmSignOutTitle,
             style: TextStyle(color: isDark ? Colors.white : Colors.black),
           ),
           content: Text(
-            'Weet je zeker dat je wilt uitloggen?',
+            AppLocalizations.of(context)!.confirmSignOutMessage,
             style: TextStyle(color: isDark ? Colors.white : Colors.black),
           ),
           actions: [
             TextButton(
-              child: const Text('Annuleren'),
+              child: Text(AppLocalizations.of(context)!.cancel),
               onPressed: () => Navigator.of(context).pop(false),
             ),
             TextButton(
               child: Text(
-                'Uitloggen',
+                AppLocalizations.of(context)!.signOut,
                 style: TextStyle(color: colorScheme.error),
               ),
               onPressed: () => Navigator.of(context).pop(true),
@@ -489,16 +598,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
         SnackBar(
           content: Text(
             e.code == 'requires-recent-login'
-                ? 'Log opnieuw in en probeer het nog eens om je account te verwijderen.'
-                : 'Verwijderen mislukt: ${e.message ?? e.code}',
+                ? AppLocalizations.of(context)!.deleteAccountRecentLoginError
+                : '${AppLocalizations.of(context)!.deleteAccountFailedMessage}: ${e.message ?? e.code}',
           ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Verwijderen mislukt: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context)!.deleteAccountFailedMessage}: $e',
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _deletingAccount = false);
     }
@@ -518,7 +631,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) {
         return AlertDialog(
           title: Text(
-            'Account verwijderen',
+            AppLocalizations.of(context)!.confirmDeleteAccountTitle,
             style: TextStyle(color: isDark ? Colors.white : Colors.black),
           ),
           content: Column(
@@ -526,13 +639,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Weet je zeker dat je je account wilt verwijderen? '
-                'Dit kan niet ongedaan worden gemaakt.',
+                AppLocalizations.of(context)!.confirmDeleteAccountMessage,
                 style: TextStyle(color: isDark ? Colors.white : Colors.black),
               ),
               const SizedBox(height: 16),
               Text(
-                'Typ onderstaande code over om te bevestigen:',
+                AppLocalizations.of(context)!.deletionCodeInstruction,
                 style: TextStyle(
                   color: isDark ? Colors.white : Colors.black,
                   fontWeight: FontWeight.w500,
@@ -566,7 +678,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 cursorColor: isDark ? Colors.white : Colors.black,
                 decoration: InputDecoration(
-                  labelText: 'Voer de 6-cijferige code in',
+                  labelText: AppLocalizations.of(
+                    context,
+                  )!.enterDeletionCodeLabel,
                   labelStyle: TextStyle(
                     color: isDark ? Colors.grey[300] : Colors.grey[700],
                   ),
@@ -592,7 +706,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: _deletingAccount
                   ? null
                   : () => Navigator.of(context).pop(false),
-              child: const Text('Annuleren'),
+              child: Text(AppLocalizations.of(context)!.cancelButtonLabel),
             ),
             TextButton(
               onPressed: _deletingAccount
@@ -602,16 +716,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Navigator.of(context).pop(true);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
+                          SnackBar(
                             content: Text(
-                              'Code klopt niet, probeer het opnieuw.',
+                              AppLocalizations.of(
+                                context,
+                              )!.deletionCodeMismatchError,
                             ),
                           ),
                         );
                       }
                     },
               child: Text(
-                'Verwijderen',
+                AppLocalizations.of(context)!.deleteAccountButtonLabel,
                 style: TextStyle(color: colorScheme.error),
               ),
             ),
@@ -635,7 +751,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) {
         return AlertDialog(
           title: Text(
-            'Nieuw bericht publiceren',
+            AppLocalizations.of(context)!.createAnnouncementTitle,
             style: TextStyle(
               color: Theme.of(context).colorScheme.brightness == Brightness.dark
                   ? Colors.white
@@ -651,7 +767,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   controller: titleController,
                   autofocus: true,
                   decoration: InputDecoration(
-                    labelText: 'Titel',
+                    labelText: AppLocalizations.of(context)!.titleLabel,
                     border: const OutlineInputBorder(),
                     labelStyle: TextStyle(
                       color:
@@ -675,7 +791,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       : Colors.black,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Titel mag niet leeg zijn.';
+                      return AppLocalizations.of(context)!.titleValidationError;
                     }
                     return null;
                   },
@@ -685,7 +801,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   controller: messageController,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    labelText: 'Bericht',
+                    labelText: AppLocalizations.of(context)!.messageLabel,
                     border: const OutlineInputBorder(),
                     labelStyle: TextStyle(
                       color:
@@ -709,7 +825,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       : Colors.black,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Bericht mag niet leeg zijn.';
+                      return AppLocalizations.of(
+                        context,
+                      )!.messageValidationError;
                     }
                     return null;
                   },
@@ -720,7 +838,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annuleren'),
+              child: Text(AppLocalizations.of(context)!.cancelButtonLabel),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -739,15 +857,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (mounted) {
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Bericht succesvol gepubliceerd!'),
+                        SnackBar(
+                          content: Text(
+                            AppLocalizations.of(
+                              context,
+                            )!.announcementPublishedSuccess,
+                          ),
                         ),
                       );
                     }
                   } catch (e) {}
                 }
               },
-              child: const Text('Publiceren'),
+              child: Text(AppLocalizations.of(context)!.publishButtonLabel),
             ),
           ],
         );
@@ -778,22 +900,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               return AlertDialog(
                 title: Text(
-                  'Niet-opgeslagen wijzigingen',
+                  AppLocalizations.of(context)!.unsavedChangesTitle,
                   style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 ),
                 content: Text(
-                  'Je hebt wijzigingen aangebracht die nog niet zijn opgeslagen. '
-                  'Weet je zeker dat je wilt afsluiten zonder op te slaan?',
+                  AppLocalizations.of(context)!.unsavedChangesMessage,
                   style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Blijven'),
+                    child: Text(
+                      AppLocalizations.of(context)!.cancelButtonLabel,
+                    ),
                   ),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text('Afsluiten'),
+                    child: Text(
+                      AppLocalizations.of(context)!.discardButtonLabel,
+                    ),
                   ),
                 ],
               );
@@ -849,7 +974,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   children: [
                                     // e‑mail
                                     Text(
-                                      user?.email ?? 'Onbekende gebruiker',
+                                      user?.email ??
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.unknownUser,
                                       style: theme.textTheme.titleMedium
                                           ?.copyWith(
                                             fontWeight: FontWeight.bold,
@@ -883,7 +1011,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                               ),
                               SwitchListTile(
-                                title: Text(AppLocalizations.of(context)!.enableMealNotifications),
+                                title: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.enableMealNotifications,
+                                ),
                                 value: _mealNotificationsEnabled,
                                 onChanged: (bool value) async {
                                   final prefs =
@@ -900,7 +1032,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               const Divider(),
                               ListTile(
-                                title: Text(AppLocalizations.of(context)!.breakfast),
+                                title: Text(
+                                  AppLocalizations.of(context)!.breakfast,
+                                ),
                                 trailing: Text(_breakfastTime.format(context)),
                                 onTap: () => _pickTime(
                                   context,
@@ -922,7 +1056,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                               ListTile(
-                                title: Text(AppLocalizations.of(context)!.lunch),
+                                title: Text(
+                                  AppLocalizations.of(context)!.lunch,
+                                ),
                                 trailing: Text(_lunchTime.format(context)),
                                 onTap: () => _pickTime(context, _lunchTime, (
                                   newTime,
@@ -939,7 +1075,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 }),
                               ),
                               ListTile(
-                                title: Text(AppLocalizations.of(context)!.dinner),
+                                title: Text(
+                                  AppLocalizations.of(context)!.dinner,
+                                ),
                                 trailing: Text(_dinnerTime.format(context)),
                                 onTap: () => _pickTime(context, _dinnerTime, (
                                   newTime,
@@ -957,6 +1095,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   setState(() => _dinnerTime = newTime);
                                   await _updateNotificationSchedule();
                                 }),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Card(
+                        color: cardColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: isDark ? 0 : 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                AppLocalizations.of(context)!.language,
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonFormField<String>(
+                                      value:
+                                          (appLocale.value?.languageCode) ??
+                                          Localizations.localeOf(
+                                            context,
+                                          ).languageCode,
+                                      items: const [
+                                        DropdownMenuItem(
+                                          value: 'nl',
+                                          child: Text('Nederlands'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'en',
+                                          child: Text('English'),
+                                        ),
+                                      ],
+                                      onChanged: (val) => _setLocale(val),
+                                      decoration: InputDecoration(
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  TextButton(
+                                    onPressed: () => _setLocale(null),
+                                    child: Text(
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.useSystemLocale,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -1006,7 +1210,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         icon: const Icon(Icons.refresh),
-                        label: Text(AppLocalizations.of(context)!.restartTutorial),
+                        label: Text(
+                          AppLocalizations.of(context)!.restartTutorial,
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blueAccent,
                           foregroundColor: Colors.white,
@@ -1030,8 +1236,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               }, SetOptions(merge: true));
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Uitleg is opnieuw gestart!'),
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.tutorialRestartedMessage,
+                                ),
                               ),
                             );
                           }
@@ -1079,7 +1289,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     color: primaryTextColor,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: AppLocalizations.of(context)!.currentWeightKg,
+                                    labelText: AppLocalizations.of(
+                                      context,
+                                    )!.currentWeightKg,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1091,13 +1303,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.trim().isEmpty) {
-                                      return AppLocalizations.of(context)!.enterCurrentWeight;
+                                      return AppLocalizations.of(
+                                        context,
+                                      )!.enterCurrentWeight;
                                     }
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
                                     );
                                     if (v == null || v <= 0) {
-                                      return AppLocalizations.of(context)!.enterValidWeight;
+                                      return AppLocalizations.of(
+                                        context,
+                                      )!.enterValidWeight;
                                     }
                                     return null;
                                   },
@@ -1117,7 +1333,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     color: primaryTextColor,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: AppLocalizations.of(context)!.heightCm,
+                                    labelText: AppLocalizations.of(
+                                      context,
+                                    )!.heightCm,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1129,13 +1347,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.trim().isEmpty) {
-                                      return AppLocalizations.of(context)!.enterHeight;
+                                      return AppLocalizations.of(
+                                        context,
+                                      )!.enterHeight;
                                     }
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
                                     );
                                     if (v == null || v < 100 || v > 250) {
-                                      return AppLocalizations.of(context)!.enterHeightBetween100And250;
+                                      return AppLocalizations.of(
+                                        context,
+                                      )!.enterHeightBetween100And250;
                                     }
                                     return null;
                                   },
@@ -1156,7 +1378,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     color: primaryTextColor,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: AppLocalizations.of(context)!.waistCircumferenceCm,
+                                    labelText: AppLocalizations.of(
+                                      context,
+                                    )!.waistCircumferenceCm,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1168,7 +1392,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.trim().isEmpty) {
-                                      return AppLocalizations.of(context)!.enterWaistCircumference;
+                                      return AppLocalizations.of(
+                                        context,
+                                      )!.enterWaistCircumference;
                                     }
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
@@ -1177,7 +1403,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         v <= 0 ||
                                         v < 30 ||
                                         v > 200) {
-                                      return AppLocalizations.of(context)!.enterValidWaistCircumference;
+                                      return AppLocalizations.of(
+                                        context,
+                                      )!.enterValidWaistCircumference;
                                     }
                                     return null;
                                   },
@@ -1200,7 +1428,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     color: primaryTextColor,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: AppLocalizations.of(context)!.targetWeightKg,
+                                    labelText: AppLocalizations.of(
+                                      context,
+                                    )!.targetWeightKg,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1212,13 +1442,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.trim().isEmpty) {
-                                      return AppLocalizations.of(context)!.enterTargetWeight;
+                                      return AppLocalizations.of(
+                                        context,
+                                      )!.enterTargetWeight;
                                     }
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
                                     );
                                     if (v == null || v <= 0) {
-                                      return AppLocalizations.of(context)!.enterValidTargetWeight;
+                                      return AppLocalizations.of(
+                                        context,
+                                      )!.enterValidTargetWeight;
                                     }
                                     return null;
                                   },
@@ -1235,7 +1469,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      AppLocalizations.of(context)!.sleepHoursPerNight,
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.sleepHoursPerNight,
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(color: primaryTextColor),
                                     ),
@@ -1284,9 +1520,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 // Activiteitsniveau (dropdown)
                                 DropdownButtonFormField<String>(
                                   isExpanded: true,
-                                  value: _activityLevel,
+                                  value: _activityKey,
                                   decoration: InputDecoration(
-                                    labelText: AppLocalizations.of(context)!.activityLevel,
+                                    labelText: AppLocalizations.of(
+                                      context,
+                                    )!.activityLevel,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1300,12 +1538,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: primaryTextColor,
                                   ),
-                                  items: _activityOptions
+                                  items: _activityOptionKeys
                                       .map(
-                                        (e) => DropdownMenuItem(
-                                          value: e,
+                                        (k) => DropdownMenuItem(
+                                          value: k,
                                           child: Text(
-                                            e,
+                                            _localizedActivityLabel(context, k),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
@@ -1313,7 +1551,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       .toList(),
                                   onChanged: (val) {
                                     if (val == null) return;
-                                    setState(() => _activityLevel = val);
+                                    setState(() => _activityKey = val);
                                     _hasUnsavedChanges = true;
                                   },
                                 ),
@@ -1321,9 +1559,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                                 // Doel (dropdown)
                                 DropdownButtonFormField<String>(
-                                  value: _goal,
+                                  value: _goalKey,
                                   decoration: InputDecoration(
-                                    labelText: AppLocalizations.of(context)!.goal,
+                                    labelText: AppLocalizations.of(
+                                      context,
+                                    )!.goal,
                                     labelStyle: TextStyle(
                                       color: secondaryTextColor,
                                     ),
@@ -1337,17 +1577,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: primaryTextColor,
                                   ),
-                                  items: _goalOptions
+                                  items: _goalOptionKeys
                                       .map(
-                                        (e) => DropdownMenuItem(
-                                          value: e,
-                                          child: Text(e),
+                                        (k) => DropdownMenuItem(
+                                          value: k,
+                                          child: Text(
+                                            _localizedGoalLabel(context, k),
+                                          ),
                                         ),
                                       )
                                       .toList(),
                                   onChanged: (val) {
                                     if (val == null) return;
-                                    setState(() => _goal = val);
+                                    setState(() => _goalKey = val);
                                     _hasUnsavedChanges = true;
                                   },
                                 ),
@@ -1377,8 +1619,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         : const Icon(Icons.save),
                                     label: Text(
                                       _saving
-                                          ? AppLocalizations.of(context)!.savingSettings
-                                          : AppLocalizations.of(context)!.saveSettings,
+                                          ? AppLocalizations.of(
+                                              context,
+                                            )!.savingSettings
+                                          : AppLocalizations.of(
+                                              context,
+                                            )!.saveSettings,
                                     ),
                                     onPressed: _saving ? null : _saveProfile,
                                   ),
@@ -1400,7 +1646,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  AppLocalizations.of(context)!.adminAnnouncements,
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.adminAnnouncements,
                                   style: Theme.of(context).textTheme.titleLarge
                                       ?.copyWith(
                                         color: isDark
@@ -1411,18 +1659,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 const SizedBox(height: 16),
                                 ListTile(
                                   leading: const Icon(Icons.campaign),
-                                  title: Text(AppLocalizations.of(context)!.createAnnouncement),
+                                  title: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.createAnnouncement,
+                                  ),
                                   subtitle: Text(
-                                    AppLocalizations.of(context)!.createAnnouncementSubtitle,
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.createAnnouncementSubtitle,
                                   ),
                                   onTap: _showCreateAnnouncementDialog,
                                 ),
                                 const Divider(),
                                 ListTile(
                                   leading: const Icon(Icons.edit_note),
-                                  title: Text(AppLocalizations.of(context)!.manageAnnouncements),
-                                  subtitle:  Text(
-                                    AppLocalizations.of(context)!.manageAnnouncementsSubtitle,
+                                  title: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.manageAnnouncements,
+                                  ),
+                                  subtitle: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.manageAnnouncementsSubtitle,
                                   ),
                                   onTap: () {
                                     Navigator.of(context).push(
@@ -1436,9 +1696,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 const Divider(),
                                 ListTile(
                                   leading: const Icon(Icons.edit_note),
-                                  title: Text(AppLocalizations.of(context)!.decryptValues),
+                                  title: Text(
+                                    AppLocalizations.of(context)!.decryptValues,
+                                  ),
                                   subtitle: Text(
-                                    AppLocalizations.of(context)!.decryptValuesSubtitle,
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.decryptValuesSubtitle,
                                   ),
                                   onTap: () {
                                     Navigator.of(context).push(
@@ -1572,7 +1836,7 @@ class CreditsView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'ABSI Data Attribution',
+                AppLocalizations.of(context)!.appCredits,
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: textColor,
                   fontWeight: FontWeight.bold,
@@ -1737,7 +2001,11 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                   if (mounted) {
                     Navigator.of(context).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
-                     SnackBar(content: Text(AppLocalizations.of(context)!.announcementUpdated)),
+                      SnackBar(
+                        content: Text(
+                          AppLocalizations.of(context)!.announcementUpdated,
+                        ),
+                      ),
                     );
                   }
                 }
@@ -1753,9 +2021,11 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
   Future<void> _deleteAnnouncement(String docId) async {
     await _announcements.doc(docId).delete();
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.announcementDeleted)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.announcementDeleted),
+        ),
+      );
     }
   }
 
@@ -1825,7 +2095,8 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
             padding: const EdgeInsets.all(8.0),
             children: snapshot.data!.docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
-              final title = data['title'] ?? 'Geen titel';
+              final title =
+                  data['title'] ?? AppLocalizations.of(context)!.untitled;
               final message = data['message'] ?? '';
               final isActive = data['isActive'] ?? false;
               final timestamp = data['createdAt'] as Timestamp?;
@@ -1869,7 +2140,9 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                       const SizedBox(height: 8),
                       Chip(
                         label: Text(
-                          isActive ? AppLocalizations.of(context)!.active : AppLocalizations.of(context)!.inactive,
+                          isActive
+                              ? AppLocalizations.of(context)!.active
+                              : AppLocalizations.of(context)!.inactive,
                           style: TextStyle(
                             color: isActive
                                 ? cs.onPrimaryContainer
@@ -1893,7 +2166,9 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                           Icons.edit,
                           color: isDark ? Colors.white : cs.primary,
                         ),
-                        tooltip: AppLocalizations.of(context)!.editAnnouncementTooltip,
+                        tooltip: AppLocalizations.of(
+                          context,
+                        )!.editAnnouncementTooltip,
                         onPressed: () => _editAnnouncement(doc),
                       ),
                       IconButton(
@@ -1903,7 +2178,9 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                               ? (isDark ? Colors.white : cs.primary)
                               : (isDark ? Colors.white70 : cs.onSurfaceVariant),
                         ),
-                        tooltip: isActive ? AppLocalizations.of(context)!.deactivate : AppLocalizations.of(context)!.activate,
+                        tooltip: isActive
+                            ? AppLocalizations.of(context)!.deactivate
+                            : AppLocalizations.of(context)!.activate,
                         onPressed: () => _toggleActive(doc),
                       ),
                       IconButton(
@@ -1911,7 +2188,9 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                           Icons.delete_outline,
                           color: isDark ? Colors.white : cs.error,
                         ),
-                        tooltip: 'Verwijderen',
+                        tooltip: AppLocalizations.of(
+                          context,
+                        )!.deleteAnnouncementTooltip,
                         onPressed: () => _deleteAnnouncement(doc.id),
                       ),
                     ],
@@ -1971,10 +2250,8 @@ class _DecryptViewState extends State<DecryptView> {
       if (existing.docs.isNotEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Er bestaat al een openstaande aanvraag voor deze waarde.',
-            ),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.duplicateRequestError),
           ),
         );
         return;
@@ -1992,15 +2269,19 @@ class _DecryptViewState extends State<DecryptView> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Decryptie-aanvraag ingediend voor goedkeuring.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.requestSubmittedSuccess),
         ),
       );
       _encryptedController.clear(); // Clear field after submission
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Indienen van aanvraag mislukt: $e')),
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context)!.requestSubmissionFailed}: $e',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -2015,7 +2296,8 @@ class _DecryptViewState extends State<DecryptView> {
           .doc(requestId);
 
       final reqSnap = await reqRef.get();
-      if (!reqSnap.exists) throw Exception('Aanvraag niet gevonden.');
+      if (!reqSnap.exists)
+        throw Exception(AppLocalizations.of(context)!.requestNotFound);
 
       final data = reqSnap.data() as Map<String, dynamic>;
       final requesterUid = data['requesterUid'] as String;
@@ -2023,8 +2305,10 @@ class _DecryptViewState extends State<DecryptView> {
 
       if (requesterUid == approverUid) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Je kunt je eigen aanvraag niet goedkeuren.'),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.cannotApproveOwnRequest,
+            ),
           ),
         );
         return;
@@ -2032,7 +2316,8 @@ class _DecryptViewState extends State<DecryptView> {
 
       final encryptedJson = data['encryptedJson'] as String;
       final dek = await getUserDEKFromRemoteConfig(targetUid);
-      if (dek == null) throw Exception('Kon encryptiesleutel niet ophalen.');
+      if (dek == null)
+        throw Exception(AppLocalizations.of(context)!.dekNotFoundForUser);
 
       final decryptedValue = await decryptValue(encryptedJson, dek);
 
@@ -2044,14 +2329,20 @@ class _DecryptViewState extends State<DecryptView> {
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Aanvraag goedgekeurd.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.requestApprovedSuccess),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Goedkeuren mislukt: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context)!.requestApprovalFailed}: $e',
+          ),
+        ),
+      );
     }
   }
 
@@ -2063,13 +2354,14 @@ class _DecryptViewState extends State<DecryptView> {
           .doc(requestId);
 
       final reqSnap = await reqRef.get();
-      if (!reqSnap.exists) throw Exception('Aanvraag niet gevonden.');
+      if (!reqSnap.exists)
+        throw Exception(AppLocalizations.of(context)!.requestNotFound);
 
       final data = reqSnap.data() as Map<String, dynamic>;
       if (data['requesterUid'] == approverUid) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Je kunt je eigen aanvraag niet afkeuren.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.cannotRejectOwnRequest),
           ),
         );
         return;
@@ -2082,14 +2374,20 @@ class _DecryptViewState extends State<DecryptView> {
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Aanvraag afgekeurd.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.requestRejectedSuccess),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Afkeuren mislukt: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context)!.requestRejectionFailed}: $e',
+          ),
+        ),
+      );
     }
   }
 
@@ -2105,7 +2403,7 @@ class _DecryptViewState extends State<DecryptView> {
       appBar: AppBar(
         backgroundColor: isDark ? Colors.black : cs.background,
         title: Text(
-          'Decrypten',
+          AppLocalizations.of(context)!.decryptValues,
           style: TextStyle(color: isDark ? Colors.white : Colors.black),
         ),
         centerTitle: true,
@@ -2146,7 +2444,7 @@ class _DecryptViewState extends State<DecryptView> {
                         ),
                       ),
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Vul een UID in'
+                          ? AppLocalizations.of(context)!.pleaseEnterUid
                           : null,
                     ),
                     const SizedBox(height: 12),
@@ -2173,7 +2471,9 @@ class _DecryptViewState extends State<DecryptView> {
                         ),
                       ),
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Plak de versleutelde JSON'
+                          ? AppLocalizations.of(
+                              context,
+                            )!.pleaseEnterEncryptedJson
                           : null,
                     ),
                     const SizedBox(height: 16),
@@ -2200,7 +2500,9 @@ class _DecryptViewState extends State<DecryptView> {
                               )
                             : const Icon(Icons.send),
                         label: Text(
-                          _loading ? 'Indienen...' : 'Aanvraag indienen',
+                          _loading
+                              ? AppLocalizations.of(context)!.submit
+                              : AppLocalizations.of(context)!.submitRequest,
                         ),
                       ),
                     ),
@@ -2211,7 +2513,7 @@ class _DecryptViewState extends State<DecryptView> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Openstaande aanvragen',
+                  AppLocalizations.of(context)!.pendingRequests,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: isDark ? Colors.white : Colors.black,
                     fontWeight: FontWeight.w600,
@@ -2228,7 +2530,9 @@ class _DecryptViewState extends State<DecryptView> {
                   if (!snap.hasData)
                     return const Center(child: CircularProgressIndicator());
                   if (snap.data!.docs.isEmpty)
-                    return const Text('Geen aanvragen gevonden.');
+                    return Text(
+                      AppLocalizations.of(context)!.noPendingRequests,
+                    );
 
                   return ListView.builder(
                     shrinkWrap: true,
@@ -2257,14 +2561,14 @@ class _DecryptViewState extends State<DecryptView> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Voor UID: $targetUid',
+                                '${AppLocalizations.of(context)!.forUid}: $targetUid',
                                 style: theme.textTheme.labelLarge?.copyWith(
                                   color: isDark ? Colors.white : Colors.black,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Aangevraagd door: $requesterUid',
+                                '${AppLocalizations.of(context)!.requestedBy}: $requesterUid',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: isDark
                                       ? Colors.white70
@@ -2274,7 +2578,9 @@ class _DecryptViewState extends State<DecryptView> {
                               if (encryptedJson != null) ...[
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Versleutelde waarde:',
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.encryptedJsonLabel,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: isDark
                                         ? Colors.white70
@@ -2337,7 +2643,9 @@ class _DecryptViewState extends State<DecryptView> {
                                     children: [
                                       TextButton.icon(
                                         icon: const Icon(Icons.close),
-                                        label: const Text('Afkeuren'),
+                                        label: Text(
+                                          AppLocalizations.of(context)!.reject,
+                                        ),
                                         style: TextButton.styleFrom(
                                           foregroundColor: cs.error,
                                         ),
@@ -2346,7 +2654,9 @@ class _DecryptViewState extends State<DecryptView> {
                                       const SizedBox(width: 8),
                                       ElevatedButton.icon(
                                         icon: const Icon(Icons.check),
-                                        label: const Text('Goedkeuren'),
+                                        label: Text(
+                                          AppLocalizations.of(context)!.approve,
+                                        ),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: cs.primary,
                                           foregroundColor: cs.onPrimary,

@@ -152,9 +152,13 @@ class _RecipesScreenState extends State<RecipesScreen>
     final title = top['title'] ?? '';
     final liked = direction == _SwipeDirection.right;
 
+    final loc = AppLocalizations.of(context)!;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(liked ? 'Saved: $title' : 'Skipped: $title'),
+        content: Text(liked
+            ? '${loc.recipesSavedPrefix}$title'
+            : '${loc.recipesSkippedPrefix}$title'),
         duration: const Duration(milliseconds: 700),
       ),
     );
@@ -187,6 +191,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final loc = AppLocalizations.of(context)!;
 
     return Scaffold(
       body: SafeArea(
@@ -196,7 +201,7 @@ class _RecipesScreenState extends State<RecipesScreen>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                'Swipe naar links om over te slaan, naar rechts om op te slaan',
+                loc.recipesSwipeInstruction,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: isDark ? Colors.white70 : Colors.black87,
@@ -262,7 +267,7 @@ class _RecipesScreenState extends State<RecipesScreen>
                           );
                         },
                       )
-                    : const Center(child: Text('Geen recepten meer 🍽️')),
+                    : Center(child: Text(loc.recipesNoMore)),
               ),
             ),
             Padding(
@@ -395,6 +400,7 @@ class _RecipesScreenState extends State<RecipesScreen>
         return DraggableScrollableSheet(
           expand: false,
           builder: (context, scrollController) {
+            final loc = AppLocalizations.of(context)!;
             return Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -445,42 +451,42 @@ class _RecipesScreenState extends State<RecipesScreen>
                       }).toList(),
                     ),
                     const SizedBox(height: 12),
-                    _buildDetailRow('ID', recipe['id']),
+                    _buildDetailRow(loc.recipesDetailId, recipe['id']),
                     _buildDetailRow(
-                      'Preparation Time',
+                      loc.recipesDetailPreparationTime,
                       '${recipe['preparation_time']} min',
                     ),
                     _buildDetailRow(
-                      'Total Time',
+                      loc.recipesDetailTotalTime,
                       '${recipe['total_time']} min',
                     ),
-                    _buildDetailRow('Kcal', recipe['kcal'].toString()),
-                    _buildDetailRow('Fat', '${recipe['fat']} g'),
+                    _buildDetailRow(loc.recipesDetailKcal, recipe['kcal']?.toString()),
+                    _buildDetailRow(loc.recipesDetailFat, '${recipe['fat']} g'),
                     _buildDetailRow(
-                      'Saturated Fat',
+                      loc.recipesDetailSaturatedFat,
                       '${recipe['saturated_fat']} g',
                     ),
-                    _buildDetailRow('Carbs', '${recipe['carbs']} g'),
-                    _buildDetailRow('Protein', '${recipe['protein']} g'),
-                    _buildDetailRow('Fibers', '${recipe['fibers']} g'),
-                    _buildDetailRow('Salt', '${recipe['salt']} g'),
-                    _buildDetailRow('Persons', recipe['persons'].toString()),
-                    _buildDetailRow('Difficulty', recipe['difficulty']),
+                    _buildDetailRow(loc.recipesDetailCarbs, '${recipe['carbs']} g'),
+                    _buildDetailRow(loc.recipesDetailProtein, '${recipe['protein']} g'),
+                    _buildDetailRow(loc.recipesDetailFibers, '${recipe['fibers']} g'),
+                    _buildDetailRow(loc.recipesDetailSalt, '${recipe['salt']} g'),
+                    _buildDetailRow(loc.recipesDetailPersons, recipe['persons'].toString()),
+                    _buildDetailRow(loc.recipesDetailDifficulty, recipe['difficulty']),
                     if (recipe['prepreparation'] != null)
                       _buildDetailSection(
-                        'Prepreparation',
+                        loc.recipesPrepreparation,
                         recipe['prepreparation'],
                       ),
                     if (recipe['ingredients'] != null)
-                      _buildListSection('Ingredients', recipe['ingredients']),
+                      _buildListSection(loc.recipesIngredients, recipe['ingredients']),
                     if (recipe['steps'] != null)
-                      _buildListSection('Steps', recipe['steps']),
+                      _buildListSection(loc.recipesSteps, recipe['steps']),
                     if (recipe['kitchens'] != null)
-                      _buildListSection('Kitchens', recipe['kitchens']),
+                      _buildListSection(loc.recipesKitchens, recipe['kitchens']),
                     if (recipe['courses'] != null)
-                      _buildListSection('Courses', recipe['courses']),
+                      _buildListSection(loc.recipesCourses, recipe['courses']),
                     if (recipe['requirements'] != null)
-                      _buildListSection('Requirements', recipe['requirements']),
+                      _buildListSection(loc.recipesRequirements, recipe['requirements']),
                     const SizedBox(height: 24),
                   ],
                 ),

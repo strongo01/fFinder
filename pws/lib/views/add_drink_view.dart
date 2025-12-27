@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:fFinder/views/barcode_scanner.dart';
+import 'package:fFinder/l10n/app_localizations.dart';
 
 class AddDrinkPage extends StatefulWidget {
   final DateTime? selectedDate;
@@ -200,17 +201,13 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Je moet ingelogd zijn om te loggen.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.loginToLog)),
       );
       return;
     }
 
     SecretKey? userDEK = await getUserDEKFromRemoteConfig(user.uid);
 
-    /*final now = DateTime.now();
-    final todayDocId =
-        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-*/
     final date = widget.selectedDate ?? DateTime.now();
     final todayDocId =
         "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
@@ -280,7 +277,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     if (mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('$name ($amount ml) toegevoegd!')));
+      ).showSnackBar(SnackBar(content: Text('$name ($amount ml) ${AppLocalizations.of(context)!.added}!')));
       Navigator.of(context).pop();
     }
   }
@@ -292,22 +289,28 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     final customNameController = TextEditingController();
     String? selectedDrink;
     String? coffeeVariant; // voor koffie
-    final drinkOptions = ['Water', 'Koffie', 'Thee', 'Frisdrank', 'Anders'];
+    final drinkOptions = [
+      AppLocalizations.of(context)!.water,
+      AppLocalizations.of(context)!.coffee,
+      AppLocalizations.of(context)!.tea,
+      AppLocalizations.of(context)!.soda,
+      AppLocalizations.of(context)!.other,
+    ];
     final coffeeVariants = [
-      'Koffie zwart',
-      'Espresso',
-      'Ristretto',
-      'Lungo',
-      'Americano',
-      'Koffie met melk',
-      'Koffie met melk + suiker',
-      'Cappuccino',
-      'Latte',
-      'Flat White',
-      'Macchiato',
-      'Latte Macchiato',
-      'Iced Coffee',
-      'Andere koffie',
+      AppLocalizations.of(context)!.coffeeBlack,
+      AppLocalizations.of(context)!.espresso,
+      AppLocalizations.of(context)!.ristretto,
+      AppLocalizations.of(context)!.lungo,
+      AppLocalizations.of(context)!.americano,
+      AppLocalizations.of(context)!.coffeeWithMilk,
+      AppLocalizations.of(context)!.coffeeWithMilkSugar,
+      AppLocalizations.of(context)!.cappuccino,
+      AppLocalizations.of(context)!.latte,
+      AppLocalizations.of(context)!.flatWhite,
+      AppLocalizations.of(context)!.macchiato,
+      AppLocalizations.of(context)!.latteMacchiato,
+      AppLocalizations.of(context)!.icedCoffee,
+      AppLocalizations.of(context)!.otherCoffee,
     ];
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -317,46 +320,40 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             void updateKcalForCoffee() {
-              switch (coffeeVariant) {
-                case 'Koffie zwart':
-                case 'Espresso':
-                case 'Ristretto':
-                case 'Lungo':
-                case 'Americano':
-                  kcalController.text = '2';
-                  break;
-                case 'Koffie met melk':
-                  kcalController.text = '12';
-                  break;
-                case 'Koffie met melk + suiker':
-                  kcalController.text = '25';
-                  break;
-                case 'Cappuccino':
-                  kcalController.text = '55';
-                  break;
-                case 'Latte':
-                case 'Flat White':
-                  kcalController.text = '45';
-                  break;
-                case 'Macchiato':
-                  kcalController.text = '10';
-                  break;
-                case 'Latte Macchiato':
-                  kcalController.text = '50';
-                  break;
-                case 'Iced Coffee':
-                  kcalController.text = '60';
-                  break;
-                case 'Andere koffie':
-                default:
-                  kcalController.text = '';
-                  break;
+              final loc = AppLocalizations.of(context)!;
+              if (coffeeVariant == null) {
+                kcalController.text = '';
+                return;
+              }
+              if (coffeeVariant == loc.coffeeBlack ||
+                  coffeeVariant == loc.espresso ||
+                  coffeeVariant == loc.ristretto ||
+                  coffeeVariant == loc.lungo ||
+                  coffeeVariant == loc.americano) {
+                kcalController.text = '2';
+              } else if (coffeeVariant == loc.coffeeWithMilk) {
+                kcalController.text = '12';
+              } else if (coffeeVariant == loc.coffeeWithMilkSugar) {
+                kcalController.text = '25';
+              } else if (coffeeVariant == loc.cappuccino) {
+                kcalController.text = '55';
+              } else if (coffeeVariant == loc.latte || coffeeVariant == loc.flatWhite) {
+                kcalController.text = '45';
+              } else if (coffeeVariant == loc.macchiato) {
+                kcalController.text = '10';
+              } else if (coffeeVariant == loc.latteMacchiato) {
+                kcalController.text = '50';
+              } else if (coffeeVariant == loc.icedCoffee) {
+                kcalController.text = '60';
+              } else {
+                // Andere koffie / default
+                kcalController.text = '';
               }
             }
 
             return AlertDialog(
               title: Text(
-                'Nieuw Drankje Toevoegen',
+                AppLocalizations.of(context)!.newDrinkTitle,
                 style: TextStyle(
                   color: isDarkMode ? Colors.white : Colors.black,
                 ),
@@ -374,14 +371,15 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       children: [
                         DropdownButtonFormField<String>(
                           value: selectedDrink,
-                          hint: const Text('Kies een drankje'),
-                          onChanged: (value) {
+                          hint: Text(AppLocalizations.of(context)!.chooseDrink),
+                              onChanged: (value) {
                             setStateDialog(() {
                               selectedDrink = value;
                               coffeeVariant = null;
-                              if (value == 'Water' || value == 'Thee') {
+                              final loc = AppLocalizations.of(context)!;
+                              if (value == loc.water || value == loc.tea) {
                                 kcalController.text = '0';
-                              } else if (value != 'Koffie') {
+                              } else if (value != loc.coffee) {
                                 kcalController.text = '';
                               }
                             });
@@ -402,15 +400,15 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                               )
                               .toList(),
                           validator: (value) =>
-                              value == null ? 'Kies een drankje' : null,
+                              value == null ? AppLocalizations.of(context)!.chooseDrink : null,
                         ),
 
                         // koffie variant dropdown
-                        if (selectedDrink == 'Koffie') ...[
+                        if (selectedDrink == AppLocalizations.of(context)!.coffee) ...[
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
                             value: coffeeVariant,
-                            hint: const Text('Kies koffiesoort'),
+                            hint: Text(AppLocalizations.of(context)!.chooseCoffeeType),
                             onChanged: (value) {
                               setStateDialog(() {
                                 coffeeVariant = value;
@@ -433,11 +431,11 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                 )
                                 .toList(),
                             validator: (value) =>
-                                value == null ? 'Kies een koffiesoort' : null,
+                                value == null ? AppLocalizations.of(context)!.chooseCoffeeType : null,
                           ),
                         ],
 
-                        if (selectedDrink == 'Anders')
+                        if (selectedDrink == AppLocalizations.of(context)!.other)
                           Padding(
                             padding: const EdgeInsets.only(top: 8.0),
                             child: TextFormField(
@@ -446,7 +444,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                 color: isDarkMode ? Colors.white : Colors.black,
                               ),
                               decoration: InputDecoration(
-                                labelText: 'Naam van drankje',
+                                labelText: AppLocalizations.of(context)!.drinkNameLabel,
                                 labelStyle: TextStyle(
                                   color: isDarkMode
                                       ? Colors.white70
@@ -454,8 +452,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                 ),
                               ),
                               validator: (value) =>
-                                  (selectedDrink == 'Anders' && value!.isEmpty)
-                                  ? 'Naam is verplicht'
+                                  (selectedDrink == AppLocalizations.of(context)!.other && value!.isEmpty)
+                                  ? AppLocalizations.of(context)!.nameRequired
                                   : null,
                             ),
                           ),
@@ -466,7 +464,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                             color: isDarkMode ? Colors.white : Colors.black,
                           ),
                           decoration: InputDecoration(
-                            labelText: 'Hoeveelheid (ml)',
+                            labelText: AppLocalizations.of(context)!.amountMlLabel,
                             labelStyle: TextStyle(
                               color: isDarkMode
                                   ? Colors.white70
@@ -476,9 +474,9 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                           keyboardType: TextInputType.number,
                           validator: (value) {
                             if (value!.isEmpty)
-                              return 'Hoeveelheid is verplicht';
+                              return AppLocalizations.of(context)!.amountRequired;
                             if (int.tryParse(value) == null)
-                              return 'Voer een getal in';
+                              return AppLocalizations.of(context)!.enterNumber;
                             return null;
                           },
                         ),
@@ -490,7 +488,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                             color: isDarkMode ? Colors.white : Colors.black,
                           ),
                           decoration: InputDecoration(
-                            labelText: 'Kcal per 100 ml',
+                            labelText: AppLocalizations.of(context)!.kcalPer100Label,
                             labelStyle: TextStyle(
                               color: isDarkMode
                                   ? Colors.white70
@@ -508,9 +506,9 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                           ),
                           keyboardType: TextInputType.number,
                           validator: (value) {
-                            if (value!.isEmpty) return 'Kcal is verplicht';
+                            if (value!.isEmpty) return AppLocalizations.of(context)!.kcalRequired;
                             if (double.tryParse(value) == null)
-                              return 'Voer een getal in';
+                              return AppLocalizations.of(context)!.enterNumber;
                             return null;
                           },
                         ),
@@ -522,7 +520,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Annuleren'),
+                  child: Text(AppLocalizations.of(context)!.cancel),
                 ),
                 ElevatedButton(
                    style: ElevatedButton.styleFrom(
@@ -533,11 +531,12 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                     if (formKey.currentState!.validate()) {
                       // naam bepalen
                       String name;
-                      if (selectedDrink == 'Koffie' &&
+                      final loc = AppLocalizations.of(context)!;
+                      if (selectedDrink == loc.coffee &&
                           coffeeVariant != null &&
-                          coffeeVariant != 'Andere koffie') {
+                          coffeeVariant != loc.otherCoffee) {
                         name = coffeeVariant!;
-                      } else if (selectedDrink == 'Anders') {
+                      } else if (selectedDrink == loc.other) {
                         name = customNameController.text;
                       } else {
                         name = selectedDrink!;
@@ -560,7 +559,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       Navigator.of(context).pop();
                     }
                   },
-                  child: const Text('Toevoegen'),
+                  child: Text(AppLocalizations.of(context)!.addButton),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -572,11 +571,12 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
 
                     // bepaal naam en waarden
                     String name;
-                    if (selectedDrink == 'Koffie' &&
+                    final loc = AppLocalizations.of(context)!;
+                    if (selectedDrink == loc.coffee &&
                         coffeeVariant != null &&
-                        coffeeVariant != 'Andere koffie') {
+                        coffeeVariant != loc.otherCoffee) {
                       name = coffeeVariant!;
-                    } else if (selectedDrink == 'Anders') {
+                    } else if (selectedDrink == loc.other) {
                       name = customNameController.text;
                     } else {
                       name = selectedDrink!;
@@ -606,10 +606,10 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
 
                     // vraag wanneer gedronken (ontbijt/lunch/...)
                     final mealOptions = [
-                      'Ontbijt',
-                      'Lunch',
-                      'Avondeten',
-                      'Tussendoor',
+                      AppLocalizations.of(pageContext)!.breakfast,
+                      AppLocalizations.of(pageContext)!.lunch,
+                      AppLocalizations.of(pageContext)!.dinner,
+                      AppLocalizations.of(pageContext)!.snack,
                     ];
                     final selectedMeal = await showDialog<String>(
                       context: pageContext,
@@ -617,7 +617,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                         final isDark = Theme.of(context).brightness == Brightness.dark;
                         return AlertDialog(
                           title: Text(
-                            'Wanneer gedronken?',
+                            AppLocalizations.of(context)!.whenDrankTitle,
                             style: TextStyle(
                               color: isDark ? Colors.white : Colors.black,
                             ),
@@ -639,7 +639,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('Annuleren'),
+                              child: Text(AppLocalizations.of(context)!.cancel),
                             ),
                           ],
                         );
@@ -651,7 +651,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       await _logDrink(name, amount, selectedMeal, kcalForPortion);
                     }
                   },
-                  child: const Text('Toevoegen en loggen'),
+                  child: Text(AppLocalizations.of(context)!.addAndLogButton),
                 ),
               ],
             );
@@ -744,7 +744,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       builder: (context) {
         return AlertDialog(
           title: Text(
-            'Scan / plak barcode',
+            AppLocalizations.of(context)!.scanPasteBarcode,
             style: TextStyle(color: isDark ? Colors.white : Colors.black),
           ),
           content: Form(
@@ -755,14 +755,14 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                   child: TextFormField(
                     controller: barcodeController,
                     decoration: InputDecoration(
-                      labelText: 'Barcode (EAN/GTIN)',
+                      labelText: AppLocalizations.of(context)!.barcodeLabel,
                       labelStyle: TextStyle(
                         color: isDark ? Colors.white70 : Colors.black54,
                       ),
                     ),
                     keyboardType: TextInputType.number,
                     validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Voer barcode in'
+                        ? AppLocalizations.of(context)!.enterBarcode
                         : null,
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.black,
@@ -796,14 +796,14 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Annuleren'),
+              child: Text(AppLocalizations.of(context)!.cancel),
             ),
             ElevatedButton(
               onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
                 Navigator.of(context).pop(true);
               },
-              child: const Text('Zoeken'),
+              child: Text(AppLocalizations.of(context)!.searchButton),
             ),
           ],
         );
@@ -813,21 +813,21 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     if (res != true) return;
     final bc = barcodeController.text.trim();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Zoeken...'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.searching),
+        duration: const Duration(seconds: 2),
       ),
     );
     final kcal = await _fetchKcalFromBarcode(bc);
     if (kcal == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Geen kcal-waarde gevonden voor barcode $bc')),
+        SnackBar(content: Text('${AppLocalizations.of(context)!.noKcalFoundPrefix}$bc')),
       );
       return;
     }
     kcalController.text = kcal.round().toString();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Gevonden: ${kcal.round()} kcal per 100g/ml')),
+      SnackBar(content: Text('${AppLocalizations.of(context)!.foundPrefix}${kcal.round()}${AppLocalizations.of(context)!.kcalPer100Unit}')),
     );
   }
 
@@ -836,7 +836,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Drinken Toevoegen')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context)!.addDrinkTitle)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
@@ -877,10 +877,10 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                   return ElevatedButton(
                     onPressed: () async {
                       final mealOptions = [
-                        'Ontbijt',
-                        'Lunch',
-                        'Avondeten',
-                        'Tussendoor',
+                        AppLocalizations.of(context)!.breakfast,
+                        AppLocalizations.of(context)!.lunch,
+                        AppLocalizations.of(context)!.dinner,
+                        AppLocalizations.of(context)!.snack,
                       ];
                       final selected = await showDialog<String>(
                         context: context,
@@ -889,7 +889,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                               Theme.of(context).brightness == Brightness.dark;
                           return AlertDialog(
                             title: Text(
-                              'Wanneer gedronken?',
+                              AppLocalizations.of(context)!.whenDrankTitle,
                               style: TextStyle(
                                 color: isDark ? Colors.white : Colors.black,
                               ),
@@ -914,7 +914,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.of(context).pop(),
-                                child: const Text('Annuleren'),
+                                child: Text(AppLocalizations.of(context)!.cancel),
                               ),
                             ],
                           );
@@ -952,7 +952,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                 ? Colors.grey[900]
                                 : Colors.white,
                             title: Text(
-                              'Drankje aanpassen',
+                              AppLocalizations.of(context)!.editDrinkTitle,
                               style: TextStyle(
                                 color: isDark ? Colors.white : Colors.black,
                               ),
@@ -963,7 +963,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                 TextFormField(
                                   controller: nameController,
                                   decoration: InputDecoration(
-                                    labelText: 'Naam',
+                                    labelText: AppLocalizations.of(context)!.nameLabel,
                                     labelStyle: TextStyle(
                                       color: isDark
                                           ? Colors.white70
@@ -980,7 +980,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                 TextFormField(
                                   controller: amountController,
                                   decoration: InputDecoration(
-                                    labelText: 'Hoeveelheid (ml)',
+                                    labelText: AppLocalizations.of(context)!.amountMlLabel,
                                     labelStyle: TextStyle(
                                       color: isDark
                                           ? Colors.white70
@@ -998,14 +998,14 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       TextFormField(
                                   controller: kcalController,
                                   decoration: InputDecoration(
-                                    labelText: 'Kcal per 100 ml',
+                                    labelText: AppLocalizations.of(context)!.kcalPer100Label,
                                     labelStyle: TextStyle(
                                       color: isDark
                                           ? Colors.white70
                                           : Colors.black54,
                                     ),
                                     suffixIcon: IconButton(
-                                      tooltip: 'Zoek op barcode',
+                                      tooltip: AppLocalizations.of(context)!.barcodeSearchTooltip,
                                       icon: Icon(
                                         Icons.qr_code_scanner,
                                         color: isDark ? Colors.white70 : Colors.black54,
@@ -1032,15 +1032,15 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                   _saveDrinkPresets();
                                   Navigator.of(context).pop();
                                 },
-                                child: const Text(
-                                  'Verwijderen',
-                                  style: TextStyle(color: Colors.red),
+                                child: Text(
+                                  AppLocalizations.of(context)!.delete,
+                                  style: const TextStyle(color: Colors.red),
                                 ),
                               ),
                               TextButton(
                                 onPressed: () => Navigator.of(context).pop(),
                                 child: Text(
-                                  'Annuleren',
+                                  AppLocalizations.of(context)!.cancel,
                                   style: TextStyle(
                                     color: isDark ? Colors.white : Colors.black,
                                   ),
@@ -1089,7 +1089,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                   _saveDrinkPresets();
                                   Navigator.of(context).pop();
                                 },
-                                child: const Text('Opslaan'),
+                                child: Text(AppLocalizations.of(context)!.saveButton),
                               ),
                             ],
                           );
@@ -1157,48 +1157,58 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
   }
 
   IconData _getIconForDrink(String name) {
-    // bepaalt icoon op basis van dranknaam
-    final lowerCaseName = name.toLowerCase();
-    if (lowerCaseName.contains('water')) return Icons.water_drop;
-    if (lowerCaseName.contains('koffie')) return Icons.coffee;
-    if (lowerCaseName.contains('thee')) return Icons.emoji_food_beverage;
-    if (lowerCaseName.contains('fris') || lowerCaseName.contains('soda')) {
-      return Icons.local_bar;
+    final lower = name.toLowerCase();
+    final loc = AppLocalizations.of(context)!;
+
+    bool containsAny(List<String?> keys) {
+      for (final k in keys) {
+        if (k == null || k.isEmpty) continue;
+        if (lower.contains(k.toLowerCase())) return true;
+      }
+      return false;
     }
+
+    if (containsAny([loc.water, 'water'])) return Icons.water_drop;
+    if (containsAny([loc.coffee, loc.icedCoffee, loc.latteMacchiato, loc.macchiato, loc.flatWhite, loc.latte, loc.cappuccino, loc.coffeeWithMilkSugar, loc.coffeeBlack, loc.espresso, loc.ristretto, loc.lungo, loc.americano, loc.coffeeWithMilk, 'koffie', 'coffee'])) return Icons.coffee;
+    if (containsAny([loc.tea, 'thee', 'tea'])) return Icons.emoji_food_beverage;
+    if (containsAny([loc.soda, 'fris', 'soda', 'cola'])) return Icons.local_bar;
+
     return Icons.local_drink;
   }
 
   Map<String, Color> _getColorsForDrink(String name, bool isDarkMode) {
-    // bepaalt kleuren op basis van dranknaam
-    final lowerCaseName = name.toLowerCase();
+    final lower = name.toLowerCase();
+    final loc = AppLocalizations.of(context)!;
 
-    if (lowerCaseName.contains('water')) {
+    bool matches(List<String?> keys) {
+      for (final k in keys) {
+        if (k == null || k.isEmpty) continue;
+        if (lower.contains(k.toLowerCase())) return true;
+      }
+      return false;
+    }
+
+    if (matches([loc.water, 'water'])) {
       return isDarkMode
           ? {'background': Colors.blue[900]!, 'foreground': Colors.blue[200]!}
           : {'background': Colors.blue[100]!, 'foreground': Colors.blue[800]!};
     }
-    if (lowerCaseName.contains('koffie')) {
+    if (matches([loc.coffee, loc.icedCoffee, loc.latteMacchiato, loc.macchiato, loc.flatWhite, loc.latte, loc.cappuccino, loc.coffeeWithMilkSugar, loc.coffeeBlack, loc.espresso, loc.ristretto, loc.lungo, loc.americano, loc.coffeeWithMilk, 'koffie', 'coffee'])) {
       return isDarkMode
           ? {'background': Colors.brown[800]!, 'foreground': Colors.brown[100]!}
-          : {
-              'background': Colors.brown[100]!,
-              'foreground': Colors.brown[800]!,
-            };
+          : {'background': Colors.brown[100]!, 'foreground': Colors.brown[800]!};
     }
-    if (lowerCaseName.contains('thee')) {
+    if (matches([loc.tea, 'thee', 'tea'])) {
       return isDarkMode
           ? {'background': Colors.amber[900]!, 'foreground': Colors.amber[200]!}
-          : {
-              'background': Colors.amber[100]!,
-              'foreground': Colors.amber[800]!,
-            };
+          : {'background': Colors.amber[100]!, 'foreground': Colors.amber[800]!};
     }
-    if (lowerCaseName.contains('fris') || lowerCaseName.contains('soda')) {
+    if (matches([loc.soda, 'fris', 'soda', 'cola'])) {
       return isDarkMode
           ? {'background': Colors.red[900]!, 'foreground': Colors.red[200]!}
           : {'background': Colors.red[100]!, 'foreground': Colors.red[800]!};
     }
-    // Default colors
+
     return isDarkMode
         ? {'background': Colors.grey[800]!, 'foreground': Colors.white}
         : {'background': Colors.grey[200]!, 'foreground': Colors.black};

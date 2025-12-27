@@ -7,6 +7,7 @@ import 'package:fFinder/views/feedback_view.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fFinder/l10n/app_localizations.dart';
 
 class WeightView extends StatefulWidget {
   const WeightView({super.key});
@@ -270,7 +271,7 @@ class _WeightViewState extends State<WeightView> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Kon gewicht niet laden: $e')));
+      ).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.weightLoadErrorPrefix} $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -316,7 +317,7 @@ class _WeightViewState extends State<WeightView> {
     final waistM = _waist / 100.0;
     final absi = waistM / (pow(_bmi!, 2.0 / 3.0) * pow(heightM, 0.5));
 
-    String? range;
+    String? rangeKey;
     double? z;
     // try compute z-score if reference table available and birthDate/gender loaded in _loadUserData
     try {
@@ -364,15 +365,15 @@ class _WeightViewState extends State<WeightView> {
             if (sd != 0) {
               z = (absi - mean) / sd;
               if (z <= -1.0) {
-                range = 'zeer_laag risico';
+                rangeKey = 'very_low';
               } else if (z <= -0.5) {
-                range = 'laag risico';
+                rangeKey = 'low';
               } else if (z <= 0.5) {
-                range = 'gemiddeld risico';
+                rangeKey = 'medium';
               } else if (z <= 1.0) {
-                range = 'verhoogd risico';
+                rangeKey = 'increased';
               } else {
-                range = 'hoog';
+                rangeKey = 'high';
               }
             }
           }
@@ -383,20 +384,20 @@ class _WeightViewState extends State<WeightView> {
     setState(() {
       _absi = absi;
       _absiZ = z;
-      _absiRange = range;
+      _absiRange = rangeKey;
     });
   }
 
-  Color _absiCategoryColor(String? range, bool isDark) {
-    if (range == null) return isDark ? Colors.white : Colors.black;
-    switch (range) {
-      case 'zeer_laag risico':
-      case 'laag risico':
+  Color _absiCategoryColor(String? rangeKey, bool isDark) {
+    if (rangeKey == null) return isDark ? Colors.white : Colors.black;
+    switch (rangeKey) {
+      case 'very_low':
+      case 'low':
         return Colors.green;
-      case 'gemiddeld risico':
+      case 'medium':
         return Colors.orange;
-      case 'verhoogd risico':
-      case 'hoog':
+      case 'increased':
+      case 'high':
       default:
         return Colors.redAccent;
     }
@@ -655,13 +656,13 @@ class _WeightViewState extends State<WeightView> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gewicht + doelen opgeslagen')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.saveSuccess)),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Opslaan mislukt: $e')));
+      ).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.saveFailedPrefix} $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -727,11 +728,11 @@ class _WeightViewState extends State<WeightView> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   String _bmiCategory(double bmi) {
-    if (bmi < 16) return 'Veel te laag';
-    if (bmi < 18.5) return 'Laag';
-    if (bmi < 25) return 'Goed';
-    if (bmi < 30) return 'Te hoog';
-    return 'Veel te hoog';
+    if (bmi < 16) return AppLocalizations.of(context)!.bmiVeryLow;
+    if (bmi < 18.5) return AppLocalizations.of(context)!.bmiLow;
+    if (bmi < 25) return AppLocalizations.of(context)!.bmiGood;
+    if (bmi < 30) return AppLocalizations.of(context)!.bmiHigh;
+    return AppLocalizations.of(context)!.bmiVeryHigh;
   }
 
   Color _bmiCategoryColor(double bmi, bool isDark) {
@@ -755,6 +756,7 @@ class _WeightViewState extends State<WeightView> {
         ? _entries
         : _waistEntries;
     final unit = _measurementType == 'weight' ? 'kg' : 'cm';
+    final loc = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
@@ -789,14 +791,14 @@ class _WeightViewState extends State<WeightView> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Je gewicht',
+                        loc.weightTitle,
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: primaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Pas je gewicht aan en bekijk je BMI.',
+                        loc.weightSubtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: secondaryTextColor,
                         ),
@@ -824,7 +826,7 @@ class _WeightViewState extends State<WeightView> {
                                   color: primaryTextColor,
                                 ),
                                 decoration: InputDecoration(
-                                  labelText: 'Gewicht (kg)',
+                                  labelText: loc.weightLabel,
                                   labelStyle: TextStyle(
                                     color: secondaryTextColor,
                                   ),
@@ -856,7 +858,7 @@ class _WeightViewState extends State<WeightView> {
                                   color: primaryTextColor,
                                 ),
                                 decoration: InputDecoration(
-                                  labelText: 'Streefgewicht (kg)',
+                                  labelText: loc.targetWeightLabel,
                                   labelStyle: TextStyle(
                                     color: secondaryTextColor,
                                   ),
@@ -887,7 +889,7 @@ class _WeightViewState extends State<WeightView> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Gewicht slider',
+                                    loc.weightSliderLabel,
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       color: primaryTextColor,
                                     ),
@@ -941,7 +943,7 @@ class _WeightViewState extends State<WeightView> {
                                         )
                                       : const Icon(Icons.save),
                                   label: Text(
-                                    _saving ? 'Opslaan...' : 'Gewicht opslaan',
+                                    _saving ? loc.saving : loc.saveWeight,
                                   ),
                                   onPressed: _saving ? null : _saveWeight,
                                 ),
@@ -965,7 +967,7 @@ class _WeightViewState extends State<WeightView> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Text(
-                                'BMI',
+                                loc.bmiTitle,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   color: primaryTextColor,
                                 ),
@@ -973,14 +975,14 @@ class _WeightViewState extends State<WeightView> {
                               const SizedBox(height: 8),
                               if (_bmi == null)
                                 Text(
-                                  'Onvoldoende gegevens om BMI te berekenen. Vul je lengte en gewicht in.',
+                                  loc.bmiInsufficient,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: secondaryTextColor,
                                   ),
                                 )
                               else ...[
                                 Text(
-                                  'Jouw BMI: ${_bmi!.toStringAsFixed(1)} (${_bmiCategory(_bmi!)})',
+                                  '${loc.yourBmiPrefix} ${_bmi!.toStringAsFixed(1)} (${_bmiCategory(_bmi!)})',
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: _bmiCategoryColor(_bmi!, isDark),
                                     fontWeight: FontWeight.bold,
@@ -1010,7 +1012,7 @@ class _WeightViewState extends State<WeightView> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Text(
-                                'Taille / ABSI',
+                                loc.waistAbsiTitle,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   color: primaryTextColor,
                                 ),
@@ -1027,7 +1029,7 @@ class _WeightViewState extends State<WeightView> {
                                   color: primaryTextColor,
                                 ),
                                 decoration: InputDecoration(
-                                  labelText: 'Tailleomtrek (cm)',
+                                  labelText: loc.waistLabel,
                                   labelStyle: TextStyle(
                                     color: secondaryTextColor,
                                   ),
@@ -1056,7 +1058,7 @@ class _WeightViewState extends State<WeightView> {
                               const SizedBox(height: 12),
                               if (_absi == null)
                                 Text(
-                                  'Onvoldoende gegevens om ABSI te berekenen. Vul taille, lengte en gewicht in.',
+                                  loc.absiInsufficient,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: secondaryTextColor,
                                   ),
@@ -1066,8 +1068,8 @@ class _WeightViewState extends State<WeightView> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Jouw ABSI: ${_absi!.toStringAsFixed(4)}'
-                                      '${_absiRange != null ? ' (${_absiRange})' : ''}',
+                                      '${loc.yourAbsiPrefix} ${_absi!.toStringAsFixed(4)}'
+                                      '${_absiRange != null ? ' (${_absiRangeLabel(loc, _absiRange)})' : ''}',
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(
                                             color: _absiCategoryColor(
@@ -1085,17 +1087,17 @@ class _WeightViewState extends State<WeightView> {
                                         _absiLegendItem(
                                           context,
                                           Colors.green,
-                                          'Laag risico',
+                                          loc.absiLowRisk,
                                         ),
                                         _absiLegendItem(
                                           context,
                                           Colors.orange,
-                                          'Gemiddeld risico',
+                                          loc.absiMedium,
                                         ),
                                         _absiLegendItem(
                                           context,
                                           Colors.redAccent,
-                                          'Hoog risico',
+                                          loc.absiHigh,
                                         ),
                                       ],
                                     ),
@@ -1122,8 +1124,8 @@ class _WeightViewState extends State<WeightView> {
                                             : const Icon(Icons.save),
                                         label: Text(
                                           _saving
-                                              ? 'Opslaan...'
-                                              : 'Taille opslaan',
+                                              ? loc.saving
+                                              : loc.saveWaist,
                                         ),
                                         onPressed: _saving ? null : _saveWeight,
                                       ),
@@ -1146,7 +1148,7 @@ class _WeightViewState extends State<WeightView> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               ChoiceChip(
-                                label: const Text('Gewicht'),
+                                label: Text(loc.choiceWeight),
                                 selected: _measurementType == 'weight',
                                 onSelected: (_) {
                                   setState(() => _measurementType = 'weight');
@@ -1154,7 +1156,7 @@ class _WeightViewState extends State<WeightView> {
                               ),
                               const SizedBox(width: 8),
                               ChoiceChip(
-                                label: const Text('Taille'),
+                                label: Text(loc.choiceWaist),
                                 selected: _measurementType == 'taille',
                                 onSelected: (_) {
                                   setState(() => _measurementType = 'taille');
@@ -1163,7 +1165,7 @@ class _WeightViewState extends State<WeightView> {
                               const SizedBox(width: 12),
 
                               ChoiceChip(
-                                label: const Text('Tabel'),
+                                label: Text(loc.choiceTable),
                                 selected: _viewMode == 'table',
                                 onSelected: (_) {
                                   setState(() => _viewMode = 'table');
@@ -1171,7 +1173,7 @@ class _WeightViewState extends State<WeightView> {
                               ),
                               const SizedBox(width: 8),
                               ChoiceChip(
-                                label: const Text('Grafiek (per maand)'),
+                                label: Text(loc.choiceChart),
                                 selected: _viewMode == 'chart',
                                 onSelected: (_) {
                                   setState(() => _viewMode = 'chart');
@@ -1187,8 +1189,8 @@ class _WeightViewState extends State<WeightView> {
                       if (selectedEntries.isEmpty)
                         Text(
                           _measurementType == 'weight'
-                              ? 'Nog geen metingen opgeslagen.'
-                              : 'Nog geen taillemetingen opgeslagen.',
+                              ? loc.noMeasurements
+                              : loc.noWaistMeasurements,
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: secondaryTextColor,
@@ -1290,6 +1292,24 @@ class _WeightViewState extends State<WeightView> {
     );
   }
 
+  String _absiRangeLabel(AppLocalizations loc, String? rangeKey) {
+    if (rangeKey == null) return '';
+    switch (rangeKey) {
+      case 'very_low':
+        return loc.absiVeryLowRisk;
+      case 'low':
+        return loc.absiLowRisk;
+      case 'medium':
+        return loc.absiMedium;
+      case 'increased':
+        return loc.absiIncreasedRisk;
+      case 'high':
+        return loc.absiHigh;
+      default:
+        return rangeKey;
+    }
+  }
+
   Widget _absiLegendItem(BuildContext context, Color color, String label) {
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onSurface;
@@ -1352,11 +1372,11 @@ class _WeightViewState extends State<WeightView> {
       spacing: 12,
       runSpacing: 8,
       children: [
-        item(Colors.redAccent.withOpacity(0.6), 'Veel te laag'),
-        item(Colors.orange.withOpacity(0.7), 'Laag'),
-        item(Colors.green.withOpacity(0.7), 'Goed'),
-        item(Colors.orange.withOpacity(0.7), 'Te hoog'),
-        item(Colors.redAccent.withOpacity(0.6), 'Veel te hoog'),
+        item(Colors.redAccent.withOpacity(0.6), AppLocalizations.of(context)!.bmiVeryLow),
+        item(Colors.orange.withOpacity(0.7), AppLocalizations.of(context)!.bmiLow),
+        item(Colors.green.withOpacity(0.7), AppLocalizations.of(context)!.bmiGood),
+        item(Colors.orange.withOpacity(0.7), AppLocalizations.of(context)!.bmiHigh),
+        item(Colors.redAccent.withOpacity(0.6), AppLocalizations.of(context)!.bmiVeryHigh),
       ],
     );
   }
@@ -1387,18 +1407,16 @@ class _WeightViewState extends State<WeightView> {
             return await showDialog<bool>(
               context: context,
               builder: (ctx) => AlertDialog(
-                title: const Text('Verwijderen?'),
-                content: const Text(
-                  'Weet je zeker dat je deze meting wilt verwijderen?',
-                ),
+                title: Text(AppLocalizations.of(context)!.deleteConfirmTitle),
+                content: Text(AppLocalizations.of(context)!.deleteConfirmContent),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const Text('Annuleren'),
+                    child: Text(AppLocalizations.of(context)!.cancel),
                   ),
                   TextButton(
                     onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const Text('Verwijderen'),
+                    child: Text(AppLocalizations.of(context)!.deleteConfirmDelete),
                   ),
                 ],
               ),
@@ -1408,7 +1426,7 @@ class _WeightViewState extends State<WeightView> {
             await _deleteEntry(e);
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(SnackBar(content: Text('Meting verwijderd')));
+            ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.measurementDeleted)));
           },
           child: ListTile(
             dense: true,
@@ -1441,7 +1459,7 @@ class _WeightViewState extends State<WeightView> {
         children: [
           ListTile(
             title: Text(
-              'Tabel metingen (${unit})',
+              '${AppLocalizations.of(context)!.tableMeasurementsTitle} ($unit)',
               style: TextStyle(color: primaryTextColor),
             ),
           ),
@@ -1578,11 +1596,11 @@ class _WeightViewState extends State<WeightView> {
                       : null,
                 ),
                 Text(
-                  'Grafiek – ${_formatMonthYear(displayedDate)} (${unit})',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: primaryTextColor,
-                  ),
-                ),
+                  '${AppLocalizations.of(context)!.chartTitlePrefix} ${_formatMonthYear(displayedDate)} ($unit)',
+                   style: theme.textTheme.titleMedium?.copyWith(
+                     color: primaryTextColor,
+                   ),
+                 ),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
                   onPressed: canGoNext
@@ -1600,7 +1618,7 @@ class _WeightViewState extends State<WeightView> {
             if (monthEntries.length < 2) ...[
               // te weinig metingen: geen grafiek, wél navigatie
               Text(
-                'Nog te weinig metingen in deze maand voor een grafiek.',
+                AppLocalizations.of(context)!.chartTooFew,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: secondaryTextColor,
@@ -1620,7 +1638,7 @@ class _WeightViewState extends State<WeightView> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Horizontaal: dagen van de maand, Verticaal: waarde ($unit)',
+                '${AppLocalizations.of(context)!.chartAxesLabel} ($unit)',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: secondaryTextColor,
                 ),
@@ -1639,7 +1657,7 @@ class _WeightViewState extends State<WeightView> {
   ) {
     if (_entries.length < 2 || _targetWeight == null) {
       return Text(
-        'Niet genoeg data om een trend te berekenen.',
+        AppLocalizations.of(context)!.estimateNotEnoughData,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
       );
     }
@@ -1668,20 +1686,20 @@ class _WeightViewState extends State<WeightView> {
     // Op streefgewicht?
     if ((lastWeight - _targetWeight!).abs() < 0.01) {
       return Text(
-        'Goed zo! Je bent op je streefgewicht.',
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: Colors.green,
-          fontWeight: FontWeight.bold,
-        ),
-      );
-    }
+        AppLocalizations.of(context)!.estimateOnTarget,
+         style: theme.textTheme.bodyMedium?.copyWith(
+           color: Colors.green,
+           fontWeight: FontWeight.bold,
+         ),
+       );
+     }
 
     if (sorted.length < 2) {
       return Text(
-        'Niet genoeg data om een trend te berekenen.',
+        AppLocalizations.of(context)!.estimateNotEnoughData,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-      );
-    }
+       );
+     }
 
     final firstDate = sorted.first.date;
     final n = sorted.length;
@@ -1723,10 +1741,10 @@ class _WeightViewState extends State<WeightView> {
 
     if (den == 0) {
       return Text(
-        'Nog geen trend te berekenen.',
+        AppLocalizations.of(context)!.estimateNoTrend,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-      );
-    }
+       );
+     }
 
     final slope = num / den; // kg per dag
     final intercept = meanY - slope * meanX;
@@ -1743,36 +1761,36 @@ class _WeightViewState extends State<WeightView> {
     // Stabiel?
     if (slope.abs() < slopeThreshold) {
       return Text(
-        'Je gewicht is redelijk stabiel, geen betrouwbare trend.',
+        AppLocalizations.of(context)!.estimateStable,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-      );
-    }
+       );
+     }
 
     final remaining = _targetWeight! - lastWeight;
 
     // Verkeerde richting?
     if ((remaining > 0 && slope <= 0) || (remaining < 0 && slope >= 0)) {
       return Text(
-        'Met de huidige trend beweeg je van je streefgewicht af.',
+        AppLocalizations.of(context)!.estimateWrongDirection,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-      );
-    }
+       );
+     }
 
     final daysNeeded = (remaining / slope).abs();
 
     if (daysNeeded.isNaN || daysNeeded.isInfinite) {
       return Text(
-        'Er is onvoldoende trendinformatie om een realistische inschatting te maken.',
+        AppLocalizations.of(context)!.estimateInsufficientInfo,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-      );
-    }
+       );
+     }
 
     if (daysNeeded > maxReasonableDays) {
       return Text(
-        'Op basis van de huidige trend is het onwaarschijnlijk dat je je streefgewicht binnen 10 jaar bereikt.',
+        AppLocalizations.of(context)!.estimateUnlikelyWithin10Years,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-      );
-    }
+       );
+     }
 
     final totalDays = daysNeeded.ceil();
     final weeks = totalDays ~/ 7;
@@ -1794,28 +1812,25 @@ class _WeightViewState extends State<WeightView> {
     // Onzekerheidstekst
     String uncertaintyNote = '';
     if (residualStd >= 1.0) {
-      uncertaintyNote =
-          '\nLet op: zeer grote schommelingen maken deze schatting onbetrouwbaar.';
+      uncertaintyNote = '\n' + AppLocalizations.of(context)!.estimateUncertaintyHigh;
     } else if (residualStd >= 0.5) {
-      uncertaintyNote =
-          '\nLet op: flinke schommelingen maken deze schatting onzeker.';
+      uncertaintyNote = '\n' + AppLocalizations.of(context)!.estimateUncertaintyMedium;
     } else if (residualStd >= 0.25) {
-      uncertaintyNote = '\nOpmerking: enige variatie — schatting kan afwijken.';
+      uncertaintyNote = '\n' + AppLocalizations.of(context)!.estimateUncertaintyLow;
     }
 
-    final basisStr = recent.length >= minRecentPoints
-        ? 'op basis van de afgelopen maand'
-        : 'op basis van alle metingen';
+    final basisLoc = recent.length >= minRecentPoints
+        ? AppLocalizations.of(context)!.estimateBasisRecent
+        : AppLocalizations.of(context)!.estimateBasisAll;
 
     return Text(
-      'Als je zo doorgaat ($basisStr), bereik je je streefgewicht over ongeveer '
-      '$timeStr (rond $dateStr).$uncertaintyNote',
+      '${AppLocalizations.of(context)!.estimateResultPrefix} $basisLoc $timeStr (rond $dateStr).$uncertaintyNote',
       style: theme.textTheme.bodySmall?.copyWith(
         color: secondaryTextColor,
         fontWeight: FontWeight.w600,
       ),
     );
-  }
+   }
 
   String _formatDate(DateTime date) =>
       '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';

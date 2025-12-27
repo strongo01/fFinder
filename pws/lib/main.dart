@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:fFinder/views/home_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'views/login_register_view.dart';
 import 'views/onboarding_view.dart';
@@ -16,6 +17,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode, kReleaseMode;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
+import 'locale_notifier.dart';
 
 //start van de app
 Future<void> main() async {
@@ -84,6 +86,12 @@ Future<void> main() async {
   await NotificationService().initialize(); //initialiseer notificatie service
   await dotenv.load(fileName: "assets/env/.env");
 
+  final prefs = await SharedPreferences.getInstance();
+  final code = prefs.getString('locale');
+  if (code != null && code.isNotEmpty) {
+    appLocale.value = Locale(code);
+  }
+
   //start de app
   runApp(const MyApp());
 }
@@ -94,137 +102,144 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      builder: (context, child) {
-        final mediaQuery = MediaQuery.of(context);
+    return ValueListenableBuilder<Locale?>(
+      valueListenable: appLocale,
+      builder: (context, locale, _) {
+        return MaterialApp(
+          builder: (context, child) {
+            final mediaQuery = MediaQuery.of(context);
 
-        return MediaQuery(
-          data: mediaQuery.copyWith(
-            textScaleFactor: mediaQuery.textScaleFactor.clamp(1.0, 1.3),
+            return MediaQuery(
+              data: mediaQuery.copyWith(
+                textScaleFactor: mediaQuery.textScaleFactor.clamp(1.0, 1.3),
+              ),
+              child: child!,
+            );
+          },
+          locale: locale,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+
+          debugShowCheckedModeBanner: false, //verbergt de debug banner
+          themeMode:
+              ThemeMode.system, // systeem instelling voor light of darkmode
+          //thema voor lightmode
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: const ColorScheme(
+              brightness: Brightness.light,
+              primary: Colors.black,
+              onPrimary: Colors.white,
+              secondary: Colors.grey,
+              onSecondary: Colors.white,
+              error: Colors.red,
+              onError: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+            //font voor de app
+            textTheme: GoogleFonts.nunitoTextTheme(Theme.of(context).textTheme),
           ),
-          child: child!,
+          //thema voor darkmode
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: const ColorScheme(
+              brightness: Brightness.dark,
+              primary: Colors.white,
+              onPrimary: Colors.black,
+              secondary: Colors.grey,
+              onSecondary: Colors.black,
+              error: Colors.red,
+              onError: Colors.white,
+              surface: Colors.black,
+              onSurface: Colors.white,
+            ),
+            //font voor de app
+            textTheme: GoogleFonts.nunitoTextTheme(Theme.of(context).textTheme),
+          ),
+          //controleert of de gebruiker al is ingelogd en of onboarding af is, ja: dan homescreen, nee: dan loginregisterscherm of onboardingview
+          home: StreamBuilder<User?>(
+            //luistert naar de authenticatie status
+            stream: FirebaseAuth.instance
+                .authStateChanges(), //stream van authenticatie veranderingen
+            builder: (context, snapshot) {
+              //builder functie die reageert op veranderingen in de stream
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                //wacht op de verbinding
+                return const Scaffold(
+                  //laat een laadscherm zien terwijl hij wacht
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (snapshot.hasData) {
+                //als er een gebruiker is ingelogd
+                // Gebruiker is ingelogd, check nu Firestore voor onboardingaf
+                return FutureBuilder<DocumentSnapshot>(
+                  //haalt het document van de gebruiker op
+                  future: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(snapshot.data!.uid)
+                      .get(),
+                  builder: (context, userDocSnapshot) {
+                    if (userDocSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Scaffold(
+                        body: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    if (userDocSnapshot.hasData &&
+                        userDocSnapshot.data!.exists) {
+                      final data =
+                          userDocSnapshot.data!.data() as Map<String, dynamic>;
+                      final bool onboardingAf = data['onboardingaf'] == true;
+
+                      // Lijst met alle velden die verplicht zijn na de onboarding.
+                      const requiredFields = [
+                        'firstName',
+                        'gender',
+                        'birthDate',
+                        'height',
+                        'weight',
+                        'calorieGoal',
+                        'proteinGoal',
+                        'fatGoal',
+                        'carbGoal',
+                        'bmi',
+                        'sleepHours',
+                        'targetWeight',
+                        'notificationsEnabled',
+                        'activityLevel',
+                        'goal',
+                      ];
+
+                      // Controleer of alle verplichte velden bestaan in het document.
+                      final allFieldsPresent = requiredFields.every(
+                        (field) => data.containsKey(field),
+                      );
+
+                      if (onboardingAf && allFieldsPresent) {
+                        return const HomeScreen();
+                      }
+                    }
+
+                    return const OnboardingView();
+                  },
+                );
+              }
+
+              // Niet ingelogd
+              return const LoginRegisterView();
+            },
+          ),
         );
       },
-
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: AppLocalizations.supportedLocales,
-
-      debugShowCheckedModeBanner: false, //verbergt de debug banner
-      themeMode: ThemeMode.system, // systeem instelling voor light of darkmode
-      //thema voor lightmode
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: const ColorScheme(
-          brightness: Brightness.light,
-          primary: Colors.black,
-          onPrimary: Colors.white,
-          secondary: Colors.grey,
-          onSecondary: Colors.white,
-          error: Colors.red,
-          onError: Colors.white,
-          surface: Colors.white,
-          onSurface: Colors.black,
-        ),
-        //font voor de app
-        textTheme: GoogleFonts.nunitoTextTheme(Theme.of(context).textTheme),
-      ),
-      //thema voor darkmode
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: const ColorScheme(
-          brightness: Brightness.dark,
-          primary: Colors.white,
-          onPrimary: Colors.black,
-          secondary: Colors.grey,
-          onSecondary: Colors.black,
-          error: Colors.red,
-          onError: Colors.white,
-          surface: Colors.black,
-          onSurface: Colors.white,
-        ),
-        //font voor de app
-        textTheme: GoogleFonts.nunitoTextTheme(Theme.of(context).textTheme),
-      ),
-      //controleert of de gebruiker al is ingelogd en of onboarding af is, ja: dan homescreen, nee: dan loginregisterscherm of onboardingview
-      home: StreamBuilder<User?>(
-        //luistert naar de authenticatie status
-        stream: FirebaseAuth.instance
-            .authStateChanges(), //stream van authenticatie veranderingen
-        builder: (context, snapshot) {
-          //builder functie die reageert op veranderingen in de stream
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            //wacht op de verbinding
-            return const Scaffold(
-              //laat een laadscherm zien terwijl hij wacht
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-
-          if (snapshot.hasData) {
-            //als er een gebruiker is ingelogd
-            // Gebruiker is ingelogd, check nu Firestore voor onboardingaf
-            return FutureBuilder<DocumentSnapshot>(
-              //haalt het document van de gebruiker op
-              future: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(snapshot.data!.uid)
-                  .get(),
-              builder: (context, userDocSnapshot) {
-                if (userDocSnapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return const Scaffold(
-                    body: Center(child: CircularProgressIndicator()),
-                  );
-                }
-
-                if (userDocSnapshot.hasData && userDocSnapshot.data!.exists) {
-                  final data =
-                      userDocSnapshot.data!.data() as Map<String, dynamic>;
-                  final bool onboardingAf = data['onboardingaf'] == true;
-
-                  // Lijst met alle velden die verplicht zijn na de onboarding.
-                  const requiredFields = [
-                    'firstName',
-                    'gender',
-                    'birthDate',
-                    'height',
-                    'weight',
-                    'calorieGoal',
-                    'proteinGoal',
-                    'fatGoal',
-                    'carbGoal',
-                    'bmi',
-                    'sleepHours',
-                    'targetWeight',
-                    'notificationsEnabled',
-                    'activityLevel',
-                    'goal',
-                  ];
-
-                  // Controleer of alle verplichte velden bestaan in het document.
-                  final allFieldsPresent = requiredFields.every(
-                    (field) => data.containsKey(field),
-                  );
-
-                  if (onboardingAf && allFieldsPresent) {
-                    return const HomeScreen();
-                  }
-                }
-
-                return const OnboardingView();
-              },
-            );
-          }
-
-          // Niet ingelogd
-          return const LoginRegisterView();
-        },
-      ),
     );
   }
 }
