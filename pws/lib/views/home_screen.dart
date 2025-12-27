@@ -1189,7 +1189,34 @@ class _HomeScreenState extends State<HomeScreen> {
             navigationBar: const CupertinoNavigationBar(
               middle: Text('Recepten'),
             ),
-            child: const RecipesScreen(),
+            child: (() {
+              final roleFromLocal = _userData?['role'];
+              if (roleFromLocal != null) {
+              return roleFromLocal == 'admin'
+                ? const RecipesScreen()
+                : const UnderConstructionScreen();
+              }
+              return FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                .collection('users')
+                .doc(FirebaseAuth.instance.currentUser?.uid)
+                .get(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CupertinoActivityIndicator());
+                }
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                return const UnderConstructionScreen();
+                }
+                final data =
+                  snapshot.data!.data() as Map<String, dynamic>? ?? {};
+                final role = data['role'] ?? data['rol'] ?? 'user';
+                return role == 'admin'
+                  ? const RecipesScreen()
+                  : const UnderConstructionScreen();
+              },
+              );
+            })(),
           );
         } else {
           // Tab 3: Gewicht
@@ -1227,7 +1254,36 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       fab = _buildSpeedDial();
     } else if (_selectedIndex == 1) {
-      body = const RecipesScreen();
+      body = (() {
+        // Als we de role al in _userData hebben (geladen in _fetchUserData), gebruik die
+        final roleFromLocal = _userData?['role'];
+        if (roleFromLocal != null) {
+          return roleFromLocal == 'admin'
+          ? const RecipesScreen()
+          : const UnderConstructionScreen();
+        }
+
+        // Fallback: haal role asynchroon op uit Firestore
+        return FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser?.uid)
+          .get(),
+          builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const UnderConstructionScreen();
+        }
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final role = data['role'] ?? data['rol'] ?? 'user';
+        return role == 'admin'
+            ? const RecipesScreen()
+            : const UnderConstructionScreen();
+          },
+        );
+      })();
       fab = null;
     } else {
       body = const WeightView();

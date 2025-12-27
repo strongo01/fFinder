@@ -1,8 +1,545 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 
-class RecipesScreen extends StatelessWidget {
+enum _SwipeDirection { left, right }
+
+class RecipesScreen extends StatefulWidget {
   const RecipesScreen({super.key});
+
+  @override
+  State<RecipesScreen> createState() => _RecipesScreenState();
+}
+
+class _RecipesScreenState extends State<RecipesScreen>
+    with SingleTickerProviderStateMixin {
+  final List<Map<String, dynamic>> _recipes = [
+    {
+      'id': 'r1',
+      'title': 'Thaise kokos-curry',
+      'preparation_time': 25,
+      'total_time': 40,
+      'kcal': 520,
+      'fat': 20,
+      'saturated_fat': 10,
+      'carbs': 60,
+      'protein': 25,
+      'fibers': 8,
+      'salt': 1.2,
+      'prepreparation': 'Snijd groenten en bereid curry pasta voor',
+      'persons': 2,
+      'difficulty': 'Easy',
+      'kitchens': ['Thai', 'Asian'],
+      'courses': ['Dinner', 'Lunch'],
+      'requirements': ['Pan', 'Knife'],
+      'ingredients': ['Kokosmelk', 'Currypasta', 'Groenten'],
+      'steps': ['Stap 1', 'Stap 2', 'Stap 3'],
+      'tags': ['Vegan', 'Spicy'],
+      'image_link':
+          'https://via.placeholder.com/600x350.png?text=Thaise+kokos+curry',
+    },
+    {
+      'id': 'r2',
+      'title': 'Panzanella (broodsalade)',
+      'preparation_time': 15,
+      'total_time': 20,
+      'kcal': 320,
+      'fat': 5,
+      'saturated_fat': 1,
+      'carbs': 50,
+      'protein': 10,
+      'fibers': 5,
+      'salt': 0.8,
+      'prepreparation': 'Snijd brood en groenten',
+      'persons': 2,
+      'difficulty': 'Easy',
+      'kitchens': ['Italian'],
+      'courses': ['Lunch'],
+      'requirements': ['Bowl', 'Knife'],
+      'ingredients': ['Brood', 'Tomaat', 'Komkommer', 'Basilicum'],
+      'steps': ['Stap 1', 'Stap 2'],
+      'tags': ['Vegetarian', 'Quick'],
+      'image_link': 'https://via.placeholder.com/600x350.png?text=Panzanella',
+    },
+    // Voeg hier meer recepten toe met dezelfde structuur
+  ];
+
+  Offset _dragOffset = Offset.zero;
+  double _dragRotation = 0.0;
+  late AnimationController _animController;
+  Animation<Offset>? _animOffset;
+  Animation<double>? _animRotation;
+  bool _isAnimating = false;
+
+  static const double _swipeThreshold = 120.0;
+  static const double _rotationMultiplier = 0.003;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 300),
+        )..addListener(() {
+          setState(() {
+            _dragOffset = _animOffset?.value ?? _dragOffset;
+            _dragRotation = _animRotation?.value ?? _dragRotation;
+          });
+        });
+
+    _animController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        if (_isAnimating) {
+          final dir = _dragOffset.dx > 0
+              ? _SwipeDirection.right
+              : _SwipeDirection.left;
+          _handleSwipeComplete(dir);
+        }
+        _isAnimating = false;
+        _dragOffset = Offset.zero;
+        _dragRotation = 0.0;
+        _animOffset = null;
+        _animRotation = null;
+        _animController.reset();
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  bool get _hasCards => _recipes.isNotEmpty;
+
+  void _animateCardTo(Offset targetOffset, double targetRotation) {
+    _isAnimating = true;
+    _animOffset = Tween<Offset>(
+      begin: _dragOffset,
+      end: targetOffset,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+    _animRotation = Tween<double>(
+      begin: _dragRotation,
+      end: targetRotation,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+    _animController.forward(from: 0.0);
+  }
+
+  void _onPanEnd() {
+    if (_dragOffset.dx.abs() > _swipeThreshold) {
+      final sign = _dragOffset.dx.sign;
+      final screenWidth = MediaQuery.of(context).size.width;
+      final target = Offset(sign * (screenWidth + 200), _dragOffset.dy);
+      final targetRotation = _dragRotation + sign * 0.5;
+      _animateCardTo(target, targetRotation);
+    } else {
+      _animOffset = Tween<Offset>(begin: _dragOffset, end: Offset.zero).animate(
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+      );
+      _animRotation = Tween<double>(begin: _dragRotation, end: 0.0).animate(
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+      );
+      _animController.forward(from: 0.0);
+    }
+  }
+
+  void _handleSwipeComplete(_SwipeDirection direction) {
+    if (!_hasCards) return;
+    final top = _recipes.first;
+    final title = top['title'] ?? '';
+    final liked = direction == _SwipeDirection.right;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(liked ? 'Saved: $title' : 'Skipped: $title'),
+        duration: const Duration(milliseconds: 700),
+      ),
+    );
+
+    setState(() {
+      if (_recipes.isNotEmpty) _recipes.removeAt(0);
+    });
+  }
+
+  void _swipeProgrammatically(_SwipeDirection direction) {
+    if (!_hasCards || _isAnimating) return;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final target = Offset(
+      (direction == _SwipeDirection.right ? 1 : -1) * (screenWidth + 200),
+      0,
+    );
+    final targetRotation = (direction == _SwipeDirection.right ? 0.6 : -0.6);
+    _animateCardTo(target, targetRotation);
+  }
+
+  Widget _buildCard(Map<String, dynamic> recipe, int positionFromTop) {
+    final scale = 1.0 - positionFromTop * 0.04;
+    final translateY = positionFromTop * 12.0;
+    return Transform.translate(
+      offset: Offset(0, translateY),
+      child: Transform.scale(scale: scale, child: _recipeCard(recipe)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Swipe naar links om over te slaan, naar rechts om op te slaan',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: Center(
+                child: _hasCards
+                    ? LayoutBuilder(
+                        builder: (context, constraints) {
+                          final visibleCount = math.min(3, _recipes.length);
+                          final cards = <Widget>[];
+
+                          for (int i = visibleCount - 1; i >= 0; i--) {
+                            final recipeIndex = i;
+                            final recipe = _recipes[recipeIndex];
+
+                            if (i == 0) {
+                              Widget topCard = GestureDetector(
+                                onPanStart: (_) {},
+                                onPanUpdate: (details) {
+                                  if (_isAnimating) return;
+                                  setState(() {
+                                    _dragOffset += details.delta;
+                                    _dragRotation =
+                                        _dragOffset.dx * _rotationMultiplier;
+                                  });
+                                },
+                                onPanEnd: (_) {
+                                  if (_isAnimating) return;
+                                  _onPanEnd();
+                                },
+                                onTap: () => _showRecipeDetails(recipe),
+                                child: Transform.translate(
+                                  offset: _dragOffset,
+                                  child: Transform.rotate(
+                                    angle: _dragRotation,
+                                    child: _recipeCard(recipe),
+                                  ),
+                                ),
+                              );
+                              cards.add(Positioned.fill(child: topCard));
+                            } else {
+                              final lower = Positioned.fill(
+                                child: Center(
+                                  child: _buildCard(_recipes[i], i),
+                                ),
+                              );
+                              cards.add(lower);
+                            }
+                          }
+
+                          return SizedBox(
+                            width: math.min(480, constraints.maxWidth * 0.95),
+                            height: math.min(640, constraints.maxHeight * 0.9),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              clipBehavior: Clip.none,
+                              children: cards,
+                            ),
+                          );
+                        },
+                      )
+                    : const Center(child: Text('Geen recepten meer 🍽️')),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _actionButton(
+                    Icons.clear,
+                    Colors.red,
+                    () => _swipeProgrammatically(_SwipeDirection.left),
+                  ),
+                  const SizedBox(width: 24),
+                  _actionButton(
+                    Icons.favorite,
+                    Colors.green,
+                    () => _swipeProgrammatically(_SwipeDirection.right),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _actionButton(IconData icon, Color color, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(40),
+        child: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 32),
+        ),
+      ),
+    );
+  }
+
+  Widget _recipeCard(Map<String, dynamic> recipe) {
+    return Card(
+      elevation: 10,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // Afbeelding
+          Positioned.fill(
+            child: Image.network(
+              recipe['image_link'] ?? '',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: Colors.grey[300],
+                child: const Icon(Icons.image_not_supported, size: 48),
+              ),
+            ),
+          ),
+          // Overlay voor leesbaarheid
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.black.withOpacity(0.7), Colors.transparent],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    recipe['title'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: (recipe['tags'] ?? []).map<Widget>((tag) {
+                      return Chip(
+                        label: Text(
+                          tag,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                        backgroundColor: Colors.green.shade400.withOpacity(0.8),
+                        visualDensity: VisualDensity.compact,
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '⏱ ${recipe['preparation_time'] ?? '?'} min | 🍽 ${recipe['persons'] ?? '?'} | 🔥 ${recipe['kcal'] ?? '?'} kcal',
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRecipeDetails(Map<String, dynamic> recipe) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return DraggableScrollableSheet(
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: SingleChildScrollView(
+                controller: scrollController,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[400],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      recipe['title'] ?? '',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Image.network(
+                      recipe['image_link'] ?? '',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 200,
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.image_not_supported, size: 48),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      children: (recipe['tags'] ?? []).map<Widget>((tag) {
+                        return Chip(
+                          label: Text(tag),
+                          backgroundColor: Colors.green.shade200,
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildDetailRow('ID', recipe['id']),
+                    _buildDetailRow(
+                      'Preparation Time',
+                      '${recipe['preparation_time']} min',
+                    ),
+                    _buildDetailRow(
+                      'Total Time',
+                      '${recipe['total_time']} min',
+                    ),
+                    _buildDetailRow('Kcal', recipe['kcal'].toString()),
+                    _buildDetailRow('Fat', '${recipe['fat']} g'),
+                    _buildDetailRow(
+                      'Saturated Fat',
+                      '${recipe['saturated_fat']} g',
+                    ),
+                    _buildDetailRow('Carbs', '${recipe['carbs']} g'),
+                    _buildDetailRow('Protein', '${recipe['protein']} g'),
+                    _buildDetailRow('Fibers', '${recipe['fibers']} g'),
+                    _buildDetailRow('Salt', '${recipe['salt']} g'),
+                    _buildDetailRow('Persons', recipe['persons'].toString()),
+                    _buildDetailRow('Difficulty', recipe['difficulty']),
+                    if (recipe['prepreparation'] != null)
+                      _buildDetailSection(
+                        'Prepreparation',
+                        recipe['prepreparation'],
+                      ),
+                    if (recipe['ingredients'] != null)
+                      _buildListSection('Ingredients', recipe['ingredients']),
+                    if (recipe['steps'] != null)
+                      _buildListSection('Steps', recipe['steps']),
+                    if (recipe['kitchens'] != null)
+                      _buildListSection('Kitchens', recipe['kitchens']),
+                    if (recipe['courses'] != null)
+                      _buildListSection('Courses', recipe['courses']),
+                    if (recipe['requirements'] != null)
+                      _buildListSection('Requirements', recipe['requirements']),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(String title, String? value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Text('$title: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+          Expanded(
+            child: Text(
+              value ?? '',
+              style: const TextStyle(color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailSection(String title, String content) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(content),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListSection(String title, List items) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          ...items.map((i) => Text('- $i')).toList(),
+        ],
+      ),
+    );
+  }
+}
+
+class UnderConstructionScreen extends StatelessWidget {
+  const UnderConstructionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
