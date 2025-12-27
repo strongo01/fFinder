@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:fFinder/l10n/app_localizations.dart';
 import 'package:fFinder/views/crypto_class.dart';
 import 'package:fFinder/views/feedback_view.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -294,8 +295,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Zoekbalk',
-              'Hier kan je een product zoeken om toe te voegen aan je dag.',
+              AppLocalizations.of(context)!.searchFood,
+              AppLocalizations.of(context)!.searchFoodDescription,
               isDarkMode,
             ),
           ),
@@ -311,8 +312,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Barcode Scannen',
-              'Tik hier om een product te scannen en snel toe te voegen aan je dag.',
+              AppLocalizations.of(context)!.scanProduct,
+              AppLocalizations.of(context)!.scanProductDescription,
               isDarkMode,
             ),
           ),
@@ -329,8 +330,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Recente Producten',
-              'Hier zie je alle producten die je recent hebt toegevoegd.',
+              AppLocalizations.of(context)!.recentProducts,
+              AppLocalizations.of(context)!.recentProductsDescription,
               isDarkMode,
             ),
           ),
@@ -347,8 +348,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Favorieten',
-              'Hier zie je al jouw favoriete producten.',
+              AppLocalizations.of(context)!.favoriteProducts,
+              AppLocalizations.of(context)!.favoriteProductsDescription,
               isDarkMode,
             ),
           ),
@@ -365,8 +366,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Mijn producten',
-              'Hier kan je zelf producten toevoegen die niet gevonden kunnen worden.',
+              AppLocalizations.of(context)!.myProducts,
+              AppLocalizations.of(context)!.myProductsDescription,
               isDarkMode,
             ),
           ),
@@ -383,8 +384,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Maaltijden',
-              'Hier kan je maaltijden zien en loggen, maaltijden bestaan uit meerdere producten.',
+              AppLocalizations.of(context)!.meals,
+              AppLocalizations.of(context)!.mealsDescription,
               isDarkMode,
             ),
           ),
@@ -401,8 +402,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Maaltijden toevoegen',
-              'Tik op dit plusje om maaltijden te maken uit meerdere producten, zodat je sneller vaak gegeten maaltijden kan toevoegen.',
+              AppLocalizations.of(context)!.mealsAdd,
+              AppLocalizations.of(context)!.mealsAddDescription,
               isDarkMode,
             ),
           ),
@@ -419,8 +420,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           TargetContent(
             align: ContentAlign.bottom,
             child: _buildTutorialContent(
-              'Maaltijden loggen',
-              'Tik op dit winkelwagentje om maaltijden toe te voegen aan de logs.',
+              AppLocalizations.of(context)!.mealsLog,
+              AppLocalizations.of(context)!.mealsLogDescription,
               isDarkMode,
             ),
           ),
@@ -677,7 +678,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       // minimaal 2 tekens
       setState(() {
         _searchResults = null;
-        _errorMessage = 'Voer minimaal 2 tekens in.';
+        _errorMessage = AppLocalizations.of(context)!.enterMoreChars;
       });
       return;
     }
@@ -963,7 +964,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       debugPrint("Algemene fout in _searchProducts: $e");
       debugPrint(stack.toString());
       setState(() {
-        _errorMessage = 'Fout bij ophalen: $e';
+        _errorMessage = '${AppLocalizations.of(context)!.errorFetch}: $e';
       });
     } finally {
       setState(() {
@@ -1054,12 +1055,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt),
-              title: const Text('Maak een foto'),
+              title: Text(AppLocalizations.of(context)!.takePhoto),
               onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Kies uit galerij'),
+              title: Text(AppLocalizations.of(context)!.chooseFromGallery),
               onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
             ),
           ],
@@ -1073,7 +1074,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
     if (pickedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Geen afbeelding geselecteerd.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.noImageSelected)),
       );
       return;
     }
@@ -1089,11 +1090,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         appCheck: FirebaseAppCheck.instance,
       ).generativeModel(model: 'gemini-2.5-flash');
       final prompt = TextPart(
-        "Wat voor ingrediënten zie je hier? Antwoord in het Nederlands. "
-        "Negeer marketingtermen, productnamen, en niet-relevante woorden zoals 'zero', 'light', etc. "
-        "Antwoord alleen met daadwerkelijke ingrediënten die in het product zitten. "
-        "Antwoord alleen als het plaatje een voedselproduct toont."
-        "Antwoord als: {ingredient}, {ingredient}, ...",
+        AppLocalizations.of(context)!.aiIngredientsPrompt(''),
       );
       final imageBytes = await pickedFile.readAsBytes();
       final imagePart = InlineDataPart('image/jpeg', imageBytes);
@@ -1108,9 +1105,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
       final result = response.text?.trim() ?? '';
       if (result.isEmpty) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Geen resultaat van AI.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.aiNoIngredientsFound),
+          ),
+        );
         return;
       }
 
@@ -1137,7 +1136,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Gevonden Ingrediënten',
+                    AppLocalizations.of(context)!.aiIngredientsFound,
                     style: TextStyle(
                       color: textColor,
                       fontSize: 20,
@@ -1155,7 +1154,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'De AI heeft de volgende ingrediënten herkend:',
+                      AppLocalizations.of(context)!.aiIngredientsDescription,
                       style: TextStyle(color: textColor.withOpacity(0.7)),
                     ),
                     const SizedBox(height: 16),
@@ -1194,7 +1193,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Annuleren'),
+                child: Text(AppLocalizations.of(context)!.cancel),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -1208,7 +1207,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   Navigator.of(ctx).pop();
                   _showAddMealFromAI(result);
                 },
-                child: const Text('Maaltijd samenstellen'),
+                child: Text(AppLocalizations.of(context)!.addMeal),
               ),
             ],
           );
@@ -1218,9 +1217,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
       if (mounted) {
         Navigator.of(context).pop();
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Fout bij AI-analyse: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${AppLocalizations.of(context)!.errorAI} $e')),
+      );
     }
   }
 
@@ -1449,7 +1448,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Maaltijd samenstellen',
+                            AppLocalizations.of(context)!.addMeal,
                             style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(color: textColor),
                             textAlign: TextAlign.center,
@@ -1458,12 +1457,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           TextFormField(
                             controller: mealNameController,
                             style: TextStyle(color: textColor),
-                            decoration: const InputDecoration(
-                              labelText: 'Naam van maaltijd',
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context)!.mealName,
                             ),
                             validator: (value) =>
                                 (value == null || value.isEmpty)
-                                ? 'Naam is verplicht'
+                                ? AppLocalizations.of(
+                                    context,
+                                  )!.pleaseEnterMealName
                                 : null,
                           ),
                           const SizedBox(height: 16),
@@ -1492,7 +1493,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     ),
                                   ),
                                   subtitle: Text(
-                                    'Hoeveelheid: ${amountController.text}g',
+                                    '${AppLocalizations.of(context)!.amount}: ${amountController.text}g',
                                   ),
                                   trailing: IconButton(
                                     icon: const Icon(Icons.close),
@@ -1571,7 +1572,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                         style: TextStyle(color: textColor),
                                         decoration: InputDecoration(
                                           labelText:
-                                              'Zoek ${searchController.text}',
+                                              '${AppLocalizations.of(context)!.search} ${searchController.text}',
                                           suffixIcon: IconButton(
                                             icon: const Icon(Icons.search),
                                             onPressed: () =>
@@ -1620,8 +1621,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                   index,
                                                   loadMore: true,
                                                 ),
-                                            child: const Text(
-                                              'Meer producten laden...',
+                                            child: Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.loadMore,
                                             ),
                                           );
                                         }
@@ -1673,9 +1676,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                               ScaffoldMessenger.of(
                                                 context,
                                               ).showSnackBar(
-                                                const SnackBar(
+                                                SnackBar(
                                                   content: Text(
-                                                    'Geen barcode gevonden voor dit product.',
+                                                    AppLocalizations.of(
+                                                      context,
+                                                    )!.errorNoBarcode,
                                                   ),
                                                 ),
                                               );
@@ -1803,8 +1808,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     child: TextField(
                                       controller: amountController,
                                       style: TextStyle(color: textColor),
-                                      decoration: const InputDecoration(
-                                        labelText: 'Hoeveelheid (g)',
+                                      decoration: InputDecoration(
+                                        labelText: AppLocalizations.of(
+                                          context,
+                                        )!.amountInGrams,
                                       ),
                                       keyboardType:
                                           TextInputType.numberWithOptions(
@@ -1827,9 +1834,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 if (userDEK == null) {
                                   if (!mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
+                                    SnackBar(
                                       content: Text(
-                                        'Kon encryptiesleutel niet ophalen.',
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.errorUserDEKMissing,
                                       ),
                                     ),
                                   );
@@ -1883,9 +1892,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 if (finalIngredients.isEmpty) {
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
+                                    SnackBar(
                                       content: Text(
-                                        'Voeg minimaal één product toe.',
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.errorNoIngredientsAdded,
                                       ),
                                       backgroundColor: Colors.red,
                                     ),
@@ -1908,13 +1919,17 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 if (!mounted) return;
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Maaltijd opgeslagen!'),
+                                  SnackBar(
+                                    content: Text(
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.mealSavedSuccessfully,
+                                    ),
                                   ),
                                 );
                               }
                             },
-                            child: const Text('Maaltijd opslaan'),
+                            child: Text(AppLocalizations.of(context)!.saveMeal),
                           ),
                           const SizedBox(height: 20),
                         ],
@@ -2035,7 +2050,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           debugPrint("[ADD_FOOD_VIEW] Error fetching from recents: $e");
           if (mounted) {
             setState(() {
-              _errorMessage = "Fout bij ophalen recente producten: $e";
+              _errorMessage =
+                  "${AppLocalizations.of(context)!.errorFetchRecentsProducts}: $e";
             });
           }
         }
@@ -2141,7 +2157,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
           controller: _searchController,
           style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           decoration: InputDecoration(
-            hintText: 'Zoek producten...',
+            hintText: AppLocalizations.of(context)!.searchProducts,
             hintStyle: TextStyle(
               color: isDarkMode ? Colors.white70 : Colors.black54,
             ),
@@ -2158,7 +2174,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             ),
             suffixIcon: IconButton(
               icon: const Icon(Icons.search),
-              tooltip: 'Zoek',
+              tooltip: AppLocalizations.of(context)!.search,
               onPressed: () {
                 FocusScope.of(context).unfocus();
                 _searchProducts(_searchController.text);
@@ -2180,7 +2196,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   ? _myproductsAddKey
                   : _maaltijdenAddKey,
               icon: const Icon(Icons.add),
-              tooltip: 'Toevoegen',
+              tooltip: AppLocalizations.of(context)!.add,
               onPressed: () async {
                 final choice = await showModalBottomSheet<String>(
                   context: context,
@@ -2198,7 +2214,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         children: [
                           ListTile(
                             title: Text(
-                              'Wat wil je toevoegen?',
+                              AppLocalizations.of(context)!.addFoodItem,
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : Colors.black,
@@ -2208,7 +2224,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           ListTile(
                             leading: const Icon(Icons.fastfood),
                             title: Text(
-                              'Product toevoegen',
+                              AppLocalizations.of(context)!.addProduct,
                               style: TextStyle(
                                 color: isDark ? Colors.white : Colors.black,
                               ),
@@ -2218,7 +2234,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           ListTile(
                             leading: const Icon(Icons.restaurant_menu),
                             title: Text(
-                              'Maaltijd toevoegen',
+                              AppLocalizations.of(context)!.addMealT,
                               style: TextStyle(
                                 color: isDark ? Colors.white : Colors.black,
                               ),
@@ -2294,10 +2310,19 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 ),
                 isSelected: _selectedToggle,
                 children: [
-                  Text('Recent', key: _recentKey),
-                  Text('Favorieten', key: _favoritesKey),
-                  Text('Mijn producten', key: _myproductsKey),
-                  Text('Maaltijden', key: _maaltijdenKey),
+                  Text(AppLocalizations.of(context)!.recents, key: _recentKey),
+                  Text(
+                    AppLocalizations.of(context)!.favorites,
+                    key: _favoritesKey,
+                  ),
+                  Text(
+                    AppLocalizations.of(context)!.myProducts,
+                    key: _myproductsKey,
+                  ),
+                  Text(
+                    AppLocalizations.of(context)!.meals,
+                    key: _maaltijdenKey,
+                  ),
                 ],
               ),
             ),
@@ -2354,7 +2379,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     if (_searchResults == null) {
       return Center(
         child: Text(
-          'Begin met typen om te zoeken.',
+          AppLocalizations.of(context)!.searchingProducts,
           style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
         ),
       );
@@ -2366,7 +2391,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Geen producten gevonden.',
+              AppLocalizations.of(context)!.noProductsFound,
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
             ),
             const SizedBox(height: 8),
@@ -2387,7 +2412,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   horizontal: 18,
                 ),
               ),
-              child: const Text('Wilt u zelf een product toevoegen?'),
+              child: Text(AppLocalizations.of(context)!.addNewProduct),
             ),
           ],
         ),
@@ -2419,7 +2444,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 ),
           title: Text(_displayProductName(product['product_name'])),
           subtitle: Text(
-            _displayString(product['brands'], fallback: 'Onbekend merk'),
+            _displayString(
+              product['brands'],
+              fallback: AppLocalizations.of(context)!.unknownBrand,
+            ),
           ),
           onTap: () {
             // bestaande onTap logic — keep unchanged
@@ -2486,8 +2514,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
               _showProductDetails(barcode, productData: normalized);
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Geen barcode gevonden voor dit product.'),
+                SnackBar(
+                  content: Text(
+                    AppLocalizations.of(context)!.errorInvalidBarcode,
+                  ),
                 ),
               );
             }
@@ -2505,7 +2535,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             onPressed: () async {
               await _searchProducts(_searchController.text, loadMore: true);
             },
-            child: const Text('Meer producten laden…'),
+            child: Text(AppLocalizations.of(context)!.loadMoreResults),
           ),
         ),
       );
@@ -2519,8 +2549,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
           child: ElevatedButton.icon(
             onPressed: _showAddMyProductSheet,
             icon: const Icon(Icons.add_circle_outline),
-            label: const Text(
-              'Voeg een nieuw product toe',
+            label: Text(
+              AppLocalizations.of(context)!.notTheDesiredResults,
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
@@ -2594,7 +2624,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'Nieuw Product Toevoegen',
+                          AppLocalizations.of(context)!.addNewProductT,
                           style: Theme.of(
                             context,
                           ).textTheme.headlineSmall?.copyWith(color: textColor),
@@ -2604,23 +2634,29 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         TextFormField(
                           controller: _nameController,
                           style: TextStyle(color: textColor),
-                          decoration: const InputDecoration(
-                            labelText: 'Productnaam',
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(
+                              context,
+                            )!.productName,
                           ),
                           validator: (value) => (value == null || value.isEmpty)
-                              ? 'Naam is verplicht'
+                              ? AppLocalizations.of(
+                                  context,
+                                )!.errorProductNameRequired
                               : null,
                         ),
                         TextFormField(
                           controller: _brandController,
                           style: TextStyle(color: textColor),
-                          decoration: const InputDecoration(labelText: 'Merk'),
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context)!.brandName,
+                          ),
                         ),
                         TextFormField(
                           controller: _quantityController,
                           style: TextStyle(color: textColor),
-                          decoration: const InputDecoration(
-                            labelText: 'Hoeveelheid (bijv. 100g, 250ml)',
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context)!.quantity,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -2633,7 +2669,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Voedingswaarden per 100g of ml',
+                          AppLocalizations.of(
+                            context,
+                          )!.nutritionalValuesPer100g,
                           style: Theme.of(
                             context,
                           ).textTheme.titleLarge?.copyWith(color: textColor),
@@ -2641,8 +2679,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         TextFormField(
                           controller: _caloriesController,
                           style: TextStyle(color: textColor),
-                          decoration: const InputDecoration(
-                            labelText: 'Energie (kcal)',
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context)!.calories,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -2653,14 +2691,16 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             ),
                           ],
                           validator: (value) => (value == null || value.isEmpty)
-                              ? 'Calorieën zijn verplicht'
+                              ? AppLocalizations.of(
+                                  context,
+                                )!.errorCaloriesRequired
                               : null,
                         ),
                         TextFormField(
                           controller: _fatController,
                           style: TextStyle(color: textColor),
-                          decoration: const InputDecoration(
-                            labelText: 'Vetten',
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context)!.fat,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -2674,8 +2714,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         TextFormField(
                           controller: _saturatedFatController,
                           style: TextStyle(color: textColor),
-                          decoration: const InputDecoration(
-                            labelText: '  - Waarvan verzadigd',
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(
+                              context,
+                            )!.saturatedFat,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -2689,8 +2731,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         TextFormField(
                           controller: _carbsController,
                           style: TextStyle(color: textColor),
-                          decoration: const InputDecoration(
-                            labelText: 'Koolhydraten',
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(
+                              context,
+                            )!.carbohydrates,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -2704,8 +2748,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         TextFormField(
                           controller: _sugarsController,
                           style: TextStyle(color: textColor),
-                          decoration: const InputDecoration(
-                            labelText: '  - Waarvan suikers',
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context)!.sugars,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -2719,8 +2763,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         TextFormField(
                           controller: _fiberController,
                           style: TextStyle(color: textColor),
-                          decoration: const InputDecoration(
-                            labelText: 'Vezels',
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context)!.fiber,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -2734,8 +2778,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         TextFormField(
                           controller: _proteinsController,
                           style: TextStyle(color: textColor),
-                          decoration: const InputDecoration(
-                            labelText: 'Eiwitten',
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context)!.proteins,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -2749,7 +2793,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         TextFormField(
                           controller: _saltController,
                           style: TextStyle(color: textColor),
-                          decoration: const InputDecoration(labelText: 'Zout'),
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context)!.salt,
+                          ),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
@@ -2773,9 +2819,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               );
                               if (userDEK == null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      'Fout: Kon encryptiesleutel niet ophalen.',
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.errorEncryptionKeyMissing,
                                     ),
                                   ),
                                 );
@@ -2888,7 +2936,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               ); // sluit de sheet na opslaan
                             }
                           },
-                          child: const Text('Opslaan'),
+                          child: Text(
+                            AppLocalizations.of(context)!.saveProduct,
+                          ),
                         ),
                         const SizedBox(height: 20),
                       ],
@@ -3132,14 +3182,15 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  String _displayString(dynamic v, {String fallback = 'Onbekend'}) {
-    if (v == null) return fallback;
+  String _displayString(dynamic v, {String? fallback}) {
+    final fb = fallback ?? AppLocalizations.of(context)!.unknown;
+    if (v == null) return fb;
     if (v is String && v.trim().isNotEmpty) return v.trim();
-    return fallback;
+    return fb;
   }
 
   String _displayProductName(dynamic v) =>
-      _displayString(v, fallback: 'Onbekende naam');
+      _displayString(v, fallback: AppLocalizations.of(context)!.unnamedProduct);
 
   Widget _buildProductList() {
     // bouw de lijst met producten op basis van geselecteerde tab
@@ -3152,7 +3203,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         if (user == null) {
           return Center(
             child: Text(
-              'Log in om je recente producten te zien.',
+              AppLocalizations.of(context)!.logInToSeeRecents,
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
             ),
           );
@@ -3172,7 +3223,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
               return Center(
                 child: Text(
-                  'Geen recente producten gevonden.',
+                  AppLocalizations.of(context)!.noRecentProductsFound,
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
                   ),
@@ -3182,7 +3233,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             if (snapshot.hasError) {
               return Center(
                 child: Text(
-                  'Er is een fout opgetreden.',
+                  AppLocalizations.of(context)!.errorLoadingRecentProducts,
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
                   ),
@@ -3277,7 +3328,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         final productName = _displayProductName(
                           decryptedProduct['product_name'],
                         );
-                        final brands = decryptedProduct['brands'] ?? 'Onbekend';
+                        final brands =
+                            decryptedProduct['brands'] ??
+                            AppLocalizations.of(context)!.unknown;
                         final imageUrl =
                             decryptedProduct['image_front_small_url']
                                 as String? ??
@@ -3331,7 +3384,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         if (user == null) {
           return Center(
             child: Text(
-              'Log in om je favoriete producten te zien.',
+              AppLocalizations.of(context)!.logInToSeeFavorites,
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
             ),
           );
@@ -3358,7 +3411,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return Center(
                     child: Text(
-                      'Geen favoriete producten gevonden.',
+                      AppLocalizations.of(context)!.noFavoriteProductsFound,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
@@ -3368,7 +3421,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 if (snapshot.hasError) {
                   return Center(
                     child: Text(
-                      'Er is een fout opgetreden.',
+                      AppLocalizations.of(
+                        context,
+                      )!.errorLoadingFavoriteProducts,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
@@ -3488,7 +3543,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         if (user == null) {
           return Center(
             child: Text(
-              'Log in om je producten te zien.',
+              AppLocalizations.of(context)!.logInToSeeMyProducts,
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
             ),
           );
@@ -3515,7 +3570,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return Center(
                     child: Text(
-                      'Je hebt nog geen producten aangemaakt.',
+                      AppLocalizations.of(context)!.noMyProductsFound,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
@@ -3525,7 +3580,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 if (snapshot.hasError) {
                   return Center(
                     child: Text(
-                      'Er is een fout opgetreden.',
+                      AppLocalizations.of(context)!.errorLoadingMyProducts,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
@@ -3597,8 +3652,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         final decryptedProduct = decryptedSnapshot.data!;
                         final name =
                             decryptedProduct['product_name'] ??
-                            'Onbekende naam';
-                        final brand = decryptedProduct['brands'] ?? 'Geen merk';
+                            AppLocalizations.of(context)!.unnamedProduct;
+                        final brand =
+                            decryptedProduct['brands'] ??
+                            AppLocalizations.of(context)!.unknownBrand;
                         final nutriments =
                             decryptedProduct['nutriments_per_100g']
                                 as Map<String, dynamic>?;
@@ -3625,7 +3682,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               builder: (BuildContext context) {
                                 return AlertDialog(
                                   title: Text(
-                                    "Bevestig verwijdering",
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.confirmDeletion,
                                     style: TextStyle(
                                       color: isDarkMode
                                           ? Colors.white
@@ -3633,7 +3692,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     ),
                                   ),
                                   content: Text(
-                                    "Weet je zeker dat je '$name' wilt verwijderen?",
+                                    "${AppLocalizations.of(context)!.sure} '$name' ${AppLocalizations.of(context)!.willBeDeleted}",
                                     style: TextStyle(
                                       color: isDarkMode
                                           ? Colors.white
@@ -3644,13 +3703,15 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     TextButton(
                                       onPressed: () =>
                                           Navigator.of(context).pop(false),
-                                      child: const Text("Annuleren"),
+                                      child: Text(
+                                        AppLocalizations.of(context)!.cancel,
+                                      ),
                                     ),
                                     TextButton(
                                       onPressed: () =>
                                           Navigator.of(context).pop(true),
-                                      child: const Text(
-                                        "Verwijderen",
+                                      child: Text(
+                                        AppLocalizations.of(context)!.delete,
                                         style: TextStyle(color: Colors.red),
                                       ),
                                     ),
@@ -3667,7 +3728,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 .doc(productDoc.id)
                                 .delete();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("'$name' verwijderd")),
+                              SnackBar(
+                                content: Text(
+                                  "'$name' ${AppLocalizations.of(context)!.deleted}",
+                                ),
+                              ),
                             );
                           },
                           child: ListTile(
@@ -3694,7 +3759,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         if (user == null) {
           return Center(
             child: Text(
-              'Log in om je maaltijden te zien.',
+              AppLocalizations.of(context)!.logInToSeeMeals,
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
             ),
           );
@@ -3721,7 +3786,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 if (snapshot.hasError) {
                   return Center(
                     child: Text(
-                      'Er is een fout opgetreden.',
+                      AppLocalizations.of(context)!.errorLoadingMeals,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
@@ -3730,19 +3795,21 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return ListTile(
-                    title: const Text('Voorbeeld Maaltijd'),
-                    subtitle: const Text(
-                      'Klik op + om je eerste maaltijd te maken',
+                    title: Text(AppLocalizations.of(context)!.mealExample),
+                    subtitle: Text(
+                      AppLocalizations.of(context)!.createOwnMealsFirst,
                     ),
                     trailing: IconButton(
                       key: _maaltijdenLogKey,
                       icon: const Icon(Icons.add_shopping_cart),
-                      tooltip: 'Log maaltijd',
+                      tooltip: AppLocalizations.of(context)!.logMeal,
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
+                          SnackBar(
                             content: Text(
-                              'Dit is een voorbeeld. Maak eerst een eigen maaltijd aan.',
+                              AppLocalizations.of(
+                                context,
+                              )!.createMealsBeforeLogging,
                             ),
                             backgroundColor: Colors.orange,
                           ),
@@ -3815,7 +3882,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         }
                         final decryptedMeal = decryptedSnapshot.data!;
                         final name =
-                            decryptedMeal['name'] ?? 'Onbekende maaltijd';
+                            decryptedMeal['name'] ??
+                            AppLocalizations.of(context)!.unnamedMeal;
 
                         return Dismissible(
                           key: Key(mealDoc.id),
@@ -3837,7 +3905,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               builder: (BuildContext context) {
                                 return AlertDialog(
                                   title: Text(
-                                    "Bevestig verwijdering",
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.confirmDeletion,
                                     style: TextStyle(
                                       color: isDarkMode
                                           ? Colors.white
@@ -3845,7 +3915,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     ),
                                   ),
                                   content: Text(
-                                    "Weet je zeker dat je maaltijd '$name' wilt verwijderen?",
+                                    "${AppLocalizations.of(context)!.sureMeal} '$name' ${AppLocalizations.of(context)!.willBeDeleted}",
                                     style: TextStyle(
                                       color: isDarkMode
                                           ? Colors.white
@@ -3856,13 +3926,15 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     TextButton(
                                       onPressed: () =>
                                           Navigator.of(context).pop(false),
-                                      child: const Text("Annuleren"),
+                                      child: Text(
+                                        AppLocalizations.of(context)!.cancel,
+                                      ),
                                     ),
                                     TextButton(
                                       onPressed: () =>
                                           Navigator.of(context).pop(true),
-                                      child: const Text(
-                                        "Verwijderen",
+                                      child: Text(
+                                        AppLocalizations.of(context)!.delete,
                                         style: TextStyle(color: Colors.red),
                                       ),
                                     ),
@@ -3880,7 +3952,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 .delete();
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text("Maaltijd '$name' verwijderd"),
+                                content: Text(
+                                  "${AppLocalizations.of(context)!.meal} '$name' ${AppLocalizations.of(context)!.deleted}",
+                                ),
                               ),
                             );
                           },
@@ -3888,7 +3962,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             title: Text(name),
                             trailing: IconButton(
                               icon: const Icon(Icons.add_shopping_cart),
-                              tooltip: 'Log maaltijd',
+                              tooltip: AppLocalizations.of(context)!.logMeal,
                               key: index == 0 ? _maaltijdenLogKey : null,
                               onPressed: () {
                                 final mealWithId = Map<String, dynamic>.from(
@@ -3927,7 +4001,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final userDEK = await getUserDEKFromRemoteConfig(user.uid);
     if (userDEK == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kon encryptiesleutel niet ophalen.')),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.encryptionKeyError),
+        ),
       );
       return;
     }
@@ -3937,8 +4013,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
         []; // haal de ingrediënten op
     if (ingredients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Deze maaltijd heeft geen ingrediënten.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.mealNoIngredients),
           backgroundColor: Colors.orange,
         ),
       );
@@ -3993,7 +4069,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
     final encryptedLogEntry = {
       'product_name': await encryptValue(
-        meal['name'] ?? 'Onbekende maaltijd',
+        meal['name'] ?? AppLocalizations.of(context)!.unnamedMeal,
         userDEK,
       ),
       'amount_g': await encryptDouble(totalAmount, userDEK),
@@ -4015,7 +4091,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
       if (mounted) {
         ScaffoldMessenger.of(this.context).showSnackBar(
           SnackBar(
-            content: Text('"${meal['name']}" toegevoegd aan je logboek.'),
+            content: Text(
+              '"${meal['name']}" ${AppLocalizations.of(context)!.mealLoggedSuccessfully}',
+            ),
           ),
         );
       }
@@ -4023,7 +4101,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       if (mounted) {
         ScaffoldMessenger.of(this.context).showSnackBar(
           SnackBar(
-            content: Text('Fout bij opslaan van maaltijd: $e'),
+            content: Text('${AppLocalizations.of(context)!.errorSaveMeal} $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -4036,19 +4114,19 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final hour = DateTime.now().hour;
     String selectedMeal;
     if (hour >= 5 && hour < 11) {
-      selectedMeal = 'Ontbijt';
+      selectedMeal = AppLocalizations.of(context)!.breakfast;
     } else if (hour >= 11 && hour < 15) {
-      selectedMeal = 'Lunch';
+      selectedMeal = AppLocalizations.of(context)!.lunch;
     } else if (hour >= 15 && hour < 22) {
-      selectedMeal = 'Avondeten';
+      selectedMeal = AppLocalizations.of(context)!.dinner;
     } else {
-      selectedMeal = 'Tussendoor';
+      selectedMeal = AppLocalizations.of(context)!.snack;
     }
     final List<String> mealTypes = [
-      'Ontbijt',
-      'Lunch',
-      'Avondeten',
-      'Tussendoor',
+      AppLocalizations.of(context)!.breakfast,
+      AppLocalizations.of(context)!.lunch,
+      AppLocalizations.of(context)!.dinner,
+      AppLocalizations.of(context)!.snack,
     ];
 
     return showDialog<String>(
@@ -4063,12 +4141,17 @@ class _AddFoodPageState extends State<AddFoodPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('Log Maaltijd', style: TextStyle(color: textColor)),
+              title: Text(
+                AppLocalizations.of(context)!.logMeal,
+                style: TextStyle(color: textColor),
+              ),
               content: DropdownButtonFormField<String>(
                 // dropdown om maaltijdtype te selecteren
                 value: selectedMeal,
                 style: TextStyle(color: textColor),
-                decoration: const InputDecoration(labelText: 'Sectie'),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.selectMealType,
+                ),
                 items: mealTypes.map((String value) {
                   // bouw de dropdown items
                   return DropdownMenuItem<String>(
@@ -4085,13 +4168,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Annuleren'),
+                  child: Text(AppLocalizations.of(context)!.cancel),
                 ),
                 ElevatedButton(
                   onPressed: () {
                     Navigator.pop(dialogContext, selectedMeal);
                   },
-                  child: const Text('Log'),
+                  child: Text(AppLocalizations.of(context)!.log),
                 ),
               ],
             );
@@ -4174,8 +4257,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   if (userDEK == null) {
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Kon encryptiesleutel niet ophalen.'),
+                      SnackBar(
+                        content: Text(
+                          AppLocalizations.of(context)!.encryptionKeyError,
+                        ),
                       ),
                     );
                     return;
@@ -4228,8 +4313,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   if (finalProducts.isEmpty) {
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Voeg minimaal één product toe.'),
+                      SnackBar(
+                        content: Text(
+                          AppLocalizations.of(
+                            context,
+                          )!.mealAddAtLeastOneIngredient,
+                        ),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -4456,8 +4545,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 onPressed: _saveMeal,
                                 child: Text(
                                   mealId != null
-                                      ? 'Wijzigingen Opslaan'
-                                      : 'Opslaan',
+                                      ? AppLocalizations.of(
+                                          context,
+                                        )!.saveChanges
+                                      : AppLocalizations.of(context)!.save,
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
@@ -4470,8 +4561,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             ),
                             Text(
                               existingMeal != null
-                                  ? 'Maaltijd Bewerken'
-                                  : 'Nieuwe Maaltijd Samenstellen',
+                                  ? AppLocalizations.of(context)!.editMeal
+                                  : AppLocalizations.of(context)!.addNewMeal,
                               style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(color: textColor),
                               textAlign: TextAlign.center,
@@ -4480,17 +4571,21 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             TextFormField(
                               controller: mealNameController,
                               style: TextStyle(color: textColor),
-                              decoration: const InputDecoration(
-                                labelText: 'Naam van maaltijd',
+                              decoration: InputDecoration(
+                                labelText: AppLocalizations.of(
+                                  context,
+                                )!.mealName,
                               ),
                               validator: (value) =>
                                   (value == null || value.isEmpty)
-                                  ? 'Naam is verplicht'
+                                  ? AppLocalizations.of(
+                                      context,
+                                    )!.pleaseEnterMealName
                                   : null,
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Ingrediënten',
+                              AppLocalizations.of(context)!.ingredients,
                               style: Theme.of(context).textTheme.titleLarge
                                   ?.copyWith(color: textColor),
                             ),
@@ -4522,7 +4617,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                         ),
                                       ),
                                       subtitle: Text(
-                                        'Hoeveelheid: ${amountController.text}g',
+                                        '${AppLocalizations.of(context)!.amount} ${amountController.text}g',
                                       ),
                                       onTap: () async {
                                         final barcode =
@@ -4600,8 +4695,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                             style: TextStyle(color: textColor),
                                             decoration: InputDecoration(
                                               labelText: 'Product ${index + 1}',
-                                              hintText:
-                                                  'Typ om te zoeken of scan barcode',
+                                              hintText: AppLocalizations.of(
+                                                context,
+                                              )!.searchProductHint,
                                               suffixIcon: IconButton(
                                                 icon: const Icon(Icons.search),
                                                 onPressed: () =>
@@ -4625,8 +4721,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                   context: context,
                                                   builder: (ctx) {
                                                     return SimpleDialog(
-                                                      title: const Text(
-                                                        'Kies product',
+                                                      title: Text(
+                                                        AppLocalizations.of(
+                                                          context,
+                                                        )!.selectProduct,
                                                       ),
                                                       children: [
                                                         SizedBox(
@@ -4830,8 +4928,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                           icon: const Icon(
                                             Icons.qr_code_scanner,
                                           ),
-                                          tooltip:
-                                              'Scan barcode voor dit product',
+                                          tooltip: AppLocalizations.of(
+                                            context,
+                                          )!.scanBarcode,
                                           onPressed: () async {
                                             // Open barcode scanner page (verwacht String result)
                                             final scanned =
@@ -4850,9 +4949,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                             ScaffoldMessenger.of(
                                               context,
                                             ).showSnackBar(
-                                              const SnackBar(
+                                              SnackBar(
                                                 content: Text(
-                                                  'Zoeken op barcode...',
+                                                  AppLocalizations.of(
+                                                    context,
+                                                  )!.searchForBarcode,
                                                 ),
                                               ),
                                             );
@@ -4872,9 +4973,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                 ScaffoldMessenger.of(
                                                   context,
                                                 ).showSnackBar(
-                                                  const SnackBar(
+                                                  SnackBar(
                                                     content: Text(
-                                                      'Product niet gevonden op OpenFoodFacts',
+                                                      AppLocalizations.of(
+                                                        context,
+                                                      )!.errorFetchingProductData,
                                                     ),
                                                   ),
                                                 );
@@ -4891,9 +4994,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                   ScaffoldMessenger.of(
                                                     context,
                                                   ).showSnackBar(
-                                                    const SnackBar(
+                                                    SnackBar(
                                                       content: Text(
-                                                        'Geen productgegevens gevonden',
+                                                        AppLocalizations.of(
+                                                          context,
+                                                        )!.productNotFound,
                                                       ),
                                                     ),
                                                   );
@@ -5063,7 +5168,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                               ).showSnackBar(
                                                 SnackBar(
                                                   content: Text(
-                                                    'Fout bij barcode-zoekactie: $e',
+                                                    '${AppLocalizations.of(context)!.errorBarcodeFind} $e',
                                                   ),
                                                 ),
                                               );
@@ -5106,8 +5211,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                       index,
                                                       loadMore: true,
                                                     ),
-                                                child: const Text(
-                                                  'Meer producten laden...',
+                                                child: Text(
+                                                  AppLocalizations.of(
+                                                    context,
+                                                  )!.loadMoreResults,
                                                 ),
                                               );
                                             }
@@ -5151,7 +5258,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                 ),
                                               ),
                                               subtitle: Text(
-                                                product['brands'] ?? 'Onbekend',
+                                                product['brands'] ??
+                                                    AppLocalizations.of(
+                                                      context,
+                                                    )!.unknown,
                                               ),
 
                                               onTap: () async {
@@ -5164,9 +5274,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                                   ScaffoldMessenger.of(
                                                     context,
                                                   ).showSnackBar(
-                                                    const SnackBar(
+                                                    SnackBar(
                                                       content: Text(
-                                                        'Geen barcode gevonden voor dit product.',
+                                                        AppLocalizations.of(
+                                                          context,
+                                                        )!.errorFetchingProductDataBarcode,
                                                       ),
                                                     ),
                                                   );
@@ -5308,7 +5420,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                   color: Colors.green,
                                   size: 30,
                                 ),
-                                tooltip: 'Voeg nog een product toe',
+                                tooltip: AppLocalizations.of(
+                                  context,
+                                )!.addIngredient,
                                 onPressed: () {
                                   setModalState(() {
                                     ingredientEntries.add({
@@ -5330,8 +5444,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               onPressed: _saveMeal,
                               child: Text(
                                 mealId != null
-                                    ? 'Wijzigingen Opslaan'
-                                    : 'Maaltijd Opslaan',
+                                    ? AppLocalizations.of(context)!.saveChanges
+                                    : AppLocalizations.of(context)!.saveMeal,
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -5418,7 +5532,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Product Bewerken',
+                        AppLocalizations.of(context)!.editMyProduct,
                         style: Theme.of(
                           context,
                         ).textTheme.headlineSmall?.copyWith(color: textColor),
@@ -5428,23 +5542,25 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       TextFormField(
                         controller: _nameController,
                         style: TextStyle(color: textColor),
-                        decoration: const InputDecoration(
-                          labelText: 'Productnaam',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.productName,
                         ),
                         validator: (value) => (value == null || value.isEmpty)
-                            ? 'Naam is verplicht'
+                            ? AppLocalizations.of(context)!.productNameRequired
                             : null,
                       ),
                       TextFormField(
                         controller: _brandController,
                         style: TextStyle(color: textColor),
-                        decoration: const InputDecoration(labelText: 'Merk'),
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.brandName,
+                        ),
                       ),
                       TextFormField(
                         controller: _quantityController,
                         style: TextStyle(color: textColor),
-                        decoration: const InputDecoration(
-                          labelText: 'Hoeveelheid (bijv. 100g, 250ml)',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.quantity,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -5457,7 +5573,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Voedingswaarden per 100g of ml',
+                        AppLocalizations.of(context)!.nutritionalValuesPer100g,
                         style: Theme.of(
                           context,
                         ).textTheme.titleLarge?.copyWith(color: textColor),
@@ -5465,8 +5581,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       TextFormField(
                         controller: _caloriesController,
                         style: TextStyle(color: textColor),
-                        decoration: const InputDecoration(
-                          labelText: 'Energie (kcal)',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.calories,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -5477,13 +5593,15 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           ),
                         ],
                         validator: (value) => (value == null || value.isEmpty)
-                            ? 'Calorieën zijn verplicht'
+                            ? AppLocalizations.of(context)!.caloriesRequired
                             : null,
                       ),
                       TextFormField(
                         controller: _fatController,
                         style: TextStyle(color: textColor),
-                        decoration: const InputDecoration(labelText: 'Vetten'),
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.fat,
+                        ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
@@ -5496,8 +5614,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       TextFormField(
                         controller: _saturatedFatController,
                         style: TextStyle(color: textColor),
-                        decoration: const InputDecoration(
-                          labelText: '  - Waarvan verzadigd',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.saturatedFat,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -5511,8 +5629,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       TextFormField(
                         controller: _carbsController,
                         style: TextStyle(color: textColor),
-                        decoration: const InputDecoration(
-                          labelText: 'Koolhydraten',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(
+                            context,
+                          )!.carbohydrates,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -5526,8 +5646,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       TextFormField(
                         controller: _sugarsController,
                         style: TextStyle(color: textColor),
-                        decoration: const InputDecoration(
-                          labelText: '  - Waarvan suikers',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.sugars,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -5541,7 +5661,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       TextFormField(
                         controller: _fiberController,
                         style: TextStyle(color: textColor),
-                        decoration: const InputDecoration(labelText: 'Vezels'),
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.fiber,
+                        ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
@@ -5554,8 +5676,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       TextFormField(
                         controller: _proteinsController,
                         style: TextStyle(color: textColor),
-                        decoration: const InputDecoration(
-                          labelText: 'Eiwitten',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.proteins,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -5569,7 +5691,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       TextFormField(
                         controller: _saltController,
                         style: TextStyle(color: textColor),
-                        decoration: const InputDecoration(labelText: 'Zout'),
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.salt,
+                        ),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
@@ -5591,9 +5715,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             );
                             if (userDEK == null) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
-                                    'Kon encryptiesleutel niet ophalen.',
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.errorUserDEKNotFound,
                                   ),
                                 ),
                               );
@@ -5707,7 +5833,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             Navigator.pop(context); // sluit de sheet
                           }
                         },
-                        child: const Text('Opslaan'),
+                        child: Text(AppLocalizations.of(context)!.save),
                       ),
                       const SizedBox(height: 20),
                     ],
@@ -5735,8 +5861,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         final textColor = isDarkMode ? Colors.white : Colors.black;
 
-        final name = productData['product_name'] ?? 'Onbekende naam';
-        final brand = productData['brands'] ?? 'Onbekend merk';
+        final name =
+            productData['product_name'] ??
+            AppLocalizations.of(context)!.unknownProduct;
+        final brand =
+            productData['brands'] ?? AppLocalizations.of(context)!.unknownBrand;
         final quantity = productData['quantity'] as String?;
         final nutriments =
             productData['nutriments_per_100g'] as Map<String, dynamic>? ?? {};
@@ -5800,40 +5929,55 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  _buildInfoRow('Merk', brand),
-                  _buildInfoRow('Hoeveelheid', quantity),
+                  _buildInfoRow(AppLocalizations.of(context)!.brand, brand),
                   _buildInfoRow(
-                    'Portiegrootte',
+                    AppLocalizations.of(context)!.quantity,
+                    quantity,
+                  ),
+                  _buildInfoRow(
+                    AppLocalizations.of(context)!.servingSize,
                     productData['serving_size']?.toString(),
                   ),
                   const Divider(height: 24),
                   Text(
-                    'Voedingswaarden per 100g of ml',
+                    AppLocalizations.of(context)!.nutritionalValuesPer100g,
                     style: Theme.of(
                       context,
                     ).textTheme.titleLarge?.copyWith(color: textColor),
                   ),
                   const SizedBox(height: 8),
                   _buildInfoRow(
-                    'Energie (kcal)',
+                    AppLocalizations.of(context)!.calories,
                     nutriments['energy-kcal']?.toString(),
                   ),
-                  _buildInfoRow('Vetten', nutriments['fat']?.toString()),
                   _buildInfoRow(
-                    '  - Waarvan verzadigd',
+                    AppLocalizations.of(context)!.fat,
+                    nutriments['fat']?.toString(),
+                  ),
+                  _buildInfoRow(
+                    AppLocalizations.of(context)!.saturatedFat,
                     nutriments['saturated-fat']?.toString(),
                   ),
                   _buildInfoRow(
-                    'Koolhydraten',
+                    AppLocalizations.of(context)!.carbohydrates,
                     nutriments['carbohydrates']?.toString(),
                   ),
                   _buildInfoRow(
-                    '  - Waarvan suikers',
+                    AppLocalizations.of(context)!.sugars,
                     nutriments['sugars']?.toString(),
                   ),
-                  _buildInfoRow('Vezels', nutriments['fiber']?.toString()),
-                  _buildInfoRow('Eiwitten', nutriments['proteins']?.toString()),
-                  _buildInfoRow('Zout', nutriments['salt']?.toString()),
+                  _buildInfoRow(
+                    AppLocalizations.of(context)!.fiber,
+                    nutriments['fiber']?.toString(),
+                  ),
+                  _buildInfoRow(
+                    AppLocalizations.of(context)!.proteins,
+                    nutriments['proteins']?.toString(),
+                  ),
+                  _buildInfoRow(
+                    AppLocalizations.of(context)!.salt,
+                    nutriments['salt']?.toString(),
+                  ),
                 ],
               ),
             );
@@ -5862,19 +6006,19 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final hour = DateTime.now().hour;
     String selectedMeal;
     if (hour >= 5 && hour < 11) {
-      selectedMeal = 'Ontbijt';
+      selectedMeal = AppLocalizations.of(context)!.breakfast;
     } else if (hour >= 11 && hour < 15) {
-      selectedMeal = 'Lunch';
+      selectedMeal = AppLocalizations.of(context)!.lunch;
     } else if (hour >= 15 && hour < 22) {
-      selectedMeal = 'Avondeten';
+      selectedMeal = AppLocalizations.of(context)!.dinner;
     } else {
-      selectedMeal = 'Tussendoor';
+      selectedMeal = AppLocalizations.of(context)!.snack;
     }
     final List<String> mealTypes = [
-      'Ontbijt',
-      'Lunch',
-      'Avondeten',
-      'Tussendoor',
+      AppLocalizations.of(context)!.breakfast,
+      AppLocalizations.of(context)!.lunch,
+      AppLocalizations.of(context)!.dinner,
+      AppLocalizations.of(context)!.snack,
     ];
 
     return showDialog<bool>(
@@ -5888,7 +6032,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
           builder: (context, setDialogState) {
             return AlertDialog(
               title: Text(
-                'Hoeveelheid voor "$productName"',
+                '${AppLocalizations.of(context)!.amountFor} "$productName"',
                 style: TextStyle(color: textColor),
               ),
               content: Form(
@@ -5903,17 +6047,19 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'Hoeveelheid (gram of milliliter)',
-                        suffixText: 'g of ml',
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context)!.amountGML,
+                        suffixText: AppLocalizations.of(
+                          context,
+                        )!.gramsMillilitersAbbreviation,
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Voer een hoeveelheid in';
+                          return AppLocalizations.of(context)!.amountRequired;
                         }
                         if (double.tryParse(value.replaceAll(',', '.')) ==
                             null) {
-                          return 'Voer een geldig getal in';
+                          return AppLocalizations.of(context)!.invalidAmount;
                         }
                         return null;
                       },
@@ -5923,7 +6069,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       // dropdown voor maaltijdtype
                       value: selectedMeal,
                       style: TextStyle(color: textColor),
-                      decoration: const InputDecoration(labelText: 'Sectie'),
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context)!.section,
+                      ),
                       items: mealTypes.map((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
@@ -5943,7 +6091,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Annuleren'),
+                  child: Text(AppLocalizations.of(context)!.cancel),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -5962,8 +6110,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       );
                       if (userDEK == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Kon encryptiesleutel niet ophalen.'),
+                          SnackBar(
+                            content: Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.errorUserDEKNotFound,
+                            ),
                           ),
                         );
                         Navigator.pop(dialogContext, false);
@@ -6057,7 +6209,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           ScaffoldMessenger.of(this.context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                '$productName toegevoegd aan je logboek.',
+                                '$productName ${AppLocalizations.of(context)!.addedToLog}',
                               ),
                             ),
                           );
@@ -6067,7 +6219,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         if (mounted) {
                           ScaffoldMessenger.of(this.context).showSnackBar(
                             SnackBar(
-                              content: Text('Fout bij opslaan: $e'),
+                              content: Text(
+                                '${AppLocalizations.of(context)!.errorSaving} $e',
+                              ),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -6076,7 +6230,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       }
                     }
                   },
-                  child: const Text('Opslaan'),
+                  child: Text(AppLocalizations.of(context)!.save),
                 ),
               ],
             );
@@ -6101,13 +6255,8 @@ class _AILoadingDialogState extends State<_AILoadingDialog>
   int _messageIndex = 0;
   Timer? _textTimer;
 
-  final List<String> _messages = [
-    "Foto analyseren...",
-    "Ingrediënten herkennen...",
-    "Voedingswaarden inschatten...",
-    "Even geduld...",
-    "Bijna klaar...",
-  ];
+  late List<String> _messages;
+  bool _messagesInitialized = false;
 
   @override
   void initState() {
@@ -6123,14 +6272,34 @@ class _AILoadingDialogState extends State<_AILoadingDialog>
       end: 1.2,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
-    // Timer om de tekst elke 2 seconden te veranderen
-    _textTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted) {
-        setState(() {
-          _messageIndex = (_messageIndex + 1) % _messages.length;
-        });
-      }
-    });
+    // Do not start the text timer here because AppLocalizations requires a valid context;
+    // the timer (which references _messages) will be started in didChangeDependencies
+    // after _messages is initialized.
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_messagesInitialized) {
+      _messages = [
+        AppLocalizations.of(context)!.photoAnalyzing,
+        AppLocalizations.of(context)!.ingredientsIdentifying,
+        AppLocalizations.of(context)!.nutritionalValuesEstimating,
+        AppLocalizations.of(context)!.patientlyWaiting,
+        AppLocalizations.of(context)!.almostDone,
+      ];
+      _messagesInitialized = true;
+
+      // Timer om de tekst elke 2 seconden te veranderen
+      _textTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+        if (mounted) {
+          setState(() {
+            _messageIndex = (_messageIndex + 1) % _messages.length;
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -6171,7 +6340,7 @@ class _AILoadingDialogState extends State<_AILoadingDialog>
             ),
             const SizedBox(height: 24),
             Text(
-              "AI is aan het werk",
+              AppLocalizations.of(context)!.processingWithAI,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

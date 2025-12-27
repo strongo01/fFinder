@@ -1996,6 +1996,1242 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'added'**
   String get added;
+
+  /// No description provided for @sportAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Sport'**
+  String get sportAddTitle;
+
+  /// No description provided for @newSportActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'New sportactivity'**
+  String get newSportActivity;
+
+  /// No description provided for @labelSport.
+  ///
+  /// In en, this message translates to:
+  /// **'Sport'**
+  String get labelSport;
+
+  /// No description provided for @chooseSport.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a sport'**
+  String get chooseSport;
+
+  /// No description provided for @customSportName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name of sport'**
+  String get customSportName;
+
+  /// No description provided for @enterSportName.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a sport name'**
+  String get enterSportName;
+
+  /// No description provided for @durationMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration (minutes)'**
+  String get durationMinutes;
+
+  /// No description provided for @invalidDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid duration'**
+  String get invalidDuration;
+
+  /// No description provided for @caloriesBurned.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories burned'**
+  String get caloriesBurned;
+
+  /// No description provided for @invalidCalories.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid number of calories'**
+  String get invalidCalories;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @encryptionKeyNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Encryption key not found.'**
+  String get encryptionKeyNotFound;
+
+  /// No description provided for @noSportsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No sport activities yet.'**
+  String get noSportsYet;
+
+  /// No description provided for @durationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get durationLabel;
+
+  /// No description provided for @caloriesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories'**
+  String get caloriesLabel;
+
+  /// No description provided for @minutesShort.
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get minutesShort;
+
+  /// No description provided for @intensityLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Intensity'**
+  String get intensityLevel;
+
+  /// No description provided for @intensityLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get intensityLight;
+
+  /// No description provided for @intensityNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get intensityNormal;
+
+  /// No description provided for @intensityHard.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard'**
+  String get intensityHard;
+
+  /// No description provided for @intensityVeryHard.
+  ///
+  /// In en, this message translates to:
+  /// **'Very hard'**
+  String get intensityVeryHard;
+
+  /// No description provided for @userNotLoggedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'User not logged in.'**
+  String get userNotLoggedIn;
+
+  /// No description provided for @sportAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Sport activity added'**
+  String get sportAdded;
+
+  /// No description provided for @sportRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get sportRunning;
+
+  /// No description provided for @sportCycling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cycling'**
+  String get sportCycling;
+
+  /// No description provided for @sportSwimming.
+  ///
+  /// In en, this message translates to:
+  /// **'Swimming'**
+  String get sportSwimming;
+
+  /// No description provided for @sportWalking.
+  ///
+  /// In en, this message translates to:
+  /// **'Walking'**
+  String get sportWalking;
+
+  /// No description provided for @sportFitness.
+  ///
+  /// In en, this message translates to:
+  /// **'Fitness'**
+  String get sportFitness;
+
+  /// No description provided for @sportFootball.
+  ///
+  /// In en, this message translates to:
+  /// **'Football'**
+  String get sportFootball;
+
+  /// No description provided for @sportTennis.
+  ///
+  /// In en, this message translates to:
+  /// **'Tennis'**
+  String get sportTennis;
+
+  /// No description provided for @sportYoga.
+  ///
+  /// In en, this message translates to:
+  /// **'Yoga'**
+  String get sportYoga;
+
+  /// No description provided for @sportOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get sportOther;
+
+  /// No description provided for @deleteSportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete sport activity?'**
+  String get deleteSportTitle;
+
+  /// No description provided for @deleteSportContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this sport activity?'**
+  String get deleteSportContent;
+
+  /// No description provided for @sportDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Sport activity deleted'**
+  String get sportDeleted;
+
+  /// No description provided for @editSportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Sport Activity'**
+  String get editSportTitle;
+
+  /// No description provided for @sportUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Sport activity updated'**
+  String get sportUpdated;
+
+  /// No description provided for @notLoggedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Not logged in.'**
+  String get notLoggedIn;
+
+  /// No description provided for @addSportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Sport Activity'**
+  String get addSportTitle;
+
+  /// No description provided for @sportLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sport Activity'**
+  String get sportLabel;
+
+  /// No description provided for @customSportLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Sport Name'**
+  String get customSportLabel;
+
+  /// No description provided for @customSportRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom sport name is required.'**
+  String get customSportRequired;
+
+  /// No description provided for @logSportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log Sport Activity'**
+  String get logSportTitle;
+
+  /// No description provided for @intensityHeavy.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy'**
+  String get intensityHeavy;
+
+  /// No description provided for @intensityVeryHeavy.
+  ///
+  /// In en, this message translates to:
+  /// **'Very Heavy'**
+  String get intensityVeryHeavy;
+
+  /// No description provided for @intensityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Intensity'**
+  String get intensityLabel;
+
+  /// No description provided for @enterValidDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid duration.'**
+  String get enterValidDuration;
+
+  /// No description provided for @caloriesBurnedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories Burned'**
+  String get caloriesBurnedLabel;
+
+  /// No description provided for @enterValidCalories.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid number of calories.'**
+  String get enterValidCalories;
+
+  /// No description provided for @durationShort.
+  ///
+  /// In en, this message translates to:
+  /// **'dur.'**
+  String get durationShort;
+
+  /// No description provided for @caloriesShort.
+  ///
+  /// In en, this message translates to:
+  /// **'cal'**
+  String get caloriesShort;
+
+  /// No description provided for @saveSportFailedPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Save sport activity failed: '**
+  String get saveSportFailedPrefix;
+
+  /// No description provided for @unsavedChangesContent.
+  ///
+  /// In en, this message translates to:
+  /// **'You have unsaved changes. Are you sure you want to leave without saving?'**
+  String get unsavedChangesContent;
+
+  /// No description provided for @searchFood.
+  ///
+  /// In en, this message translates to:
+  /// **'Search food'**
+  String get searchFood;
+
+  /// No description provided for @searchFoodDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for food to add to your daily log.'**
+  String get searchFoodDescription;
+
+  /// No description provided for @scanProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan product'**
+  String get scanProduct;
+
+  /// No description provided for @scanProductDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan a product to quickly add nutritional information to your day.'**
+  String get scanProductDescription;
+
+  /// No description provided for @recentProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Products'**
+  String get recentProducts;
+
+  /// No description provided for @recentProductsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'View and quickly add products you\'ve recently used.'**
+  String get recentProductsDescription;
+
+  /// No description provided for @favoriteProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite Products'**
+  String get favoriteProducts;
+
+  /// No description provided for @favoriteProductsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Here you can view all your favorite products.'**
+  String get favoriteProductsDescription;
+
+  /// No description provided for @myProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'My Products'**
+  String get myProducts;
+
+  /// No description provided for @myProductsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Here you can add your own products that cannot be found.'**
+  String get myProductsDescription;
+
+  /// No description provided for @meals.
+  ///
+  /// In en, this message translates to:
+  /// **'Meals'**
+  String get meals;
+
+  /// No description provided for @mealsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Here you can view and log meals; meals consist of multiple products.'**
+  String get mealsDescription;
+
+  /// No description provided for @mealsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add meals'**
+  String get mealsAdd;
+
+  /// No description provided for @mealsAddDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap this plus to create meals from multiple products so you can add frequently eaten meals faster.'**
+  String get mealsAddDescription;
+
+  /// No description provided for @mealsLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Log meals'**
+  String get mealsLog;
+
+  /// No description provided for @mealsLogDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap this cart to add meals to the logs.'**
+  String get mealsLogDescription;
+
+  /// No description provided for @enterMoreChars.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter at least 2 characters.'**
+  String get enterMoreChars;
+
+  /// No description provided for @errorFetch.
+  ///
+  /// In en, this message translates to:
+  /// **'Error fetching'**
+  String get errorFetch;
+
+  /// No description provided for @takePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get takePhoto;
+
+  /// No description provided for @chooseFromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get chooseFromGallery;
+
+  /// No description provided for @noImageSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No image selected.'**
+  String get noImageSelected;
+
+  /// No description provided for @aiNoIngredientsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No result from AI.'**
+  String get aiNoIngredientsFound;
+
+  /// No description provided for @aiIngredientsPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'What ingredients do you see here? Answer in English. Ignore marketing terms, product names, and non-relevant words like \'zero\', \'light\', etc. Answer only with actual ingredients that are in the product. Answer only if the image shows a food product. Respond as: {ingredient}, {ingredient}, ...'**
+  String aiIngredientsPrompt(Object ingredient);
+
+  /// No description provided for @aiIngredientsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Ingredients found:'**
+  String get aiIngredientsFound;
+
+  /// No description provided for @aiIngredientsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The AI recognized the following ingredients:'**
+  String get aiIngredientsDescription;
+
+  /// No description provided for @addMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Compose meal'**
+  String get addMeal;
+
+  /// No description provided for @errorAI.
+  ///
+  /// In en, this message translates to:
+  /// **'AI analysis error:'**
+  String get errorAI;
+
+  /// No description provided for @amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get amount;
+
+  /// No description provided for @search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get search;
+
+  /// No description provided for @loadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more products...'**
+  String get loadMore;
+
+  /// No description provided for @errorNoBarcode.
+  ///
+  /// In en, this message translates to:
+  /// **'No barcode found for this product.'**
+  String get errorNoBarcode;
+
+  /// No description provided for @amountInGrams.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount (g)'**
+  String get amountInGrams;
+
+  /// No description provided for @errorUserDEKMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not retrieve encryption key.'**
+  String get errorUserDEKMissing;
+
+  /// No description provided for @errorNoIngredientsAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one product.'**
+  String get errorNoIngredientsAdded;
+
+  /// No description provided for @mealSavedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal saved successfully!'**
+  String get mealSavedSuccessfully;
+
+  /// No description provided for @saveMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Save meal'**
+  String get saveMeal;
+
+  /// No description provided for @errorFetchRecentsProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'Error fetching recent products'**
+  String get errorFetchRecentsProducts;
+
+  /// No description provided for @searchProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'Search products...'**
+  String get searchProducts;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @addFoodItem.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like to add?'**
+  String get addFoodItem;
+
+  /// No description provided for @addProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Add product'**
+  String get addProduct;
+
+  /// No description provided for @addMealT.
+  ///
+  /// In en, this message translates to:
+  /// **'Add meal'**
+  String get addMealT;
+
+  /// No description provided for @recents.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get recents;
+
+  /// No description provided for @favorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get favorites;
+
+  /// No description provided for @searchingProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'Start typing to search.'**
+  String get searchingProducts;
+
+  /// No description provided for @noProductsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No products found.'**
+  String get noProductsFound;
+
+  /// No description provided for @addNewProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Would you like to add a product yourself?'**
+  String get addNewProduct;
+
+  /// No description provided for @errorInvalidBarcode.
+  ///
+  /// In en, this message translates to:
+  /// **'No barcode found for this product.'**
+  String get errorInvalidBarcode;
+
+  /// No description provided for @loadMoreResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more products…'**
+  String get loadMoreResults;
+
+  /// No description provided for @notTheDesiredResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a new product'**
+  String get notTheDesiredResults;
+
+  /// No description provided for @addNewProductT.
+  ///
+  /// In en, this message translates to:
+  /// **'Add New Product'**
+  String get addNewProductT;
+
+  /// No description provided for @errorProductNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required'**
+  String get errorProductNameRequired;
+
+  /// No description provided for @brandName.
+  ///
+  /// In en, this message translates to:
+  /// **'Brand'**
+  String get brandName;
+
+  /// No description provided for @quantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity (e.g. 100g, 250ml)'**
+  String get quantity;
+
+  /// No description provided for @nutritionalValuesPer100g.
+  ///
+  /// In en, this message translates to:
+  /// **'Nutritional values per 100g or ml'**
+  String get nutritionalValuesPer100g;
+
+  /// No description provided for @calories.
+  ///
+  /// In en, this message translates to:
+  /// **'Energy (kcal)'**
+  String get calories;
+
+  /// No description provided for @errorCaloriesRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories are required'**
+  String get errorCaloriesRequired;
+
+  /// No description provided for @fat.
+  ///
+  /// In en, this message translates to:
+  /// **'Fat'**
+  String get fat;
+
+  /// No description provided for @saturatedFat.
+  ///
+  /// In en, this message translates to:
+  /// **'  - of which saturated'**
+  String get saturatedFat;
+
+  /// No description provided for @carbohydrates.
+  ///
+  /// In en, this message translates to:
+  /// **'Carbohydrates'**
+  String get carbohydrates;
+
+  /// No description provided for @sugars.
+  ///
+  /// In en, this message translates to:
+  /// **'  - of which sugars'**
+  String get sugars;
+
+  /// No description provided for @fiber.
+  ///
+  /// In en, this message translates to:
+  /// **'Fiber'**
+  String get fiber;
+
+  /// No description provided for @proteins.
+  ///
+  /// In en, this message translates to:
+  /// **'Proteins'**
+  String get proteins;
+
+  /// No description provided for @salt.
+  ///
+  /// In en, this message translates to:
+  /// **'Salt'**
+  String get salt;
+
+  /// No description provided for @errorEncryptionKeyMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: Could not retrieve encryption key.'**
+  String get errorEncryptionKeyMissing;
+
+  /// No description provided for @saveProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get saveProduct;
+
+  /// No description provided for @unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get unknown;
+
+  /// No description provided for @unnamedProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed product'**
+  String get unnamedProduct;
+
+  /// No description provided for @logInToSeeRecents.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in to see your recent products.'**
+  String get logInToSeeRecents;
+
+  /// No description provided for @noRecentProductsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No recent products found.'**
+  String get noRecentProductsFound;
+
+  /// No description provided for @errorLoadingRecentProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred.'**
+  String get errorLoadingRecentProducts;
+
+  /// No description provided for @logInToSeeFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in to see your favorite products.'**
+  String get logInToSeeFavorites;
+
+  /// No description provided for @noFavoriteProductsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No favorite products found.'**
+  String get noFavoriteProductsFound;
+
+  /// No description provided for @errorLoadingFavoriteProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred.'**
+  String get errorLoadingFavoriteProducts;
+
+  /// No description provided for @logInToSeeMyProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in to see your products.'**
+  String get logInToSeeMyProducts;
+
+  /// No description provided for @noMyProductsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t created any products yet.'**
+  String get noMyProductsFound;
+
+  /// No description provided for @errorLoadingMyProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred.'**
+  String get errorLoadingMyProducts;
+
+  /// No description provided for @unknownBrand.
+  ///
+  /// In en, this message translates to:
+  /// **'No brand'**
+  String get unknownBrand;
+
+  /// No description provided for @confirmDeletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm deletion'**
+  String get confirmDeletion;
+
+  /// No description provided for @sure.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to '**
+  String get sure;
+
+  /// No description provided for @willBeDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **' will be deleted?'**
+  String get willBeDeleted;
+
+  /// No description provided for @deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted'**
+  String get deleted;
+
+  /// No description provided for @logInToSeeMeals.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in to see your meals.'**
+  String get logInToSeeMeals;
+
+  /// No description provided for @errorLoadingMeals.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred.'**
+  String get errorLoadingMeals;
+
+  /// No description provided for @mealExample.
+  ///
+  /// In en, this message translates to:
+  /// **'Example meal'**
+  String get mealExample;
+
+  /// No description provided for @createOwnMealsFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Click + to create your first meal'**
+  String get createOwnMealsFirst;
+
+  /// No description provided for @logMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Log meal'**
+  String get logMeal;
+
+  /// No description provided for @createMealsBeforeLogging.
+  ///
+  /// In en, this message translates to:
+  /// **'This is an example. Create your own meal first.'**
+  String get createMealsBeforeLogging;
+
+  /// No description provided for @unnamedMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed meal'**
+  String get unnamedMeal;
+
+  /// No description provided for @sureMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure that your meal '**
+  String get sureMeal;
+
+  /// No description provided for @meal.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal '**
+  String get meal;
+
+  /// No description provided for @encryptionKeyError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not retrieve encryption key.'**
+  String get encryptionKeyError;
+
+  /// No description provided for @mealNoIngredients.
+  ///
+  /// In en, this message translates to:
+  /// **'This meal has no ingredients.'**
+  String get mealNoIngredients;
+
+  /// No description provided for @mealLoggedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **' added to your log.'**
+  String get mealLoggedSuccessfully;
+
+  /// No description provided for @errorSaveMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Error saving meal:'**
+  String get errorSaveMeal;
+
+  /// No description provided for @sectie.
+  ///
+  /// In en, this message translates to:
+  /// **'Section'**
+  String get sectie;
+
+  /// No description provided for @log.
+  ///
+  /// In en, this message translates to:
+  /// **'Log'**
+  String get log;
+
+  /// No description provided for @mealAddAtLeastOneIngredient.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one product.'**
+  String get mealAddAtLeastOneIngredient;
+
+  /// No description provided for @editMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit meal'**
+  String get editMeal;
+
+  /// No description provided for @addNewMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new meal'**
+  String get addNewMeal;
+
+  /// No description provided for @mealName.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal name'**
+  String get mealName;
+
+  /// No description provided for @pleaseEnterMealName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required'**
+  String get pleaseEnterMealName;
+
+  /// No description provided for @ingredients.
+  ///
+  /// In en, this message translates to:
+  /// **'Ingredients'**
+  String get ingredients;
+
+  /// No description provided for @searchProductHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type to search or scan barcode'**
+  String get searchProductHint;
+
+  /// No description provided for @selectProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Select product'**
+  String get selectProduct;
+
+  /// No description provided for @scanBarcode.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan barcode for this product'**
+  String get scanBarcode;
+
+  /// No description provided for @searchForBarcode.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching by barcode...'**
+  String get searchForBarcode;
+
+  /// No description provided for @errorFetchingProductData.
+  ///
+  /// In en, this message translates to:
+  /// **'Product not found on OpenFoodFacts'**
+  String get errorFetchingProductData;
+
+  /// No description provided for @productNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No product data found'**
+  String get productNotFound;
+
+  /// No description provided for @errorBarcodeFind.
+  ///
+  /// In en, this message translates to:
+  /// **'Error during barcode search: '**
+  String get errorBarcodeFind;
+
+  /// No description provided for @errorFetchingProductDataBarcode.
+  ///
+  /// In en, this message translates to:
+  /// **'No barcode found for this product.'**
+  String get errorFetchingProductDataBarcode;
+
+  /// No description provided for @addIngredient.
+  ///
+  /// In en, this message translates to:
+  /// **'Add another product'**
+  String get addIngredient;
+
+  /// No description provided for @editMyProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit product'**
+  String get editMyProduct;
+
+  /// No description provided for @productName.
+  ///
+  /// In en, this message translates to:
+  /// **'Product name'**
+  String get productName;
+
+  /// No description provided for @productNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required'**
+  String get productNameRequired;
+
+  /// No description provided for @caloriesRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories are required'**
+  String get caloriesRequired;
+
+  /// No description provided for @errorUserDEKNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not retrieve encryption key.'**
+  String get errorUserDEKNotFound;
+
+  /// No description provided for @unknownProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown product'**
+  String get unknownProduct;
+
+  /// No description provided for @brand.
+  ///
+  /// In en, this message translates to:
+  /// **'Brand'**
+  String get brand;
+
+  /// No description provided for @servingSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Serving size'**
+  String get servingSize;
+
+  /// No description provided for @nutritionalValuesPer100mlg.
+  ///
+  /// In en, this message translates to:
+  /// **'Nutritional values per 100g/ml'**
+  String get nutritionalValuesPer100mlg;
+
+  /// No description provided for @saveMyProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Save my product'**
+  String get saveMyProduct;
+
+  /// No description provided for @amountFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount for '**
+  String get amountFor;
+
+  /// No description provided for @amountGML.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount (gram or milliliter)'**
+  String get amountGML;
+
+  /// No description provided for @gramsMillilitersAbbreviation.
+  ///
+  /// In en, this message translates to:
+  /// **'g/ml'**
+  String get gramsMillilitersAbbreviation;
+
+  /// No description provided for @invalidAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid amount.'**
+  String get invalidAmount;
+
+  /// No description provided for @addedToLog.
+  ///
+  /// In en, this message translates to:
+  /// **' added to your log.'**
+  String get addedToLog;
+
+  /// No description provided for @errorSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Error saving: '**
+  String get errorSaving;
+
+  /// No description provided for @photoAnalyzing.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyzing photo...'**
+  String get photoAnalyzing;
+
+  /// No description provided for @ingredientsIdentifying.
+  ///
+  /// In en, this message translates to:
+  /// **'Identifying ingredients...'**
+  String get ingredientsIdentifying;
+
+  /// No description provided for @nutritionalValuesEstimating.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimating nutritional values...'**
+  String get nutritionalValuesEstimating;
+
+  /// No description provided for @patientlyWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait...'**
+  String get patientlyWaiting;
+
+  /// No description provided for @almostDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost done...'**
+  String get almostDone;
+
+  /// No description provided for @processingWithAI.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing with AI...'**
+  String get processingWithAI;
+
+  /// No description provided for @selectMealType.
+  ///
+  /// In en, this message translates to:
+  /// **'Select mealtype'**
+  String get selectMealType;
+
+  /// No description provided for @section.
+  ///
+  /// In en, this message translates to:
+  /// **'Section'**
+  String get section;
+
+  /// No description provided for @saveNameTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get saveNameTooltip;
+
+  /// No description provided for @noChangesTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes'**
+  String get noChangesTooltip;
+
+  /// No description provided for @fillRequiredKcal.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in all required fields (kcal).'**
+  String get fillRequiredKcal;
+
+  /// No description provided for @additivesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Additives'**
+  String get additivesLabel;
+
+  /// No description provided for @allergensLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Allergens'**
+  String get allergensLabel;
+
+  /// No description provided for @mealAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount for meal'**
+  String get mealAmountLabel;
+
+  /// No description provided for @addToMealButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to meal'**
+  String get addToMealButton;
+
+  /// No description provided for @enterAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount'**
+  String get enterAmount;
+
+  /// No description provided for @unitLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get unitLabel;
+
+  /// No description provided for @gramLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Gram (g)'**
+  String get gramLabel;
+
+  /// No description provided for @milliliterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Milliliter (ml)'**
+  String get milliliterLabel;
+
+  /// No description provided for @errorLoadingLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Error fetching local data: '**
+  String get errorLoadingLocal;
+
+  /// No description provided for @errorFetching.
+  ///
+  /// In en, this message translates to:
+  /// **'Error fetching: '**
+  String get errorFetching;
+
+  /// No description provided for @nameSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Name saved'**
+  String get nameSaved;
+
+  /// No description provided for @enterValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing value'**
+  String get enterValue;
+
+  /// No description provided for @requiredField.
+  ///
+  /// In en, this message translates to:
+  /// **'This field is required'**
+  String get requiredField;
+
+  /// No description provided for @invalidNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid number'**
+  String get invalidNumber;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

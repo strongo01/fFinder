@@ -958,4 +958,624 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get added => 'toegevoegd';
+
+  @override
+  String get sportAddTitle => 'Sport toevoegen';
+
+  @override
+  String get newSportActivity => 'Nieuwe sportactiviteit';
+
+  @override
+  String get labelSport => 'Sport';
+
+  @override
+  String get chooseSport => 'Kies een sport';
+
+  @override
+  String get customSportName => 'Naam van sport';
+
+  @override
+  String get enterSportName => 'Voer een sportnaam in';
+
+  @override
+  String get durationMinutes => 'Duur (minuten)';
+
+  @override
+  String get invalidDuration => 'Voer een geldige duur in';
+
+  @override
+  String get caloriesBurned => 'Calorieën verbrand';
+
+  @override
+  String get invalidCalories => 'Voer een geldig aantal calorieën in';
+
+  @override
+  String get save => 'Opslaan';
+
+  @override
+  String get encryptionKeyNotFound => 'Encryptiesleutel niet gevonden.';
+
+  @override
+  String get noSportsYet => 'Nog geen sportactiviteiten.';
+
+  @override
+  String get durationLabel => 'Duur (minuten)';
+
+  @override
+  String get caloriesLabel => 'Calorieën';
+
+  @override
+  String get minutesShort => 'minuten';
+
+  @override
+  String get intensityLevel => 'Intensiteit';
+
+  @override
+  String get intensityLight => 'Licht';
+
+  @override
+  String get intensityNormal => 'Normaal';
+
+  @override
+  String get intensityHard => 'Zwaar';
+
+  @override
+  String get intensityVeryHard => 'Zeer zwaar';
+
+  @override
+  String get userNotLoggedIn => 'Niet ingelogd.';
+
+  @override
+  String get sportAdded => 'Sportactiviteit toegevoegd';
+
+  @override
+  String get sportRunning => 'Hardlopen';
+
+  @override
+  String get sportCycling => 'Fietsen';
+
+  @override
+  String get sportSwimming => 'Zwemmen';
+
+  @override
+  String get sportWalking => 'Wandelen';
+
+  @override
+  String get sportFitness => 'Fitness';
+
+  @override
+  String get sportFootball => 'Voetbal';
+
+  @override
+  String get sportTennis => 'Tennis';
+
+  @override
+  String get sportYoga => 'Yoga';
+
+  @override
+  String get sportOther => 'Overig';
+
+  @override
+  String get deleteSportTitle => 'Sportactiviteit verwijderen';
+
+  @override
+  String get deleteSportContent => 'Deze actie kan niet ongedaan worden gemaakt.';
+
+  @override
+  String get sportDeleted => 'Sportactiviteit verwijderd';
+
+  @override
+  String get editSportTitle => 'Sportactiviteit bewerken';
+
+  @override
+  String get sportUpdated => 'Sportactiviteit bijgewerkt';
+
+  @override
+  String get notLoggedIn => 'Niet ingelogd';
+
+  @override
+  String get addSportTitle => 'Sport toevoegen';
+
+  @override
+  String get sportLabel => 'Sport';
+
+  @override
+  String get customSportLabel => 'Naam van sport';
+
+  @override
+  String get customSportRequired => 'Voer een sportnaam in';
+
+  @override
+  String get logSportTitle => 'Sportactiviteit loggen';
+
+  @override
+  String get intensityHeavy => 'Zwaar';
+
+  @override
+  String get intensityVeryHeavy => 'Zeer zwaar';
+
+  @override
+  String get intensityLabel => 'Intensiteit';
+
+  @override
+  String get enterValidDuration => 'Voer een geldige duur in';
+
+  @override
+  String get caloriesBurnedLabel => 'Calorieën verbrand';
+
+  @override
+  String get enterValidCalories => 'Voer een geldig aantal calorieën in';
+
+  @override
+  String get durationShort => 'Duur:';
+
+  @override
+  String get caloriesShort => 'Calorieën:';
+
+  @override
+  String get saveSportFailedPrefix => 'Opslaan mislukt:';
+
+  @override
+  String get unsavedChangesContent => 'Je hebt niet-opgeslagen wijzigingen. Weet je zeker dat je deze wilt negeren?';
+
+  @override
+  String get searchFood => 'Voedsel zoeken';
+
+  @override
+  String get searchFoodDescription => 'Zoek naar voedsel om toe te voegen aan je dagelijkse log.';
+
+  @override
+  String get scanProduct => 'Product scannen';
+
+  @override
+  String get scanProductDescription => 'Scan een product om snel voedingsinformatie toe te voegen aan je dag.';
+
+  @override
+  String get recentProducts => 'Recente Producten';
+
+  @override
+  String get recentProductsDescription => 'Bekijk en voeg snel producten toe die je recent hebt gebruikt.';
+
+  @override
+  String get favoriteProducts => 'Favoriete Producten';
+
+  @override
+  String get favoriteProductsDescription => 'Hier kan je al je favorieten producten bekijken.';
+
+  @override
+  String get myProducts => 'Mijn Producten';
+
+  @override
+  String get myProductsDescription => 'Hier kan je zelf producten toevoegen die niet gevonden kunnen worden.';
+
+  @override
+  String get meals => 'Maaltijden';
+
+  @override
+  String get mealsDescription => 'Hier kan je maaltijden zien en loggen, maaltijden bestaan uit meerdere producten.';
+
+  @override
+  String get mealsAdd => 'Maaltijden toevoegen';
+
+  @override
+  String get mealsAddDescription => 'Tik op dit plusje om maaltijden te maken uit meerdere producten, zodat je sneller vaak gegeten maaltijden kan toevoegen.';
+
+  @override
+  String get mealsLog => 'Maaltijden loggen';
+
+  @override
+  String get mealsLogDescription => 'Tik op dit winkelwagentje om maaltijden toe te voegen aan de logs.';
+
+  @override
+  String get enterMoreChars => 'Voer minimaal 2 tekens in.';
+
+  @override
+  String get errorFetch => 'Fout bij ophalen';
+
+  @override
+  String get takePhoto => 'Maak een foto';
+
+  @override
+  String get chooseFromGallery => 'Kies uit galerij';
+
+  @override
+  String get noImageSelected => 'Geen afbeelding geselecteerd.';
+
+  @override
+  String get aiNoIngredientsFound => 'Geen resultaat van AI.';
+
+  @override
+  String aiIngredientsPrompt(Object ingredient) {
+    return 'Wat voor ingrediënten zie je hier? Antwoord in het Nederlands. Negeer marketingtermen, productnamen, en niet-relevante woorden zoals \'zero\', \'light\', etc. Antwoord alleen met daadwerkelijke ingrediënten die in het product zitten. Antwoord alleen als het plaatje een voedselproduct toont. Antwoord als: $ingredient, $ingredient, ...';
+  }
+
+  @override
+  String get aiIngredientsFound => 'Gevonden ingrediënten:';
+
+  @override
+  String get aiIngredientsDescription => 'De AI heeft de volgende ingrediënten herkend:';
+
+  @override
+  String get addMeal => 'Maaltijd samenstellen';
+
+  @override
+  String get errorAI => 'Fout bij AI-analyse:';
+
+  @override
+  String get amount => 'Hoeveelheid';
+
+  @override
+  String get search => 'Zoek';
+
+  @override
+  String get loadMore => 'Meer producten laden...';
+
+  @override
+  String get errorNoBarcode => 'Geen barcode gevonden voor dit product.';
+
+  @override
+  String get amountInGrams => 'Hoeveelheid (g)';
+
+  @override
+  String get errorUserDEKMissing => 'Kon encryptiesleutel niet ophalen.';
+
+  @override
+  String get errorNoIngredientsAdded => 'Voeg minimaal één product toe.';
+
+  @override
+  String get mealSavedSuccessfully => 'Maaltijd opgeslagen!';
+
+  @override
+  String get saveMeal => 'Maaltijd opslaan';
+
+  @override
+  String get errorFetchRecentsProducts => 'Fout bij ophalen recente producten';
+
+  @override
+  String get searchProducts => 'Zoek producten...';
+
+  @override
+  String get add => 'Toevoegen';
+
+  @override
+  String get addFoodItem => 'Wat wil je toevoegen?';
+
+  @override
+  String get addProduct => 'Product toevoegen';
+
+  @override
+  String get addMealT => 'Maaltijd toevoegen';
+
+  @override
+  String get recents => 'Recent';
+
+  @override
+  String get favorites => 'Favorieten';
+
+  @override
+  String get searchingProducts => 'Begin met typen om te zoeken.';
+
+  @override
+  String get noProductsFound => 'Geen producten gevonden.';
+
+  @override
+  String get addNewProduct => 'Wilt u zelf een product toevoegen?';
+
+  @override
+  String get errorInvalidBarcode => 'Geen barcode gevonden voor dit product.';
+
+  @override
+  String get loadMoreResults => 'Meer producten laden…';
+
+  @override
+  String get notTheDesiredResults => 'Voeg een nieuw product toe';
+
+  @override
+  String get addNewProductT => 'Nieuw Product Toevoegen';
+
+  @override
+  String get errorProductNameRequired => 'Naam is verplicht';
+
+  @override
+  String get brandName => 'Merk';
+
+  @override
+  String get quantity => 'Hoeveelheid (bijv. 100g, 250ml)';
+
+  @override
+  String get nutritionalValuesPer100g => 'Voedingswaarden per 100g of ml';
+
+  @override
+  String get calories => 'Energie (kcal)';
+
+  @override
+  String get errorCaloriesRequired => 'Calorieën zijn verplicht';
+
+  @override
+  String get fat => 'Vetten';
+
+  @override
+  String get saturatedFat => '  - Waarvan verzadigd';
+
+  @override
+  String get carbohydrates => 'Koolhydraten';
+
+  @override
+  String get sugars => '  - Waarvan suikers';
+
+  @override
+  String get fiber => 'Vezels';
+
+  @override
+  String get proteins => 'Eiwitten';
+
+  @override
+  String get salt => 'Zout';
+
+  @override
+  String get errorEncryptionKeyMissing => 'Fout: Kon encryptiesleutel niet ophalen.';
+
+  @override
+  String get saveProduct => 'Opslaan';
+
+  @override
+  String get unknown => 'Onbekend';
+
+  @override
+  String get unnamedProduct => 'Onbekende naam';
+
+  @override
+  String get logInToSeeRecents => 'Log in om je recente producten te zien.';
+
+  @override
+  String get noRecentProductsFound => 'Geen recente producten gevonden.';
+
+  @override
+  String get errorLoadingRecentProducts => 'Er is een fout opgetreden.';
+
+  @override
+  String get logInToSeeFavorites => 'Log in om je favoriete producten te zien.';
+
+  @override
+  String get noFavoriteProductsFound => 'Geen favoriete producten gevonden.';
+
+  @override
+  String get errorLoadingFavoriteProducts => 'Er is een fout opgetreden.';
+
+  @override
+  String get logInToSeeMyProducts => 'Log in om je producten te zien.';
+
+  @override
+  String get noMyProductsFound => 'Je hebt nog geen producten aangemaakt.';
+
+  @override
+  String get errorLoadingMyProducts => 'Er is een fout opgetreden.';
+
+  @override
+  String get unknownBrand => 'Geen merk';
+
+  @override
+  String get confirmDeletion => 'Bevestig verwijdering';
+
+  @override
+  String get sure => 'Weet je zeker dat je ';
+
+  @override
+  String get willBeDeleted => ' wilt verwijderen?';
+
+  @override
+  String get deleted => 'verwijderd';
+
+  @override
+  String get logInToSeeMeals => 'Log in om je maaltijden te zien.';
+
+  @override
+  String get errorLoadingMeals => 'Er is een fout opgetreden.';
+
+  @override
+  String get mealExample => 'Voorbeeld Maaltijd';
+
+  @override
+  String get createOwnMealsFirst => 'Klik op + om je eerste maaltijd te maken';
+
+  @override
+  String get logMeal => 'Log maaltijd';
+
+  @override
+  String get createMealsBeforeLogging => 'Dit is een voorbeeld. Maak eerst een eigen maaltijd aan.';
+
+  @override
+  String get unnamedMeal => 'Onbekende maaltijd';
+
+  @override
+  String get sureMeal => 'Weet je zeker dat je maaltijd ';
+
+  @override
+  String get meal => 'Maaltijd ';
+
+  @override
+  String get encryptionKeyError => 'Kon encryptiesleutel niet ophalen.';
+
+  @override
+  String get mealNoIngredients => 'Deze maaltijd heeft geen ingrediënten.';
+
+  @override
+  String get mealLoggedSuccessfully => ' toegevoegd aan je logboek.';
+
+  @override
+  String get errorSaveMeal => 'Fout bij opslaan van maaltijd:';
+
+  @override
+  String get sectie => 'Sectie';
+
+  @override
+  String get log => 'Log';
+
+  @override
+  String get mealAddAtLeastOneIngredient => 'Voeg minimaal één product toe.';
+
+  @override
+  String get editMeal => 'Maaltijd bewerken';
+
+  @override
+  String get addNewMeal => 'Nieuwe maaltijd samenstellen';
+
+  @override
+  String get mealName => 'Naam van maaltijd';
+
+  @override
+  String get pleaseEnterMealName => 'Naam is verplicht';
+
+  @override
+  String get ingredients => 'Ingrediënten';
+
+  @override
+  String get searchProductHint => 'Typ om te zoeken of scan barcode';
+
+  @override
+  String get selectProduct => 'Kies product';
+
+  @override
+  String get scanBarcode => 'Scan barcode voor dit product';
+
+  @override
+  String get searchForBarcode => 'Zoeken op barcode...';
+
+  @override
+  String get errorFetchingProductData => 'Product niet gevonden op OpenFoodFacts';
+
+  @override
+  String get productNotFound => 'Geen productgegevens gevonden';
+
+  @override
+  String get errorBarcodeFind => 'Fout bij barcode-zoekactie: ';
+
+  @override
+  String get errorFetchingProductDataBarcode => 'Geen barcode gevonden voor dit product.';
+
+  @override
+  String get addIngredient => 'Voeg nog een product toe';
+
+  @override
+  String get editMyProduct => 'Product Bewerken';
+
+  @override
+  String get productName => 'Productnaam';
+
+  @override
+  String get productNameRequired => 'Naam is verplicht';
+
+  @override
+  String get caloriesRequired => 'Calorieën zijn verplicht';
+
+  @override
+  String get errorUserDEKNotFound => 'Kon encryptiesleutel niet ophalen.';
+
+  @override
+  String get unknownProduct => 'Onbekend Product';
+
+  @override
+  String get brand => 'Merk';
+
+  @override
+  String get servingSize => 'Portiegrootte';
+
+  @override
+  String get nutritionalValuesPer100mlg => 'Voedingswaarden per 100g/ml';
+
+  @override
+  String get saveMyProduct => 'Mijn Product Opslaan';
+
+  @override
+  String get amountFor => 'Hoeveelheid voor ';
+
+  @override
+  String get amountGML => 'Hoeveelheid (gram of milliliter)';
+
+  @override
+  String get gramsMillilitersAbbreviation => 'g/ml';
+
+  @override
+  String get invalidAmount => 'Voer een geldige hoeveelheid in.';
+
+  @override
+  String get addedToLog => ' toegevoegd aan je logboek.';
+
+  @override
+  String get errorSaving => 'Fout bij opslaan: ';
+
+  @override
+  String get photoAnalyzing => 'Foto analyseren...';
+
+  @override
+  String get ingredientsIdentifying => 'Ingrediënten identificeren...';
+
+  @override
+  String get nutritionalValuesEstimating => 'Voedingsinformatie schatten...';
+
+  @override
+  String get patientlyWaiting => 'Even geduld a.u.b...';
+
+  @override
+  String get almostDone => 'Bijna klaar...';
+
+  @override
+  String get processingWithAI => 'Bezig met AI-verwerking...';
+
+  @override
+  String get selectMealType => 'Selecteer maaltijdtype';
+
+  @override
+  String get section => 'Sectie';
+
+  @override
+  String get saveNameTooltip => 'Opslaan';
+
+  @override
+  String get noChangesTooltip => 'Geen wijzigingen';
+
+  @override
+  String get fillRequiredKcal => 'Vul alle verplichte velden in (kcal).';
+
+  @override
+  String get additivesLabel => 'Additieven';
+
+  @override
+  String get allergensLabel => 'Allergenen';
+
+  @override
+  String get mealAmountLabel => 'Hoeveelheid voor maaltijd';
+
+  @override
+  String get addToMealButton => 'Voeg toe aan maaltijd';
+
+  @override
+  String get enterAmount => 'Voer een hoeveelheid in';
+
+  @override
+  String get unitLabel => 'Eenheid';
+
+  @override
+  String get gramLabel => 'Gram (g)';
+
+  @override
+  String get milliliterLabel => 'Milliliter (ml)';
+
+  @override
+  String get errorLoadingLocal => 'Fout bij laden lokale gegevens: ';
+
+  @override
+  String get errorFetching => 'Fout bij ophalen: ';
+
+  @override
+  String get nameSaved => 'Naam opgeslagen';
+
+  @override
+  String get enterValue => 'Waarde mist';
+
+  @override
+  String get requiredField => 'Verplicht veld';
+
+  @override
+  String get invalidNumber => 'Ongeldig nummer';
 }

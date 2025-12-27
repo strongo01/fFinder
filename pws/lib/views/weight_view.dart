@@ -671,34 +671,6 @@ class _WeightViewState extends State<WeightView> {
     _waistFocusNode.unfocus();
   }
 
-  List<_MonthGroup> _groupEntriesByMonth() {
-    // groepeer entries per maand
-    if (_entries.isEmpty) return [];
-
-    final Map<String, List<WeightEntry>> byMonth = {};
-    for (final e in _entries) {
-      final key = '${e.date.year}-${e.date.month.toString().padLeft(2, '0')}';
-      byMonth.putIfAbsent(key, () => []).add(e);
-    }
-
-    final groups = <_MonthGroup>[]; // lijst van maandgroepen
-    byMonth.forEach((key, list) {
-      list.sort((a, b) => a.date.compareTo(b.date));
-      final parts = key.split('-');
-      final year = int.parse(parts[0]);
-      final month = int.parse(parts[1]);
-      groups.add(_MonthGroup(year: year, month: month, entries: list));
-    });
-
-    // sorteer op maand (oudste eerst), dan omdraaien zodat index 0 = nieuwste maand
-    groups.sort((a, b) {
-      final da = DateTime(a.year, a.month);
-      final db = DateTime(b.year, b.month);
-      return da.compareTo(db);
-    });
-    return groups.reversed.toList();
-  }
-
   List<_MonthGroup> _groupEntriesByMonthFor(List<WeightEntry> entries) {
     if (entries.isEmpty) return [];
     final Map<String, List<WeightEntry>> byMonth = {};

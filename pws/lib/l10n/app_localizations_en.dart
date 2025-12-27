@@ -958,4 +958,624 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get added => 'added';
+
+  @override
+  String get sportAddTitle => 'Add Sport';
+
+  @override
+  String get newSportActivity => 'New sportactivity';
+
+  @override
+  String get labelSport => 'Sport';
+
+  @override
+  String get chooseSport => 'Choose a sport';
+
+  @override
+  String get customSportName => 'Name of sport';
+
+  @override
+  String get enterSportName => 'Enter a sport name';
+
+  @override
+  String get durationMinutes => 'Duration (minutes)';
+
+  @override
+  String get invalidDuration => 'Enter a valid duration';
+
+  @override
+  String get caloriesBurned => 'Calories burned';
+
+  @override
+  String get invalidCalories => 'Enter a valid number of calories';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get encryptionKeyNotFound => 'Encryption key not found.';
+
+  @override
+  String get noSportsYet => 'No sport activities yet.';
+
+  @override
+  String get durationLabel => 'Duration';
+
+  @override
+  String get caloriesLabel => 'Calories';
+
+  @override
+  String get minutesShort => 'min';
+
+  @override
+  String get intensityLevel => 'Intensity';
+
+  @override
+  String get intensityLight => 'Light';
+
+  @override
+  String get intensityNormal => 'Normal';
+
+  @override
+  String get intensityHard => 'Hard';
+
+  @override
+  String get intensityVeryHard => 'Very hard';
+
+  @override
+  String get userNotLoggedIn => 'User not logged in.';
+
+  @override
+  String get sportAdded => 'Sport activity added';
+
+  @override
+  String get sportRunning => 'Running';
+
+  @override
+  String get sportCycling => 'Cycling';
+
+  @override
+  String get sportSwimming => 'Swimming';
+
+  @override
+  String get sportWalking => 'Walking';
+
+  @override
+  String get sportFitness => 'Fitness';
+
+  @override
+  String get sportFootball => 'Football';
+
+  @override
+  String get sportTennis => 'Tennis';
+
+  @override
+  String get sportYoga => 'Yoga';
+
+  @override
+  String get sportOther => 'Other';
+
+  @override
+  String get deleteSportTitle => 'Delete sport activity?';
+
+  @override
+  String get deleteSportContent => 'Are you sure you want to delete this sport activity?';
+
+  @override
+  String get sportDeleted => 'Sport activity deleted';
+
+  @override
+  String get editSportTitle => 'Edit Sport Activity';
+
+  @override
+  String get sportUpdated => 'Sport activity updated';
+
+  @override
+  String get notLoggedIn => 'Not logged in.';
+
+  @override
+  String get addSportTitle => 'Add Sport Activity';
+
+  @override
+  String get sportLabel => 'Sport Activity';
+
+  @override
+  String get customSportLabel => 'Custom Sport Name';
+
+  @override
+  String get customSportRequired => 'Custom sport name is required.';
+
+  @override
+  String get logSportTitle => 'Log Sport Activity';
+
+  @override
+  String get intensityHeavy => 'Heavy';
+
+  @override
+  String get intensityVeryHeavy => 'Very Heavy';
+
+  @override
+  String get intensityLabel => 'Intensity';
+
+  @override
+  String get enterValidDuration => 'Please enter a valid duration.';
+
+  @override
+  String get caloriesBurnedLabel => 'Calories Burned';
+
+  @override
+  String get enterValidCalories => 'Please enter a valid number of calories.';
+
+  @override
+  String get durationShort => 'dur.';
+
+  @override
+  String get caloriesShort => 'cal';
+
+  @override
+  String get saveSportFailedPrefix => 'Save sport activity failed: ';
+
+  @override
+  String get unsavedChangesContent => 'You have unsaved changes. Are you sure you want to leave without saving?';
+
+  @override
+  String get searchFood => 'Search food';
+
+  @override
+  String get searchFoodDescription => 'Search for food to add to your daily log.';
+
+  @override
+  String get scanProduct => 'Scan product';
+
+  @override
+  String get scanProductDescription => 'Scan a product to quickly add nutritional information to your day.';
+
+  @override
+  String get recentProducts => 'Recent Products';
+
+  @override
+  String get recentProductsDescription => 'View and quickly add products you\'ve recently used.';
+
+  @override
+  String get favoriteProducts => 'Favorite Products';
+
+  @override
+  String get favoriteProductsDescription => 'Here you can view all your favorite products.';
+
+  @override
+  String get myProducts => 'My Products';
+
+  @override
+  String get myProductsDescription => 'Here you can add your own products that cannot be found.';
+
+  @override
+  String get meals => 'Meals';
+
+  @override
+  String get mealsDescription => 'Here you can view and log meals; meals consist of multiple products.';
+
+  @override
+  String get mealsAdd => 'Add meals';
+
+  @override
+  String get mealsAddDescription => 'Tap this plus to create meals from multiple products so you can add frequently eaten meals faster.';
+
+  @override
+  String get mealsLog => 'Log meals';
+
+  @override
+  String get mealsLogDescription => 'Tap this cart to add meals to the logs.';
+
+  @override
+  String get enterMoreChars => 'Enter at least 2 characters.';
+
+  @override
+  String get errorFetch => 'Error fetching';
+
+  @override
+  String get takePhoto => 'Take a photo';
+
+  @override
+  String get chooseFromGallery => 'Choose from gallery';
+
+  @override
+  String get noImageSelected => 'No image selected.';
+
+  @override
+  String get aiNoIngredientsFound => 'No result from AI.';
+
+  @override
+  String aiIngredientsPrompt(Object ingredient) {
+    return 'What ingredients do you see here? Answer in English. Ignore marketing terms, product names, and non-relevant words like \'zero\', \'light\', etc. Answer only with actual ingredients that are in the product. Answer only if the image shows a food product. Respond as: $ingredient, $ingredient, ...';
+  }
+
+  @override
+  String get aiIngredientsFound => 'Ingredients found:';
+
+  @override
+  String get aiIngredientsDescription => 'The AI recognized the following ingredients:';
+
+  @override
+  String get addMeal => 'Compose meal';
+
+  @override
+  String get errorAI => 'AI analysis error:';
+
+  @override
+  String get amount => 'Amount';
+
+  @override
+  String get search => 'Search';
+
+  @override
+  String get loadMore => 'Load more products...';
+
+  @override
+  String get errorNoBarcode => 'No barcode found for this product.';
+
+  @override
+  String get amountInGrams => 'Amount (g)';
+
+  @override
+  String get errorUserDEKMissing => 'Could not retrieve encryption key.';
+
+  @override
+  String get errorNoIngredientsAdded => 'Add at least one product.';
+
+  @override
+  String get mealSavedSuccessfully => 'Meal saved successfully!';
+
+  @override
+  String get saveMeal => 'Save meal';
+
+  @override
+  String get errorFetchRecentsProducts => 'Error fetching recent products';
+
+  @override
+  String get searchProducts => 'Search products...';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get addFoodItem => 'What would you like to add?';
+
+  @override
+  String get addProduct => 'Add product';
+
+  @override
+  String get addMealT => 'Add meal';
+
+  @override
+  String get recents => 'Recent';
+
+  @override
+  String get favorites => 'Favorites';
+
+  @override
+  String get searchingProducts => 'Start typing to search.';
+
+  @override
+  String get noProductsFound => 'No products found.';
+
+  @override
+  String get addNewProduct => 'Would you like to add a product yourself?';
+
+  @override
+  String get errorInvalidBarcode => 'No barcode found for this product.';
+
+  @override
+  String get loadMoreResults => 'Load more products…';
+
+  @override
+  String get notTheDesiredResults => 'Add a new product';
+
+  @override
+  String get addNewProductT => 'Add New Product';
+
+  @override
+  String get errorProductNameRequired => 'Name is required';
+
+  @override
+  String get brandName => 'Brand';
+
+  @override
+  String get quantity => 'Quantity (e.g. 100g, 250ml)';
+
+  @override
+  String get nutritionalValuesPer100g => 'Nutritional values per 100g or ml';
+
+  @override
+  String get calories => 'Energy (kcal)';
+
+  @override
+  String get errorCaloriesRequired => 'Calories are required';
+
+  @override
+  String get fat => 'Fat';
+
+  @override
+  String get saturatedFat => '  - of which saturated';
+
+  @override
+  String get carbohydrates => 'Carbohydrates';
+
+  @override
+  String get sugars => '  - of which sugars';
+
+  @override
+  String get fiber => 'Fiber';
+
+  @override
+  String get proteins => 'Proteins';
+
+  @override
+  String get salt => 'Salt';
+
+  @override
+  String get errorEncryptionKeyMissing => 'Error: Could not retrieve encryption key.';
+
+  @override
+  String get saveProduct => 'Save';
+
+  @override
+  String get unknown => 'Unknown';
+
+  @override
+  String get unnamedProduct => 'Unnamed product';
+
+  @override
+  String get logInToSeeRecents => 'Log in to see your recent products.';
+
+  @override
+  String get noRecentProductsFound => 'No recent products found.';
+
+  @override
+  String get errorLoadingRecentProducts => 'An error occurred.';
+
+  @override
+  String get logInToSeeFavorites => 'Log in to see your favorite products.';
+
+  @override
+  String get noFavoriteProductsFound => 'No favorite products found.';
+
+  @override
+  String get errorLoadingFavoriteProducts => 'An error occurred.';
+
+  @override
+  String get logInToSeeMyProducts => 'Log in to see your products.';
+
+  @override
+  String get noMyProductsFound => 'You haven\'t created any products yet.';
+
+  @override
+  String get errorLoadingMyProducts => 'An error occurred.';
+
+  @override
+  String get unknownBrand => 'No brand';
+
+  @override
+  String get confirmDeletion => 'Confirm deletion';
+
+  @override
+  String get sure => 'Are you sure you want to ';
+
+  @override
+  String get willBeDeleted => ' will be deleted?';
+
+  @override
+  String get deleted => 'deleted';
+
+  @override
+  String get logInToSeeMeals => 'Log in to see your meals.';
+
+  @override
+  String get errorLoadingMeals => 'An error occurred.';
+
+  @override
+  String get mealExample => 'Example meal';
+
+  @override
+  String get createOwnMealsFirst => 'Click + to create your first meal';
+
+  @override
+  String get logMeal => 'Log meal';
+
+  @override
+  String get createMealsBeforeLogging => 'This is an example. Create your own meal first.';
+
+  @override
+  String get unnamedMeal => 'Unnamed meal';
+
+  @override
+  String get sureMeal => 'Are you sure that your meal ';
+
+  @override
+  String get meal => 'Meal ';
+
+  @override
+  String get encryptionKeyError => 'Could not retrieve encryption key.';
+
+  @override
+  String get mealNoIngredients => 'This meal has no ingredients.';
+
+  @override
+  String get mealLoggedSuccessfully => ' added to your log.';
+
+  @override
+  String get errorSaveMeal => 'Error saving meal:';
+
+  @override
+  String get sectie => 'Section';
+
+  @override
+  String get log => 'Log';
+
+  @override
+  String get mealAddAtLeastOneIngredient => 'Add at least one product.';
+
+  @override
+  String get editMeal => 'Edit meal';
+
+  @override
+  String get addNewMeal => 'Create new meal';
+
+  @override
+  String get mealName => 'Meal name';
+
+  @override
+  String get pleaseEnterMealName => 'Name is required';
+
+  @override
+  String get ingredients => 'Ingredients';
+
+  @override
+  String get searchProductHint => 'Type to search or scan barcode';
+
+  @override
+  String get selectProduct => 'Select product';
+
+  @override
+  String get scanBarcode => 'Scan barcode for this product';
+
+  @override
+  String get searchForBarcode => 'Searching by barcode...';
+
+  @override
+  String get errorFetchingProductData => 'Product not found on OpenFoodFacts';
+
+  @override
+  String get productNotFound => 'No product data found';
+
+  @override
+  String get errorBarcodeFind => 'Error during barcode search: ';
+
+  @override
+  String get errorFetchingProductDataBarcode => 'No barcode found for this product.';
+
+  @override
+  String get addIngredient => 'Add another product';
+
+  @override
+  String get editMyProduct => 'Edit product';
+
+  @override
+  String get productName => 'Product name';
+
+  @override
+  String get productNameRequired => 'Name is required';
+
+  @override
+  String get caloriesRequired => 'Calories are required';
+
+  @override
+  String get errorUserDEKNotFound => 'Could not retrieve encryption key.';
+
+  @override
+  String get unknownProduct => 'Unknown product';
+
+  @override
+  String get brand => 'Brand';
+
+  @override
+  String get servingSize => 'Serving size';
+
+  @override
+  String get nutritionalValuesPer100mlg => 'Nutritional values per 100g/ml';
+
+  @override
+  String get saveMyProduct => 'Save my product';
+
+  @override
+  String get amountFor => 'Amount for ';
+
+  @override
+  String get amountGML => 'Amount (gram or milliliter)';
+
+  @override
+  String get gramsMillilitersAbbreviation => 'g/ml';
+
+  @override
+  String get invalidAmount => 'Enter a valid amount.';
+
+  @override
+  String get addedToLog => ' added to your log.';
+
+  @override
+  String get errorSaving => 'Error saving: ';
+
+  @override
+  String get photoAnalyzing => 'Analyzing photo...';
+
+  @override
+  String get ingredientsIdentifying => 'Identifying ingredients...';
+
+  @override
+  String get nutritionalValuesEstimating => 'Estimating nutritional values...';
+
+  @override
+  String get patientlyWaiting => 'Please wait...';
+
+  @override
+  String get almostDone => 'Almost done...';
+
+  @override
+  String get processingWithAI => 'Processing with AI...';
+
+  @override
+  String get selectMealType => 'Select mealtype';
+
+  @override
+  String get section => 'Section';
+
+  @override
+  String get saveNameTooltip => 'Save';
+
+  @override
+  String get noChangesTooltip => 'No changes';
+
+  @override
+  String get fillRequiredKcal => 'Fill in all required fields (kcal).';
+
+  @override
+  String get additivesLabel => 'Additives';
+
+  @override
+  String get allergensLabel => 'Allergens';
+
+  @override
+  String get mealAmountLabel => 'Amount for meal';
+
+  @override
+  String get addToMealButton => 'Add to meal';
+
+  @override
+  String get enterAmount => 'Enter an amount';
+
+  @override
+  String get unitLabel => 'Unit';
+
+  @override
+  String get gramLabel => 'Gram (g)';
+
+  @override
+  String get milliliterLabel => 'Milliliter (ml)';
+
+  @override
+  String get errorLoadingLocal => 'Error fetching local data: ';
+
+  @override
+  String get errorFetching => 'Error fetching: ';
+
+  @override
+  String get nameSaved => 'Name saved';
+
+  @override
+  String get enterValue => 'Missing value';
+
+  @override
+  String get requiredField => 'This field is required';
+
+  @override
+  String get invalidNumber => 'Invalid number';
 }

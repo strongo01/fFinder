@@ -4,16 +4,18 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'crypto_class.dart';
 
+import 'package:fFinder/l10n/app_localizations.dart';
+
 // MET-waardes per sport
 const Map<String, double> _metValues = {
-  'Hardlopen': 9.8,
-  'Fietsen': 7.5,
-  'Zwemmen': 8.0,
-  'Wandelen': 3.5,
-  'Fitness': 6.0,
-  'Voetbal': 7.0,
-  'Tennis': 7.3,
-  'Yoga': 2.5,
+  'running': 9.8,
+  'cycling': 7.5,
+  'swimming': 8.0,
+  'walking': 3.5,
+  'fitness': 6.0,
+  'football': 7.0,
+  'tennis': 7.3,
+  'yoga': 2.5,
 };
 
 // Overig → snelle vuistregel (normaal)
@@ -39,16 +41,17 @@ class _AddSportPageState extends State<AddSportPage> {
   double _overigIntensityMET = 5.0;
 
   final List<String> _sports = [
-    'Hardlopen',
-    'Fietsen',
-    'Zwemmen',
-    'Wandelen',
-    'Fitness',
-    'Voetbal',
-    'Tennis',
-    'Yoga',
-    'Overig',
+    'running',
+    'cycling',
+    'swimming',
+    'walking',
+    'fitness',
+    'football',
+    'tennis',
+    'yoga',
+    'other',
   ];
+
   Future<void> _updateCaloriesLive() async {
     if (_caloriesManuallyEdited) return;
     if (_selectedSport == null) return;
@@ -66,17 +69,16 @@ class _AddSportPageState extends State<AddSportPage> {
     try {
       final weightKg = await _getDecryptedWeight(user.uid, userDEK);
 
-      final met = _selectedSport == 'Overig'
+      final met = (_selectedSport == 'Overig' || _selectedSport == 'Other')
           ? _overigIntensityMET
           : (_metValues[_selectedSport] ?? _defaultOverigMET);
 
       final calories = met * weightKg * (duration / 60);
 
       // 👇 live invullen
-setState(() {
-  _caloriesController.text = calories.toStringAsFixed(0);
-});
-
+      setState(() {
+        _caloriesController.text = calories.toStringAsFixed(0);
+      });
     } catch (_) {
       // stil falen (geen UI-spam)
     }
@@ -105,7 +107,7 @@ setState(() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       setState(() {
-        _error = 'Niet ingelogd.';
+        _error = AppLocalizations.of(context)!.userNotLoggedIn;
         _isLoading = false;
       });
       return;
@@ -114,23 +116,18 @@ setState(() {
     final userDEK = await getUserDEKFromRemoteConfig(user.uid);
     if (userDEK == null) {
       setState(() {
-        _error = 'Encryptiesleutel niet gevonden.';
+        _error = AppLocalizations.of(context)!.encryptionKeyNotFound;
         _isLoading = false;
       });
       return;
     }
 
     try {
-      final sportName = _selectedSport == 'Overig'
+      final sportName = (_selectedSport == 'other')
           ? _customSportController.text.trim()
           : _selectedSport ?? '';
 
       final durationMin = double.parse(_durationController.text);
-      //final weightKg = await _getDecryptedWeight(user.uid, userDEK);
-
-      //final met = _selectedSport == 'Overig'
-        //  ? _overigIntensityMET
-          //: (_metValues[_selectedSport] ?? _defaultOverigMET);
 
       final caloriesToSave = double.parse(_caloriesController.text);
 
@@ -157,7 +154,7 @@ setState(() {
       }
     } catch (e) {
       setState(() {
-        _error = 'Fout bij opslaan: $e';
+        _error = '${AppLocalizations.of(context)!.errorSaving}: $e';
       });
     } finally {
       setState(() {
@@ -178,6 +175,31 @@ setState(() {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final user = FirebaseAuth.instance.currentUser;
+    final loc = AppLocalizations.of(context)!;
+
+    String sportLabel(String id) {
+      switch (id) {
+        case 'running':
+          return loc.sportRunning; // vervang door jouw sleutel
+        case 'cycling':
+          return loc.sportCycling;
+        case 'swimming':
+          return loc.sportSwimming;
+        case 'walking':
+          return loc.sportWalking;
+        case 'fitness':
+          return loc.sportFitness;
+        case 'football':
+          return loc.sportFootball;
+        case 'tennis':
+          return loc.sportTennis;
+        case 'yoga':
+          return loc.sportYoga;
+        case 'other':
+        default:
+          return loc.sportOther;
+      }
+    }
 
     final cardColor = isDarkMode ? Colors.grey[900] : Colors.white;
     final inputFillColor = isDarkMode ? Colors.grey[850] : Colors.white;
@@ -188,7 +210,7 @@ setState(() {
     return Scaffold(
       backgroundColor: isDarkMode ? Colors.black : Colors.grey[100],
       appBar: AppBar(
-        title: const Text('Sport toevoegen'),
+        title: Text(loc.sportAddTitle),
         centerTitle: true,
         backgroundColor: isDarkMode ? Colors.black : null,
         foregroundColor: textColor,
@@ -223,7 +245,7 @@ setState(() {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Nieuwe sportactiviteit',
+                          loc.newSportActivity,
                           style: Theme.of(
                             context,
                           ).textTheme.titleLarge?.copyWith(color: textColor),
@@ -233,8 +255,8 @@ setState(() {
                           value: _selectedSport,
                           items: _sports
                               .map(
-                                (sport) => DropdownMenuItem(
-                                  value: sport,
+                                (id) => DropdownMenuItem(
+                                  value: id,
                                   child: Row(
                                     children: [
                                       Icon(
@@ -246,7 +268,7 @@ setState(() {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        sport,
+                                        sportLabel(id),
                                         style: TextStyle(color: textColor),
                                       ),
                                     ],
@@ -255,7 +277,7 @@ setState(() {
                               )
                               .toList(),
                           decoration: InputDecoration(
-                            labelText: 'Sport',
+                            labelText: loc.labelSport,
                             border: OutlineInputBorder(
                               borderSide: BorderSide(color: borderColor),
                             ),
@@ -277,70 +299,82 @@ setState(() {
                           },
 
                           validator: (value) =>
-                              value == null ? 'Kies een sport' : null,
+                              value == null ? loc.chooseSport : null,
                         ),
-                        if (_selectedSport == 'Overig') ...[
+                        if (_selectedSport == 'other') ...[
                           const SizedBox(height: 18),
                           TextFormField(
-                          controller: _customSportController,
-                          style: TextStyle(color: textColor),
-                          decoration: InputDecoration(
-                            labelText: 'Naam van sport',
-                            border: OutlineInputBorder(
-                            borderSide: BorderSide(color: borderColor),
+                            controller: _customSportController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: loc.customSportName,
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide(color: borderColor),
+                              ),
+                              filled: true,
+                              fillColor: inputFillColor,
+                              prefixIcon: Icon(Icons.edit, color: textColor),
+                              labelStyle: TextStyle(color: textColor),
                             ),
-                            filled: true,
-                            fillColor: inputFillColor,
-                            prefixIcon: Icon(Icons.edit, color: textColor),
-                            labelStyle: TextStyle(color: textColor),
-                          ),
-                          validator: (value) {
-                            if (_selectedSport == 'Overig' &&
-                              (value == null || value.trim().isEmpty)) {
-                            return 'Voer een sportnaam in';
-                            }
-                            return null;
-                          },
+                            validator: (value) {
+                              if (_selectedSport == 'other' &&
+                                  (value == null || value.trim().isEmpty)) {
+                                return loc.enterSportName;
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 18),
                           DropdownButtonFormField<double>(
-                          value: _overigIntensityMET,
-                          items: [
-                            DropdownMenuItem(
-                            value: 2.5,
-                            child: Text('Licht', style: TextStyle(color: textColor)),
+                            value: _overigIntensityMET,
+                            items: [
+                              DropdownMenuItem(
+                                value: 2.5,
+                                child: Text(
+                                  loc.intensityLight,
+                                  style: TextStyle(color: textColor),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 5.0,
+                                child: Text(
+                                  loc.intensityNormal,
+                                  style: TextStyle(color: textColor),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 7.5,
+                                child: Text(
+                                  loc.intensityHard,
+                                  style: TextStyle(color: textColor),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 10.0,
+                                child: Text(
+                                  loc.intensityVeryHard,
+                                  style: TextStyle(color: textColor),
+                                ),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _overigIntensityMET = value!;
+                                _caloriesManuallyEdited = false;
+                              });
+                              _updateCaloriesLive();
+                            },
+                            decoration: InputDecoration(
+                              labelText: loc.intensityLevel,
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide(color: borderColor),
+                              ),
+                              filled: true,
+                              fillColor: inputFillColor,
+                              labelStyle: TextStyle(color: textColor),
                             ),
-                            DropdownMenuItem(
-                            value: 5.0,
-                            child: Text('Normaal', style: TextStyle(color: textColor)),
-                            ),
-                            DropdownMenuItem(
-                            value: 7.5,
-                            child: Text('Zwaar', style: TextStyle(color: textColor)),
-                            ),
-                            DropdownMenuItem(
-                            value: 10.0,
-                            child: Text('Zeer zwaar', style: TextStyle(color: textColor)),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                            _overigIntensityMET = value!;
-                            _caloriesManuallyEdited = false;
-                            });
-                            _updateCaloriesLive();
-                          },
-                          decoration: InputDecoration(
-                            labelText: 'Intensiteit',
-                            border: OutlineInputBorder(
-                            borderSide: BorderSide(color: borderColor),
-                            ),
-                            filled: true,
-                            fillColor: inputFillColor,
-                            labelStyle: TextStyle(color: textColor),
-                          ),
-                          dropdownColor: cardColor,
-                          style: TextStyle(color: textColor),
+                            dropdownColor: cardColor,
+                            style: TextStyle(color: textColor),
                           ),
                         ],
                         const SizedBox(height: 18),
@@ -349,7 +383,7 @@ setState(() {
                           keyboardType: TextInputType.number,
                           style: TextStyle(color: textColor),
                           decoration: InputDecoration(
-                            labelText: 'Duur (minuten)',
+                            labelText: loc.durationMinutes,
                             border: OutlineInputBorder(
                               borderSide: BorderSide(color: borderColor),
                             ),
@@ -368,7 +402,7 @@ setState(() {
                                 value.isEmpty ||
                                 double.tryParse(value) == null ||
                                 double.parse(value) <= 0) {
-                              return 'Voer een geldige duur in';
+                              return loc.invalidDuration;
                             }
                             return null;
                           },
@@ -379,7 +413,7 @@ setState(() {
                           keyboardType: TextInputType.number,
                           style: TextStyle(color: textColor),
                           decoration: InputDecoration(
-                            labelText: 'Calorieën verbrand',
+                            labelText: loc.caloriesBurned,
                             border: OutlineInputBorder(
                               borderSide: BorderSide(color: borderColor),
                             ),
@@ -400,7 +434,7 @@ setState(() {
                                 value.isEmpty ||
                                 double.tryParse(value) == null ||
                                 double.parse(value) < 0) {
-                              return 'Voer een geldig aantal calorieën in';
+                              return loc.invalidCalories;
                             }
                             return null;
                           },
@@ -428,7 +462,7 @@ setState(() {
                                     ),
                                   )
                                 : Text(
-                                    'Opslaan',
+                                    loc.save,
                                     style: TextStyle(
                                       color: isDarkMode
                                           ? Colors.black
@@ -493,7 +527,7 @@ class SportsOverviewList extends StatelessWidget {
     final textColor = isDarkMode ? Colors.white : Colors.black;
     final subtitleColor = isDarkMode ? Colors.white70 : Colors.black87;
     final borderColor = isDarkMode ? Colors.white24 : Colors.black12;
-
+    final loc = AppLocalizations.of(context)!;
     return FutureBuilder<SecretKey?>(
       future: _getUserDEK(),
       builder: (context, snapshot) {
@@ -509,7 +543,7 @@ class SportsOverviewList extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 32),
             child: Center(
               child: Text(
-                'Encryptiesleutel niet gevonden.',
+                loc.encryptionKeyNotFound,
                 style: TextStyle(color: textColor),
               ),
             ),
@@ -536,7 +570,7 @@ class SportsOverviewList extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 32),
                 child: Center(
                   child: Text(
-                    'Nog geen sportactiviteiten.',
+                    loc.noSportsYet,
                     style: TextStyle(color: textColor),
                   ),
                 ),
@@ -566,9 +600,11 @@ class SportsOverviewList extends StatelessWidget {
                           side: BorderSide(color: borderColor),
                         ),
                         elevation: 2,
-                        child: const ListTile(
+                        child: ListTile(
                           leading: CircularProgressIndicator(),
-                          title: Text('Laden...'),
+                          title: Text(
+                            loc.loading,
+                          ), // vervang loc.loading door jouw sleutel
                         ),
                       );
                     }
@@ -596,8 +632,8 @@ class SportsOverviewList extends StatelessWidget {
                           ),
                         ),
                         subtitle: Text(
-                          'Duur: ${duration.toStringAsFixed(0)} min\n'
-                          'Calorieën: ${calories.toStringAsFixed(0)}',
+                          '${loc.durationLabel}: ${duration.toStringAsFixed(0)} ${loc.minutesShort}\n'
+                          '${loc.caloriesLabel}: ${calories.toStringAsFixed(0)}',
                           style: TextStyle(color: subtitleColor),
                         ),
                         trailing: timestamp != null

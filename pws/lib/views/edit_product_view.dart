@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
+import 'package:fFinder/l10n/app_localizations.dart';
 
 class ProductEditSheet extends StatefulWidget {
   final String barcode;
@@ -115,7 +116,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     return <String>[v.toString()];
   }
 
-    String? _extractServingSize(dynamic v) {
+  String? _extractServingSize(dynamic v) {
     debugPrint('[_extractServingSize] input: $v');
     if (v == null) {
       debugPrint('[_extractServingSize] result: null (input null)');
@@ -142,16 +143,22 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
         final res = unit == 'ml'
             ? "${double.tryParse(numPart)?.toString() ?? numPart} ml"
             : "${double.tryParse(numPart)?.toString() ?? numPart} g";
-        debugPrint('[_extractServingSize] matched unit -> result: $res (from "$s")');
+        debugPrint(
+          '[_extractServingSize] matched unit -> result: $res (from "$s")',
+        );
         return res;
       }
       final numOnly = double.tryParse(s.replaceAll(',', '.'));
       if (numOnly != null) {
         final res = "${numOnly.toString()} g";
-        debugPrint('[_extractServingSize] numeric fallback -> result: $res (from "$s")');
+        debugPrint(
+          '[_extractServingSize] numeric fallback -> result: $res (from "$s")',
+        );
         return res;
       }
-      debugPrint('[_extractServingSize] fallback -> returning original trimmed: "$s"');
+      debugPrint(
+        '[_extractServingSize] fallback -> returning original trimmed: "$s"',
+      );
       return s;
     }
     final res = v.toString();
@@ -258,7 +265,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       } catch (e) {
         if (mounted) {
           setState(() {
-            error = 'Fout bij laden lokale data: $e';
+            error = '${AppLocalizations.of(context)!.errorLoadingLocal} $e';
             isLoading = false;
           });
         }
@@ -335,7 +342,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       } else {
         if (mounted) {
           setState(() {
-            error = 'Product niet gevonden.';
+            error = AppLocalizations.of(context)!.productNotFound;
             isLoading = false;
           });
         }
@@ -343,7 +350,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          error = 'Fout bij ophalen: $e';
+          error = '${AppLocalizations.of(context)!.errorFetching}$e';
           isLoading = false;
         });
       }
@@ -402,13 +409,13 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Naam opgeslagen.')));
+        ).showSnackBar( SnackBar(content: Text(AppLocalizations.of(context)!.nameSaved)));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Fout bij opslaan: $e'),
+            content: Text('${AppLocalizations.of(context)!.errorSaving} $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -418,7 +425,9 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('[build] servingSize="$servingSize" product?.servingSize="${product?.servingSize}"');
+    debugPrint(
+      '[build] servingSize="$servingSize" product?.servingSize="${product?.servingSize}"',
+    );
     if (isLoading) {
       return const SizedBox(
         height: 200,
@@ -434,20 +443,22 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       );
     }
     if (product == null) {
-      return const SizedBox(
+      return  SizedBox(
         height: 200,
-        child: Center(child: Text('Geen productinformatie beschikbaar.')),
+        child: Center(child: Text(AppLocalizations.of(context)!.productNotFound)),
       );
     }
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDarkMode ? Colors.white : Colors.black;
+    final loc = AppLocalizations.of(context)!;
 
-            return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.7, 
-          minChildSize: 0.5,
-          maxChildSize: 0.90,      builder: (context, scrollController) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.7,
+      minChildSize: 0.5,
+      maxChildSize: 0.90,
+      builder: (context, scrollController) {
         return Container(
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,
@@ -509,7 +520,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                                                       product!.productName!
                                                           .trim()
                                                           .isEmpty)
-                                                  ? 'Onbekende naam'
+                                                  ? loc.unnamedProduct
                                                   : product!.productName!,
                                               style: Theme.of(context)
                                                   .textTheme
@@ -535,17 +546,20 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                               ValueListenableBuilder<TextEditingValue>(
                                 valueListenable: productNameController,
                                 builder: (_, value, __) {
-                                  final original =
-                                      (product!.productName ?? '').trim();
+                                  final original = (product!.productName ?? '')
+                                      .trim();
                                   final changed = value.text.trim() != original;
                                   return IconButton(
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
-                                    tooltip:
-                                        changed ? 'Opslaan naam' : 'Geen wijzigingen',
+                                    tooltip: changed
+                                        ? loc.saveNameTooltip
+                                        : loc.noChangesTooltip,
                                     icon: Icon(
                                       Icons.check,
-                                      color: changed ? Colors.green : Colors.grey,
+                                      color: changed
+                                          ? Colors.green
+                                          : Colors.grey,
                                     ),
                                     onPressed: changed ? _saveEditedName : null,
                                   );
@@ -578,10 +592,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                                 setState(() => isFavorite = !isFavorite);
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Vul alle verplichte velden in (kcal).',
-                                  ),
+                                SnackBar(
+                                  content: Text(loc.fillRequiredKcal),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -602,7 +614,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
 
                             final bool? wasAdded = await _showAddLogDialog(
                               context,
-                              product!.productName ?? 'Onbekend product',
+                              product!.productName ?? AppLocalizations.of(context)!.unnamedProduct,
                               nutrimentsData,
                               servingSize,
                             );
@@ -611,10 +623,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                             }
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Vul alle verplichte velden in (kcal).',
-                                ),
+                              SnackBar(
+                                content: Text(loc.fillRequiredKcal),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -623,55 +633,53 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                       ),
                     ],
                   ),
-                   _buildInfoRow('Portiegrootte', servingSize),
+                  _buildInfoRow(loc.servingSize, servingSize),
                   const SizedBox(height: 16),
                   Text(
-                    'Voedingswaarden per 100g of ml',
+                    loc.nutritionalValuesPer100g,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: textColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
 
-                 
-
                   const SizedBox(height: 8),
                   _buildEditableInfoRow(
-                    'Energie (kcal)',
+                    loc.calories,
                     caloriesController,
                     isDarkMode,
                     isRequired: true,
                   ),
-                  _buildEditableInfoRow('Vetten', fatController, isDarkMode),
+                  _buildEditableInfoRow(loc.fat, fatController, isDarkMode),
                   _buildEditableInfoRow(
-                    '  - Waarvan verzadigd',
+                    loc.saturatedFat,
                     saturatedFatController,
                     isDarkMode,
                   ),
                   _buildEditableInfoRow(
-                    'Koolhydraten',
+                    loc.carbohydrates,
                     carbsController,
                     isDarkMode,
                   ),
                   _buildEditableInfoRow(
-                    '  - Waarvan suikers',
+                    loc.sugars,
                     sugarsController,
                     isDarkMode,
                   ),
-                  _buildEditableInfoRow('Vezels', fiberController, isDarkMode),
+                  _buildEditableInfoRow(loc.fiber, fiberController, isDarkMode),
                   _buildEditableInfoRow(
-                    'Eiwitten',
+                    loc.proteins,
                     proteinsController,
                     isDarkMode,
                   ),
-                  _buildEditableInfoRow('Zout', saltController, isDarkMode),
+                  _buildEditableInfoRow(loc.salt, saltController, isDarkMode),
                   const Divider(height: 24),
                   _buildInfoRow(
-                    'Additieven',
+                    loc.additivesLabel,
                     product!.additives?.names.join(", "),
                   ),
                   _buildInfoRow(
-                    'Allergenen',
+                    loc.allergensLabel,
                     product!.allergens?.names.join(", "),
                   ),
                   if (widget.isForMeal) ...[
@@ -686,7 +694,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                       style: TextStyle(color: textColor),
                       cursorColor: textColor,
                       decoration: InputDecoration(
-                        labelText: 'Hoeveelheid voor maaltijd',
+                        labelText: loc.mealAmountLabel,
                         suffixText: 'g',
                         border: const OutlineInputBorder(),
                         labelStyle: TextStyle(
@@ -699,7 +707,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      child: const Text('Voeg toe aan Maaltijd'),
+                      child: Text(loc.addToMealButton),
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
                           final nutrimentsData =
@@ -814,7 +822,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                 decimal: true,
               ),
               decoration: InputDecoration(
-                hintText: 'Waarde mist',
+                hintText: AppLocalizations.of(context)!.enterValue,
                 hintStyle: TextStyle(
                   color: isDarkMode ? Colors.white38 : Colors.black38,
                 ),
@@ -823,12 +831,12 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
               ),
               validator: (value) {
                 if (isRequired && (value == null || value.isEmpty)) {
-                  return 'Verplicht';
+                  return AppLocalizations.of(context)!.requiredField;
                 }
                 if (value != null &&
                     value.isNotEmpty &&
                     double.tryParse(value.replaceAll(',', '.')) == null) {
-                  return 'Ongeldig';
+                  return AppLocalizations.of(context)!.invalidNumber;
                 }
                 return null;
               },
@@ -1058,26 +1066,25 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     final hour = DateTime.now().hour;
     String selectedMeal;
     if (hour >= 5 && hour < 11) {
-      selectedMeal = 'Ontbijt';
+      selectedMeal = AppLocalizations.of(context)!.breakfast;
     } else if (hour >= 11 && hour < 15) {
-      selectedMeal = 'Lunch';
+      selectedMeal = AppLocalizations.of(context)!.lunch;
     } else if (hour >= 15 && hour < 22) {
-      selectedMeal = 'Avondeten';
+      selectedMeal = AppLocalizations.of(context)!.dinner;
     } else {
-      selectedMeal = 'Tussendoor';
+      selectedMeal = AppLocalizations.of(context)!.snack;
     }
     final List<String> mealTypes = [
-      'Ontbijt',
-      'Lunch',
-      'Avondeten',
-      'Tussendoor',
+      AppLocalizations.of(context)!.breakfast,
+      AppLocalizations.of(context)!.lunch,
+      AppLocalizations.of(context)!.dinner,
+      AppLocalizations.of(context)!.snack,
     ];
 
-        String unit = (servingSize != null &&
-            servingSize.toLowerCase().contains('ml'))
+    String unit =
+        (servingSize != null && servingSize.toLowerCase().contains('ml'))
         ? 'ml'
         : 'g';
-
 
     return showDialog<bool>(
       context: context,
@@ -1085,12 +1092,12 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
         final isDarkMode =
             Theme.of(dialogContext).brightness == Brightness.dark;
         final textColor = isDarkMode ? Colors.white : Colors.black;
-
+        final loc = AppLocalizations.of(context)!;
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
               title: Text(
-                'Hoeveelheid voor "$productName"',
+                '${loc.amountFor}"${productName}"',
                 style: TextStyle(color: textColor),
               ),
               content: Form(
@@ -1105,17 +1112,17 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'Hoeveelheid (gram of milliliter)',
-                        suffixText: 'g of ml',
+                      decoration: InputDecoration(
+                        labelText: loc.amountGML,
+                        suffixText: loc.gramsMillilitersAbbreviation,
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Voer een hoeveelheid in';
+                          return loc.enterAmount;
                         }
                         if (double.tryParse(value.replaceAll(',', '.')) ==
                             null) {
-                          return 'Voer een geldig getal in';
+                          return loc.enterNumber;
                         }
                         return null;
                       },
@@ -1125,33 +1132,35 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                     DropdownButtonFormField<String>(
                       value: unit,
                       style: TextStyle(color: textColor),
-                      dropdownColor: isDarkMode ? Colors.grey[850] : Colors.white,
+                      dropdownColor: isDarkMode
+                          ? Colors.grey[850]
+                          : Colors.white,
                       decoration: InputDecoration(
-                      labelText: 'Eenheid',
-                      labelStyle: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
+                        labelText: loc.unitLabel,
+                        labelStyle: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
                       ),
                       items: ['g', 'ml'].map((String u) {
-                      return DropdownMenuItem<String>(
-                        value: u,
-                        child: Text(
-                        u == 'g' ? 'Gram (g)' : 'Milliliter (ml)',
-                        style: TextStyle(color: textColor),
-                        ),
-                      );
+                        return DropdownMenuItem<String>(
+                          value: u,
+                          child: Text(
+                            u == 'g' ? loc.gramLabel : loc.milliliterLabel,
+                            style: TextStyle(color: textColor),
+                          ),
+                        );
                       }).toList(),
                       onChanged: (newValue) {
-                      setDialogState(() {
-                        unit = newValue ?? 'g';
-                      });
+                        setDialogState(() {
+                          unit = newValue ?? 'g';
+                        });
                       },
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       value: selectedMeal,
                       style: TextStyle(color: textColor),
-                      decoration: const InputDecoration(labelText: 'Sectie'),
+                      decoration: InputDecoration(labelText: loc.section),
                       items: mealTypes.map((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
@@ -1170,7 +1179,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Annuleren'),
+                  child: Text(loc.cancel),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -1189,9 +1198,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                       );
                       if (userDEK == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Kon encryptiesleutel niet ophalen.'),
-                          ),
+                          SnackBar(content: Text(loc.dekNotFoundForUser)),
                         );
                         Navigator.pop(dialogContext, false);
                         return;
@@ -1247,14 +1254,19 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                       final todayDocId =
                           "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 */
-    if (unit == 'ml') {
-                        final kcal = (calculatedNutriments['energy-kcal']
-                                as num?)
-                            ?.toDouble() ??
+                      if (unit == 'ml') {
+                        final kcal =
+                            (calculatedNutriments['energy-kcal'] as num?)
+                                ?.toDouble() ??
                             0.0;
                         // _logDrink sluit dialog zelf en toont snackbar
-                        await _logDrink(dialogContext, productName,
-                            amount.round(), selectedMeal, kcal);
+                        await _logDrink(
+                          dialogContext,
+                          productName,
+                          amount.round(),
+                          selectedMeal,
+                          kcal,
+                        );
                         return;
                       }
 
@@ -1295,9 +1307,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                         if (mounted) {
                           ScaffoldMessenger.of(this.context).showSnackBar(
                             SnackBar(
-                              content: Text(
-                                '$productName toegevoegd aan je logboek.',
-                              ),
+                              content: Text('$productName${loc.addedToLog}'),
                             ),
                           );
                         }
@@ -1306,7 +1316,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                         if (mounted) {
                           ScaffoldMessenger.of(this.context).showSnackBar(
                             SnackBar(
-                              content: Text('Fout bij opslaan: $e'),
+                              content: Text('${AppLocalizations.of(context)!.errorSaving} $e'),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -1315,7 +1325,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                       }
                     }
                   },
-                  child: const Text('Opslaan'),
+                  child: Text(loc.saveButton),
                 ),
               ],
             );
@@ -1334,10 +1344,11 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
   ) async {
     // logt het drinken van een drankje
     final user = FirebaseAuth.instance.currentUser;
+    final loc = AppLocalizations.of(context)!;
     if (user == null) {
-      ScaffoldMessenger.of(dialogContext).showSnackBar(
-        const SnackBar(content: Text('Je moet ingelogd zijn om te loggen.')),
-      );
+      ScaffoldMessenger.of(
+        dialogContext,
+      ).showSnackBar(SnackBar(content: Text(loc.loginToLog)));
       return;
     }
 
@@ -1410,7 +1421,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
 
     if (mounted) {
       ScaffoldMessenger.of(dialogContext).showSnackBar(
-        SnackBar(content: Text('$name ($amount ml) toegevoegd!')));
+        SnackBar(content: Text('$name ($amount ml) ${loc.added}')),
+      );
       Navigator.of(dialogContext).pop(true);
     }
   }
