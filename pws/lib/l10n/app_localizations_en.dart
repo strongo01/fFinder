@@ -75,10 +75,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get waistCircumferenceCm => 'Waist Circumference (cm)';
 
   @override
-  String get enterWaistCircumference => 'Enter your waist circumference';
+  String get enterWaistCircumference => 'Enter your waist circumference (cm)';
 
   @override
-  String get enterValidWaistCircumference => 'Please enter a waist circumference between 30 and 200 cm';
+  String get enterValidWaistCircumference => 'Please enter a valid waist circumference';
 
   @override
   String get targetWeightKg => 'Target Weight (kg)';
@@ -639,7 +639,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get absiMedium => 'Average risk';
 
   @override
-  String get absiHigh => 'High risk';
+  String get absiHigh => 'high risk';
 
   @override
   String get choiceWeight => 'Weight';
@@ -1866,4 +1866,346 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorCalculating => 'Error: Original values are not complete to recalculate.';
+
+  @override
+  String get appleCancelled => 'You cancelled the Apple sign-in.';
+
+  @override
+  String get appleFailed => 'Apple sign-in failed. Please try again later.';
+
+  @override
+  String get appleInvalidResponse => 'Invalid response received from Apple.';
+
+  @override
+  String get appleNotHandled => 'Apple could not handle the request.';
+
+  @override
+  String get appleUnknown => 'An unknown error occurred with Apple.';
+
+  @override
+  String get appleGenericError => 'An error occurred while signing in with Apple.';
+
+  @override
+  String get signInAccountExists => 'An account already exists with this email. Please sign in using a different method.';
+
+  @override
+  String get signInCancelled => 'Sign-in was cancelled.';
+
+  @override
+  String get unknownGoogleSignIn => 'An unknown error occurred during Google sign-in.';
+
+  @override
+  String get unknownGitHubSignIn => 'An unknown error occurred during GitHub sign-in.';
+
+  @override
+  String get unknownAppleSignIn => 'An unknown error occurred during Apple sign-in.';
+
+  @override
+  String get unknownErrorEnglish => 'Unknown error';
+
+  @override
+  String get passwordErrorMinLength => 'At least 6 characters';
+
+  @override
+  String get passwordErrorUpper => 'one uppercase letter';
+
+  @override
+  String get passwordErrorLower => 'one lowercase letter';
+
+  @override
+  String get passwordErrorDigit => 'one digit';
+
+  @override
+  String get passwordMissingPartsPrefix => 'Your password is missing: ';
+
+  @override
+  String get userNotFoundCreateAccount => 'No account found for this email. Click below to create an account.';
+
+  @override
+  String get wrongPasswordOrEmail => 'Incorrect password or email. Please try again. If you don\'t have an account, click below to create one.';
+
+  @override
+  String get emailAlreadyInUse => 'This email is already in use. Try signing in.';
+
+  @override
+  String get weakPasswordMessage => 'The password must be at least 6 characters long.';
+
+  @override
+  String get invalidEmailMessage => 'The entered email address is invalid.';
+
+  @override
+  String get authGenericError => 'An authentication error occurred. Please try again later.';
+
+  @override
+  String get resetPasswordEnterEmailInstruction => 'Enter your email to reset your password.';
+
+  @override
+  String get resetPasswordEmailSentTitle => 'Email sent';
+
+  @override
+  String get resetPasswordEmailSentContent => 'An email has been sent to reset your password. Note: this email may end up in your spam folder. Sender: noreply@pwsmt-fd851.firebaseapp.com';
+
+  @override
+  String get okLabel => 'OK';
+
+  @override
+  String get genericError => 'An error occurred.';
+
+  @override
+  String get userNotFoundForEmail => 'No account found for this email.';
+
+  @override
+  String get loginWelcomeBack => 'Welcome back!';
+
+  @override
+  String get loginCreateAccount => 'Create an account';
+
+  @override
+  String get loginSubtitle => 'Sign in to continue';
+
+  @override
+  String get registerSubtitle => 'Register to get started';
+
+  @override
+  String get loginEmailLabel => 'Email';
+
+  @override
+  String get loginEmailHint => 'name@example.com';
+
+  @override
+  String get loginEnterEmail => 'Enter email';
+
+  @override
+  String get loginPasswordLabel => 'Password';
+
+  @override
+  String get loginMin6Chars => 'Min 6 chars';
+
+  @override
+  String get loginForgotPassword => 'Forgot password?';
+
+  @override
+  String get loginButtonLogin => 'Login';
+
+  @override
+  String get loginButtonRegister => 'Register';
+
+  @override
+  String get loginOrContinueWith => 'Or continue with';
+
+  @override
+  String get loginWithGoogle => 'Sign in with Google';
+
+  @override
+  String get loginWithGitHub => 'Sign in with GitHub';
+
+  @override
+  String get loginWithApple => 'Sign in with Apple';
+
+  @override
+  String get loginNoAccountQuestion => 'Don\'t have an account?';
+
+  @override
+  String get loginHaveAccountQuestion => 'Already have an account?';
+
+  @override
+  String get loginCreateAccountAction => 'Create an account';
+
+  @override
+  String get loginLoginAction => 'Login';
+
+  @override
+  String get onboardingEnterFirstName => 'Enter your first name';
+
+  @override
+  String get onboardingSelectBirthDate => 'Select your birth date';
+
+  @override
+  String get onboardingEnterHeight => 'Enter your height (cm)';
+
+  @override
+  String get onboardingEnterWeight => 'Enter your weight (kg)';
+
+  @override
+  String get onboardingEnterTargetWeight => 'Enter your target weight (kg)';
+
+  @override
+  String get onboardingEnterValidWeight => 'Please enter a valid weight';
+
+  @override
+  String get onboardingEnterValidHeight => 'Please enter a valid height';
+
+  @override
+  String get heightBetween => 'Height must be between ';
+
+  @override
+  String get and => ' and ';
+
+  @override
+  String get liggen => ' cm.';
+
+  @override
+  String get weightBetween => 'Weight must be between ';
+
+  @override
+  String get kgLiggen => ' kg.';
+
+  @override
+  String get tailleBetween => 'Waist circumference must be between ';
+
+  @override
+  String get cmLiggen => ' cm.';
+
+  @override
+  String get onboardingEnterValidTargetWeight => 'Please enter a valid target weight';
+
+  @override
+  String get targetBetween => 'Target weight must be between ';
+
+  @override
+  String get absiVeryLow => 'very low risk';
+
+  @override
+  String get absiLow => 'low risk';
+
+  @override
+  String get absiAverage => 'average risk';
+
+  @override
+  String get absiElevated => 'elevated risk';
+
+  @override
+  String get healthWeight => 'Healthy weight for you: ';
+
+  @override
+  String get healthyBMI => 'Healthy BMI: ';
+
+  @override
+  String get onboardingWeightRangeUnder2 => 'For children under 2 years old, weight-for-length percentiles are usually used instead of BMI.';
+
+  @override
+  String get onboardingWeightRangeUnder2Note => 'Use WHO/CDC weight-for-length charts.';
+
+  @override
+  String get onboarding_datePickerDone => 'Done';
+
+  @override
+  String get lmsDataUnavailable => 'LMS data unavailable for this age/sex.';
+
+  @override
+  String get lmsCheckAssets => 'Check assets or enter the target weight manually.';
+
+  @override
+  String get lmsDataErrorPrefix => 'Could not use LMS data:';
+
+  @override
+  String get lmsAssetMissing => 'Check that the asset is present (assets/cdc/bmiagerev.csv).';
+
+  @override
+  String get healthyWeightForYou => 'Healthy weight for you:';
+
+  @override
+  String get onboarding_firstNameTitle => 'What is your first name?';
+
+  @override
+  String get onboarding_labelFirstName => 'First name';
+
+  @override
+  String get onboarding_genderTitle => 'What is your gender?';
+
+  @override
+  String get onboarding_genderOptionMan => 'Male';
+
+  @override
+  String get onboarding_genderOptionWoman => 'Female';
+
+  @override
+  String get onboarding_genderOptionOther => 'Other';
+
+  @override
+  String get onboarding_genderOptionPreferNot => 'Prefer not to say';
+
+  @override
+  String get onboarding_birthDateTitle => 'What is your birth date?';
+
+  @override
+  String get onboarding_noDateChosen => 'No date chosen';
+
+  @override
+  String get onboarding_chooseDate => 'Choose date';
+
+  @override
+  String get onboarding_heightTitle => 'What is your height (cm)?';
+
+  @override
+  String get onboarding_labelHeight => 'Height in cm';
+
+  @override
+  String get onboarding_weightTitle => 'What is your weight (kg)?';
+
+  @override
+  String get onboarding_labelWeight => 'Weight in kg';
+
+  @override
+  String get onboarding_waistTitle => 'What is your waist circumference (cm)?';
+
+  @override
+  String get onboarding_labelWaist => 'Waist circumference in cm';
+
+  @override
+  String get onboarding_unknownWaist => 'I don\'t know';
+
+  @override
+  String get onboarding_sleepTitle => 'How many hours do you sleep on average per night?';
+
+  @override
+  String get onboarding_activityTitle => 'How active are you on a daily basis?';
+
+  @override
+  String get onboarding_targetWeightTitle => 'What is your target weight?';
+
+  @override
+  String get onboarding_labelTargetWeight => 'Target weight in kg';
+
+  @override
+  String get onboarding_goalTitle => 'What is your goal?';
+
+  @override
+  String get onboarding_notificationsTitle => 'Would you like to receive notifications?';
+
+  @override
+  String get onboarding_notificationsDescription => 'You can enable notifications for meal reminders so you never forget to eat and log your meals.';
+
+  @override
+  String get onboarding_notificationsEnable => 'Enable notifications';
+
+  @override
+  String get finish => 'Finish';
+
+  @override
+  String get notificationPermissionDenied => 'Notification permission was denied.';
+
+  @override
+  String get previous => 'Previous';
+
+  @override
+  String get next => 'Next';
+
+  @override
+  String get deleteAccountProviderReauthRequired => 'To delete your account, please re-authenticate using your original sign-in method and try again.';
+
+  @override
+  String get enterPasswordLabel => 'Password';
+
+  @override
+  String get confirmButtonLabel => 'Confirm';
+
+  @override
+  String get googleSignInCancelledMessage => 'Google sign-in was cancelled by the user.';
+
+  @override
+  String get googleMissingIdToken => 'Could not obtain idToken from Google.';
+
+  @override
+  String get appleNullIdentityTokenMessage => 'Apple returned a null identityToken.';
 }

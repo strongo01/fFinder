@@ -75,10 +75,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get waistCircumferenceCm => 'Tailleomtrek (cm)';
 
   @override
-  String get enterWaistCircumference => 'Vul je tailleomtrek in';
+  String get enterWaistCircumference => 'Vul je tailleomtrek in (cm)';
 
   @override
-  String get enterValidWaistCircumference => 'Voer een tailleomtrek tussen 30 en 200 cm in';
+  String get enterValidWaistCircumference => 'Voer een geldige tailleomtrek in';
 
   @override
   String get targetWeightKg => 'Doelgewicht (kg)';
@@ -639,7 +639,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get absiMedium => 'Gemiddeld risico';
 
   @override
-  String get absiHigh => 'Hoog risico';
+  String get absiHigh => 'hoog';
 
   @override
   String get choiceWeight => 'Gewicht';
@@ -1122,22 +1122,22 @@ class AppLocalizationsNl extends AppLocalizations {
   String get searchFood => 'Voedsel zoeken';
 
   @override
-  String get searchFoodDescription => 'Zoek naar voedsel om toe te voegen aan je dagelijkse log.';
+  String get searchFoodDescription => 'Zoek naar voedsel om toe te voegen aan je dag.';
 
   @override
-  String get scanProduct => 'Product scannen';
+  String get scanProduct => 'Barcode scannen';
 
   @override
-  String get scanProductDescription => 'Scan een product om snel voedingsinformatie toe te voegen aan je dag.';
+  String get scanProductDescription => 'Tik hier om een product te scannen en snel toe te voegen aan je dag.';
 
   @override
   String get recentProducts => 'Recente Producten';
 
   @override
-  String get recentProductsDescription => 'Bekijk en voeg snel producten toe die je recent hebt gebruikt.';
+  String get recentProductsDescription => 'Hier zie je alle producten die je recent hebt toegevoegd.';
 
   @override
-  String get favoriteProducts => 'Favoriete Producten';
+  String get favoriteProducts => 'Favorieten';
 
   @override
   String get favoriteProductsDescription => 'Hier kan je al je favorieten producten bekijken.';
@@ -1866,4 +1866,346 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get errorCalculating => 'Fout: Originele productgegevens zijn onvolledig om te herberekenen.';
+
+  @override
+  String get appleCancelled => 'Je hebt de Apple-inlog geannuleerd.';
+
+  @override
+  String get appleFailed => 'Apple inloggen is mislukt. Probeer het later opnieuw.';
+
+  @override
+  String get appleInvalidResponse => 'Ongeldig antwoord ontvangen van Apple.';
+
+  @override
+  String get appleNotHandled => 'Apple kon de aanvraag niet verwerken.';
+
+  @override
+  String get appleUnknown => 'Er is een onbekende fout opgetreden bij Apple.';
+
+  @override
+  String get appleGenericError => 'Er is een fout opgetreden tijdens het inloggen met Apple.';
+
+  @override
+  String get signInAccountExists => 'Er bestaat al een account met dit e-mailadres. Log in met een andere methode.';
+
+  @override
+  String get signInCancelled => 'Het inloggen is geannuleerd.';
+
+  @override
+  String get unknownGoogleSignIn => 'Er is een onbekende fout opgetreden bij het inloggen met Google.';
+
+  @override
+  String get unknownGitHubSignIn => 'Er is een onbekende fout opgetreden bij het inloggen met GitHub.';
+
+  @override
+  String get unknownAppleSignIn => 'Er is een onbekende fout opgetreden bij het inloggen met Apple.';
+
+  @override
+  String get unknownErrorEnglish => 'Onbekende fout';
+
+  @override
+  String get passwordErrorMinLength => 'minimaal 6 tekens';
+
+  @override
+  String get passwordErrorUpper => 'één hoofdletter';
+
+  @override
+  String get passwordErrorLower => 'één kleine letter';
+
+  @override
+  String get passwordErrorDigit => 'één cijfer';
+
+  @override
+  String get passwordMissingPartsPrefix => 'Je wachtwoord mist: ';
+
+  @override
+  String get userNotFoundCreateAccount => 'Geen account gevonden voor dit e-mailadres. Klik onderaan om een account te maken.';
+
+  @override
+  String get wrongPasswordOrEmail => 'Onjuist wachtwoord of e-mailadres. Probeer het opnieuw. Heeft u nog geen account, klik dan onderaan om er een aan te maken.';
+
+  @override
+  String get emailAlreadyInUse => 'Dit e-mailadres is al in gebruik. Probeer in te loggen.';
+
+  @override
+  String get weakPasswordMessage => 'Het wachtwoord moet uit minimaal 6 tekens bestaan.';
+
+  @override
+  String get invalidEmailMessage => 'Het ingevoerde e-mailadres is ongeldig.';
+
+  @override
+  String get authGenericError => 'Er is een authenticatiefout opgetreden. Probeer het later opnieuw.';
+
+  @override
+  String get resetPasswordEnterEmailInstruction => 'Voer je e-mailadres in om je wachtwoord te resetten.';
+
+  @override
+  String get resetPasswordEmailSentTitle => 'E-mail verzonden';
+
+  @override
+  String get resetPasswordEmailSentContent => 'Er is een e-mail verzonden om je wachtwoord te resetten. Let op: deze e-mail kan in je spamfolder terechtkomen. Afzender: noreply@pwsmt-fd851.firebaseapp.com';
+
+  @override
+  String get okLabel => 'OK';
+
+  @override
+  String get genericError => 'Er is een fout opgetreden.';
+
+  @override
+  String get userNotFoundForEmail => 'Geen account gevonden voor dit e-mailadres.';
+
+  @override
+  String get loginWelcomeBack => 'Welkom terug!';
+
+  @override
+  String get loginCreateAccount => 'Maak een account';
+
+  @override
+  String get loginSubtitle => 'Log in om verder te gaan';
+
+  @override
+  String get registerSubtitle => 'Registreer om te beginnen';
+
+  @override
+  String get loginEmailLabel => 'Email';
+
+  @override
+  String get loginEmailHint => 'naam@voorbeeld.com';
+
+  @override
+  String get loginEnterEmail => 'Enter email';
+
+  @override
+  String get loginPasswordLabel => 'Password';
+
+  @override
+  String get loginMin6Chars => 'Min 6 chars';
+
+  @override
+  String get loginForgotPassword => 'Wachtwoord vergeten?';
+
+  @override
+  String get loginButtonLogin => 'Login';
+
+  @override
+  String get loginButtonRegister => 'Registreer';
+
+  @override
+  String get loginOrContinueWith => 'Of ga verder met';
+
+  @override
+  String get loginWithGoogle => 'Inloggen met Google';
+
+  @override
+  String get loginWithGitHub => 'Inloggen met GitHub';
+
+  @override
+  String get loginWithApple => 'Inloggen met Apple';
+
+  @override
+  String get loginNoAccountQuestion => 'Nog geen account?';
+
+  @override
+  String get loginHaveAccountQuestion => 'Heb je al een account?';
+
+  @override
+  String get loginCreateAccountAction => 'Maak een account';
+
+  @override
+  String get loginLoginAction => 'Login';
+
+  @override
+  String get onboardingEnterFirstName => 'Vul je voornaam in';
+
+  @override
+  String get onboardingSelectBirthDate => 'Selecteer je geboortedatum';
+
+  @override
+  String get onboardingEnterHeight => 'Vul je lengte in (cm)';
+
+  @override
+  String get onboardingEnterWeight => 'Vul je gewicht in (kg)';
+
+  @override
+  String get onboardingEnterTargetWeight => 'Vul je streefgewicht in (kg)';
+
+  @override
+  String get onboardingEnterValidWeight => 'Voer een geldig gewicht in';
+
+  @override
+  String get onboardingEnterValidHeight => 'Voer een geldige lengte in';
+
+  @override
+  String get heightBetween => 'Lengte moet tussen ';
+
+  @override
+  String get and => ' en ';
+
+  @override
+  String get liggen => ' cm liggen.';
+
+  @override
+  String get weightBetween => 'Gewicht moet tussen ';
+
+  @override
+  String get kgLiggen => ' kg liggen.';
+
+  @override
+  String get tailleBetween => 'Tailleomtrek moet tussen ';
+
+  @override
+  String get cmLiggen => ' cm liggen.';
+
+  @override
+  String get onboardingEnterValidTargetWeight => 'Voer een geldig streefgewicht in';
+
+  @override
+  String get targetBetween => 'Streefgewicht moet tussen ';
+
+  @override
+  String get absiVeryLow => 'zeer laag risico';
+
+  @override
+  String get absiLow => 'laag risico';
+
+  @override
+  String get absiAverage => 'gemiddeld risico';
+
+  @override
+  String get absiElevated => 'verhoogd risico';
+
+  @override
+  String get healthWeight => 'Gezond gewicht voor jou: ';
+
+  @override
+  String get healthyBMI => 'Gezonde BMI: ';
+
+  @override
+  String get onboardingWeightRangeUnder2 => 'Voor kinderen jonger dan 2 jaar wordt meestal gewicht-/lengtepercentiel gebruikt in plaats van BMI.';
+
+  @override
+  String get onboardingWeightRangeUnder2Note => 'Gebruik WHO/CDC gewicht-voor-lengte tabellen.';
+
+  @override
+  String get onboarding_datePickerDone => 'Klaar';
+
+  @override
+  String get lmsDataUnavailable => 'LMS-gegevens niet beschikbaar voor deze leeftijd/geslacht.';
+
+  @override
+  String get lmsCheckAssets => 'Controleer assets of voer handmatig streefgewicht in.';
+
+  @override
+  String get lmsDataErrorPrefix => 'Kon LMS-data niet gebruiken:';
+
+  @override
+  String get lmsAssetMissing => 'Controleer of asset aanwezig is (assets/cdc/bmiagerev.csv).';
+
+  @override
+  String get healthyWeightForYou => 'Gezond gewicht voor u:';
+
+  @override
+  String get onboarding_firstNameTitle => 'Wat is je voornaam?';
+
+  @override
+  String get onboarding_labelFirstName => 'Voornaam';
+
+  @override
+  String get onboarding_genderTitle => 'Wat is je geslacht?';
+
+  @override
+  String get onboarding_genderOptionMan => 'Man';
+
+  @override
+  String get onboarding_genderOptionWoman => 'Vrouw';
+
+  @override
+  String get onboarding_genderOptionOther => 'Anders';
+
+  @override
+  String get onboarding_genderOptionPreferNot => 'Wil ik liever niet zeggen';
+
+  @override
+  String get onboarding_birthDateTitle => 'Wat is je geboortedatum?';
+
+  @override
+  String get onboarding_noDateChosen => 'Geen datum gekozen';
+
+  @override
+  String get onboarding_chooseDate => 'Kies datum';
+
+  @override
+  String get onboarding_heightTitle => 'Wat is je lengte (cm)?';
+
+  @override
+  String get onboarding_labelHeight => 'Lengte in cm';
+
+  @override
+  String get onboarding_weightTitle => 'Wat is je gewicht (kg)?';
+
+  @override
+  String get onboarding_labelWeight => 'Gewicht in kg';
+
+  @override
+  String get onboarding_waistTitle => 'Wat is je tailleomtrek (cm)?';
+
+  @override
+  String get onboarding_labelWaist => 'Tailleomtrek in cm';
+
+  @override
+  String get onboarding_unknownWaist => 'Ik weet het niet';
+
+  @override
+  String get onboarding_sleepTitle => 'Hoeveel uur slaap je gemiddeld per nacht?';
+
+  @override
+  String get onboarding_activityTitle => 'Hoe actief ben je dagelijks?';
+
+  @override
+  String get onboarding_targetWeightTitle => 'Wat is je streefgewicht?';
+
+  @override
+  String get onboarding_labelTargetWeight => 'Streefgewicht in kg';
+
+  @override
+  String get onboarding_goalTitle => 'Wat is je doel?';
+
+  @override
+  String get onboarding_notificationsTitle => 'Wil je meldingen ontvangen?';
+
+  @override
+  String get onboarding_notificationsDescription => 'Je kunt meldingen inschakelen voor maaltijdherinneringen, zodat je nooit vergeet te eten en je eten toe te voegen aan de logs.';
+
+  @override
+  String get onboarding_notificationsEnable => 'Meldingen inschakelen';
+
+  @override
+  String get finish => 'Afronden';
+
+  @override
+  String get notificationPermissionDenied => 'Toestemming voor meldingen is geweigerd.';
+
+  @override
+  String get previous => 'Vorige';
+
+  @override
+  String get next => 'Volgende';
+
+  @override
+  String get deleteAccountProviderReauthRequired => 'Voor het verwijderen van je account is opnieuw authenticatie vereist. Log in met je oorspronkelijke aanmeldmethode en probeer het opnieuw.';
+
+  @override
+  String get enterPasswordLabel => 'Wachtwoord';
+
+  @override
+  String get confirmButtonLabel => 'Bevestigen';
+
+  @override
+  String get googleSignInCancelledMessage => 'Google aanmelden geannuleerd door gebruiker.';
+
+  @override
+  String get googleMissingIdToken => 'Kon geen idToken ophalen van Google.';
+
+  @override
+  String get appleNullIdentityTokenMessage => 'Apple retourneerde geen identityToken.';
 }

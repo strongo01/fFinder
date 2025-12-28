@@ -1,11 +1,15 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:fFinder/views/crypto_class.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'login_register_view.dart';
 import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -65,34 +69,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ];
 
   // Map key -> Dutch text (this is what will be saved to Firestore)
-  String _dutchActivityForKey(String key) {
-    switch (key) {
-      case 'licht_actief':
-        return 'Licht actief: 1–3x per week lichte training of dagelijks 30–45 min wandelen';
-      case 'gemiddeld_actief':
-        return 'Gemiddeld actief: 3–5x per week sporten of een actief beroep (horeca, zorg, postbezorger)';
-      case 'zeer_actief':
-        return 'Zeer actief: 6–7x per week intensieve training of fysiek zwaar werk (bouw, magazijn)';
-      case 'extreem_actief':
-        return 'Extreem actief: topsporttraining 2× per dag of extreem fysiek zwaar werk (militair, bosbouw)';
-      case 'weinig_actief':
-      default:
-        return 'Weinig actief: zittend werk, nauwelijks beweging, geen sport';
-    }
+  String _storageActivityValue(BuildContext ctx, String key) {
+    return _localizedActivityLabel(ctx, key);
   }
 
-  String _dutchGoalForKey(String key) {
-    switch (key) {
-      case 'op_gewicht_blijven':
-        return 'Op gewicht blijven';
-      case 'aankomen_spiermassa':
-        return 'Aankomen (spiermassa)';
-      case 'aankomen_algemeen':
-        return 'Aankomen (algemeen)';
-      case 'afvallen':
-      default:
-        return 'Afvallen';
-    }
+  String _storageGoalValue(BuildContext ctx, String key) {
+    return _localizedGoalLabel(ctx, key);
+  }
+
+  double _activityFactorFromLabel(BuildContext ctx, String activityLabel) {
+    final local = AppLocalizations.of(ctx)!;
+    final a = activityLabel.trim();
+    if (a == local.activityLow) return 1.2;
+    if (a == local.activityLight) return 1.375;
+    if (a == local.activityMedium) return 1.55;
+    if (a == local.activityVery) return 1.725;
+    if (a == local.activityExtreme) return 1.9;
+
+    final lower = a.toLowerCase();
+    if (lower.contains('weinig') ||
+        lower.contains('low') ||
+        lower.contains('sedentary'))
+      return 1.2;
+    if (lower.contains('licht') || lower.contains('light')) return 1.375;
+    if (lower.contains('gemiddeld') ||
+        lower.contains('medium') ||
+        lower.contains('moderate'))
+      return 1.55;
+    if (lower.contains('zeer') ||
+        lower.contains('very') ||
+        lower.contains('high'))
+      return 1.725;
+    if (lower.contains('extreem') || lower.contains('extreme')) return 1.9;
+    return 1.2;
   }
 
   // Map key -> localized label for display (must be defined in ARB files)
@@ -236,17 +245,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
         final goalDutch = await decryptValue(data['goal'] ?? '', userDEK);
 
-        // Find the key that matches the stored Dutch text, fallback to first key
-        String findActivityKey(String dutch) {
+        String findActivityKey(String stored) {
           for (final k in _activityOptionKeys) {
-            if (_dutchActivityForKey(k) == dutch) return k;
+            if (_storageActivityValue(context, k) == stored) return k;
           }
           return _activityOptionKeys.first;
         }
 
-        String findGoalKey(String dutch) {
+        String findGoalKey(String stored) {
           for (final k in _goalOptionKeys) {
-            if (_dutchGoalForKey(k) == dutch) return k;
+            if (_storageGoalValue(context, k) == stored) return k;
           }
           return _goalOptionKeys.first;
         }
@@ -365,44 +373,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
         }
 
-        final activity = _dutchActivityForKey(
-          _activityKey,
-        ).split(':')[0].trim();
-        double activityFactor;
-        switch (activity) {
-          case 'Weinig actief':
-            activityFactor = 1.2;
-            break;
-          case 'Licht actief':
-            activityFactor = 1.375;
-            break;
-          case 'Gemiddeld actief':
-            activityFactor = 1.55;
-            break;
-          case 'Zeer actief':
-            activityFactor = 1.725;
-            break;
-          case 'Extreem actief':
-            activityFactor = 1.9;
-            break;
-          default:
-            activityFactor = 1.2;
-        }
+        final activityLabel = _storageActivityValue(context, _activityKey);
+        final activityFactor = _activityFactorFromLabel(context, activityLabel);
 
         double calories = bmr * activityFactor;
 
-        // Doel toepassen (gebruik de opgeslagen sleutel)
-        switch (_goalKey) {
-          case 'afvallen':
-            calories -= 500;
-            break;
-          case 'aankomen_spiermassa':
-          case 'aankomen_algemeen':
-            calories += 300;
-            break;
-          case 'op_gewicht_blijven':
-          default:
-            break;
+        final goalStored = _storageGoalValue(context, _goalKey);
+        final local = AppLocalizations.of(context)!;
+        if (goalStored == local.goalLose) {
+          calories -= 500;
+        } else if (goalStored == local.goalGainMuscle ||
+            goalStored == local.goalGainGeneral) {
+          calories += 300;
         }
         calorieGoal = calories;
 
@@ -470,11 +452,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'waist': await encryptDouble(_waist, userDEK),
         'sleepHours': await encryptDouble(_sleepHours, userDEK),
         'activityLevel': await encryptValue(
-          _dutchActivityForKey(_activityKey),
+          _storageActivityValue(context, _activityKey),
           userDEK,
         ),
-        'goal': await encryptValue(_dutchGoalForKey(_goalKey), userDEK),
-
+        'goal': await encryptValue(
+          _storageGoalValue(context, _goalKey),
+          userDEK,
+        ),
         'bmi': bmi != null ? await encryptDouble(bmi, userDEK) : null,
         'calorieGoal': calorieGoal != null
             ? await encryptDouble(calorieGoal, userDEK)
@@ -569,6 +553,211 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return random.toString().padLeft(6, '0');
   }
 
+  Future<bool> _reauthenticateWithPassword(String? email) async {
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.deleteAccountRecentLoginError,
+          ),
+        ),
+      );
+      return false;
+    }
+
+    final passwordController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        Theme.of(context);
+        return AlertDialog(
+          title: Text(AppLocalizations.of(context)!.confirmDeleteAccountTitle),
+          content: TextField(
+            controller: passwordController,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.enterPasswordLabel,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(AppLocalizations.of(context)!.cancelButtonLabel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(AppLocalizations.of(context)!.confirmButtonLabel),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return false;
+
+    try {
+      final cred = EmailAuthProvider.credential(
+        email: email,
+        password: passwordController.text.trim(),
+      );
+      await FirebaseAuth.instance.currentUser!.reauthenticateWithCredential(
+        cred,
+      );
+      return true;
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context)!.deleteAccountRecentLoginError}: ${e.message ?? e.code}',
+          ),
+        ),
+      );
+      return false;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context)!.deleteAccountFailedMessage}: $e',
+          ),
+        ),
+      );
+      return false;
+    }
+  }
+
+    Future<bool> _reauthenticateWithGoogle() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    try {
+      if (kIsWeb) {
+        final googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.setCustomParameters({'prompt': 'select_account'});
+        final result = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+        final cred = result.credential;
+        if (cred != null) {
+          await user.reauthenticateWithCredential(cred as AuthCredential);
+          return true;
+        }
+        return false;
+      } else {
+        final signIn = GoogleSignIn.instance;
+        GoogleSignInAccount? googleUser;
+        // probeer eerst lightweight auth
+        googleUser = await signIn.attemptLightweightAuthentication();
+        // fallback naar interactive auth indien nodig
+        if (googleUser == null) {
+          if (signIn.supportsAuthenticate()) {
+            googleUser = await signIn.authenticate();
+          } else {
+            googleUser = await signIn.attemptLightweightAuthentication();
+          }
+        }
+        if (googleUser == null) return false;
+        final googleAuth = await googleUser.authentication;
+        if (googleAuth.idToken == null) return false;
+        final credential = GoogleAuthProvider.credential(
+          idToken: googleAuth.idToken,
+        );
+        await user.reauthenticateWithCredential(credential);
+        return true;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${AppLocalizations.of(context)!.deleteAccountFailedMessage}: $e'),
+          ),
+        );
+      }
+      return false;
+    }
+  }
+
+    String sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  // Probeer opnieuw te authenticeren voor Apple (web + native)
+  Future<bool> _reauthenticateWithApple() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    try {
+      if (kIsWeb) {
+        final provider = OAuthProvider('apple.com');
+        final result = await FirebaseAuth.instance.signInWithPopup(provider);
+        final cred = result.credential;
+        if (cred != null) {
+          await user.reauthenticateWithCredential(cred as AuthCredential);
+          return true;
+        }
+        return false;
+      } else {
+        final rawNonce = generateNonce();
+        final nonce = sha256ofString(rawNonce);
+        final appleCredential = await SignInWithApple.getAppleIDCredential(
+          scopes: [AppleIDAuthorizationScopes.email],
+          nonce: nonce,
+        );
+        if (appleCredential.identityToken == null) return false;
+        final credential = OAuthProvider("apple.com").credential(
+          idToken: appleCredential.identityToken,
+          rawNonce: rawNonce,
+          accessToken: appleCredential.authorizationCode,
+        );
+        await user.reauthenticateWithCredential(credential);
+        return true;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${AppLocalizations.of(context)!.deleteAccountFailedMessage}: $e'),
+          ),
+        );
+      }
+      return false;
+    }
+  }
+
+  // Probeer opnieuw te authenticeren voor GitHub (web). Native GitHub reauth may require custom OAuth.
+  Future<bool> _reauthenticateWithGitHub() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    try {
+      if (kIsWeb) {
+        final provider = GithubAuthProvider();
+        final result = await FirebaseAuth.instance.signInWithPopup(provider);
+        final cred = result.credential;
+        if (cred != null) {
+          await user.reauthenticateWithCredential(cred as AuthCredential);
+          return true;
+        }
+        return false;
+      } else {
+        // Native GitHub reauth usually requires a custom OAuth flow / backend.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.deleteAccountProviderReauthRequired)),
+          );
+        }
+        return false;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${AppLocalizations.of(context)!.deleteAccountFailedMessage}: $e'),
+          ),
+        );
+      }
+      return false;
+    }
+  }
+
+
   Future<void> _deleteAccount() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -576,33 +765,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _deletingAccount = true);
 
     try {
-      // User-doc verwijderen
+      // Bepaal welke providers de gebruiker heeft
+final providerIds = user.providerData.map((p) => p.providerId).toList();
+
+      bool reauthed = false;
+
+      if (providerIds.contains('password')) {
+        reauthed = await _reauthenticateWithPassword(user.email);
+      } else if (providerIds.contains('google.com')) {
+        reauthed = await _reauthenticateWithGoogle();
+      } else if (providerIds.contains('apple.com')) {
+        reauthed = await _reauthenticateWithApple();
+      } else if (providerIds.contains('github.com')) {
+        reauthed = await _reauthenticateWithGitHub();
+      } else {
+        // onbekende provider(s)
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.deleteAccountProviderReauthRequired)),
+          );
+        }
+        return;
+      }
+
+      if (!reauthed) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.deleteAccountRecentLoginError)),
+          );
+        }
+        return;
+      }
+
+      // Na succesvolle re-auth: verwijder eerst Firestore document, daarna auth account
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .delete();
 
-      // Auth-account verwijderen
       await user.delete();
 
       if (!mounted) return;
-      // Naar login scherm
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginRegisterView()),
         (route) => false,
       );
     } on FirebaseAuthException catch (e) {
-      // Bijv. recent login vereist
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.code == 'requires-recent-login'
-                ? AppLocalizations.of(context)!.deleteAccountRecentLoginError
-                : '${AppLocalizations.of(context)!.deleteAccountFailedMessage}: ${e.message ?? e.code}',
+      // Als er toch nog een recent-login fout komt, toon instructie / probeer opnieuw
+      if (e.code == 'requires-recent-login') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.deleteAccountRecentLoginError,
+              ),
+            ),
+          );
+        }
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${AppLocalizations.of(context)!.deleteAccountFailedMessage}: ${e.message ?? e.code}',
+            ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

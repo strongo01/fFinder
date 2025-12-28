@@ -230,13 +230,13 @@ abstract class AppLocalizations {
   /// No description provided for @enterWaistCircumference.
   ///
   /// In en, this message translates to:
-  /// **'Enter your waist circumference'**
+  /// **'Enter your waist circumference (cm)'**
   String get enterWaistCircumference;
 
   /// No description provided for @enterValidWaistCircumference.
   ///
   /// In en, this message translates to:
-  /// **'Please enter a waist circumference between 30 and 200 cm'**
+  /// **'Please enter a valid waist circumference'**
   String get enterValidWaistCircumference;
 
   /// No description provided for @targetWeightKg.
@@ -1358,7 +1358,7 @@ abstract class AppLocalizations {
   /// No description provided for @absiHigh.
   ///
   /// In en, this message translates to:
-  /// **'High risk'**
+  /// **'high risk'**
   String get absiHigh;
 
   /// No description provided for @choiceWeight.
@@ -3808,6 +3808,690 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Error: Original values are not complete to recalculate.'**
   String get errorCalculating;
+
+  /// No description provided for @appleCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'You cancelled the Apple sign-in.'**
+  String get appleCancelled;
+
+  /// No description provided for @appleFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple sign-in failed. Please try again later.'**
+  String get appleFailed;
+
+  /// No description provided for @appleInvalidResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid response received from Apple.'**
+  String get appleInvalidResponse;
+
+  /// No description provided for @appleNotHandled.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple could not handle the request.'**
+  String get appleNotHandled;
+
+  /// No description provided for @appleUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'An unknown error occurred with Apple.'**
+  String get appleUnknown;
+
+  /// No description provided for @appleGenericError.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred while signing in with Apple.'**
+  String get appleGenericError;
+
+  /// No description provided for @signInAccountExists.
+  ///
+  /// In en, this message translates to:
+  /// **'An account already exists with this email. Please sign in using a different method.'**
+  String get signInAccountExists;
+
+  /// No description provided for @signInCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in was cancelled.'**
+  String get signInCancelled;
+
+  /// No description provided for @unknownGoogleSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'An unknown error occurred during Google sign-in.'**
+  String get unknownGoogleSignIn;
+
+  /// No description provided for @unknownGitHubSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'An unknown error occurred during GitHub sign-in.'**
+  String get unknownGitHubSignIn;
+
+  /// No description provided for @unknownAppleSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'An unknown error occurred during Apple sign-in.'**
+  String get unknownAppleSignIn;
+
+  /// No description provided for @unknownErrorEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown error'**
+  String get unknownErrorEnglish;
+
+  /// No description provided for @passwordErrorMinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 6 characters'**
+  String get passwordErrorMinLength;
+
+  /// No description provided for @passwordErrorUpper.
+  ///
+  /// In en, this message translates to:
+  /// **'one uppercase letter'**
+  String get passwordErrorUpper;
+
+  /// No description provided for @passwordErrorLower.
+  ///
+  /// In en, this message translates to:
+  /// **'one lowercase letter'**
+  String get passwordErrorLower;
+
+  /// No description provided for @passwordErrorDigit.
+  ///
+  /// In en, this message translates to:
+  /// **'one digit'**
+  String get passwordErrorDigit;
+
+  /// No description provided for @passwordMissingPartsPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password is missing: '**
+  String get passwordMissingPartsPrefix;
+
+  /// No description provided for @userNotFoundCreateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'No account found for this email. Click below to create an account.'**
+  String get userNotFoundCreateAccount;
+
+  /// No description provided for @wrongPasswordOrEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect password or email. Please try again. If you don\'t have an account, click below to create one.'**
+  String get wrongPasswordOrEmail;
+
+  /// No description provided for @emailAlreadyInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'This email is already in use. Try signing in.'**
+  String get emailAlreadyInUse;
+
+  /// No description provided for @weakPasswordMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The password must be at least 6 characters long.'**
+  String get weakPasswordMessage;
+
+  /// No description provided for @invalidEmailMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The entered email address is invalid.'**
+  String get invalidEmailMessage;
+
+  /// No description provided for @authGenericError.
+  ///
+  /// In en, this message translates to:
+  /// **'An authentication error occurred. Please try again later.'**
+  String get authGenericError;
+
+  /// No description provided for @resetPasswordEnterEmailInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email to reset your password.'**
+  String get resetPasswordEnterEmailInstruction;
+
+  /// No description provided for @resetPasswordEmailSentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email sent'**
+  String get resetPasswordEmailSentTitle;
+
+  /// No description provided for @resetPasswordEmailSentContent.
+  ///
+  /// In en, this message translates to:
+  /// **'An email has been sent to reset your password. Note: this email may end up in your spam folder. Sender: noreply@pwsmt-fd851.firebaseapp.com'**
+  String get resetPasswordEmailSentContent;
+
+  /// No description provided for @okLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get okLabel;
+
+  /// No description provided for @genericError.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred.'**
+  String get genericError;
+
+  /// No description provided for @userNotFoundForEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'No account found for this email.'**
+  String get userNotFoundForEmail;
+
+  /// No description provided for @loginWelcomeBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back!'**
+  String get loginWelcomeBack;
+
+  /// No description provided for @loginCreateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create an account'**
+  String get loginCreateAccount;
+
+  /// No description provided for @loginSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to continue'**
+  String get loginSubtitle;
+
+  /// No description provided for @registerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Register to get started'**
+  String get registerSubtitle;
+
+  /// No description provided for @loginEmailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get loginEmailLabel;
+
+  /// No description provided for @loginEmailHint.
+  ///
+  /// In en, this message translates to:
+  /// **'name@example.com'**
+  String get loginEmailHint;
+
+  /// No description provided for @loginEnterEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter email'**
+  String get loginEnterEmail;
+
+  /// No description provided for @loginPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get loginPasswordLabel;
+
+  /// No description provided for @loginMin6Chars.
+  ///
+  /// In en, this message translates to:
+  /// **'Min 6 chars'**
+  String get loginMin6Chars;
+
+  /// No description provided for @loginForgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get loginForgotPassword;
+
+  /// No description provided for @loginButtonLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get loginButtonLogin;
+
+  /// No description provided for @loginButtonRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get loginButtonRegister;
+
+  /// No description provided for @loginOrContinueWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Or continue with'**
+  String get loginOrContinueWith;
+
+  /// No description provided for @loginWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Google'**
+  String get loginWithGoogle;
+
+  /// No description provided for @loginWithGitHub.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with GitHub'**
+  String get loginWithGitHub;
+
+  /// No description provided for @loginWithApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Apple'**
+  String get loginWithApple;
+
+  /// No description provided for @loginNoAccountQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account?'**
+  String get loginNoAccountQuestion;
+
+  /// No description provided for @loginHaveAccountQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account?'**
+  String get loginHaveAccountQuestion;
+
+  /// No description provided for @loginCreateAccountAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create an account'**
+  String get loginCreateAccountAction;
+
+  /// No description provided for @loginLoginAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get loginLoginAction;
+
+  /// No description provided for @onboardingEnterFirstName.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your first name'**
+  String get onboardingEnterFirstName;
+
+  /// No description provided for @onboardingSelectBirthDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Select your birth date'**
+  String get onboardingSelectBirthDate;
+
+  /// No description provided for @onboardingEnterHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your height (cm)'**
+  String get onboardingEnterHeight;
+
+  /// No description provided for @onboardingEnterWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your weight (kg)'**
+  String get onboardingEnterWeight;
+
+  /// No description provided for @onboardingEnterTargetWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your target weight (kg)'**
+  String get onboardingEnterTargetWeight;
+
+  /// No description provided for @onboardingEnterValidWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid weight'**
+  String get onboardingEnterValidWeight;
+
+  /// No description provided for @onboardingEnterValidHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid height'**
+  String get onboardingEnterValidHeight;
+
+  /// No description provided for @heightBetween.
+  ///
+  /// In en, this message translates to:
+  /// **'Height must be between '**
+  String get heightBetween;
+
+  /// No description provided for @and.
+  ///
+  /// In en, this message translates to:
+  /// **' and '**
+  String get and;
+
+  /// No description provided for @liggen.
+  ///
+  /// In en, this message translates to:
+  /// **' cm.'**
+  String get liggen;
+
+  /// No description provided for @weightBetween.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight must be between '**
+  String get weightBetween;
+
+  /// No description provided for @kgLiggen.
+  ///
+  /// In en, this message translates to:
+  /// **' kg.'**
+  String get kgLiggen;
+
+  /// No description provided for @tailleBetween.
+  ///
+  /// In en, this message translates to:
+  /// **'Waist circumference must be between '**
+  String get tailleBetween;
+
+  /// No description provided for @cmLiggen.
+  ///
+  /// In en, this message translates to:
+  /// **' cm.'**
+  String get cmLiggen;
+
+  /// No description provided for @onboardingEnterValidTargetWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid target weight'**
+  String get onboardingEnterValidTargetWeight;
+
+  /// No description provided for @targetBetween.
+  ///
+  /// In en, this message translates to:
+  /// **'Target weight must be between '**
+  String get targetBetween;
+
+  /// No description provided for @absiVeryLow.
+  ///
+  /// In en, this message translates to:
+  /// **'very low risk'**
+  String get absiVeryLow;
+
+  /// No description provided for @absiLow.
+  ///
+  /// In en, this message translates to:
+  /// **'low risk'**
+  String get absiLow;
+
+  /// No description provided for @absiAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'average risk'**
+  String get absiAverage;
+
+  /// No description provided for @absiElevated.
+  ///
+  /// In en, this message translates to:
+  /// **'elevated risk'**
+  String get absiElevated;
+
+  /// No description provided for @healthWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Healthy weight for you: '**
+  String get healthWeight;
+
+  /// No description provided for @healthyBMI.
+  ///
+  /// In en, this message translates to:
+  /// **'Healthy BMI: '**
+  String get healthyBMI;
+
+  /// No description provided for @onboardingWeightRangeUnder2.
+  ///
+  /// In en, this message translates to:
+  /// **'For children under 2 years old, weight-for-length percentiles are usually used instead of BMI.'**
+  String get onboardingWeightRangeUnder2;
+
+  /// No description provided for @onboardingWeightRangeUnder2Note.
+  ///
+  /// In en, this message translates to:
+  /// **'Use WHO/CDC weight-for-length charts.'**
+  String get onboardingWeightRangeUnder2Note;
+
+  /// No description provided for @onboarding_datePickerDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get onboarding_datePickerDone;
+
+  /// No description provided for @lmsDataUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'LMS data unavailable for this age/sex.'**
+  String get lmsDataUnavailable;
+
+  /// No description provided for @lmsCheckAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'Check assets or enter the target weight manually.'**
+  String get lmsCheckAssets;
+
+  /// No description provided for @lmsDataErrorPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not use LMS data:'**
+  String get lmsDataErrorPrefix;
+
+  /// No description provided for @lmsAssetMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Check that the asset is present (assets/cdc/bmiagerev.csv).'**
+  String get lmsAssetMissing;
+
+  /// No description provided for @healthyWeightForYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Healthy weight for you:'**
+  String get healthyWeightForYou;
+
+  /// No description provided for @onboarding_firstNameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What is your first name?'**
+  String get onboarding_firstNameTitle;
+
+  /// No description provided for @onboarding_labelFirstName.
+  ///
+  /// In en, this message translates to:
+  /// **'First name'**
+  String get onboarding_labelFirstName;
+
+  /// No description provided for @onboarding_genderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What is your gender?'**
+  String get onboarding_genderTitle;
+
+  /// No description provided for @onboarding_genderOptionMan.
+  ///
+  /// In en, this message translates to:
+  /// **'Male'**
+  String get onboarding_genderOptionMan;
+
+  /// No description provided for @onboarding_genderOptionWoman.
+  ///
+  /// In en, this message translates to:
+  /// **'Female'**
+  String get onboarding_genderOptionWoman;
+
+  /// No description provided for @onboarding_genderOptionOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get onboarding_genderOptionOther;
+
+  /// No description provided for @onboarding_genderOptionPreferNot.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefer not to say'**
+  String get onboarding_genderOptionPreferNot;
+
+  /// No description provided for @onboarding_birthDateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What is your birth date?'**
+  String get onboarding_birthDateTitle;
+
+  /// No description provided for @onboarding_noDateChosen.
+  ///
+  /// In en, this message translates to:
+  /// **'No date chosen'**
+  String get onboarding_noDateChosen;
+
+  /// No description provided for @onboarding_chooseDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose date'**
+  String get onboarding_chooseDate;
+
+  /// No description provided for @onboarding_heightTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What is your height (cm)?'**
+  String get onboarding_heightTitle;
+
+  /// No description provided for @onboarding_labelHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Height in cm'**
+  String get onboarding_labelHeight;
+
+  /// No description provided for @onboarding_weightTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What is your weight (kg)?'**
+  String get onboarding_weightTitle;
+
+  /// No description provided for @onboarding_labelWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight in kg'**
+  String get onboarding_labelWeight;
+
+  /// No description provided for @onboarding_waistTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What is your waist circumference (cm)?'**
+  String get onboarding_waistTitle;
+
+  /// No description provided for @onboarding_labelWaist.
+  ///
+  /// In en, this message translates to:
+  /// **'Waist circumference in cm'**
+  String get onboarding_labelWaist;
+
+  /// No description provided for @onboarding_unknownWaist.
+  ///
+  /// In en, this message translates to:
+  /// **'I don\'t know'**
+  String get onboarding_unknownWaist;
+
+  /// No description provided for @onboarding_sleepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How many hours do you sleep on average per night?'**
+  String get onboarding_sleepTitle;
+
+  /// No description provided for @onboarding_activityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How active are you on a daily basis?'**
+  String get onboarding_activityTitle;
+
+  /// No description provided for @onboarding_targetWeightTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What is your target weight?'**
+  String get onboarding_targetWeightTitle;
+
+  /// No description provided for @onboarding_labelTargetWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Target weight in kg'**
+  String get onboarding_labelTargetWeight;
+
+  /// No description provided for @onboarding_goalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What is your goal?'**
+  String get onboarding_goalTitle;
+
+  /// No description provided for @onboarding_notificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Would you like to receive notifications?'**
+  String get onboarding_notificationsTitle;
+
+  /// No description provided for @onboarding_notificationsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'You can enable notifications for meal reminders so you never forget to eat and log your meals.'**
+  String get onboarding_notificationsDescription;
+
+  /// No description provided for @onboarding_notificationsEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable notifications'**
+  String get onboarding_notificationsEnable;
+
+  /// No description provided for @finish.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get finish;
+
+  /// No description provided for @notificationPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission was denied.'**
+  String get notificationPermissionDenied;
+
+  /// No description provided for @previous.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get previous;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @deleteAccountProviderReauthRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'To delete your account, please re-authenticate using your original sign-in method and try again.'**
+  String get deleteAccountProviderReauthRequired;
+
+  /// No description provided for @enterPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get enterPasswordLabel;
+
+  /// No description provided for @confirmButtonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirmButtonLabel;
+
+  /// No description provided for @googleSignInCancelledMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in was cancelled by the user.'**
+  String get googleSignInCancelledMessage;
+
+  /// No description provided for @googleMissingIdToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not obtain idToken from Google.'**
+  String get googleMissingIdToken;
+
+  /// No description provided for @appleNullIdentityTokenMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple returned a null identityToken.'**
+  String get appleNullIdentityTokenMessage;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

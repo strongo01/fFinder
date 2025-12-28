@@ -11,6 +11,8 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
 import 'home_screen.dart';
 
+import '../l10n/app_localizations.dart';
+
 //dit scherm is voor inloggen en registreren en verandert ook weer dus statefulwidget
 class LoginRegisterView extends StatefulWidget {
   const LoginRegisterView({super.key});
@@ -29,6 +31,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   bool _isLogin = true; //wisselt tussen inloggen en registereren
   bool _loading = false; //laad icoon
   bool _obscurePassword = true; //wachtwoord met bolletjes
+
   //functie voor inloggen met google
   Future<UserCredential> signInWithGoogle() async {
     //als het platform web is
@@ -69,7 +72,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (googleUser == null) {
         throw FirebaseAuthException(
           code: 'sign_in_cancelled',
-          message: 'Google Sign-In is geannuleerd door de gebruiker.',
+          message: AppLocalizations.of(context)!.googleSignInCancelledMessage,
         );
       }
       //haalt de autehtnicatie tokens op
@@ -78,7 +81,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (googleAuth.idToken == null) {
         throw FirebaseAuthException(
           code: 'missing_id_token',
-          message: 'Kon geen idToken ophalen van Google.',
+          message: AppLocalizations.of(context)!.googleMissingIdToken,
         );
       }
       //maakt een credential aan voor firebase
@@ -127,16 +130,14 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       String message;
       switch (e.code) {
         case 'account-exists-with-different-credential':
-          message =
-              'Er bestaat al een account met dit e-mailadres. Log in met een andere methode.';
+          message = AppLocalizations.of(context)!.signInAccountExists;
           break;
         case 'sign_in_cancelled':
         case 'popup-closed-by-user':
-          message = 'Het inloggen is geannuleerd.';
+          message = AppLocalizations.of(context)!.signInCancelled;
           break;
         default:
-          message =
-              'Er is een onbekende fout opgetreden bij het inloggen met Google.';
+          message = AppLocalizations.of(context)!.unknownGoogleSignIn;
       }
       ScaffoldMessenger.of(
         context,
@@ -144,7 +145,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Er is een onbekende fout opgetreden.')),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.unknownErrorEnglish),
+        ),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -170,26 +173,26 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   }
 
   // functie die apple fouten vertaalt naar normale meldingen
-  String translateAppleError(Object error) {
+  String translateAppleError(BuildContext context, Object error) {
     final message = error.toString(); //converteer error naar string
 
     if (message.contains('AuthorizationErrorCode.canceled')) {
-      return 'Je hebt de Apple-inlog geannuleerd.';
+      return AppLocalizations.of(context)!.appleCancelled;
     }
     if (message.contains('AuthorizationErrorCode.failed')) {
-      return 'Apple inloggen is mislukt. Probeer het later opnieuw.';
+      return AppLocalizations.of(context)!.appleFailed;
     }
     if (message.contains('AuthorizationErrorCode.invalidResponse')) {
-      return 'Ongeldig antwoord ontvangen van Apple.';
+      return AppLocalizations.of(context)!.appleInvalidResponse;
     }
     if (message.contains('AuthorizationErrorCode.notHandled')) {
-      return 'Apple kon de aanvraag niet verwerken.';
+      return AppLocalizations.of(context)!.appleNotHandled;
     }
     if (message.contains('AuthorizationErrorCode.unknown')) {
-      return 'Er is een onbekende fout opgetreden bij Apple.';
+      return AppLocalizations.of(context)!.appleUnknown;
     }
 
-    return 'Er is een fout opgetreden tijdens het inloggen met Apple.';
+    return AppLocalizations.of(context)!.appleGenericError;
   }
 
   // functie voor inloggen met apple
@@ -206,7 +209,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       //als er geen identity token is
       throw FirebaseAuthException(
         code: 'null_identity_token',
-        message: 'Apple returned a null identityToken',
+        message: AppLocalizations.of(context)!.appleNullIdentityTokenMessage,
       );
     }
     //maakt een oauth credential aan voor firebase
@@ -251,19 +254,17 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       String message;
       switch (e.code) {
         case 'account-exists-with-different-credential':
-          message =
-              'Er bestaat al een account met dit e-mailadres. Log in met een andere methode.';
+          message = AppLocalizations.of(context)!.signInAccountExists;
           break;
         default:
-          message =
-              'Er is een onbekende fout opgetreden bij het inloggen met Apple.';
+          message = AppLocalizations.of(context)!.unknownAppleSignIn;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       ); //snackbar is bar onderaan scherm. toon firebase foutmelding
     } catch (e) {
       if (!mounted) return;
-      final translated = translateAppleError(e);
+      final translated = translateAppleError(context, e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(translated)),
       ); //toon vertaalde foutmelding
@@ -316,16 +317,14 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       String message;
       switch (e.code) {
         case 'account-exists-with-different-credential':
-          message =
-              'Er bestaat al een account met dit e-mailadres. Log in met een andere methode.';
+          message = AppLocalizations.of(context)!.signInAccountExists;
           break;
         case 'cancelled':
         case 'popup-closed-by-user':
-          message = 'Het inloggen is geannuleerd.';
+          message = AppLocalizations.of(context)!.signInCancelled;
           break;
         default:
-          message =
-              'Er is een onbekende fout opgetreden bij het inloggen met GitHub.';
+          message = AppLocalizations.of(context)!.unknownGitHubSignIn;
       }
       ScaffoldMessenger.of(
         context,
@@ -333,10 +332,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Er is een onbekende fout opgetreden bij het inloggen met GitHub.',
-          ),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.unknownGitHubSignIn),
         ),
       );
     } finally {
@@ -385,20 +382,23 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       } else {
         final errors = <String>[];
         if (password.length < 6) {
-          errors.add('minimaal 6 tekens');
+          errors.add(AppLocalizations.of(context)!.passwordErrorMinLength);
         }
         if (!password.contains(RegExp(r'[A-Z]'))) {
-          errors.add('één hoofdletter');
+          errors.add(AppLocalizations.of(context)!.passwordErrorUpper);
         }
         if (!password.contains(RegExp(r'[a-z]'))) {
-          errors.add('één kleine letter');
+          errors.add(AppLocalizations.of(context)!.passwordErrorLower);
         }
         if (!password.contains(RegExp(r'[0-9]'))) {
-          errors.add('één cijfer');
+          errors.add(AppLocalizations.of(context)!.passwordErrorDigit);
         }
 
         if (errors.isNotEmpty) {
-          final message = 'Je wachtwoord mist: ${errors.join(', ')}.';
+          final message =
+              AppLocalizations.of(context)!.passwordMissingPartsPrefix +
+              errors.join(', ') +
+              '.';
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(message)));
@@ -434,26 +434,23 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       String message;
       switch (e.code) {
         case 'user-not-found':
-          message =
-              'Geen account gevonden voor dit e-mailadres. Klik onderaan om een account te maken.';
+          message = AppLocalizations.of(context)!.userNotFoundCreateAccount;
           break;
         case 'wrong-password':
         case 'invalid-credential':
-          message =
-              'Onjuist wachtwoord of e-mailadres. Probeer het opnieuw. Heeft u nog geen account, klik dan onderaan om er een aan te maken.';
+          message = AppLocalizations.of(context)!.wrongPasswordOrEmail;
           break;
         case 'email-already-in-use':
-          message = 'Dit e-mailadres is al in gebruik. Probeer in te loggen.';
+          message = AppLocalizations.of(context)!.emailAlreadyInUse;
           break;
         case 'weak-password':
-          message = 'Het wachtwoord moet uit minimaal 6 tekens bestaan.';
+          message = AppLocalizations.of(context)!.weakPasswordMessage;
           break;
         case 'invalid-email':
-          message = 'Het ingevoerde e-mailadres is ongeldig.';
+          message = AppLocalizations.of(context)!.invalidEmailMessage;
           break;
         default:
-          message =
-              'Er is een authenticatiefout opgetreden. Probeer het later opnieuw.';
+          message = AppLocalizations.of(context)!.authGenericError;
       }
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -461,9 +458,11 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Unknown error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.unknownErrorEnglish),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -472,8 +471,10 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   Future<void> _resetPassword() async {
     if (_emailController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Voer je e-mailadres in om je wachtwoord te resetten.'),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.resetPasswordEnterEmailInstruction,
+          ),
         ),
       );
       return;
@@ -487,7 +488,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
         context: context,
         builder: (context) => AlertDialog(
           title: Text(
-            'E-mail verzonden',
+            AppLocalizations.of(context)!.resetPasswordEmailSentTitle,
             style: TextStyle(
               color: Theme.of(context).brightness == Brightness.dark
                   ? Colors.white
@@ -495,7 +496,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
             ),
           ),
           content: Text(
-            'Er is een e-mail verzonden om je wachtwoord te resetten. Let op: deze e-mail kan in je spamfolder terechtkomen. Afzender: noreply@pwsmt-fd851.firebaseapp.com',
+            AppLocalizations.of(context)!.resetPasswordEmailSentContent,
             style: TextStyle(
               color: Theme.of(context).brightness == Brightness.dark
                   ? Colors.white
@@ -505,16 +506,16 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
+              child: Text(AppLocalizations.of(context)!.okLabel),
             ),
           ],
         ),
       );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      String message = 'Er is een fout opgetreden.';
+      String message = AppLocalizations.of(context)!.genericError;
       if (e.code == 'user-not-found') {
-        message = 'Geen account gevonden voor dit e-mailadres.';
+        message = AppLocalizations.of(context)!.userNotFoundForEmail;
       }
       ScaffoldMessenger.of(
         context,
@@ -574,7 +575,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  _isLogin ? 'Welkom terug!' : 'Maak een account',
+                  _isLogin
+                      ? AppLocalizations.of(context)!.loginWelcomeBack
+                      : AppLocalizations.of(context)!.loginCreateAccount,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 28,
@@ -587,8 +590,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                 const SizedBox(height: 8),
                 Text(
                   _isLogin
-                      ? 'Log in om verder te gaan'
-                      : 'Registreer om te beginnen',
+                      ? AppLocalizations.of(context)!.loginSubtitle
+                      : AppLocalizations.of(context)!.registerSubtitle,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     // Iets lichtere tekst, maar wel leesbaar in dark mode
@@ -610,8 +613,10 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                         ),
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'naam@voorbeeld.com',
+                          labelText: AppLocalizations.of(
+                            context,
+                          )!.loginEmailLabel,
+                          hintText: AppLocalizations.of(context)!.loginEmailHint,
                           prefixIcon: const Icon(Icons.email_outlined),
                           border: inputBorder,
                           enabledBorder: inputBorder,
@@ -621,8 +626,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                               : Colors.white,
                         ),
                         //validator voor email
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? 'Enter email' : null,
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? AppLocalizations.of(context)!.loginEnterEmail
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       //wachtwoord invoerveld met oogje om wachtwoord te tonen
@@ -634,7 +640,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                         obscureText:
                             _obscurePassword, //of het wachtwoord verborgen is
                         decoration: InputDecoration(
-                          labelText: 'Password',
+                          labelText: AppLocalizations.of(
+                            context,
+                          )!.loginPasswordLabel,
                           prefixIcon: const Icon(Icons.lock_outline),
                           border: inputBorder,
                           enabledBorder: inputBorder,
@@ -655,7 +663,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                           ),
                         ),
                         validator: (v) => (v == null || v.length < 6)
-                            ? 'Min 6 chars'
+                            ? AppLocalizations.of(context)!.loginMin6Chars
                             : null, //validator voor wachtwoord
                       ),
                     ],
@@ -670,7 +678,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: _resetPassword,
-                        child: const Text('Wachtwoord vergeten?'),
+                        child: Text(
+                          AppLocalizations.of(context)!.loginForgotPassword,
+                        ),
                       ),
                     ),
                   ),
@@ -692,7 +702,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       elevation: 2,
                     ),
                     child: Text(
-                      _isLogin ? 'Login' : 'Registreer',
+                      _isLogin
+                          ? AppLocalizations.of(context)!.loginButtonLogin
+                          : AppLocalizations.of(context)!.loginButtonRegister,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -709,7 +721,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        'Of ga verder met',
+                        AppLocalizations.of(context)!.loginOrContinueWith,
                         style: TextStyle(
                           color: isDarkMode
                               ? Colors.grey[400]
@@ -732,7 +744,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                           ? Buttons.GoogleDark
                           : Buttons
                                 .Google, //Buttons.Google is een standaard google knop van de package
-                      text: "Inloggen met Google",
+                      text: AppLocalizations.of(context)!.loginWithGoogle,
                       onPressed: _signInWithGoogleHandler,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -742,7 +754,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                     SignInButton(
                       Buttons
                           .GitHub, //Buttons.GitHub is een standaard github knop van de package
-                      text: "Inloggen met GitHub",
+                      text: AppLocalizations.of(context)!.loginWithGitHub,
                       onPressed: _signInWithGitHubHandler,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -755,7 +767,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                       const SizedBox(height: 12),
                       SignInButton(
                         Buttons.Apple,
-                        text: "Inloggen met Apple",
+                        text: AppLocalizations.of(context)!.loginWithApple,
                         onPressed: _signInWithAppleHandler,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -771,7 +783,11 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      _isLogin ? 'Nog geen account?' : 'Heb je al een account?',
+                      _isLogin
+                          ? AppLocalizations.of(context)!.loginNoAccountQuestion
+                          : AppLocalizations.of(
+                              context,
+                            )!.loginHaveAccountQuestion,
                       style: TextStyle(
                         color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                       ),
@@ -779,7 +795,11 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                     TextButton(
                       onPressed: () => setState(() => _isLogin = !_isLogin),
                       child: Text(
-                        _isLogin ? 'Maak een account' : 'Login',
+                        _isLogin
+                            ? AppLocalizations.of(
+                                context,
+                              )!.loginCreateAccountAction
+                            : AppLocalizations.of(context)!.loginLoginAction,
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),

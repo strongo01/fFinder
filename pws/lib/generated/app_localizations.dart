@@ -31,4 +31,75 @@ class AppLocalizations {
   String get durationShort => 'Duur:';
   String get caloriesShort => 'Calorieën:';
   String get saveSportFailedPrefix => 'Opslaan mislukt:';
+
+  // Added localization getters required by login_register_view.dart
+  String get appleCancelled => 'Je hebt de Apple-inlog geannuleerd.';
+  String get appleFailed =>
+      'Apple inloggen is mislukt. Probeer het later opnieuw.';
+  String get appleInvalidResponse => 'Ongeldig antwoord ontvangen van Apple.';
+  String get appleNotHandled => 'Apple kon de aanvraag niet verwerken.';
+  String get appleUnknown => 'Er is een onbekende fout opgetreden bij Apple.';
+  String get appleGenericError =>
+      'Er is een fout opgetreden tijdens het inloggen met Apple.';
+
+  String get signInAccountExists =>
+      'Er bestaat al een account met dit e-mailadres. Log in met een andere methode.';
+  String get signInCancelled => 'Het inloggen is geannuleerd.';
+  String get unknownGoogleSignIn =>
+      'Er is een onbekende fout opgetreden bij het inloggen met Google.';
+  String get unknownGitHubSignIn =>
+      'Er is een onbekende fout opgetreden bij het inloggen met GitHub.';
+  String get unknownAppleSignIn =>
+      'Er is een onbekende fout opgetreden bij het inloggen met Apple.';
+
+  String get unknownErrorEnglish => 'Unknown error';
+
+  String get passwordErrorMinLength => 'minimaal 6 tekens';
+  String get passwordErrorUpper => 'één hoofdletter';
+  String get passwordErrorLower => 'één kleine letter';
+  String get passwordErrorDigit => 'één cijfer';
+  String get passwordMissingPartsPrefix => 'Je wachtwoord mist: ';
+
+  String get userNotFoundCreateAccount =>
+      'Geen account gevonden voor dit e-mailadres. Klik onderaan om een account te maken.';
+  String get wrongPasswordOrEmail =>
+      'Onjuist wachtwoord of e-mailadres. Probeer het opnieuw. Heeft u nog geen account, klik dan onderaan om er een aan te maken.';
+  String get emailAlreadyInUse =>
+      'Dit e-mailadres is al in gebruik. Probeer in te loggen.';
+  String get weakPasswordMessage =>
+      'Het wachtwoord moet uit minimaal 6 tekens bestaan.';
+  String get invalidEmailMessage => 'Het ingevoerde e-mailadres is ongeldig.';
+  String get authGenericError =>
+      'Er is een authenticatiefout opgetreden. Probeer het later opnieuw.';
+
+  String get resetPasswordEnterEmailInstruction =>
+      'Voer je e-mailadres in om je wachtwoord te resetten.';
+  String get resetPasswordEmailSentTitle => 'E-mail verzonden';
+  String get resetPasswordEmailSentContent =>
+      'Er is een e-mail verzonden om je wachtwoord te resetten. Let op: deze e-mail kan in je spamfolder terechtkomen. Afzender: noreply@pwsmt-fd851.firebaseapp.com';
+  String get okLabel => 'OK';
+  String get genericError => 'Er is een fout opgetreden.';
+  String get userNotFoundForEmail =>
+      'Geen account gevonden voor dit e-mailadres.';
+
+  String get loginWelcomeBack => 'Welkom terug!';
+  String get loginCreateAccount => 'Maak een account';
+  String get loginSubtitle => 'Log in om verder te gaan';
+  String get registerSubtitle => 'Registreer om te beginnen';
+  String get loginEmailLabel => 'Email';
+  String get loginEmailHint => 'naam@voorbeeld.com';
+  String get loginEnterEmail => 'Enter email';
+  String get loginPasswordLabel => 'Password';
+  String get loginMin6Chars => 'Min 6 chars';
+  String get loginForgotPassword => 'Wachtwoord vergeten?';
+  String get loginButtonLogin => 'Login';
+  String get loginButtonRegister => 'Registreer';
+  String get loginOrContinueWith => 'Of ga verder met';
+  String get loginWithGoogle => 'Inloggen met Google';
+  String get loginWithGitHub => 'Inloggen met GitHub';
+  String get loginWithApple => 'Inloggen met Apple';
+  String get loginNoAccountQuestion => 'Nog geen account?';
+  String get loginHaveAccountQuestion => 'Heb je al een account?';
+  String get loginCreateAccountAction => 'Maak een account';
+  String get loginLoginAction => 'Login';
 }

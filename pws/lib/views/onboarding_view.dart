@@ -14,6 +14,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fFinder/l10n/app_localizations.dart';
 
 class AbsiReference {
   final double mean;
@@ -35,7 +36,7 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   // Controllers en variabelen voor data
   final TextEditingController _firstNameController = TextEditingController();
-  String _gender = 'Man';
+ String _gender = '';
   DateTime? _birthDate;
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
@@ -43,16 +44,17 @@ class _OnboardingViewState extends State<OnboardingView> {
   double _sleepHours = 8.0;
   static const int minWaistCm = 30;
   static const int maxWaistCm = 200;
-  String _activityLevel = 'Weinig actief';
-  String _goal = 'Afvallen';
+  String _activityLevel = '';
+  String _goal = '';
   final TextEditingController _targetWeightController = TextEditingController();
   bool _notificationsEnabled = false;
   static const int minHeightCm = 50;
   static const int maxHeightCm = 300;
   static const int minWeightKg = 20;
   static const int maxWeightKg = 800;
-bool _waistUnknown = false;
+  bool _waistUnknown = false;
   final int _totalQuestions = 11;
+  bool _localeDefaultsApplied = false;
 
   String _rangeText = '';
   bool _rangeLoading = false;
@@ -63,22 +65,6 @@ bool _waistUnknown = false;
     '1': {}, // man
     '2': {}, // vrouw
   };
-
-  final List<String> activityOptions = [
-    'Weinig actief: zittend werk, nauwelijks beweging, geen sport',
-    'Licht actief: 1–3x per week lichte training of dagelijks 30–45 min wandelen',
-    'Gemiddeld actief: 3–5x per week sporten of een actief beroep (horeca, zorg, postbezorger)',
-    'Zeer actief: 6–7x per week intensieve training of fysiek zwaar werk (bouw, magazijn)',
-    'Extreem actief: topsporttraining 2× per dag of extreem fysiek zwaar werk (militair, bosbouw)',
-  ];
-
-  final List<String> goalOptions = [
-    // opties voor doelen
-    'Afvallen',
-    'Op gewicht blijven',
-    'Aankomen (spiermassa)',
-    'Aankomen (algemeen)',
-  ];
 
   Timer? _debounceTimer; // timer voor debouncing range update
 
@@ -128,6 +114,19 @@ bool _waistUnknown = false;
     _weightController.addListener(_scheduleRangeUpdate);
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Stel lokale default labels in zodra localization beschikbaar is.
+    if (!_localeDefaultsApplied) {
+      final local = AppLocalizations.of(context)!;
+      _gender = local.onboarding_genderOptionMan;
+      _activityLevel = local.activityLow;
+      _goal = local.goalLose;
+      _localeDefaultsApplied = true;
+    }
+  }
+
   void _scheduleRangeUpdate() {
     _debounceTimer?.cancel(); // annuleer vorige timer als die er is
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
@@ -140,30 +139,30 @@ bool _waistUnknown = false;
     switch (_currentIndex) {
       case 0: // Voornaam
         if (_firstNameController.text.trim().isEmpty) {
-          _showError('Vul alsjeblieft je voornaam in.');
+          _showError(AppLocalizations.of(context)!.onboardingEnterFirstName);
           return false;
         }
         break;
       case 2: // Geboortedatum
         if (_birthDate == null) {
-          _showError('Selecteer alsjeblieft je geboortedatum.');
+          _showError(AppLocalizations.of(context)!.onboardingSelectBirthDate);
           return false;
         }
         break;
       case 3: // Lengte
         final heightText = _heightController.text.trim();
         if (heightText.isEmpty) {
-          _showError('Vul alsjeblieft je lengte in.');
+          _showError(AppLocalizations.of(context)!.onboardingEnterHeight);
           return false;
         }
         final value = int.tryParse(heightText);
         if (value == null) {
-          _showError('Voer een geldig getal in voor lengte.');
+          _showError(AppLocalizations.of(context)!.onboardingEnterValidHeight);
           return false;
         }
         if (value < minHeightCm || value > maxHeightCm) {
           _showError(
-            'Lengte moet tussen $minHeightCm cm en $maxHeightCm cm liggen.',
+            '${AppLocalizations.of(context)!.heightBetween} $minHeightCm cm ${AppLocalizations.of(context)!.and} $maxHeightCm ${AppLocalizations.of(context)!.liggen}.',
           );
           return false;
         }
@@ -171,54 +170,54 @@ bool _waistUnknown = false;
       case 4: // Gewicht
         final weightText = _weightController.text.trim();
         if (weightText.isEmpty) {
-          _showError('Vul alsjeblieft je gewicht in.');
+          _showError(AppLocalizations.of(context)!.onboardingEnterWeight);
           return false;
         }
         final weight = double.tryParse(weightText);
         if (weight == null) {
-          _showError('Vul een gewicht in.');
+          _showError(AppLocalizations.of(context)!.onboardingEnterValidWeight);
           return false;
         }
         if (weight <= minWeightKg || weight >= maxWeightKg) {
           _showError(
-            'Uw gewicht moet tussen $minWeightKg kg en $maxWeightKg kg liggen.',
+            '${AppLocalizations.of(context)!.weightBetween} $minWeightKg kg ${AppLocalizations.of(context)!.and} $maxWeightKg ${AppLocalizations.of(context)!.kgLiggen}.',
           );
           return false;
         }
         break;
       case 5: // Taille omtrek
-      if (_waistUnknown) break;
+        if (_waistUnknown) break;
         final waistText = _waistController.text.trim();
         if (waistText.isEmpty) {
-          _showError('Vul alsjeblieft je tailleomtrek in.');
+          _showError(AppLocalizations.of(context)!.enterWaistCircumference);
           return false;
         }
         final value = double.tryParse(waistText.replaceAll(',', '.'));
         if (value == null) {
-          _showError('Voer een geldig getal in voor tailleomtrek.');
+          _showError(AppLocalizations.of(context)!.enterValidWaistCircumference);
           return false;
         }
         if (value < minWaistCm || value > maxWaistCm) {
           _showError(
-            'Tailleomtrek moet tussen $minWaistCm cm en $maxWaistCm cm liggen.',
+            '${AppLocalizations.of(context)!.tailleBetween} $minWaistCm cm ${AppLocalizations.of(context)!.and} $maxWaistCm ${AppLocalizations.of(context)!.cmLiggen}',
           );
           return false;
         }
         break;
-case 8: // Streefgewicht (index aangepast)
+      case 8: // Streefgewicht (index aangepast)
         final targetWeightText = _targetWeightController.text.trim();
         if (targetWeightText.isEmpty) {
-          _showError('Vul alsjeblieft je streefgewicht in.');
+          _showError(AppLocalizations.of(context)!.onboardingEnterTargetWeight);
           return false;
         }
         final targetWeight = double.tryParse(targetWeightText);
         if (targetWeight == null) {
-          _showError('Vul een streefgewicht in');
+          _showError(AppLocalizations.of(context)!.onboardingEnterValidTargetWeight);
           return false;
         }
         if (targetWeight <= minWeightKg || targetWeight >= maxWeightKg) {
           _showError(
-            'Uw streefgewicht moet tussen $minWeightKg kg en $maxWeightKg kg liggen.',
+            '${AppLocalizations.of(context)!.targetBetween} $minWeightKg kg ${AppLocalizations.of(context)!.and} $maxWeightKg ${AppLocalizations.of(context)!.kgLiggen}.',
           );
           return false;
         }
@@ -270,17 +269,22 @@ case 8: // Streefgewicht (index aangepast)
   }
 
   String absiCategory(double z) {
-    if (z <= -1.0) return 'zeer_laag risico';
-    if (z <= -0.5) return 'laag risico';
-    if (z <= 0.5) return 'gemiddeld risico';
-    if (z <= 1.0) return 'verhoogd risico';
-    return 'hoog';
+    final local = AppLocalizations.of(context)!;
+    if (z <= -1.0) return local.absiVeryLow;   // "zeer laag risico"
+    if (z <= -0.5) return local.absiLow;       // "laag risico"
+    if (z <= 0.5) return local.absiAverage;    // "gemiddeld risico"
+    if (z <= 1.0) return local.absiElevated;   // "verhoogd risico"
+    return local.absiHigh;                     // "hoog"
   }
 
-  AbsiReference getAbsiReference(int age, String gender) {
+AbsiReference getAbsiReference(int age, String gender) {
     if (_absiReferenceTable.isEmpty) {
       throw Exception('ABSI reference table not loaded');
     }
+
+    final local = AppLocalizations.of(context)!;
+    final maleLabel = local.onboarding_genderOptionMan.toLowerCase();
+    final femaleLabel = local.onboarding_genderOptionWoman.toLowerCase();
 
     // beschikbare leeftijden
     final ages = _absiReferenceTable.map((e) => e["age"] as int).toList()
@@ -290,13 +294,83 @@ case 8: // Streefgewicht (index aangepast)
 
     final entry = _absiReferenceTable.firstWhere((e) => e["age"] == clampedAge);
 
-    final isFemale = gender.toLowerCase() == 'vrouw';
-    final data = isFemale ? entry["female"] : entry["male"];
+    // bepaal vrouw/man op basis van gelokaliseerde labels, met fallback
+    final g = gender.trim().toLowerCase();
+    bool isFemale;
+    if (g == femaleLabel) {
+      isFemale = true;
+    } else if (g == maleLabel) {
+      isFemale = false;
+    } else {
+      // fallback: probeer veelvoorkomende keywords (nl/en)
+      if (g.contains('vrouw') || g.contains('woman') || g.startsWith('f')) {
+        isFemale = true;
+      } else {
+        isFemale = false;
+      }
+    }
+
+    // pak data; voorkom nulls door fallback naar de andere sekse indien nodig
+    final rawData = isFemale ? entry["female"] ?? entry["male"] : entry["male"] ?? entry["female"];
+    if (rawData == null) {
+      throw Exception('ABSI reference data missing for age $clampedAge');
+    }
 
     return AbsiReference(
-      (data["mean"] as num).toDouble(),
-      (data["sd"] as num).toDouble(),
+      (rawData["mean"] as num).toDouble(),
+      (rawData["sd"] as num).toDouble(),
     );
+  }
+
+    double _activityFactorFromLocalized(String activity) {
+    final local = AppLocalizations.of(context)!;
+    final a = activity.trim();
+    if (a == local.activityLow) return 1.2;
+    if (a == local.activityLight) return 1.375;
+    if (a == local.activityMedium) return 1.55;
+    if (a == local.activityVery) return 1.725;
+    if (a == local.activityExtreme) return 1.9;
+
+    final lower = a.toLowerCase();
+    if (lower.contains('weinig') || lower.contains('low') || lower.contains('sedentary')) return 1.2;
+    if (lower.contains('licht') || lower.contains('light')) return 1.375;
+    if (lower.contains('gemiddeld') || lower.contains('medium') || lower.contains('moderate')) return 1.55;
+    if (lower.contains('zeer') || lower.contains('very') || lower.contains('high')) return 1.725;
+    if (lower.contains('extreem') || lower.contains('extreme')) return 1.9;
+
+    return 1.2; // veilige fallback
+  }
+
+  // Geef calorie-aanpassing terug gebaseerd op gelokaliseerd doel (neg = minder kcal)
+  int _goalCaloriesDeltaFromLocalized(String goal) {
+    final local = AppLocalizations.of(context)!;
+    final g = goal.trim();
+    if (g == local.goalLose) return -500;
+    if (g == local.goalGainMuscle || g == local.goalGainGeneral) return 300;
+    // maintain / default
+    return 0;
+  }
+
+  // Bepaal sexCode ('1' man, '2' vrouw) uit gelokaliseerde genderstring (met fallbacks)
+  String _genderCodeFromLocalizedGender(String gender) {
+    final local = AppLocalizations.of(context)!;
+    final maleLabel = local.onboarding_genderOptionMan.toLowerCase();
+    final femaleLabel = local.onboarding_genderOptionWoman.toLowerCase();
+    final g = gender.trim().toLowerCase();
+    if (g == femaleLabel) return '2';
+    if (g == maleLabel) return '1';
+    if (g.contains('vrouw') || g.contains('woman') || g.startsWith('f')) return '2';
+    return '1';
+  }
+
+  // Helper: bepaal of gender gelokaliseerd overeenkomt met vrouw
+  bool _isGenderLocalizedFemale(String gender) {
+    final local = AppLocalizations.of(context)!;
+    final femaleLabel = local.onboarding_genderOptionWoman.toLowerCase();
+    final g = gender.trim().toLowerCase();
+    if (g == femaleLabel) return true;
+    if (g.contains('vrouw') || g.contains('woman') || g.startsWith('f')) return true;
+    return false;
   }
 
   // Data opslaan in Firestore
@@ -304,7 +378,6 @@ case 8: // Streefgewicht (index aangepast)
     final user = FirebaseAuth.instance.currentUser; // Huidige gebruiker ophalen
     if (user == null) return; // Als er geen gebruiker is, stop
 
-    // --- CORRECTIE: Actief de Remote Config ophalen ---
     try {
       // 1️⃣ Global DEK ophalen (Remote Config)
       final remoteConfig = FirebaseRemoteConfig.instance;
@@ -361,48 +434,20 @@ case 8: // Streefgewicht (index aangepast)
         final age = DateTime.now().year - birthDate.year;
 
         double bmr;
-        if (gender == 'Vrouw') {
+        if (_isGenderLocalizedFemale(gender)) {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
         } else {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
         }
 
-        final activity = activityFull.split(':')[0].trim();
-        double activityFactor;
-        switch (activity) {
-          case 'Weinig actief':
-            activityFactor = 1.2;
-            break;
-          case 'Licht actief':
-            activityFactor = 1.375;
-            break;
-          case 'Gemiddeld actief':
-            activityFactor = 1.55;
-            break;
-          case 'Zeer actief':
-            activityFactor = 1.725;
-            break;
-          case 'Extreem actief':
-            activityFactor = 1.9;
-            break;
-          default:
-            activityFactor = 1.2;
-        }
+final activityFactor = _activityFactorFromLocalized(activityFull);
 
         double calories = bmr * activityFactor;
 
-        switch (goal) {
-          case 'Afvallen':
-            calories -= 500;
-            break;
-          case 'Aankomen (spiermassa)':
-          case 'Aankomen (algemeen)':
-            calories += 300;
-            break;
-          case 'Op gewicht blijven':
-          default:
-            break;
-        }
+        // pas calories aan volgens het gelokaliseerde doel
+        final delta = _goalCaloriesDeltaFromLocalized(goal);
+        calories += delta;
+
         calorieGoal = calories;
 
         proteinGoal = weightKg; // 1g per kg
@@ -480,7 +525,7 @@ case 8: // Streefgewicht (index aangepast)
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Er ging iets mis: $e')));
+        ).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.errorOccurred} $e')));
       }
     }
   }
@@ -544,7 +589,7 @@ case 8: // Streefgewicht (index aangepast)
 
     if (heightM == null || heightM <= 0) {
       setState(() {
-        _rangeText = 'Voer eerst je lengte in (cm) om het bereik te berekenen.';
+        _rangeText = AppLocalizations.of(context)!.onboardingEnterHeight;
         _rangeNote = '';
         _rangeLoading = false;
       });
@@ -563,8 +608,8 @@ case 8: // Streefgewicht (index aangepast)
       final maxWeight = 24.9 * pow(heightM, 2); // bovengrens gezond gewicht
       setState(() {
         _rangeText =
-            'Gezond gewicht voor u: ${minWeight.toStringAsFixed(1)} kg – ${maxWeight.toStringAsFixed(1)} kg';
-        _rangeNote = 'Gezond BMI: 18.5 – 24.9';
+            '${AppLocalizations.of(context)!.healthWeight} ${minWeight.toStringAsFixed(1)} kg – ${maxWeight.toStringAsFixed(1)} kg';
+        _rangeNote = '${AppLocalizations.of(context)!.healthyBMI} 18.5 – 24.9';
         _rangeLoading = false;
       });
       return;
@@ -574,8 +619,8 @@ case 8: // Streefgewicht (index aangepast)
     if (ageMonths < 24) {
       setState(() {
         _rangeText =
-            'Voor kinderen jonger dan 2 jaar wordt meestal gewicht-/lengtepercentiel gebruikt in plaats van BMI.';
-        _rangeNote = 'Gebruik WHO/CDC gewicht-voor-lengte tabellen.';
+            AppLocalizations.of(context)!.onboardingWeightRangeUnder2;
+        _rangeNote = AppLocalizations.of(context)!.onboardingWeightRangeUnder2Note;
         _rangeLoading = false;
       });
       return;
@@ -584,7 +629,8 @@ case 8: // Streefgewicht (index aangepast)
     // kinderen 2-18 jaar
     try {
       await _ensureCdcLmsLoaded(); // zorgt dat _lmsCache gevuld is (offline)
-      final sexCode = (_gender == 'Vrouw') ? '2' : '1';
+      final sexCode = _genderCodeFromLocalizedGender(_gender);
+     
       final nearestMonth = ageMonths;
       Map<String, double>? lms =
           _lmsCache[sexCode]?[nearestMonth]; // probeer exacte maand
@@ -607,9 +653,8 @@ case 8: // Streefgewicht (index aangepast)
 
       if (lms == null) {
         setState(() {
-          _rangeText =
-              'LMS-gegevens niet beschikbaar voor deze leeftijd/geslacht.';
-          _rangeNote = 'Controleer assets of voer handmatig streefgewicht in.';
+           _rangeText = AppLocalizations.of(context)!.lmsDataUnavailable;
+         _rangeNote = AppLocalizations.of(context)!.lmsCheckAssets;
           _rangeLoading = false;
         });
         return;
@@ -628,18 +673,17 @@ case 8: // Streefgewicht (index aangepast)
       final weightMax = bmi85 * pow(heightM, 2);
 
       setState(() {
-        _rangeText =
-            'Gezond gewicht voor u: ${weightMin.toStringAsFixed(1)} kg – ${weightMax.toStringAsFixed(1)} kg';
+       _rangeText =
+            '${AppLocalizations.of(context)!.healthyWeightForYou} ${weightMin.toStringAsFixed(1)} kg – ${weightMax.toStringAsFixed(1)} kg';
         _rangeNote = '';
-        _rangeLoading = false;
+         _rangeLoading = false;
       });
       return;
     } catch (e) {
       setState(() {
-        _rangeText = 'Kon LMS-data niet gebruiken: $e';
-        _rangeNote =
-            'Controleer of asset aanwezig is (assets/cdc/bmiagerev.csv).';
-        _rangeLoading = false;
+         _rangeText = '${AppLocalizations.of(context)!.lmsDataErrorPrefix} $e';
+        _rangeNote = AppLocalizations.of(context)!.lmsAssetMissing;
+         _rangeLoading = false;
       });
       return;
     }
@@ -746,6 +790,26 @@ case 8: // Streefgewicht (index aangepast)
 
   @override
   Widget build(BuildContext context) {
+    final local = AppLocalizations.of(context)!;
+    final List<String> activities = <String>[
+      local.activityLow,
+      local.activityLight,
+      local.activityMedium,
+      local.activityVery,
+      local.activityExtreme,
+    ];
+    final List<String> goals = <String>[
+      local.goalLose,
+      local.goalMaintain,
+      local.goalGainMuscle,
+      local.goalGainGeneral,
+    ];
+    final List<String> genderOptions = <String>[
+      local.onboarding_genderOptionMan,
+      local.onboarding_genderOptionWoman,
+      local.onboarding_genderOptionOther,
+      local.onboarding_genderOptionPreferNot,
+    ];
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final inputTextStyle = TextStyle(
       color: isDarkMode ? Colors.white : Colors.black,
@@ -790,60 +854,53 @@ case 8: // Streefgewicht (index aangepast)
                   children: [
                     // Vraag 1: Voornaam
                     _buildQuestionPage(
-                      title: 'Wat is je voornaam?',
+                      title: local.onboarding_firstNameTitle,
                       content: TextField(
                         controller: _firstNameController,
                         textInputAction: TextInputAction.next,
                         textCapitalization: TextCapitalization.words,
                         onSubmitted: (_) => _nextPage(),
                         style: inputTextStyle,
-                        decoration: const InputDecoration(
-                          labelText: 'Voornaam',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: local.onboarding_labelFirstName,
+                          border: const OutlineInputBorder(),
                         ),
                       ),
                     ),
                     // Vraag 2: Geslacht
                     _buildQuestionPage(
-                      title: 'Wat is je geslacht?',
+                      title: local.onboarding_genderTitle,
                       content: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
-                          children:
-                              [
-                                'Man',
-                                'Vrouw',
-                                'Anders',
-                                'Wil ik liever niet zeggen',
-                              ].map((val) {
-                                return SizedBox(
-                                  width:
-                                      300, // Vaste breedte voor consistente uitlijning
-                                  child: RadioListTile<String>(
-                                    title: Text(val, style: inputTextStyle),
-                                    value: val,
-                                    groupValue: _gender,
-                                    onChanged: (value) {
-                                      setState(() => _gender = value!);
-                                      _scheduleRangeUpdate(); // Update range als geslacht verandert
-                                    },
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 8.0,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
+                          children: genderOptions.map((val) {
+                            return SizedBox(
+                              width: 300, // Vaste breedte voor consistente uitlijning
+                              child: RadioListTile<String>(
+                                title: Text(val, style: inputTextStyle),
+                                value: val,
+                                groupValue: _gender,
+                                onChanged: (value) {
+                                  setState(() => _gender = value!);
+                                  _scheduleRangeUpdate(); // Update range als geslacht verandert
+                                },
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ),
                     ),
                     // Vraag 3: Geboortedatum
                     _buildQuestionPage(
-                      title: 'Wat is je geboortedatum?',
+                      title: local.onboarding_birthDateTitle,
                       content: Column(
                         children: [
                           Text(
                             _birthDate == null
-                                ? 'Geen datum gekozen'
+                                ? local.onboarding_noDateChosen
                                 : '${_birthDate!.day}-${_birthDate!.month}-${_birthDate!.year}',
                             style: TextStyle(
                               fontSize: 18,
@@ -888,7 +945,7 @@ case 8: // Streefgewicht (index aangepast)
                                         ),
                                         // Knop om de picker te sluiten
                                         CupertinoButton(
-                                          child: const Text('Klaar'),
+                                          child: Text(local.onboarding_datePickerDone),
                                           onPressed: () =>
                                               Navigator.of(context).pop(),
                                         ),
@@ -920,14 +977,14 @@ case 8: // Streefgewicht (index aangepast)
                                 }
                               }
                             },
-                            child: const Text('Kies datum'),
+                            child: Text(local.onboarding_chooseDate),
                           ),
                         ],
                       ),
                     ),
                     // Vraag 4: Lengte
                     _buildQuestionPage(
-                      title: 'Wat is je lengte (cm)?',
+                      title: local.onboarding_heightTitle,
                       content: TextField(
                         controller: _heightController,
                         keyboardType: TextInputType.number,
@@ -940,16 +997,16 @@ case 8: // Streefgewicht (index aangepast)
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => _nextPage(),
                         style: inputTextStyle,
-                        decoration: const InputDecoration(
-                          labelText: 'Lengte in cm',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: local.onboarding_labelHeight,
+                          border: const OutlineInputBorder(),
                           suffixText: 'cm',
                         ),
                       ),
                     ),
                     // Vraag 5: Gewicht
                     _buildQuestionPage(
-                      title: 'Wat is je gewicht (kg)?',
+                      title: local.onboarding_weightTitle,
                       content: TextField(
                         controller: _weightController,
                         keyboardType: TextInputType.number,
@@ -962,17 +1019,17 @@ case 8: // Streefgewicht (index aangepast)
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => _nextPage(),
                         style: inputTextStyle,
-                        decoration: const InputDecoration(
-                          labelText: 'Gewicht in kg',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: local.onboarding_labelWeight,
+                          border: const OutlineInputBorder(),
                           suffixText: 'kg',
                         ),
                       ),
                     ),
                     //taille
                     _buildQuestionPage(
-                      title: 'Wat is je tailleomtrek (cm)?',
-                     content: Column(
+                      title: local.onboarding_waistTitle,
+                      content: Column(
                         children: [
                           TextField(
                             controller: _waistController,
@@ -987,15 +1044,16 @@ case 8: // Streefgewicht (index aangepast)
                             textInputAction: TextInputAction.next,
                             onSubmitted: (_) => _nextPage(),
                             style: inputTextStyle,
-                            decoration: const InputDecoration(
-                              labelText: 'Tailleomtrek in cm',
-                              border: OutlineInputBorder(),
+                            decoration: InputDecoration(
+                              labelText: local.onboarding_labelWaist,
+                              border: const OutlineInputBorder(),
                               suffixText: 'cm',
                             ),
                           ),
                           const SizedBox(height: 8),
                           CheckboxListTile(
-                            title: Text('Ik weet het niet', style: inputTextStyle),
+                            title: Text(local.onboarding_unknownWaist,
+                                style: inputTextStyle),
                             value: _waistUnknown,
                             onChanged: (val) {
                               setState(() {
@@ -1013,11 +1071,11 @@ case 8: // Streefgewicht (index aangepast)
                     ),
                     // Vraag 6: Slaap
                     _buildQuestionPage(
-                      title: 'Hoeveel uur slaap je gemiddeld per nacht?',
+                      title: local.onboarding_sleepTitle,
                       content: Column(
                         children: [
                           Text(
-                            '${_sleepHours.toStringAsFixed(1)} uur',
+                            '${_sleepHours.toStringAsFixed(1)} ${local.hours}',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -1038,9 +1096,9 @@ case 8: // Streefgewicht (index aangepast)
                     ),
                     // Vraag 7: Actief
                     _buildQuestionPage(
-                      title: 'Hoe actief ben je dagelijks?',
+                      title: local.onboarding_activityTitle,
                       content: Column(
-                        children: activityOptions.map((val) {
+                        children: activities.map((val) {
                           return RadioListTile<String>(
                             // Radio knop voor elke optie
                             title: Text(val, style: inputTextStyle),
@@ -1055,7 +1113,7 @@ case 8: // Streefgewicht (index aangepast)
                     ),
                     // Vraag 8: Streefgewicht
                     _buildQuestionPage(
-                      title: 'Wat is je streefgewicht?',
+                      title: local.onboarding_targetWeightTitle,
                       content: Column(
                         children: [
                           TextField(
@@ -1070,9 +1128,9 @@ case 8: // Streefgewicht (index aangepast)
                             textInputAction: TextInputAction.next,
                             onSubmitted: (_) => _nextPage(),
                             style: inputTextStyle,
-                            decoration: const InputDecoration(
-                              labelText: 'Streefgewicht in kg',
-                              border: OutlineInputBorder(),
+                            decoration: InputDecoration(
+                              labelText: local.onboarding_labelTargetWeight,
+                              border: const OutlineInputBorder(),
                               suffixText: 'kg',
                             ),
                           ),
@@ -1114,9 +1172,9 @@ case 8: // Streefgewicht (index aangepast)
 
                     // Vraag9: Wat is je doel?
                     _buildQuestionPage(
-                      title: 'Wat is je doel?',
+                      title: local.onboarding_goalTitle,
                       content: Column(
-                        children: goalOptions.map((val) {
+                        children: goals.map((val) {
                           return RadioListTile<String>(
                             title: Text(val, style: inputTextStyle),
                             value: val, // waarde van deze optie
@@ -1131,14 +1189,14 @@ case 8: // Streefgewicht (index aangepast)
 
                     // Vraag 10: Meldingen
                     _buildQuestionPage(
-                      title: 'Wil je meldingen ontvangen?',
+                      title: local.onboarding_notificationsTitle,
                       content: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12.0),
                             child: Text(
-                              'Je kunt meldingen inschakelen voor maaltijdherinneringen, zodat je nooit vergeet te eten en je eten toe te voegen aan de logs.',
+                              local.onboarding_notificationsDescription,
                               style: TextStyle(
                                 fontSize: 16,
                                 color: inputTextStyle.color,
@@ -1147,7 +1205,7 @@ case 8: // Streefgewicht (index aangepast)
                           ),
                           SwitchListTile(
                             title: Text(
-                              'Meldingen inschakelen',
+                              local.onboarding_notificationsEnable,
                               style: inputTextStyle,
                             ),
                             value: _notificationsEnabled,
@@ -1164,10 +1222,10 @@ case 8: // Streefgewicht (index aangepast)
                                 // Vraagt toestemming op iOS, Android 13+ en Web
                                 NotificationSettings settings = await messaging
                                     .requestPermission(
-                                      alert: true,
-                                      badge: true,
-                                      sound: true,
-                                    );
+                                  alert: true,
+                                  badge: true,
+                                  sound: true,
+                                );
 
                                 if (settings.authorizationStatus ==
                                         AuthorizationStatus.authorized ||
@@ -1183,29 +1241,28 @@ case 8: // Streefgewicht (index aangepast)
                                   // Plan standaard meldingen in
                                   await notificationService
                                       .scheduleMealReminders(
-                                        areEnabled: true,
-                                        breakfastTime: const TimeOfDay(
-                                          hour: 7,
-                                          minute: 0,
-                                        ),
-                                        lunchTime: const TimeOfDay(
-                                          hour: 12,
-                                          minute: 0,
-                                        ),
-                                        dinnerTime: const TimeOfDay(
-                                          hour: 19,
-                                          minute: 0,
-                                        ),
-                                      );
+                                    areEnabled: true,
+                                    breakfastTime: const TimeOfDay(
+                                      hour: 7,
+                                      minute: 0,
+                                    ),
+                                    lunchTime: const TimeOfDay(
+                                      hour: 12,
+                                      minute: 0,
+                                    ),
+                                    dinnerTime: const TimeOfDay(
+                                      hour: 19,
+                                      minute: 0,
+                                    ),
+                                  );
                                 } else {
                                   // Toestemming geweigerd
                                   setState(() => _notificationsEnabled = false);
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Toestemming voor meldingen is geweigerd.',
-                                        ),
+                                      SnackBar(
+                                        content: Text(local
+                                            .notificationPermissionDenied),
                                       ),
                                     );
                                   }
@@ -1264,7 +1321,7 @@ case 8: // Streefgewicht (index aangepast)
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        child: const Text('Vorige'),
+                        child: Text(local.previous),
                       )
                     else
                       const SizedBox(), // Lege ruimte om layout gelijk te houden
@@ -1285,8 +1342,8 @@ case 8: // Streefgewicht (index aangepast)
                       ),
                       child: Text(
                         _currentIndex == _totalQuestions - 1
-                            ? 'Afronden'
-                            : 'Volgende',
+                            ? local.finish
+                            : local.next,
                       ),
                     ),
                   ],
