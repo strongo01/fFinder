@@ -5,7 +5,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_fr.dart';
 import 'app_localizations_nl.dart';
 
 // ignore_for_file: type=lint
@@ -91,7 +93,9 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
+    Locale('de'),
     Locale('en'),
+    Locale('fr'),
     Locale('nl')
   ];
 
@@ -226,18 +230,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Waist Circumference (cm)'**
   String get waistCircumferenceCm;
-
-  /// No description provided for @enterWaistCircumference.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter your waist circumference (cm)'**
-  String get enterWaistCircumference;
-
-  /// No description provided for @enterValidWaistCircumference.
-  ///
-  /// In en, this message translates to:
-  /// **'Please enter a valid waist circumference'**
-  String get enterValidWaistCircumference;
 
   /// No description provided for @targetWeightKg.
   ///
@@ -1354,12 +1346,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Average risk'**
   String get absiMedium;
-
-  /// No description provided for @absiHigh.
-  ///
-  /// In en, this message translates to:
-  /// **'high risk'**
-  String get absiHigh;
 
   /// No description provided for @choiceWeight.
   ///
@@ -4175,6 +4161,18 @@ abstract class AppLocalizations {
   /// **' kg.'**
   String get kgLiggen;
 
+  /// No description provided for @enterWaistCircumference.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your waist circumference (cm)'**
+  String get enterWaistCircumference;
+
+  /// No description provided for @enterValidWaistCircumference.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid waist circumference'**
+  String get enterValidWaistCircumference;
+
   /// No description provided for @tailleBetween.
   ///
   /// In en, this message translates to:
@@ -4222,6 +4220,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'elevated risk'**
   String get absiElevated;
+
+  /// No description provided for @absiHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'high risk'**
+  String get absiHigh;
 
   /// No description provided for @healthWeight.
   ///
@@ -4492,6 +4496,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Apple returned a null identityToken.'**
   String get appleNullIdentityTokenMessage;
+
+  /// No description provided for @deleteSportMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this sport activity?'**
+  String get deleteSportMessage;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
@@ -4503,7 +4513,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'nl'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['de', 'en', 'fr', 'nl'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -4514,7 +4524,9 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
 
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'de': return AppLocalizationsDe();
     case 'en': return AppLocalizationsEn();
+    case 'fr': return AppLocalizationsFr();
     case 'nl': return AppLocalizationsNl();
   }
 

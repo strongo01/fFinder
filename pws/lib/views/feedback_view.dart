@@ -557,6 +557,14 @@ class FeedbackButton extends StatelessWidget {
                                 value: 'en',
                                 child: Text('English (en)'),
                               ),
+                              DropdownMenuItem(
+                                value: 'fr',
+                                child: Text('Français (fr)'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'en',
+                                child: Text('Deutsch (de)'),
+                              ),
                             ],
                             onChanged: (v) => setState(() {
                               if (v != null) languageReported = v;

@@ -1369,6 +1369,14 @@ final providerIds = user.providerData.map((p) => p.providerId).toList();
                                           value: 'en',
                                           child: Text('English'),
                                         ),
+                                        DropdownMenuItem(
+                                          value: 'fr',
+                                          child: Text('Français'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'de',
+                                          child: Text('Deutsch'),
+                                        ),
                                       ],
                                       onChanged: (val) => _setLocale(val),
                                       decoration: InputDecoration(

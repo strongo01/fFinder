@@ -75,12 +75,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get waistCircumferenceCm => 'Waist Circumference (cm)';
 
   @override
-  String get enterWaistCircumference => 'Enter your waist circumference (cm)';
-
-  @override
-  String get enterValidWaistCircumference => 'Please enter a valid waist circumference';
-
-  @override
   String get targetWeightKg => 'Target Weight (kg)';
 
   @override
@@ -637,9 +631,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get absiMedium => 'Average risk';
-
-  @override
-  String get absiHigh => 'high risk';
 
   @override
   String get choiceWeight => 'Weight';
@@ -2051,6 +2042,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kgLiggen => ' kg.';
 
   @override
+  String get enterWaistCircumference => 'Enter your waist circumference (cm)';
+
+  @override
+  String get enterValidWaistCircumference => 'Please enter a valid waist circumference';
+
+  @override
   String get tailleBetween => 'Waist circumference must be between ';
 
   @override
@@ -2073,6 +2070,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get absiElevated => 'elevated risk';
+
+  @override
+  String get absiHigh => 'high risk';
 
   @override
   String get healthWeight => 'Healthy weight for you: ';
@@ -2208,4 +2208,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appleNullIdentityTokenMessage => 'Apple returned a null identityToken.';
+
+  @override
+  String get deleteSportMessage => 'Are you sure you want to delete this sport activity?';
 }

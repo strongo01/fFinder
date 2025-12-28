@@ -75,12 +75,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get waistCircumferenceCm => 'Tailleomtrek (cm)';
 
   @override
-  String get enterWaistCircumference => 'Vul je tailleomtrek in (cm)';
-
-  @override
-  String get enterValidWaistCircumference => 'Voer een geldige tailleomtrek in';
-
-  @override
   String get targetWeightKg => 'Doelgewicht (kg)';
 
   @override
@@ -637,9 +631,6 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get absiMedium => 'Gemiddeld risico';
-
-  @override
-  String get absiHigh => 'hoog';
 
   @override
   String get choiceWeight => 'Gewicht';
@@ -2051,6 +2042,12 @@ class AppLocalizationsNl extends AppLocalizations {
   String get kgLiggen => ' kg liggen.';
 
   @override
+  String get enterWaistCircumference => 'Vul je tailleomtrek in (cm)';
+
+  @override
+  String get enterValidWaistCircumference => 'Voer een geldige tailleomtrek in';
+
+  @override
   String get tailleBetween => 'Tailleomtrek moet tussen ';
 
   @override
@@ -2073,6 +2070,9 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get absiElevated => 'verhoogd risico';
+
+  @override
+  String get absiHigh => 'hoog';
 
   @override
   String get healthWeight => 'Gezond gewicht voor jou: ';
@@ -2208,4 +2208,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get appleNullIdentityTokenMessage => 'Apple retourneerde geen identityToken.';
+
+  @override
+  String get deleteSportMessage => 'Weet je zeker dat je deze sportactiviteit wilt verwijderen?';
 }
