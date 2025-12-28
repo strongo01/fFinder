@@ -716,8 +716,8 @@
   "absiVeryLow": "zeer laag risico",
   "absiLow": "laag risico",
   "absiAverage": "gemiddeld risico",
-  "absiElevated": "verhoogd risico",
-  "absiHigh": "hoog",
+  "absiElevated": "Verhoogd risico",
+  "absiHigh": "Hoog risico",
   "healthWeight": "Gezond gewicht voor jou: ",
   "healthyBMI": "Gezonde BMI: ",
   "onboardingWeightRangeUnder2": "Voor kinderen jonger dan 2 jaar wordt meestal gewicht-/lengtepercentiel gebruikt in plaats van BMI.",
@@ -733,5 +733,11 @@
   "confirmButtonLabel": "Bevestigen",
   "googleSignInCancelledMessage": "Google aanmelden geannuleerd door gebruiker.",
   "googleMissingIdToken": "Kon geen idToken ophalen van Google.",
-  "appleNullIdentityTokenMessage": "Apple retourneerde geen identityToken."
+  "appleNullIdentityTokenMessage": "Apple retourneerde geen identityToken.",
+    "notificationBreakfastTitle": "Tijd voor ontbijt!",
+  "notificationBreakfastBody": "Start je dag goed met een voedzaam ontbijt. Vergeet je niet je ontbijt te loggen?",
+  "notificationLunchTitle": "Lunchtijd!",
+  "notificationLunchBody": "Tijd om je energie aan te vullen voor de middag en vergeet je niet je lunch te loggen?",
+  "notificationDinnerTitle": "Eet smakelijk!",
+  "notificationDinnerBody": "Geniet van je avondeten en natuurlijk ook het loggen ervan!"
 }

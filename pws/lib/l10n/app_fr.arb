@@ -717,7 +717,7 @@
     "absiLow": "risque faible",
     "absiAverage": "risque moyen",
     "absiElevated": "risque accru",
-    "absiHigh": "élevé",
+    "absiHigh": "risque élevé",
     "healthWeight": "Poids sain pour vous : ",
     "healthyBMI": "IMC sain : ",
     "onboardingWeightRangeUnder2": "Pour les enfants de moins de 2 ans, on utilise généralement les centiles poids/taille plutôt que l'IMC.",
@@ -733,5 +733,12 @@
     "confirmButtonLabel": "Confirmer",
     "googleSignInCancelledMessage": "Connexion Google annulée par l'utilisateur.",
     "googleMissingIdToken": "Impossible d'obtenir un idToken de Google.",
-    "appleNullIdentityTokenMessage": "Apple n'a pas renvoyé d'identityToken."
+    "appleNullIdentityTokenMessage": "Apple n'a pas renvoyé d'identityToken.",
+    "notificationBreakfastTitle": "Il est l'heure du petit-déjeuner!",
+    "notificationBreakfastBody": "Commencez bien votre journée avec un petit-déjeuner nutritif. N'oubliez pas de le consigner!",
+    "notificationLunchTitle": "C'est l'heure du déjeuner!",
+    "notificationLunchBody": "Rechargez vos batteries pour l'après-midi — n'oubliez pas d'enregistrer votre déjeuner!",
+    "notificationDinnerTitle": "Bon appétit!",
+    "notificationDinnerBody": "Profitez de votre dîner et pensez à le consigner!"
+   
 }

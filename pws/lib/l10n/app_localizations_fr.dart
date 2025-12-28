@@ -2072,7 +2072,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get absiElevated => 'risque accru';
 
   @override
-  String get absiHigh => 'élevé';
+  String get absiHigh => 'risque élevé';
 
   @override
   String get healthWeight => 'Poids sain pour vous : ';
@@ -2211,4 +2211,22 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get deleteSportMessage => 'Êtes-vous sûr de vouloir supprimer cette activité sportive ?';
+
+  @override
+  String get notificationBreakfastTitle => 'Il est l\'heure du petit-déjeuner!';
+
+  @override
+  String get notificationBreakfastBody => 'Commencez bien votre journée avec un petit-déjeuner nutritif. N\'oubliez pas de le consigner!';
+
+  @override
+  String get notificationLunchTitle => 'C\'est l\'heure du déjeuner!';
+
+  @override
+  String get notificationLunchBody => 'Rechargez vos batteries pour l\'après-midi — n\'oubliez pas d\'enregistrer votre déjeuner!';
+
+  @override
+  String get notificationDinnerTitle => 'Bon appétit!';
+
+  @override
+  String get notificationDinnerBody => 'Profitez de votre dîner et pensez à le consigner!';
 }

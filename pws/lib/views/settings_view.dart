@@ -77,7 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return _localizedGoalLabel(ctx, key);
   }
 
-  double _activityFactorFromLabel(BuildContext ctx, String activityLabel) {
+    double _activityFactorFromLabel(BuildContext ctx, String activityLabel) {
     final local = AppLocalizations.of(ctx)!;
     final a = activityLabel.trim();
     if (a == local.activityLow) return 1.2;
@@ -87,20 +87,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (a == local.activityExtreme) return 1.9;
 
     final lower = a.toLowerCase();
+
+    // Nederlands, Engels, Frans, Duits keywords (inclusief veelvoorkomende varianten/accents)
     if (lower.contains('weinig') ||
         lower.contains('low') ||
-        lower.contains('sedentary'))
+        lower.contains('sedentary') ||
+        lower.contains('faible') || // fr: faible
+        lower.contains('wenig')) // de: wenig
       return 1.2;
-    if (lower.contains('licht') || lower.contains('light')) return 1.375;
+
+    if (lower.contains('licht') ||
+        lower.contains('light') ||
+        lower.contains('léger') ||
+        lower.contains('légère') || // fr variants
+        lower.contains('leicht')) // de: leicht
+      return 1.375;
+
     if (lower.contains('gemiddeld') ||
         lower.contains('medium') ||
-        lower.contains('moderate'))
+        lower.contains('moderate') ||
+        lower.contains('moyen') ||
+        lower.contains('moyenne') || // fr
+        lower.contains('mäßig') ||
+        lower.contains('maessig') ||
+        lower.contains('massig') ||
+        lower.contains('moderat')) // de
       return 1.55;
+
     if (lower.contains('zeer') ||
         lower.contains('very') ||
-        lower.contains('high'))
+        lower.contains('high') ||
+        lower.contains('très') || // fr
+        lower.contains('tres') ||
+        lower.contains('sehr')) // de
       return 1.725;
-    if (lower.contains('extreem') || lower.contains('extreme')) return 1.9;
+
+    if (lower.contains('extreem') ||
+        lower.contains('extreme') ||
+        lower.contains('extrême') ||
+        lower.contains('extrêmement') || // fr
+        lower.contains('extrem')) // de
+      return 1.9;
+
     return 1.2;
   }
 
@@ -135,6 +163,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
       default:
         return t.goalLose;
     }
+  }
+
+    bool _isGenderLocalizedFemale(BuildContext ctx, String? genderLabel) {
+    if (genderLabel == null) return false;
+    final g = genderLabel.trim().toLowerCase();
+    if (g.isEmpty) return false;
+    final local = AppLocalizations.of(ctx)!;
+    final femaleLabel = local.onboarding_genderOptionWoman.toLowerCase();
+    final maleLabel = local.onboarding_genderOptionMan.toLowerCase();
+    if (g == femaleLabel) return true;
+    if (g == maleLabel) return false;
+    if (g.startsWith('f') || g.contains('vrouw') || g.contains('woman') || g.contains('femme')) return true;
+    if (g.startsWith('m') || g.contains('man') || g.contains('mann')) return false;
+    return false;
+  }
+
+  // Bepaal calorie-delta voor een doel-label (herkent nl/en/fr/de keywords)
+  int _goalCaloriesDeltaFromLabel(BuildContext ctx, String goalLabel) {
+    final local = AppLocalizations.of(ctx)!;
+    final g = goalLabel.trim();
+    if (g == local.goalLose) return -500;
+    if (g == local.goalGainMuscle || g == local.goalGainGeneral) return 300;
+    final lower = g.toLowerCase();
+    if (lower.contains('afval') || lower.contains('lose') || lower.contains('perdre') || lower.contains('abnehm')) return -500;
+    if (lower.contains('spier') || lower.contains('muscle') || lower.contains('muskel') || lower.contains('muscler')) return 300;
+    if (lower.contains('aankom') || lower.contains('gain') || lower.contains('prendre') || lower.contains('zunehmen')) return 300;
+    return 0;
   }
 
   @override
@@ -188,6 +243,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _updateNotificationSchedule() async {
     await _notificationService.scheduleMealReminders(
+      context: context,
       areEnabled: _mealNotificationsEnabled,
       breakfastTime: _breakfastTime,
       lunchTime: _lunchTime,
@@ -366,26 +422,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         // BMR
         final age = DateTime.now().year - birthDate.year;
-        double bmr;
-        if (gender == 'Vrouw') {
+double bmr;
+        if (_isGenderLocalizedFemale(context, gender)) {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
         } else {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
         }
 
-        final activityLabel = _storageActivityValue(context, _activityKey);
+final activityLabel = _storageActivityValue(context, _activityKey);
         final activityFactor = _activityFactorFromLabel(context, activityLabel);
-
         double calories = bmr * activityFactor;
-
         final goalStored = _storageGoalValue(context, _goalKey);
-        final local = AppLocalizations.of(context)!;
-        if (goalStored == local.goalLose) {
-          calories -= 500;
-        } else if (goalStored == local.goalGainMuscle ||
-            goalStored == local.goalGainGeneral) {
-          calories += 300;
-        }
+        calories += _goalCaloriesDeltaFromLabel(context, goalStored);
+       
         calorieGoal = calories;
 
         // Macro’s
@@ -414,22 +463,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               : ages.last;
           final clampedAge = ages.contains(age) ? age : ages.last;
           final entry = table.firstWhere((e) => e['age'] == clampedAge);
-          final isFemale = (gender).toLowerCase() == 'vrouw';
-          final data = isFemale ? entry['female'] : entry['male'];
-          final mean = (data['mean'] as num).toDouble();
-          final sd = (data['sd'] as num).toDouble();
+                      final female = _isGenderLocalizedFemale(context, gender);
+            final dataSex = female ? entry['female'] : entry['male'];
+            final mean = (dataSex['mean'] as num).toDouble();
+            final sd = (dataSex['sd'] as num).toDouble();
+
           if (sd != 0) {
             absiZ = (absi - mean) / sd;
+            final loc = AppLocalizations.of(context)!;
+            // absiRange instellen met gelokaliseerde labels
             if (absiZ <= -1.0) {
-              absiRange = 'zeer_laag risico';
+              absiRange = loc.absiVeryLowRisk;
             } else if (absiZ <= -0.5) {
-              absiRange = 'laag risico';
+              absiRange = loc.absiLowRisk;
             } else if (absiZ <= 0.5) {
-              absiRange = 'gemiddeld risico';
+              absiRange = loc.absiMedium;
             } else if (absiZ <= 1.0) {
-              absiRange = 'verhoogd risico';
+              absiRange = loc.absiElevated;
             } else {
-              absiRange = 'hoog';
+              absiRange = loc.absiHigh;
             }
           }
         } catch (e) {
@@ -571,9 +623,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) {
         Theme.of(context);
         return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.confirmDeleteAccountTitle),
+            title: Text(
+            AppLocalizations.of(context)!.confirmDeleteAccountTitle,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
+            ),
+            ),
           content: TextField(
             controller: passwordController,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black,
+            ),
+            cursorColor: Theme.of(context).colorScheme.brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
             obscureText: true,
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.enterPasswordLabel,
@@ -636,7 +703,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final result = await FirebaseAuth.instance.signInWithPopup(googleProvider);
         final cred = result.credential;
         if (cred != null) {
-          await user.reauthenticateWithCredential(cred as AuthCredential);
+          await user.reauthenticateWithCredential(cred);
           return true;
         }
         return false;
@@ -690,7 +757,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final result = await FirebaseAuth.instance.signInWithPopup(provider);
         final cred = result.credential;
         if (cred != null) {
-          await user.reauthenticateWithCredential(cred as AuthCredential);
+          await user.reauthenticateWithCredential(cred);
           return true;
         }
         return false;
@@ -732,7 +799,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final result = await FirebaseAuth.instance.signInWithPopup(provider);
         final cred = result.credential;
         if (cred != null) {
-          await user.reauthenticateWithCredential(cred as AuthCredential);
+          await user.reauthenticateWithCredential(cred);
           return true;
         }
         return false;
@@ -1342,62 +1409,84 @@ final providerIds = user.providerData.map((p) => p.providerId).toList();
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                AppLocalizations.of(context)!.language,
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: isDark
-                                          ? Colors.white
-                                          : Colors.black,
-                                    ),
+                              AppLocalizations.of(context)!.language,
+                              style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  color: isDark
+                                    ? Colors.white
+                                    : Colors.black,
+                                ),
                               ),
                               const SizedBox(height: 8),
                               Row(
-                                children: [
-                                  Expanded(
-                                    child: DropdownButtonFormField<String>(
-                                      value:
-                                          (appLocale.value?.languageCode) ??
-                                          Localizations.localeOf(
-                                            context,
-                                          ).languageCode,
-                                      items: const [
-                                        DropdownMenuItem(
-                                          value: 'nl',
-                                          child: Text('Nederlands'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'en',
-                                          child: Text('English'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'fr',
-                                          child: Text('Français'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'de',
-                                          child: Text('Deutsch'),
-                                        ),
-                                      ],
-                                      onChanged: (val) => _setLocale(val),
-                                      decoration: InputDecoration(
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                      ),
+                              children: [
+                                Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  isExpanded: true,
+                                  value:
+                                    (appLocale.value?.languageCode) ??
+                                    Localizations.localeOf(
+                                    context,
+                                    ).languageCode,
+                                  items: const [
+                                  DropdownMenuItem(
+                                    value: 'nl',
+                                    child: Text('Nederlands'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'en',
+                                    child: Text('English'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'fr',
+                                    child: Text('Français'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'de',
+                                    child: Text('Deutsch'),
+                                  ),
+                                  ],
+                                  onChanged: (val) => _setLocale(val),
+                                  decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: isDark
+                                    ? Colors.white10
+                                    : Colors.grey[50],
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                    8,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  TextButton(
-                                    onPressed: () => _setLocale(null),
-                                    child: Text(
-                                      AppLocalizations.of(
-                                        context,
-                                      )!.useSystemLocale,
-                                    ),
                                   ),
-                                ],
+                                  style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                    color: isDark
+                                      ? Colors.white
+                                      : Colors.black,
+                                    ),
+                                  dropdownColor: cardColor,
+                                ),
+                                ),
+                                const SizedBox(width: 12),
+                                Flexible(
+                                child: TextButton(
+                                  onPressed: () => _setLocale(null),
+                                  style: TextButton.styleFrom(
+                                  foregroundColor: isDark
+                                    ? Colors.white70
+                                    : Colors.black87,
+                                  ),
+                                  child: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.useSystemLocale,
+                                  overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                ),
+                              ],
                               ),
                             ],
                           ),

@@ -36,7 +36,7 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   // Controllers en variabelen voor data
   final TextEditingController _firstNameController = TextEditingController();
- String _gender = '';
+  String _gender = '';
   DateTime? _birthDate;
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
@@ -194,7 +194,9 @@ class _OnboardingViewState extends State<OnboardingView> {
         }
         final value = double.tryParse(waistText.replaceAll(',', '.'));
         if (value == null) {
-          _showError(AppLocalizations.of(context)!.enterValidWaistCircumference);
+          _showError(
+            AppLocalizations.of(context)!.enterValidWaistCircumference,
+          );
           return false;
         }
         if (value < minWaistCm || value > maxWaistCm) {
@@ -212,7 +214,9 @@ class _OnboardingViewState extends State<OnboardingView> {
         }
         final targetWeight = double.tryParse(targetWeightText);
         if (targetWeight == null) {
-          _showError(AppLocalizations.of(context)!.onboardingEnterValidTargetWeight);
+          _showError(
+            AppLocalizations.of(context)!.onboardingEnterValidTargetWeight,
+          );
           return false;
         }
         if (targetWeight <= minWeightKg || targetWeight >= maxWeightKg) {
@@ -270,14 +274,14 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   String absiCategory(double z) {
     final local = AppLocalizations.of(context)!;
-    if (z <= -1.0) return local.absiVeryLow;   // "zeer laag risico"
-    if (z <= -0.5) return local.absiLow;       // "laag risico"
-    if (z <= 0.5) return local.absiAverage;    // "gemiddeld risico"
-    if (z <= 1.0) return local.absiElevated;   // "verhoogd risico"
-    return local.absiHigh;                     // "hoog"
+    if (z <= -1.0) return local.absiVeryLow; // "zeer laag risico"
+    if (z <= -0.5) return local.absiLow; // "laag risico"
+    if (z <= 0.5) return local.absiAverage; // "gemiddeld risico"
+    if (z <= 1.0) return local.absiElevated; // "verhoogd risico"
+    return local.absiHigh; // "hoog"
   }
 
-AbsiReference getAbsiReference(int age, String gender) {
+  AbsiReference getAbsiReference(int age, String gender) {
     if (_absiReferenceTable.isEmpty) {
       throw Exception('ABSI reference table not loaded');
     }
@@ -311,7 +315,9 @@ AbsiReference getAbsiReference(int age, String gender) {
     }
 
     // pak data; voorkom nulls door fallback naar de andere sekse indien nodig
-    final rawData = isFemale ? entry["female"] ?? entry["male"] : entry["male"] ?? entry["female"];
+    final rawData = isFemale
+        ? entry["female"] ?? entry["male"]
+        : entry["male"] ?? entry["female"];
     if (rawData == null) {
       throw Exception('ABSI reference data missing for age $clampedAge');
     }
@@ -322,7 +328,7 @@ AbsiReference getAbsiReference(int age, String gender) {
     );
   }
 
-    double _activityFactorFromLocalized(String activity) {
+  double _activityFactorFromLocalized(String activity) {
     final local = AppLocalizations.of(context)!;
     final a = activity.trim();
     if (a == local.activityLow) return 1.2;
@@ -332,10 +338,19 @@ AbsiReference getAbsiReference(int age, String gender) {
     if (a == local.activityExtreme) return 1.9;
 
     final lower = a.toLowerCase();
-    if (lower.contains('weinig') || lower.contains('low') || lower.contains('sedentary')) return 1.2;
+    if (lower.contains('weinig') ||
+        lower.contains('low') ||
+        lower.contains('sedentary'))
+      return 1.2;
     if (lower.contains('licht') || lower.contains('light')) return 1.375;
-    if (lower.contains('gemiddeld') || lower.contains('medium') || lower.contains('moderate')) return 1.55;
-    if (lower.contains('zeer') || lower.contains('very') || lower.contains('high')) return 1.725;
+    if (lower.contains('gemiddeld') ||
+        lower.contains('medium') ||
+        lower.contains('moderate'))
+      return 1.55;
+    if (lower.contains('zeer') ||
+        lower.contains('very') ||
+        lower.contains('high'))
+      return 1.725;
     if (lower.contains('extreem') || lower.contains('extreme')) return 1.9;
 
     return 1.2; // veilige fallback
@@ -359,7 +374,8 @@ AbsiReference getAbsiReference(int age, String gender) {
     final g = gender.trim().toLowerCase();
     if (g == femaleLabel) return '2';
     if (g == maleLabel) return '1';
-    if (g.contains('vrouw') || g.contains('woman') || g.startsWith('f')) return '2';
+    if (g.contains('vrouw') || g.contains('woman') || g.startsWith('f'))
+      return '2';
     return '1';
   }
 
@@ -369,7 +385,8 @@ AbsiReference getAbsiReference(int age, String gender) {
     final femaleLabel = local.onboarding_genderOptionWoman.toLowerCase();
     final g = gender.trim().toLowerCase();
     if (g == femaleLabel) return true;
-    if (g.contains('vrouw') || g.contains('woman') || g.startsWith('f')) return true;
+    if (g.contains('vrouw') || g.contains('woman') || g.startsWith('f'))
+      return true;
     return false;
   }
 
@@ -440,7 +457,7 @@ AbsiReference getAbsiReference(int age, String gender) {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
         }
 
-final activityFactor = _activityFactorFromLocalized(activityFull);
+        final activityFactor = _activityFactorFromLocalized(activityFull);
 
         double calories = bmr * activityFactor;
 
@@ -523,9 +540,11 @@ final activityFactor = _activityFactorFromLocalized(activityFull);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.errorOccurred} $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${AppLocalizations.of(context)!.errorOccurred} $e'),
+          ),
+        );
       }
     }
   }
@@ -618,9 +637,10 @@ final activityFactor = _activityFactorFromLocalized(activityFull);
     // jonger dan 2 jaar geef uitleg
     if (ageMonths < 24) {
       setState(() {
-        _rangeText =
-            AppLocalizations.of(context)!.onboardingWeightRangeUnder2;
-        _rangeNote = AppLocalizations.of(context)!.onboardingWeightRangeUnder2Note;
+        _rangeText = AppLocalizations.of(context)!.onboardingWeightRangeUnder2;
+        _rangeNote = AppLocalizations.of(
+          context,
+        )!.onboardingWeightRangeUnder2Note;
         _rangeLoading = false;
       });
       return;
@@ -630,7 +650,7 @@ final activityFactor = _activityFactorFromLocalized(activityFull);
     try {
       await _ensureCdcLmsLoaded(); // zorgt dat _lmsCache gevuld is (offline)
       final sexCode = _genderCodeFromLocalizedGender(_gender);
-     
+
       final nearestMonth = ageMonths;
       Map<String, double>? lms =
           _lmsCache[sexCode]?[nearestMonth]; // probeer exacte maand
@@ -653,8 +673,8 @@ final activityFactor = _activityFactorFromLocalized(activityFull);
 
       if (lms == null) {
         setState(() {
-           _rangeText = AppLocalizations.of(context)!.lmsDataUnavailable;
-         _rangeNote = AppLocalizations.of(context)!.lmsCheckAssets;
+          _rangeText = AppLocalizations.of(context)!.lmsDataUnavailable;
+          _rangeNote = AppLocalizations.of(context)!.lmsCheckAssets;
           _rangeLoading = false;
         });
         return;
@@ -673,17 +693,17 @@ final activityFactor = _activityFactorFromLocalized(activityFull);
       final weightMax = bmi85 * pow(heightM, 2);
 
       setState(() {
-       _rangeText =
+        _rangeText =
             '${AppLocalizations.of(context)!.healthyWeightForYou} ${weightMin.toStringAsFixed(1)} kg – ${weightMax.toStringAsFixed(1)} kg';
         _rangeNote = '';
-         _rangeLoading = false;
+        _rangeLoading = false;
       });
       return;
     } catch (e) {
       setState(() {
-         _rangeText = '${AppLocalizations.of(context)!.lmsDataErrorPrefix} $e';
+        _rangeText = '${AppLocalizations.of(context)!.lmsDataErrorPrefix} $e';
         _rangeNote = AppLocalizations.of(context)!.lmsAssetMissing;
-         _rangeLoading = false;
+        _rangeLoading = false;
       });
       return;
     }
@@ -875,7 +895,8 @@ final activityFactor = _activityFactorFromLocalized(activityFull);
                           mainAxisSize: MainAxisSize.min,
                           children: genderOptions.map((val) {
                             return SizedBox(
-                              width: 300, // Vaste breedte voor consistente uitlijning
+                              width:
+                                  300, // Vaste breedte voor consistente uitlijning
                               child: RadioListTile<String>(
                                 title: Text(val, style: inputTextStyle),
                                 value: val,
@@ -945,7 +966,9 @@ final activityFactor = _activityFactorFromLocalized(activityFull);
                                         ),
                                         // Knop om de picker te sluiten
                                         CupertinoButton(
-                                          child: Text(local.onboarding_datePickerDone),
+                                          child: Text(
+                                            local.onboarding_datePickerDone,
+                                          ),
                                           onPressed: () =>
                                               Navigator.of(context).pop(),
                                         ),
@@ -1052,8 +1075,10 @@ final activityFactor = _activityFactorFromLocalized(activityFull);
                           ),
                           const SizedBox(height: 8),
                           CheckboxListTile(
-                            title: Text(local.onboarding_unknownWaist,
-                                style: inputTextStyle),
+                            title: Text(
+                              local.onboarding_unknownWaist,
+                              style: inputTextStyle,
+                            ),
                             value: _waistUnknown,
                             onChanged: (val) {
                               setState(() {
@@ -1222,10 +1247,10 @@ final activityFactor = _activityFactorFromLocalized(activityFull);
                                 // Vraagt toestemming op iOS, Android 13+ en Web
                                 NotificationSettings settings = await messaging
                                     .requestPermission(
-                                  alert: true,
-                                  badge: true,
-                                  sound: true,
-                                );
+                                      alert: true,
+                                      badge: true,
+                                      sound: true,
+                                    );
 
                                 if (settings.authorizationStatus ==
                                         AuthorizationStatus.authorized ||
@@ -1241,28 +1266,30 @@ final activityFactor = _activityFactorFromLocalized(activityFull);
                                   // Plan standaard meldingen in
                                   await notificationService
                                       .scheduleMealReminders(
-                                    areEnabled: true,
-                                    breakfastTime: const TimeOfDay(
-                                      hour: 7,
-                                      minute: 0,
-                                    ),
-                                    lunchTime: const TimeOfDay(
-                                      hour: 12,
-                                      minute: 0,
-                                    ),
-                                    dinnerTime: const TimeOfDay(
-                                      hour: 19,
-                                      minute: 0,
-                                    ),
-                                  );
+                                        context: context,
+                                        areEnabled: true,
+                                        breakfastTime: const TimeOfDay(
+                                          hour: 7,
+                                          minute: 0,
+                                        ),
+                                        lunchTime: const TimeOfDay(
+                                          hour: 12,
+                                          minute: 0,
+                                        ),
+                                        dinnerTime: const TimeOfDay(
+                                          hour: 19,
+                                          minute: 0,
+                                        ),
+                                      );
                                 } else {
                                   // Toestemming geweigerd
                                   setState(() => _notificationsEnabled = false);
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(local
-                                            .notificationPermissionDenied),
+                                        content: Text(
+                                          local.notificationPermissionDenied,
+                                        ),
                                       ),
                                     );
                                   }
@@ -1275,6 +1302,7 @@ final activityFactor = _activityFactorFromLocalized(activityFull);
                                   false,
                                 );
                                 await notificationService.scheduleMealReminders(
+                                  context: context,
                                   areEnabled: false,
                                   breakfastTime: const TimeOfDay(
                                     hour: 7,

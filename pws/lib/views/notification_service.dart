@@ -1,3 +1,4 @@
+import 'package:fFinder/l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -111,6 +112,7 @@ class NotificationService {
   }
 
   Future<void> scheduleMealReminders({
+    required BuildContext context,
     required bool areEnabled,
     required TimeOfDay breakfastTime,
     required TimeOfDay lunchTime,
@@ -123,25 +125,31 @@ class NotificationService {
     await _localNotifications.cancelAll();
 
     if (areEnabled) {
+            final loc = AppLocalizations.of(context)!;
+      final breakfastTitle = loc.notificationBreakfastTitle;
+      final breakfastBody = loc.notificationBreakfastBody;
+      final lunchTitle = loc.notificationLunchTitle;
+      final lunchBody = loc.notificationLunchBody;
+      final dinnerTitle = loc.notificationDinnerTitle;
+      final dinnerBody = loc.notificationDinnerBody;
+
       await _scheduleDailyNotification(
         id: 1,
-        title: 'Tijd voor ontbijt!',
-        body:
-            'Start je dag goed met een voedzaam ontbijt. Vergeet je niet je ontbijt te loggen?',
-        time: breakfastTime,
+        title: breakfastTitle,
+        body: breakfastBody,
+       time: breakfastTime,
       );
       await _scheduleDailyNotification(
         id: 2,
-        title: 'Lunchtijd!',
-        body:
-            'Tijd om je energie aan te vullen voor de middag en vergeet je niet je lunch te loggen?',
-        time: lunchTime,
+        title: lunchTitle,
+        body: lunchBody,
+         time: lunchTime,
       );
       await _scheduleDailyNotification(
         id: 3,
-        title: 'Eet smakelijk!',
-        body: 'Geniet van je avondeten en natuurlijk ook het loggen ervan!',
-        time: dinnerTime,
+        title: dinnerTitle,
+        body: dinnerBody,
+         time: dinnerTime,
       );
     }
   }

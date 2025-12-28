@@ -2211,4 +2211,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteSportMessage => 'Are you sure you want to delete this sport activity?';
+
+  @override
+  String get notificationBreakfastTitle => 'Time for breakfast!';
+
+  @override
+  String get notificationBreakfastBody => 'Start your day right with a nutritious breakfast. Don\'t forget to log it!';
+
+  @override
+  String get notificationLunchTitle => 'Lunch time!';
+
+  @override
+  String get notificationLunchBody => 'Refuel for the afternoon — don\'t forget to log your lunch!';
+
+  @override
+  String get notificationDinnerTitle => 'Enjoy your meal!';
+
+  @override
+  String get notificationDinnerBody => 'Enjoy your dinner and remember to log it!';
 }

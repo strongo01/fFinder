@@ -2069,10 +2069,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get absiAverage => 'gemiddeld risico';
 
   @override
-  String get absiElevated => 'verhoogd risico';
+  String get absiElevated => 'Verhoogd risico';
 
   @override
-  String get absiHigh => 'hoog';
+  String get absiHigh => 'Hoog risico';
 
   @override
   String get healthWeight => 'Gezond gewicht voor jou: ';
@@ -2211,4 +2211,22 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get deleteSportMessage => 'Weet je zeker dat je deze sportactiviteit wilt verwijderen?';
+
+  @override
+  String get notificationBreakfastTitle => 'Tijd voor ontbijt!';
+
+  @override
+  String get notificationBreakfastBody => 'Start je dag goed met een voedzaam ontbijt. Vergeet je niet je ontbijt te loggen?';
+
+  @override
+  String get notificationLunchTitle => 'Lunchtijd!';
+
+  @override
+  String get notificationLunchBody => 'Tijd om je energie aan te vullen voor de middag en vergeet je niet je lunch te loggen?';
+
+  @override
+  String get notificationDinnerTitle => 'Eet smakelijk!';
+
+  @override
+  String get notificationDinnerBody => 'Geniet van je avondeten en natuurlijk ook het loggen ervan!';
 }

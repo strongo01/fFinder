@@ -717,7 +717,7 @@
     "absiLow": "geringes Risiko",
     "absiAverage": "mittleres Risiko",
     "absiElevated": "erhöhtes Risiko",
-    "absiHigh": "hoch",
+    "absiHigh": "hoch Risiko",
     "healthWeight": "Gesundes Gewicht für Sie: ",
     "healthyBMI": "Gesunder BMI: ",
     "onboardingWeightRangeUnder2": "Bei Kindern unter 2 Jahren wird üblicherweise Perzentile für Gewicht/Länge anstelle des BMI verwendet.",
@@ -733,5 +733,12 @@
     "confirmButtonLabel": "Bestätigen",
     "googleSignInCancelledMessage": "Google-Anmeldung vom Benutzer abgebrochen.",
     "googleMissingIdToken": "Konnte kein idToken von Google abrufen.",
-    "appleNullIdentityTokenMessage": "Apple hat kein identityToken zurückgegeben."
+    "appleNullIdentityTokenMessage": "Apple hat kein identityToken zurückgegeben.",
+    "notificationBreakfastTitle": "Zeit fürs Frühstück!",
+    "notificationBreakfastBody": "Beginne deinen Tag mit einem nahrhaften Frühstück. Vergiss nicht, es zu protokollieren!",
+    "notificationLunchTitle": "Mittagessen!",
+    "notificationLunchBody": "Tanke Energie für den Nachmittag - vergiss nicht, dein Mittagessen zu protokollieren!",
+    "notificationDinnerTitle": "Guten Appetit!",
+    "notificationDinnerBody": "Genieße dein Abendessen und denke daran, es zu protokollieren!"
+   
 }

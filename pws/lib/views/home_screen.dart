@@ -64,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _settingsKey = GlobalKey();
   final GlobalKey _weightKey = GlobalKey();
 
-  static const String _appVersion = '1.0.9';
+  static const String _appVersion = '1.1.1';
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -1858,21 +1858,29 @@ class _HomeScreenState extends State<HomeScreen> {
                           AppLocalizations.of(context)!.breakfast.toLowerCase(),
                           nlBreakfast.toLowerCase(),
                           'breakfast',
+                          'petit-déjeuner', // Frans
+                          'frühstück', // Duits
                         };
                         final lunchNames = {
                           AppLocalizations.of(context)!.lunch.toLowerCase(),
                           nlLunch.toLowerCase(),
                           'lunch',
+                          'déjeuner', // Frans
+                          'mittagessen', // Duits
                         };
                         final dinnerNames = {
                           AppLocalizations.of(context)!.dinner.toLowerCase(),
                           nlDinner.toLowerCase(),
                           'dinner',
+                          'dîner', // Frans
+                          'abendessen', // Duits
                         };
                         final snackNames = {
                           AppLocalizations.of(context)!.snack.toLowerCase(),
                           nlSnack.toLowerCase(),
                           'snack',
+                          'en-cas', // Frans
+                          'zwischenmahlzeit', // Duits
                         };
 
                         for (var entry in entries) {

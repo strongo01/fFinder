@@ -4502,6 +4502,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Are you sure you want to delete this sport activity?'**
   String get deleteSportMessage;
+
+  /// No description provided for @notificationBreakfastTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Time for breakfast!'**
+  String get notificationBreakfastTitle;
+
+  /// No description provided for @notificationBreakfastBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Start your day right with a nutritious breakfast. Don\'t forget to log it!'**
+  String get notificationBreakfastBody;
+
+  /// No description provided for @notificationLunchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lunch time!'**
+  String get notificationLunchTitle;
+
+  /// No description provided for @notificationLunchBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Refuel for the afternoon — don\'t forget to log your lunch!'**
+  String get notificationLunchBody;
+
+  /// No description provided for @notificationDinnerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enjoy your meal!'**
+  String get notificationDinnerTitle;
+
+  /// No description provided for @notificationDinnerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Enjoy your dinner and remember to log it!'**
+  String get notificationDinnerBody;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
