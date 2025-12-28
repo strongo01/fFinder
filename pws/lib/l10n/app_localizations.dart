@@ -3278,13 +3278,13 @@ abstract class AppLocalizations {
   /// No description provided for @tutorial_date_title.
   ///
   /// In en, this message translates to:
-  /// **'Date picker'**
+  /// **'Change date'**
   String get tutorial_date_title;
 
   /// No description provided for @tutorial_date_text.
   ///
   /// In en, this message translates to:
-  /// **'Tap here to choose the date or quickly jump to today.'**
+  /// **'Tap here to choose a date or quickly jump to today.'**
   String get tutorial_date_text;
 
   /// No description provided for @tutorial_barcode_title.
@@ -3296,7 +3296,7 @@ abstract class AppLocalizations {
   /// No description provided for @tutorial_barcode_text.
   ///
   /// In en, this message translates to:
-  /// **'Scan barcodes to quickly add products to your daily log.'**
+  /// **'Tap here to scan a product and quickly add it to your day.'**
   String get tutorial_barcode_text;
 
   /// No description provided for @tutorial_settings_title.
@@ -3308,7 +3308,7 @@ abstract class AppLocalizations {
   /// No description provided for @tutorial_settings_text.
   ///
   /// In en, this message translates to:
-  /// **'Adjust your personal settings, notifications, and more.'**
+  /// **'Use this page to adjust your personal information, notification times, or other settings.'**
   String get tutorial_settings_text;
 
   /// No description provided for @tutorial_feedback_title.
@@ -3320,7 +3320,7 @@ abstract class AppLocalizations {
   /// No description provided for @tutorial_feedback_text.
   ///
   /// In en, this message translates to:
-  /// **'Here you can give feedback or report issues.'**
+  /// **'You can provide feedback about the app here. Is something not working or is there a feature you\'d like to see? We\'d love to hear from you!'**
   String get tutorial_feedback_text;
 
   /// No description provided for @tutorial_calorie_title.
@@ -3332,31 +3332,31 @@ abstract class AppLocalizations {
   /// No description provided for @tutorial_calorie_text.
   ///
   /// In en, this message translates to:
-  /// **'Here you can see how much you\'ve eaten and what your calorie goal is.'**
+  /// **'Here you can see a summary of your calorie intake for the day.'**
   String get tutorial_calorie_text;
 
   /// No description provided for @tutorial_mascot_title.
   ///
   /// In en, this message translates to:
-  /// **'Mascot'**
+  /// **'Reppy'**
   String get tutorial_mascot_title;
 
   /// No description provided for @tutorial_mascot_text.
   ///
   /// In en, this message translates to:
-  /// **'Our mascot gives tips. Tap it for a new message.'**
+  /// **'Reppy provides personal motivation and tips!'**
   String get tutorial_mascot_text;
 
   /// No description provided for @tutorial_water_title.
   ///
   /// In en, this message translates to:
-  /// **'Water intake'**
+  /// **'Drinks'**
   String get tutorial_water_title;
 
   /// No description provided for @tutorial_water_text.
   ///
   /// In en, this message translates to:
-  /// **'Tap to adjust your daily water goal.'**
+  /// **'Track how much you drink each day here. The circle shows how much you still need to drink to reach your goal.'**
   String get tutorial_water_text;
 
   /// No description provided for @tutorial_additems_title.
@@ -3380,13 +3380,13 @@ abstract class AppLocalizations {
   /// No description provided for @tutorial_meals_text.
   ///
   /// In en, this message translates to:
-  /// **'View your meals and add new meals or log existing ones.'**
+  /// **'View your meals and edit them by tapping on them.'**
   String get tutorial_meals_text;
 
   /// No description provided for @updateAvailable.
   ///
   /// In en, this message translates to:
-  /// **'A newer version of the app is available.'**
+  /// **'A new update is available! Update the app via TestFlight for Apple or the Google Play Store for Android.'**
   String get updateAvailable;
 
   /// No description provided for @announcement_default.
@@ -3476,7 +3476,7 @@ abstract class AppLocalizations {
   /// No description provided for @calories_remaining.
   ///
   /// In en, this message translates to:
-  /// **'kcal remaining'**
+  /// **'kcal left'**
   String get calories_remaining;
 
   /// No description provided for @calories_consumed.
@@ -3532,6 +3532,282 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Total consumed'**
   String get totalConsumed;
+
+  /// No description provided for @youHave.
+  ///
+  /// In en, this message translates to:
+  /// **'You have'**
+  String get youHave;
+
+  /// No description provided for @motivational_default_1.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it up, well done!'**
+  String get motivational_default_1;
+
+  /// No description provided for @motivational_default_2.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap me for a new message!'**
+  String get motivational_default_2;
+
+  /// No description provided for @motivational_default_3.
+  ///
+  /// In en, this message translates to:
+  /// **'Every step counts!'**
+  String get motivational_default_3;
+
+  /// No description provided for @motivational_default_4.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re doing great!'**
+  String get motivational_default_4;
+
+  /// No description provided for @motivational_default_5.
+  ///
+  /// In en, this message translates to:
+  /// **'Did you know fFinder stands for FoodFinder?'**
+  String get motivational_default_5;
+
+  /// No description provided for @motivational_default_6.
+  ///
+  /// In en, this message translates to:
+  /// **'You log better than 97% of people... probably.'**
+  String get motivational_default_6;
+
+  /// No description provided for @motivational_noEntries_1.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to log your day?'**
+  String get motivational_noEntries_1;
+
+  /// No description provided for @motivational_noEntries_2.
+  ///
+  /// In en, this message translates to:
+  /// **'A new day, new opportunities!'**
+  String get motivational_noEntries_2;
+
+  /// No description provided for @motivational_noEntries_3.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s get started!'**
+  String get motivational_noEntries_3;
+
+  /// No description provided for @motivational_noEntries_4.
+  ///
+  /// In en, this message translates to:
+  /// **'Every healthy day starts with one entry.'**
+  String get motivational_noEntries_4;
+
+  /// No description provided for @motivational_noEntries_5.
+  ///
+  /// In en, this message translates to:
+  /// **'Your first meal is hiding. Try searching for it!'**
+  String get motivational_noEntries_5;
+
+  /// No description provided for @motivational_drinksOnly_1.
+  ///
+  /// In en, this message translates to:
+  /// **'Good that you logged drinks already! What\'s your first meal?'**
+  String get motivational_drinksOnly_1;
+
+  /// No description provided for @motivational_drinksOnly_2.
+  ///
+  /// In en, this message translates to:
+  /// **'Hydration is a good start. Time to add something to eat as well.'**
+  String get motivational_drinksOnly_2;
+
+  /// No description provided for @motivational_drinksOnly_3.
+  ///
+  /// In en, this message translates to:
+  /// **'Nice! What\'s your first bite?'**
+  String get motivational_drinksOnly_3;
+
+  /// No description provided for @motivational_overGoal_1.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal reached! Take it easy now.'**
+  String get motivational_overGoal_1;
+
+  /// No description provided for @motivational_overGoal_2.
+  ///
+  /// In en, this message translates to:
+  /// **'Wow, you\'re over your goal!'**
+  String get motivational_overGoal_2;
+
+  /// No description provided for @motivational_overGoal_3.
+  ///
+  /// In en, this message translates to:
+  /// **'Well done, tomorrow is another day.'**
+  String get motivational_overGoal_3;
+
+  /// No description provided for @motivational_overGoal_4.
+  ///
+  /// In en, this message translates to:
+  /// **'Great work today, really!'**
+  String get motivational_overGoal_4;
+
+  /// No description provided for @motivational_almostGoal_1.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re almost there!'**
+  String get motivational_almostGoal_1;
+
+  /// No description provided for @motivational_almostGoal_2.
+  ///
+  /// In en, this message translates to:
+  /// **'Just a little bit more!'**
+  String get motivational_almostGoal_2;
+
+  /// No description provided for @motivational_almostGoal_3.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost reached your calorie goal!'**
+  String get motivational_almostGoal_3;
+
+  /// No description provided for @motivational_almostGoal_4.
+  ///
+  /// In en, this message translates to:
+  /// **'Good job! Watch the last step.'**
+  String get motivational_almostGoal_4;
+
+  /// No description provided for @motivational_almostGoal_5.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re doing fantastic, almost there!'**
+  String get motivational_almostGoal_5;
+
+  /// No description provided for @motivational_belowHalf_1.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re off to a great start, keep going!'**
+  String get motivational_belowHalf_1;
+
+  /// No description provided for @motivational_belowHalf_2.
+  ///
+  /// In en, this message translates to:
+  /// **'The first half is done, stay focused!'**
+  String get motivational_belowHalf_2;
+
+  /// No description provided for @motivational_belowHalf_3.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep logging your meals and drinks.'**
+  String get motivational_belowHalf_3;
+
+  /// No description provided for @motivational_belowHalf_4.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re doing great, keep it up!'**
+  String get motivational_belowHalf_4;
+
+  /// No description provided for @motivational_lowWater_1.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t forget to drink today!'**
+  String get motivational_lowWater_1;
+
+  /// No description provided for @motivational_lowWater_2.
+  ///
+  /// In en, this message translates to:
+  /// **'A sip of water is a good start.'**
+  String get motivational_lowWater_2;
+
+  /// No description provided for @motivational_lowWater_3.
+  ///
+  /// In en, this message translates to:
+  /// **'Hot or cold, water is always good!'**
+  String get motivational_lowWater_3;
+
+  /// No description provided for @motivational_lowWater_4.
+  ///
+  /// In en, this message translates to:
+  /// **'Hydration is important!'**
+  String get motivational_lowWater_4;
+
+  /// No description provided for @motivational_lowWater_5.
+  ///
+  /// In en, this message translates to:
+  /// **'A glass of water can do wonders.'**
+  String get motivational_lowWater_5;
+
+  /// No description provided for @motivational_lowWater_6.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a break? Drink a little water.'**
+  String get motivational_lowWater_6;
+
+  /// No description provided for @entry_updated.
+  ///
+  /// In en, this message translates to:
+  /// **'Entry updated'**
+  String get entry_updated;
+
+  /// No description provided for @errorUpdatingEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Error updating entry: '**
+  String get errorUpdatingEntry;
+
+  /// No description provided for @errorLoadingData.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading data: '**
+  String get errorLoadingData;
+
+  /// No description provided for @not_logged_in.
+  ///
+  /// In en, this message translates to:
+  /// **'Not logged in.'**
+  String get not_logged_in;
+
+  /// No description provided for @noEntriesForDate.
+  ///
+  /// In en, this message translates to:
+  /// **'No entries yet.'**
+  String get noEntriesForDate;
+
+  /// No description provided for @thinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking...'**
+  String get thinking;
+
+  /// No description provided for @sports.
+  ///
+  /// In en, this message translates to:
+  /// **'Sportactivity'**
+  String get sports;
+
+  /// No description provided for @totalBurned.
+  ///
+  /// In en, this message translates to:
+  /// **'Total burned: '**
+  String get totalBurned;
+
+  /// No description provided for @unknownSport.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown sport'**
+  String get unknownSport;
+
+  /// No description provided for @errorDeletingSport.
+  ///
+  /// In en, this message translates to:
+  /// **'Error deleting sport: '**
+  String get errorDeletingSport;
+
+  /// No description provided for @errorDeleting.
+  ///
+  /// In en, this message translates to:
+  /// **'Error deleting: '**
+  String get errorDeleting;
+
+  /// No description provided for @errorCalculating.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: Original values are not complete to recalculate.'**
+  String get errorCalculating;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

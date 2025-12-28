@@ -208,7 +208,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      announcement['title'] ?? AppLocalizations.of(context)!.announcement_default,
+                      announcement['title'] ??
+                          AppLocalizations.of(context)!.announcement_default,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                         fontWeight: FontWeight.bold,
@@ -338,7 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
       opacityShadow: 0.8,
       hideSkip: false,
       onClickTarget: (target) {
-        if (target.identify == "calorie-info-row-key") {
+        if (target.identify == "water-circle-key") {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
             duration: const Duration(milliseconds: 400),
@@ -767,15 +768,15 @@ class _HomeScreenState extends State<HomeScreen> {
         return; // Stop de functie hier
       }
 
-            String? _rawWaterGoal;
+      String? _rawWaterGoal;
       if (data.containsKey('waterGoal')) {
         _rawWaterGoal = await decryptValue(data['waterGoal'], userDEK);
       } else {
         _rawWaterGoal = null;
       }
-      final double? parsedWaterGoal =
-          _rawWaterGoal != null ? double.tryParse(_rawWaterGoal) : null;
-
+      final double? parsedWaterGoal = _rawWaterGoal != null
+          ? double.tryParse(_rawWaterGoal)
+          : null;
 
       // 4️⃣ Decrypt alle geëncryptte velden
       final decryptedData = {
@@ -935,7 +936,11 @@ class _HomeScreenState extends State<HomeScreen> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: false,
               ),
-              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.water_goal_dialog_label),
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(
+                  context,
+                )!.water_goal_dialog_label,
+              ),
               validator: (value) {
                 if (value == null ||
                     value.isEmpty ||
@@ -991,14 +996,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.water_goal_updated)),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.water_goal_updated),
+            ),
           );
         }
       } catch (e) {
         debugPrint("[WATER_GOAL] Fout bij opslaan: $e");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.error_saving_water_goal + e.toString())),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.error_saving_water_goal +
+                    e.toString(),
+              ),
+            ),
           );
           // revert lokaal
           setState(() {
@@ -1026,7 +1038,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  'Fout bij laden van gebruikersdata: ${snapshot.error}',
+                  '${AppLocalizations.of(context)!.errorLoadingData} ${snapshot.error}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.red),
                 ),
@@ -1145,43 +1157,43 @@ class _HomeScreenState extends State<HomeScreen> {
         } else if (index == 1) {
           // Tab 2: Recepten
           return CupertinoPageScaffold(
-            navigationBar: const CupertinoNavigationBar(
-              middle: Text('Recepten'),
+            navigationBar: CupertinoNavigationBar(
+              middle: Text(AppLocalizations.of(context)!.recipesTitle),
             ),
             child: (() {
               final roleFromLocal = _userData?['role'];
               if (roleFromLocal != null) {
-              return roleFromLocal == 'admin'
-                ? const RecipesScreen()
-                : const UnderConstructionScreen();
+                return roleFromLocal == 'admin'
+                    ? const RecipesScreen()
+                    : const UnderConstructionScreen();
               }
               return FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance
-                .collection('users')
-                .doc(FirebaseAuth.instance.currentUser?.uid)
-                .get(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CupertinoActivityIndicator());
-                }
-                if (!snapshot.hasData || !snapshot.data!.exists) {
-                return const UnderConstructionScreen();
-                }
-                final data =
-                  snapshot.data!.data() as Map<String, dynamic>? ?? {};
-                final role = data['role'] ?? data['rol'] ?? 'user';
-                return role == 'admin'
-                  ? const RecipesScreen()
-                  : const UnderConstructionScreen();
-              },
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(FirebaseAuth.instance.currentUser?.uid)
+                    .get(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CupertinoActivityIndicator());
+                  }
+                  if (!snapshot.hasData || !snapshot.data!.exists) {
+                    return const UnderConstructionScreen();
+                  }
+                  final data =
+                      snapshot.data!.data() as Map<String, dynamic>? ?? {};
+                  final role = data['role'] ?? data['rol'] ?? 'user';
+                  return role == 'admin'
+                      ? const RecipesScreen()
+                      : const UnderConstructionScreen();
+                },
               );
             })(),
           );
         } else {
           // Tab 3: Gewicht
           return CupertinoPageScaffold(
-            navigationBar: const CupertinoNavigationBar(
-              middle: Text('Gewicht'),
+            navigationBar: CupertinoNavigationBar(
+              middle: Text(AppLocalizations.of(context)!.weightTitle),
             ),
             child: const WeightView(),
           );
@@ -1218,28 +1230,28 @@ class _HomeScreenState extends State<HomeScreen> {
         final roleFromLocal = _userData?['role'];
         if (roleFromLocal != null) {
           return roleFromLocal == 'admin'
-          ? const RecipesScreen()
-          : const UnderConstructionScreen();
+              ? const RecipesScreen()
+              : const UnderConstructionScreen();
         }
 
         // Fallback: haal role asynchroon op uit Firestore
         return FutureBuilder<DocumentSnapshot>(
           future: FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser?.uid)
-          .get(),
+              .collection('users')
+              .doc(FirebaseAuth.instance.currentUser?.uid)
+              .get(),
           builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const UnderConstructionScreen();
-        }
-        final data = snapshot.data!.data() as Map<String, dynamic>;
-        final role = data['role'] ?? data['rol'] ?? 'user';
-        return role == 'admin'
-            ? const RecipesScreen()
-            : const UnderConstructionScreen();
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (!snapshot.hasData || !snapshot.data!.exists) {
+              return const UnderConstructionScreen();
+            }
+            final data = snapshot.data!.data() as Map<String, dynamic>;
+            final role = data['role'] ?? data['rol'] ?? 'user';
+            return role == 'admin'
+                ? const RecipesScreen()
+                : const UnderConstructionScreen();
           },
         );
       })();
@@ -1297,9 +1309,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             )
           : AppBar(
-              title: Text(_selectedIndex == 1
-                  ? AppLocalizations.of(context)!.recipesTitle
-                  : AppLocalizations.of(context)!.weightTitle),
+              title: Text(
+                _selectedIndex == 1
+                    ? AppLocalizations.of(context)!.recipesTitle
+                    : AppLocalizations.of(context)!.weightTitle,
+              ),
               centerTitle: true,
             ),
       body: body,
@@ -1318,7 +1332,9 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         items: [
           BottomNavigationBarItem(
-              icon: const Icon(Icons.home), label: AppLocalizations.of(context)!.logs),
+            icon: const Icon(Icons.home),
+            label: AppLocalizations.of(context)!.logs,
+          ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.menu_book),
             label: AppLocalizations.of(context)!.recipesTitle,
@@ -1604,7 +1620,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildPageForDate(DateTime date) {
     // bouwt de inhoud voor een specifieke datum
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const Center(child: Text("Niet ingelogd."));
+    if (user == null)
+      return Center(child: Text(AppLocalizations.of(context)!.not_logged_in));
 
     final docId =
         "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
@@ -1651,7 +1668,10 @@ class _HomeScreenState extends State<HomeScreen> {
         final entriesRaw = data?['entries'] as List<dynamic>? ?? [];
 
         final user = FirebaseAuth.instance.currentUser;
-        if (user == null) return const Center(child: Text("Niet ingelogd."));
+        if (user == null)
+          return Center(
+            child: Text(AppLocalizations.of(context)!.not_logged_in),
+          );
 
         // Haal de userDEK op
         return FutureBuilder<SecretKey?>(
@@ -1661,8 +1681,8 @@ class _HomeScreenState extends State<HomeScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (!dekSnapshot.hasData || dekSnapshot.data == null) {
-              return const Center(
-                child: Text("Encryptiesleutel niet gevonden."),
+              return Center(
+                child: Text(AppLocalizations.of(context)!.dekNotFoundForUser),
               );
             }
             final userDEK = dekSnapshot.data!;
@@ -1772,8 +1792,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (!entriesSnapshot.hasData) {
-                      return const Center(
-                        child: Text("Geen log data gevonden."),
+                      return Center(
+                        child: Text(
+                          AppLocalizations.of(context)!.noEntriesForDate,
+                        ),
                       );
                     }
 
@@ -1819,40 +1841,84 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
 
                         final Map<String, List<dynamic>> meals = {
-                          'Ontbijt': [],
-                          'Lunch': [],
-                          'Avondeten': [],
-                          'Tussendoor': [],
+                          'breakfast': [],
+                          'lunch': [],
+                          'dinner': [],
+                          'snack': [],
+                        };
+
+                        // Bekende NL-waardes in jouw opslag
+                        final nlBreakfast = 'Ontbijt';
+                        final nlLunch = 'Lunch';
+                        final nlDinner = 'Avondeten';
+                        final nlSnack = 'Tussendoor';
+
+                        // Sets met mogelijke vertalingen (lowercase voor veilige vergelijking)
+                        final breakfastNames = {
+                          AppLocalizations.of(context)!.breakfast.toLowerCase(),
+                          nlBreakfast.toLowerCase(),
+                          'breakfast',
+                        };
+                        final lunchNames = {
+                          AppLocalizations.of(context)!.lunch.toLowerCase(),
+                          nlLunch.toLowerCase(),
+                          'lunch',
+                        };
+                        final dinnerNames = {
+                          AppLocalizations.of(context)!.dinner.toLowerCase(),
+                          nlDinner.toLowerCase(),
+                          'dinner',
+                        };
+                        final snackNames = {
+                          AppLocalizations.of(context)!.snack.toLowerCase(),
+                          nlSnack.toLowerCase(),
+                          'snack',
                         };
 
                         for (var entry in entries) {
-                          /*totalCalories +=
-                              (entry['nutrients']?['energy-kcal'] ?? 0.0);
-                          totalProteins +=
-                              (entry['nutrients']?['proteins'] ?? 0.0);
-                          totalFats += (entry['nutrients']?['fat'] ?? 0.0);
-                          totalCarbs +=
-                              (entry['nutrients']?['carbohydrates'] ?? 0.0);*/
-                          final mealType = entry['meal_type'] as String?;
+                          final rawMealType =
+                              (entry['meal_type'] as String?)?.trim() ?? '';
+                          final mealTypeLower = rawMealType.toLowerCase();
 
-                          if (mealType != null && meals.containsKey(mealType)) {
-                            meals[mealType]!.add(entry);
-                          } else {
-                            final timestamp =
-                                (entry['timestamp'] as Timestamp?)?.toDate() ??
-                                DateTime.now();
-                            final hour = timestamp.hour;
-                            if (hour >= 5 && hour < 11) {
-                              meals['Ontbijt']!.add(entry);
-                            } else if (hour >= 11 && hour < 15) {
-                              meals['Lunch']!.add(entry);
-                            } else if (hour >= 15 && hour < 22) {
-                              meals['Avondeten']!.add(entry);
-                            } else {
-                              meals['Tussendoor']!.add(entry);
+                          if (mealTypeLower.isNotEmpty) {
+                            if (breakfastNames.contains(mealTypeLower)) {
+                              meals['breakfast']!.add(entry);
+                              continue;
+                            } else if (lunchNames.contains(mealTypeLower)) {
+                              meals['lunch']!.add(entry);
+                              continue;
+                            } else if (dinnerNames.contains(mealTypeLower)) {
+                              meals['dinner']!.add(entry);
+                              continue;
+                            } else if (snackNames.contains(mealTypeLower)) {
+                              meals['snack']!.add(entry);
+                              continue;
                             }
                           }
+
+                          // Fallback op timestamp als meal_type niet herkend wordt
+                          final timestamp =
+                              (entry['timestamp'] as Timestamp?)?.toDate() ??
+                              DateTime.now();
+                          final hour = timestamp.hour;
+                          if (hour >= 5 && hour < 11) {
+                            meals['breakfast']!.add(entry);
+                          } else if (hour >= 11 && hour < 15) {
+                            meals['lunch']!.add(entry);
+                          } else if (hour >= 15 && hour < 22) {
+                            meals['dinner']!.add(entry);
+                          } else {
+                            meals['snack']!.add(entry);
+                          }
                         }
+
+                        // Titles per interne key — UI blijft gelocaliseerd
+                        final mealTitles = {
+                          'breakfast': AppLocalizations.of(context)!.breakfast,
+                          'lunch': AppLocalizations.of(context)!.lunch,
+                          'dinner': AppLocalizations.of(context)!.dinner,
+                          'snack': AppLocalizations.of(context)!.snack,
+                        };
 
                         final baseCalorieGoal = _calorieAllowance ?? 0.0;
                         final proteinGoal =
@@ -1883,7 +1949,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ) ??
                                 0.0;
                             final drinkName =
-                                entry['product_name'] as String? ?? 'Onbekend';
+                                entry['product_name'] as String? ??
+                                AppLocalizations.of(context)!.unknown;
                             drinkBreakdown.update(
                               drinkName,
                               (value) => value + amount,
@@ -1907,6 +1974,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
 
                         final motivationalMessage = _getMotivationalMessage(
+                          context,
                           totalCalories,
                           adjustedCalorieGoal,
                           totalWater,
@@ -1947,7 +2015,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                           isDarkMode,
                                         ),
                                         _buildCalorieInfo(
-                                          AppLocalizations.of(context)!.remaining,
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.remaining,
                                           remainingCalories,
                                           isDarkMode,
                                           isRemaining: true,
@@ -1983,7 +2053,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                           Colors.orange,
                                         ),
                                         _buildMacroCircle(
-                                          AppLocalizations.of(context)!.proteins,
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.proteins,
                                           totalProteins,
                                           proteinGoal.toDouble(),
                                           isDarkMode,
@@ -2038,7 +2110,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     return BubbleSpecialThree(
                                                       text:
                                                           message ??
-                                                          'Even denken...',
+                                                          AppLocalizations.of(
+                                                            context,
+                                                          )!.thinking,
                                                       color: isDarkMode
                                                           ? const Color(
                                                               0xFF1B97F3,
@@ -2077,10 +2151,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 }
                                                 return GestureDetector(
                                                   onTap: () {
-                                                    // GEEN setState() hier!
                                                     _motivationalMessageNotifier
                                                             .value =
                                                         _getMotivationalMessage(
+                                                          context,
                                                           totalCalories,
                                                           adjustedCalorieGoal,
                                                           totalWater,
@@ -2143,32 +2217,28 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   child: ValueListenableBuilder<String?>(
                                                     valueListenable:
                                                         _motivationalMessageNotifier,
-                                                    builder:
-                                                        (
-                                                          context,
-                                                          message,
-                                                          child,
-                                                        ) {
-                                                          return BubbleSpecialThree(
-                                                            text:
-                                                                message ??
-                                                                'Even denken...',
-                                                            color: isDarkMode
-                                                                ? const Color(
-                                                                    0xFF1B97F3,
-                                                                  )
-                                                                : Colors
-                                                                      .blueAccent,
-                                                            tail: true,
-                                                            isSender: true,
-                                                            textStyle:
-                                                                const TextStyle(
-                                                                  color: Colors
-                                                                      .white,
-                                                                  fontSize: 14,
-                                                                ),
-                                                          );
-                                                        },
+                                                    builder: (context, message, child) {
+                                                      return BubbleSpecialThree(
+                                                        text:
+                                                            message ??
+                                                            AppLocalizations.of(
+                                                              context,
+                                                            )!.thinking,
+                                                        color: isDarkMode
+                                                            ? const Color(
+                                                                0xFF1B97F3,
+                                                              )
+                                                            : Colors.blueAccent,
+                                                        tail: true,
+                                                        isSender: true,
+                                                        textStyle:
+                                                            const TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontSize: 14,
+                                                            ),
+                                                      );
+                                                    },
                                                   ),
                                                 ),
                                               ),
@@ -2197,10 +2267,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   }
                                                   return GestureDetector(
                                                     onTap: () {
-                                                      // GEEN setState() hier!
                                                       _motivationalMessageNotifier
                                                               .value =
                                                           _getMotivationalMessage(
+                                                            context,
                                                             totalCalories,
                                                             adjustedCalorieGoal,
                                                             totalWater,
@@ -2263,10 +2333,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                                                                children: [
+                                        children: [
                                           Expanded(
                                             child: Text(
-                                              'Sportactiviteiten',
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.sports,
                                               style: TextStyle(
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.bold,
@@ -2282,7 +2354,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           Flexible(
                                             fit: FlexFit.loose,
                                             child: Text(
-                                              'Totaal verbrand: ${totalBurnedCalories.round()} kcal',
+                                              '${AppLocalizations.of(context)!.totalBurned} ${totalBurnedCalories.round()} kcal',
                                               style: TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.bold,
@@ -2310,7 +2382,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             ).showSnackBar(
                                               SnackBar(
                                                 content: Text(
-                                                  '${sport['name']} verwijderd',
+                                                  '${sport['name']} ${AppLocalizations.of(context)!.deleted}',
                                                 ),
                                               ),
                                             );
@@ -2337,7 +2409,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                               children: [
                                                 Text(
                                                   sport['name'] ??
-                                                      'Onbekende sport',
+                                                      AppLocalizations.of(
+                                                        context,
+                                                      )!.unknownSport,
                                                   style: TextStyle(
                                                     color: isDarkMode
                                                         ? Colors.white
@@ -2377,7 +2451,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                 return _buildMealSection(
                                   key: currentKey,
-                                  title: mealEntry.key,
+                                  title:
+                                      mealTitles[mealEntry.key] ??
+                                      mealEntry.key,
                                   entries: mealEntry.value,
                                   originalEntriesMap: originalEntriesMap,
                                   isDarkMode: isDarkMode,
@@ -2422,7 +2498,11 @@ class _HomeScreenState extends State<HomeScreen> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: false,
               ),
-              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.calorie_goal_dialog_label),
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(
+                  context,
+                )!.calorie_goal_dialog_label,
+              ),
               validator: (value) {
                 if (value == null ||
                     value.isEmpty ||
@@ -2464,7 +2544,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
       try {
         final userDEK = await getUserDEKFromRemoteConfig(user.uid);
-        if (userDEK == null) throw Exception("DEK niet gevonden");
+        if (userDEK == null)
+          throw Exception(AppLocalizations.of(context)!.dekNotFoundForUser);
 
         final encryptedGoal = await encryptValue(newGoal.toString(), userDEK);
 
@@ -2475,14 +2556,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.calorie_goal_updated)),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.calorie_goal_updated),
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.error_saving_prefix + e.toString())));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.error_saving_prefix +
+                    e.toString(),
+              ),
+            ),
+          );
           // Herstel de oude waarde in de UI bij een fout
           setState(() {
             _calorieAllowance = currentGoal;
@@ -2493,6 +2581,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _getMotivationalMessage(
+    BuildContext context,
     double totalCalories,
     double calorieGoal,
     double totalWater,
@@ -2501,78 +2590,78 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     final random = Random();
 
-    const defaultMessages = [
-      'Goed bezig, ga zo door!',
-      'Als je op mij tikt krijg je een nieuw tekstje!',
-      'Elke stap telt!',
-      'Je doet het geweldig!',
-      'Wist je dat fFinder een afkorting is voor FoodFinder?',
-      'Je logt beter dan 97% van de mensen... waarschijnlijk.',
+    final defaultMessages = [
+      AppLocalizations.of(context)!.motivational_default_1,
+      AppLocalizations.of(context)!.motivational_default_2,
+      AppLocalizations.of(context)!.motivational_default_3,
+      AppLocalizations.of(context)!.motivational_default_4,
+      AppLocalizations.of(context)!.motivational_default_5,
+      AppLocalizations.of(context)!.motivational_default_6,
     ];
 
     if (!hasEntries) {
-      const messages = [
-        'Klaar om je dag te loggen?',
-        'Een nieuwe dag, nieuwe kansen!',
-        'Laten we beginnen!',
-        'Elke gezonde dag start met één invoer.',
-        'Je eerste maaltijd zit verstopt. Zoek hem even op!',
+      final messages = [
+        AppLocalizations.of(context)!.motivational_noEntries_1,
+        AppLocalizations.of(context)!.motivational_noEntries_2,
+        AppLocalizations.of(context)!.motivational_noEntries_3,
+        AppLocalizations.of(context)!.motivational_noEntries_4,
+        AppLocalizations.of(context)!.motivational_noEntries_5,
       ];
       return messages[random.nextInt(messages.length)];
     }
 
     if (hasEntries && totalCalories == 0) {
-      const messages = [
-        'Goed dat je al drinken hebt gelogd! Wat wordt je eerste maaltijd?',
-        'Hydratatie is een goed begin. Tijd om ook wat te eten.',
-        'Lekker bezig! Wat wordt je eerste hapje?',
+      final messages = [
+        AppLocalizations.of(context)!.motivational_drinksOnly_1,
+        AppLocalizations.of(context)!.motivational_drinksOnly_2,
+        AppLocalizations.of(context)!.motivational_drinksOnly_3,
       ];
       final allMessages = [...messages, ...defaultMessages];
       return allMessages[random.nextInt(allMessages.length)];
     }
 
     if (calorieGoal > 0 && totalCalories > calorieGoal) {
-      const messages = [
-        'Doel bereikt! Rustig aan nu.',
-        'Wow, je zit boven je doel!',
-        'Goed bezig, morgen weer een dag.',
-        'Goed bezig vandaag, echt waar!',
+      final messages = [
+        AppLocalizations.of(context)!.motivational_overGoal_1,
+        AppLocalizations.of(context)!.motivational_overGoal_2,
+        AppLocalizations.of(context)!.motivational_overGoal_3,
+        AppLocalizations.of(context)!.motivational_overGoal_4,
       ];
       final allMessages = [...messages, ...defaultMessages];
       return allMessages[random.nextInt(allMessages.length)];
     }
 
     if (calorieGoal > 0 && totalCalories > calorieGoal * 0.8) {
-      const messages = [
-        'Je bent er bijna!',
-        'Nog een klein stukje te gaan!',
-        'Bijna je caloriedoel bereikt!',
-        'Goed bezig! Let op de laatste stap.',
-        'Je doet het fantastisch, bijna daar!',
+      final messages = [
+        AppLocalizations.of(context)!.motivational_almostGoal_1,
+        AppLocalizations.of(context)!.motivational_almostGoal_2,
+        AppLocalizations.of(context)!.motivational_almostGoal_3,
+        AppLocalizations.of(context)!.motivational_almostGoal_4,
+        AppLocalizations.of(context)!.motivational_almostGoal_5,
       ];
       final allMessages = [...messages, ...defaultMessages];
       return allMessages[random.nextInt(allMessages.length)];
     }
 
     if (calorieGoal > 0 && totalCalories < calorieGoal * 0.5) {
-      const messages = [
-        'Je bent goed op weg, ga zo door!',
-        'De eerste helft zit erop, houd de focus!',
-        'Blijf je maaltijden en drankjes loggen.',
-        'Je doet het geweldig, blijf volhouden!',
+      final messages = [
+        AppLocalizations.of(context)!.motivational_belowHalf_1,
+        AppLocalizations.of(context)!.motivational_belowHalf_2,
+        AppLocalizations.of(context)!.motivational_belowHalf_3,
+        AppLocalizations.of(context)!.motivational_belowHalf_4,
       ];
       final allMessages = [...messages, ...defaultMessages];
       return allMessages[random.nextInt(allMessages.length)];
     }
 
     if (waterGoal > 0 && totalWater < waterGoal / 3) {
-      const messages = [
-        'Vergeet niet te drinken vandaag!',
-        'Een slokje water is een goed begin.',
-        'Warm of koud, water is altijd goed!',
-        'Hydrateren is belangrijk!',
-        'Een glas water kan wonderen doen.',
-        'Even pauze? Drink een beetje water.',
+      final messages = [
+        AppLocalizations.of(context)!.motivational_lowWater_1,
+        AppLocalizations.of(context)!.motivational_lowWater_2,
+        AppLocalizations.of(context)!.motivational_lowWater_3,
+        AppLocalizations.of(context)!.motivational_lowWater_4,
+        AppLocalizations.of(context)!.motivational_lowWater_5,
+        AppLocalizations.of(context)!.motivational_lowWater_6,
       ];
       final allMessages = [...messages, ...defaultMessages];
       return allMessages[random.nextInt(allMessages.length)];
@@ -2613,6 +2702,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   breakdown: sortedBreakdown,
                   isDarkMode: isDarkMode,
                   strokeWidth: 8,
+                  loc: AppLocalizations.of(context)!,
                 ),
                 child: Center(
                   child: Column(
@@ -2765,11 +2855,11 @@ class _HomeScreenState extends State<HomeScreen> {
         displayValue = value.abs(); // maak positief voor weergave
         valueColor = Colors.red;
       } else {
-        topText = AppLocalizations.of(context)!.remaining;
+        topText = AppLocalizations.of(context)!.youHave;
         bottomText = AppLocalizations.of(context)!.calories_remaining;
       }
     } else {
-      topText = AppLocalizations.of(context)!.eaten;
+      topText = AppLocalizations.of(context)!.youHave;
       bottomText = AppLocalizations.of(context)!.calories_consumed;
     }
 
@@ -2834,12 +2924,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Text(
-                  totalMealCalories == 0
-                      ? '0 kcal'
-                      : '${AppLocalizations.of(context)!.totalConsumed}: ${totalMealCalories.abs().round()} kcal',
+                  '${totalMealCalories.round()} kcal',
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.white,
+                    color: isDarkMode ? Colors.white : Colors.black87,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -2850,7 +2938,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Text(
-                  'Sportactiviteiten:',
+                  AppLocalizations.of(context)!.sports,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -2861,7 +2949,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ...sports.map(
                 (sport) => ListTile(
                   leading: const Icon(Icons.fitness_center, size: 24),
-                  title: Text(sport['name'] ?? 'Onbekende sport'),
+                  title: Text(
+                    sport['name'] ?? AppLocalizations.of(context)!.unknownSport,
+                  ),
                   trailing: Text(
                     '-${(sport['calories'] ?? 0.0).toStringAsFixed(0)} kcal',
                     style: const TextStyle(
@@ -2925,7 +3015,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Gebruik het originele versleutelde entry object voor arrayRemove
                   _deleteLogEntry(originalEncryptedEntry);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('$productName verwijderd')),
+                    SnackBar(
+                      content: Text(
+                        '$productName ${AppLocalizations.of(context)!.deleted}',
+                      ),
+                    ),
                   );
                 },
                 background: Container(
@@ -2985,7 +3079,11 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fout bij verwijderen van sport: $e')),
+          SnackBar(
+            content: Text(
+              '${AppLocalizations.of(context)!.errorDeletingSport} $e',
+            ),
+          ),
         );
       }
     }
@@ -3093,9 +3191,11 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint("[DELETE_LOG] Error deleting entry: $e");
       debugPrint("[DELETE_LOG] Stack: $s");
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Fout bij verwijderen: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${AppLocalizations.of(context)!.errorDeleting} $e'),
+          ),
+        );
       }
     }
   }
@@ -3189,7 +3289,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             double.tryParse(value.replaceAll(',', '.')) ==
                                 null ||
                             double.parse(value.replaceAll(',', '.')) <= 0) {
-                          return AppLocalizations.of(context)!.enter_valid_number;
+                          return AppLocalizations.of(
+                            context,
+                          )!.enter_valid_number;
                         }
                         return null;
                       },
@@ -3280,7 +3382,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (userDEK == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kon encryptiesleutel niet ophalen.')),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.dekNotFoundForUser),
+          ),
         );
       }
       return;
@@ -3327,10 +3431,8 @@ class _HomeScreenState extends State<HomeScreen> {
             originalNutriments == null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Fout: Originele productgegevens zijn onvolledig om te herberekenen.',
-                ),
+              SnackBar(
+                content: Text(AppLocalizations.of(context)!.errorCalculating),
               ),
             );
           }
@@ -3363,15 +3465,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Hoeveelheid bijgewerkt.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.entry_updated)),
         );
       }
     } catch (e) {
       debugPrint("[UPDATE_ENTRY] Fout bij bijwerken: $e");
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Fout bij bijwerken: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${AppLocalizations.of(context)!.errorUpdatingEntry} $e',
+            ),
+          ),
+        );
       }
     }
   }
@@ -3384,13 +3490,14 @@ class SegmentedArcPainter extends CustomPainter {
   final List<MapEntry<String, double>> breakdown;
   final bool isDarkMode;
   final double strokeWidth; // dikte van de cirkel
-
+  final AppLocalizations loc;
   SegmentedArcPainter({
     required this.progress,
     required this.goal,
     required this.breakdown,
     required this.isDarkMode,
     required this.strokeWidth,
+    required this.loc,
   });
 
   @override
@@ -3457,13 +3564,32 @@ class SegmentedArcPainter extends CustomPainter {
   Map<String, Color> _getColorsForDrink(String name, bool isDarkMode) {
     // bepaalt kleuren op basis van dranknaam
     final lowerCaseName = name.toLowerCase();
-
-    if (lowerCaseName.contains('water')) {
+    if ([
+      loc.water,
+      'water',
+    ].any((s) => lowerCaseName.contains(s.toLowerCase()))) {
       return isDarkMode
           ? {'background': Colors.blue[700]!, 'foreground': Colors.blue[200]!}
           : {'background': Colors.blue[400]!, 'foreground': Colors.blue[800]!};
     }
-    if (lowerCaseName.contains('koffie')) {
+    if ([
+      loc.coffee,
+      loc.icedCoffee,
+      loc.latteMacchiato,
+      loc.macchiato,
+      loc.flatWhite,
+      loc.latte,
+      loc.cappuccino,
+      loc.coffeeWithMilkSugar,
+      loc.coffeeBlack,
+      loc.espresso,
+      loc.ristretto,
+      loc.lungo,
+      loc.americano,
+      loc.coffeeWithMilk,
+      'koffie',
+      'coffee',
+    ].any((s) => lowerCaseName.contains(s.toLowerCase()))) {
       return isDarkMode
           ? {'background': Colors.brown[600]!, 'foreground': Colors.brown[100]!}
           : {
@@ -3471,7 +3597,11 @@ class SegmentedArcPainter extends CustomPainter {
               'foreground': Colors.brown[800]!,
             };
     }
-    if (lowerCaseName.contains('thee')) {
+    if ([
+      loc.tea,
+      'thee',
+      'tea',
+    ].any((s) => lowerCaseName.contains(s.toLowerCase()))) {
       return isDarkMode
           ? {'background': Colors.amber[800]!, 'foreground': Colors.amber[200]!}
           : {
@@ -3479,7 +3609,12 @@ class SegmentedArcPainter extends CustomPainter {
               'foreground': Colors.amber[800]!,
             };
     }
-    if (lowerCaseName.contains('fris') || lowerCaseName.contains('soda')) {
+    if ([
+      loc.soda,
+      'fris',
+      'soda',
+      'cola',
+    ].any((s) => lowerCaseName.contains(s.toLowerCase()))) {
       return isDarkMode
           ? {'background': Colors.red[800]!, 'foreground': Colors.red[200]!}
           : {'background': Colors.red[400]!, 'foreground': Colors.red[800]!};

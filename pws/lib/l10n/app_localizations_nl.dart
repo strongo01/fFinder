@@ -39,7 +39,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get lunch => 'Lunch';
 
   @override
-  String get dinner => 'Diner';
+  String get dinner => 'Avondeten';
 
   @override
   String get enableGifs => 'Mascotte animatie (GIF) tonen';
@@ -1601,46 +1601,46 @@ class AppLocalizationsNl extends AppLocalizations {
   String get add_sport_label => 'Sport toevoegen';
 
   @override
-  String get tutorial_date_title => 'Datumkiezer';
+  String get tutorial_date_title => 'Datum wisselen';
 
   @override
-  String get tutorial_date_text => 'Tik hier om de datum te kiezen of snel naar vandaag te springen.';
+  String get tutorial_date_text => 'Tik hier om een datum te kiezen of snel naar vandaag te springen.';
 
   @override
   String get tutorial_barcode_title => 'Barcode scannen';
 
   @override
-  String get tutorial_barcode_text => 'Scan barcodes om producten snel toe te voegen aan je daglogboek.';
+  String get tutorial_barcode_text => 'Tik hier om een product te scannen en snel toe te voegen aan je dag.';
 
   @override
   String get tutorial_settings_title => 'Instellingen';
 
   @override
-  String get tutorial_settings_text => 'Pas je persoonlijke instellingen aan, notificaties en meer.';
+  String get tutorial_settings_text => 'Deze pagina is om je gegevens aan te passen, de tijd van de meldingen of andere instellingen te wijzigen';
 
   @override
   String get tutorial_feedback_title => 'Feedback';
 
   @override
-  String get tutorial_feedback_text => 'Hier kun je feedback geven of problemen rapporteren.';
+  String get tutorial_feedback_text => 'Hier kun je feedback geven over de app. Werkt iets niet of iets wat je graaf nog wilt zien in de app? We horen het graag van je!';
 
   @override
   String get tutorial_calorie_title => 'Calorieën overzicht';
 
   @override
-  String get tutorial_calorie_text => 'Hier zie je hoeveel je hebt gegeten en wat je calorieën-doel is.';
+  String get tutorial_calorie_text => 'Hier zie je een samenvatting van je calorie-inname voor de dag.';
 
   @override
-  String get tutorial_mascot_title => 'Mascotte';
+  String get tutorial_mascot_title => 'Reppy';
 
   @override
-  String get tutorial_mascot_text => 'Onze mascotte geeft tips. Tik erop voor een nieuw bericht.';
+  String get tutorial_mascot_text => 'Reppy geeft persoonlijke motivatie en tips!';
 
   @override
-  String get tutorial_water_title => 'Waterinname';
+  String get tutorial_water_title => 'Drinken';
 
   @override
-  String get tutorial_water_text => 'Tik om je dagelijkse waterdoel aan te passen.';
+  String get tutorial_water_text => 'Houd hier bij hoeveel je per dag drinkt. De cirkel laat zien hoeveel je nog moet drinken om je doel te bereiken.';
 
   @override
   String get tutorial_additems_title => 'Items toevoegen';
@@ -1652,10 +1652,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get tutorial_meals_title => 'Maaltijden';
 
   @override
-  String get tutorial_meals_text => 'Bekijk je maaltijden en voeg nieuwe maaltijden toe of log bestaande maaltijden.';
+  String get tutorial_meals_text => 'Bekijk je maaltijden en wijzig ze door erop te tikken.';
 
   @override
-  String get updateAvailable => 'Er is een nieuwere versie van de app beschikbaar.';
+  String get updateAvailable => 'Er is een nieuwe update uit! Update de app via testFlight voor Apple of via Google Play Store voor Android.';
 
   @override
   String get announcement_default => 'Mededeling';
@@ -1728,4 +1728,142 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get totalConsumed => 'Totaal inname';
+
+  @override
+  String get youHave => 'Je hebt';
+
+  @override
+  String get motivational_default_1 => 'Goed bezig, ga zo door!';
+
+  @override
+  String get motivational_default_2 => 'Als je op mij tikt krijg je een nieuw tekstje!';
+
+  @override
+  String get motivational_default_3 => 'Elke stap telt!';
+
+  @override
+  String get motivational_default_4 => 'Je doet het geweldig!';
+
+  @override
+  String get motivational_default_5 => 'Wist je dat fFinder een afkorting is voor FoodFinder?';
+
+  @override
+  String get motivational_default_6 => 'Je logt beter dan 97% van de mensen... waarschijnlijk.';
+
+  @override
+  String get motivational_noEntries_1 => 'Klaar om je dag te loggen?';
+
+  @override
+  String get motivational_noEntries_2 => 'Een nieuwe dag, nieuwe kansen!';
+
+  @override
+  String get motivational_noEntries_3 => 'Laten we beginnen!';
+
+  @override
+  String get motivational_noEntries_4 => 'Elke gezonde dag start met één invoer.';
+
+  @override
+  String get motivational_noEntries_5 => 'Je eerste maaltijd zit verstopt. Zoek hem even op!';
+
+  @override
+  String get motivational_drinksOnly_1 => 'Goed dat je al drinken hebt gelogd! Wat wordt je eerste maaltijd?';
+
+  @override
+  String get motivational_drinksOnly_2 => 'Hydratatie is een goed begin. Tijd om ook wat te eten.';
+
+  @override
+  String get motivational_drinksOnly_3 => 'Lekker bezig! Wat wordt je eerste hapje?';
+
+  @override
+  String get motivational_overGoal_1 => 'Doel bereikt! Rustig aan nu.';
+
+  @override
+  String get motivational_overGoal_2 => 'Wow, je zit boven je doel!';
+
+  @override
+  String get motivational_overGoal_3 => 'Goed bezig, morgen weer een dag.';
+
+  @override
+  String get motivational_overGoal_4 => 'Goed bezig vandaag, echt waar!';
+
+  @override
+  String get motivational_almostGoal_1 => 'Je bent er bijna!';
+
+  @override
+  String get motivational_almostGoal_2 => 'Nog een klein stukje te gaan!';
+
+  @override
+  String get motivational_almostGoal_3 => 'Bijna je caloriedoel bereikt!';
+
+  @override
+  String get motivational_almostGoal_4 => 'Goed bezig! Let op de laatste stap.';
+
+  @override
+  String get motivational_almostGoal_5 => 'Je doet het fantastisch, bijna daar!';
+
+  @override
+  String get motivational_belowHalf_1 => 'Je bent goed op weg, ga zo door!';
+
+  @override
+  String get motivational_belowHalf_2 => 'De eerste helft zit erop, houd de focus!';
+
+  @override
+  String get motivational_belowHalf_3 => 'Blijf je maaltijden en drankjes loggen.';
+
+  @override
+  String get motivational_belowHalf_4 => 'Je doet het geweldig, blijf volhouden!';
+
+  @override
+  String get motivational_lowWater_1 => 'Vergeet niet te drinken vandaag!';
+
+  @override
+  String get motivational_lowWater_2 => 'Een slokje water is een goed begin.';
+
+  @override
+  String get motivational_lowWater_3 => 'Warm of koud, water is altijd goed!';
+
+  @override
+  String get motivational_lowWater_4 => 'Hydratatie is belangrijk!';
+
+  @override
+  String get motivational_lowWater_5 => 'Een glas water kan wonderen doen.';
+
+  @override
+  String get motivational_lowWater_6 => 'Even pauze? Drink een beetje water.';
+
+  @override
+  String get entry_updated => 'Hoeveelheid bijgewerkt';
+
+  @override
+  String get errorUpdatingEntry => 'Fout bij bijwerken hoeveelheid: ';
+
+  @override
+  String get errorLoadingData => 'Fout bij laden gegevens: ';
+
+  @override
+  String get not_logged_in => 'Niet ingelogd';
+
+  @override
+  String get noEntriesForDate => 'Geen logs voor deze datum.';
+
+  @override
+  String get thinking => 'Even nadenken...';
+
+  @override
+  String get sports => 'Sportactiviteiten';
+
+  @override
+  String get totalBurned => 'Totaal verbrand: ';
+
+  @override
+  String get unknownSport => 'Onbekende sport';
+
+  @override
+  String get errorDeletingSport => 'Fout bij verwijderen sportactiviteit: ';
+
+  @override
+  String get errorDeleting => 'Fout bij verwijderen: ';
+
+  @override
+  String get errorCalculating => 'Fout: Originele productgegevens zijn onvolledig om te herberekenen.';
 }

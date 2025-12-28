@@ -1601,46 +1601,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get add_sport_label => 'Add sport';
 
   @override
-  String get tutorial_date_title => 'Date picker';
+  String get tutorial_date_title => 'Change date';
 
   @override
-  String get tutorial_date_text => 'Tap here to choose the date or quickly jump to today.';
+  String get tutorial_date_text => 'Tap here to choose a date or quickly jump to today.';
 
   @override
   String get tutorial_barcode_title => 'Scan barcode';
 
   @override
-  String get tutorial_barcode_text => 'Scan barcodes to quickly add products to your daily log.';
+  String get tutorial_barcode_text => 'Tap here to scan a product and quickly add it to your day.';
 
   @override
   String get tutorial_settings_title => 'Settings';
 
   @override
-  String get tutorial_settings_text => 'Adjust your personal settings, notifications, and more.';
+  String get tutorial_settings_text => 'Use this page to adjust your personal information, notification times, or other settings.';
 
   @override
   String get tutorial_feedback_title => 'Feedback';
 
   @override
-  String get tutorial_feedback_text => 'Here you can give feedback or report issues.';
+  String get tutorial_feedback_text => 'You can provide feedback about the app here. Is something not working or is there a feature you\'d like to see? We\'d love to hear from you!';
 
   @override
   String get tutorial_calorie_title => 'Calorie overview';
 
   @override
-  String get tutorial_calorie_text => 'Here you can see how much you\'ve eaten and what your calorie goal is.';
+  String get tutorial_calorie_text => 'Here you can see a summary of your calorie intake for the day.';
 
   @override
-  String get tutorial_mascot_title => 'Mascot';
+  String get tutorial_mascot_title => 'Reppy';
 
   @override
-  String get tutorial_mascot_text => 'Our mascot gives tips. Tap it for a new message.';
+  String get tutorial_mascot_text => 'Reppy provides personal motivation and tips!';
 
   @override
-  String get tutorial_water_title => 'Water intake';
+  String get tutorial_water_title => 'Drinks';
 
   @override
-  String get tutorial_water_text => 'Tap to adjust your daily water goal.';
+  String get tutorial_water_text => 'Track how much you drink each day here. The circle shows how much you still need to drink to reach your goal.';
 
   @override
   String get tutorial_additems_title => 'Add items';
@@ -1652,10 +1652,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tutorial_meals_title => 'Meals';
 
   @override
-  String get tutorial_meals_text => 'View your meals and add new meals or log existing ones.';
+  String get tutorial_meals_text => 'View your meals and edit them by tapping on them.';
 
   @override
-  String get updateAvailable => 'A newer version of the app is available.';
+  String get updateAvailable => 'A new update is available! Update the app via TestFlight for Apple or the Google Play Store for Android.';
 
   @override
   String get announcement_default => 'Announcement';
@@ -1700,7 +1700,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calories_over_goal => 'kcal over goal';
 
   @override
-  String get calories_remaining => 'kcal remaining';
+  String get calories_remaining => 'kcal left';
 
   @override
   String get calories_consumed => 'kcal consumed';
@@ -1728,4 +1728,142 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get totalConsumed => 'Total consumed';
+
+  @override
+  String get youHave => 'You have';
+
+  @override
+  String get motivational_default_1 => 'Keep it up, well done!';
+
+  @override
+  String get motivational_default_2 => 'Tap me for a new message!';
+
+  @override
+  String get motivational_default_3 => 'Every step counts!';
+
+  @override
+  String get motivational_default_4 => 'You\'re doing great!';
+
+  @override
+  String get motivational_default_5 => 'Did you know fFinder stands for FoodFinder?';
+
+  @override
+  String get motivational_default_6 => 'You log better than 97% of people... probably.';
+
+  @override
+  String get motivational_noEntries_1 => 'Ready to log your day?';
+
+  @override
+  String get motivational_noEntries_2 => 'A new day, new opportunities!';
+
+  @override
+  String get motivational_noEntries_3 => 'Let\'s get started!';
+
+  @override
+  String get motivational_noEntries_4 => 'Every healthy day starts with one entry.';
+
+  @override
+  String get motivational_noEntries_5 => 'Your first meal is hiding. Try searching for it!';
+
+  @override
+  String get motivational_drinksOnly_1 => 'Good that you logged drinks already! What\'s your first meal?';
+
+  @override
+  String get motivational_drinksOnly_2 => 'Hydration is a good start. Time to add something to eat as well.';
+
+  @override
+  String get motivational_drinksOnly_3 => 'Nice! What\'s your first bite?';
+
+  @override
+  String get motivational_overGoal_1 => 'Goal reached! Take it easy now.';
+
+  @override
+  String get motivational_overGoal_2 => 'Wow, you\'re over your goal!';
+
+  @override
+  String get motivational_overGoal_3 => 'Well done, tomorrow is another day.';
+
+  @override
+  String get motivational_overGoal_4 => 'Great work today, really!';
+
+  @override
+  String get motivational_almostGoal_1 => 'You\'re almost there!';
+
+  @override
+  String get motivational_almostGoal_2 => 'Just a little bit more!';
+
+  @override
+  String get motivational_almostGoal_3 => 'Almost reached your calorie goal!';
+
+  @override
+  String get motivational_almostGoal_4 => 'Good job! Watch the last step.';
+
+  @override
+  String get motivational_almostGoal_5 => 'You\'re doing fantastic, almost there!';
+
+  @override
+  String get motivational_belowHalf_1 => 'You\'re off to a great start, keep going!';
+
+  @override
+  String get motivational_belowHalf_2 => 'The first half is done, stay focused!';
+
+  @override
+  String get motivational_belowHalf_3 => 'Keep logging your meals and drinks.';
+
+  @override
+  String get motivational_belowHalf_4 => 'You\'re doing great, keep it up!';
+
+  @override
+  String get motivational_lowWater_1 => 'Don\'t forget to drink today!';
+
+  @override
+  String get motivational_lowWater_2 => 'A sip of water is a good start.';
+
+  @override
+  String get motivational_lowWater_3 => 'Hot or cold, water is always good!';
+
+  @override
+  String get motivational_lowWater_4 => 'Hydration is important!';
+
+  @override
+  String get motivational_lowWater_5 => 'A glass of water can do wonders.';
+
+  @override
+  String get motivational_lowWater_6 => 'Take a break? Drink a little water.';
+
+  @override
+  String get entry_updated => 'Entry updated';
+
+  @override
+  String get errorUpdatingEntry => 'Error updating entry: ';
+
+  @override
+  String get errorLoadingData => 'Error loading data: ';
+
+  @override
+  String get not_logged_in => 'Not logged in.';
+
+  @override
+  String get noEntriesForDate => 'No entries yet.';
+
+  @override
+  String get thinking => 'Thinking...';
+
+  @override
+  String get sports => 'Sportactivity';
+
+  @override
+  String get totalBurned => 'Total burned: ';
+
+  @override
+  String get unknownSport => 'Unknown sport';
+
+  @override
+  String get errorDeletingSport => 'Error deleting sport: ';
+
+  @override
+  String get errorDeleting => 'Error deleting: ';
+
+  @override
+  String get errorCalculating => 'Error: Original values are not complete to recalculate.';
 }
