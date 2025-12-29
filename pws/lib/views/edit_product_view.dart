@@ -407,9 +407,9 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       );
       await Future.wait(futures);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar( SnackBar(content: Text(AppLocalizations.of(context)!.nameSaved)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.nameSaved)),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -443,9 +443,11 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       );
     }
     if (product == null) {
-      return  SizedBox(
+      return SizedBox(
         height: 200,
-        child: Center(child: Text(AppLocalizations.of(context)!.productNotFound)),
+        child: Center(
+          child: Text(AppLocalizations.of(context)!.productNotFound),
+        ),
       );
     }
 
@@ -614,7 +616,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
 
                             final bool? wasAdded = await _showAddLogDialog(
                               context,
-                              product!.productName ?? AppLocalizations.of(context)!.unnamedProduct,
+                              product!.productName ??
+                                  AppLocalizations.of(context)!.unnamedProduct,
                               nutrimentsData,
                               servingSize,
                             );
@@ -1316,7 +1319,9 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                         if (mounted) {
                           ScaffoldMessenger.of(this.context).showSnackBar(
                             SnackBar(
-                              content: Text('${AppLocalizations.of(context)!.errorSaving} $e'),
+                              content: Text(
+                                '${AppLocalizations.of(context)!.errorSaving} $e',
+                              ),
                               backgroundColor: Colors.red,
                             ),
                           );
