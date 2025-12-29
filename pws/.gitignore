@@ -18,6 +18,26 @@ migrate_working_dir/
 *.iws
 .idea/
 android/key.properties
+*.p8
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+lib/firebase_options.dart 
+android/key.properties
+
+/android/gradle.properties
+
+android/app/release-keystore.jks
+*.jks
+*.keystore
+*.p12
+*.pem
+service-account*.json
+assets/env/.env
+.env
+.env.*
+fastlane/report.xml
+fastlane/Matchfile
 
 assets/env/.env
 
