@@ -739,6 +739,10 @@
     "notificationLunchTitle": "Mittagessen!",
     "notificationLunchBody": "Tanke Energie für den Nachmittag - vergiss nicht, dein Mittagessen zu protokollieren!",
     "notificationDinnerTitle": "Guten Appetit!",
-    "notificationDinnerBody": "Genieße dein Abendessen und denke daran, es zu protokollieren!"
+    "notificationDinnerBody": "Genieße dein Abendessen und denke daran, es zu protokollieren!",
+    "heightRange": "Größe muss zwischen 50 und 300 cm liegen.",
+    "weightRange": "Gewicht muss zwischen 20 und 800 kg liegen.",
+    "waistRange": "Taillenumfang muss zwischen 30 und 200 cm liegen.",
+    "targetWeightRange": "Zielgewicht muss zwischen 20 und 800 kg liegen."
    
 }

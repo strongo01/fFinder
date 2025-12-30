@@ -434,24 +434,27 @@ class _WeightViewState extends State<WeightView> {
     } else {
       parsedTargetForValidation = _targetWeight;
     }
+    final loc = AppLocalizations.of(context)!;
+
 
     final List<String> errors = [];
     if (!(_height >= 50 && _height <= 300)) {
-      errors.add('Lengte moet tussen 50 en 300 cm zijn.');
+      errors.add(loc.heightRange);
     }
     if (!(_weight >= 20 && _weight <= 800)) {
-      errors.add('Gewicht moet tussen 20 en 800 kg zijn.');
+      errors.add(loc.weightRange);
     }
     if (!(parsedWaistForValidation != null &&
         parsedWaistForValidation >= 30 &&
         parsedWaistForValidation <= 200)) {
-      errors.add('Taille moet tussen 30 en 200 cm zijn.');
+      errors.add(loc.waistRange);
     }
     if (parsedTargetForValidation != null &&
         !(parsedTargetForValidation >= 20 &&
             parsedTargetForValidation <= 800)) {
-      errors.add('Streefgewicht moet tussen 20 en 800 kg zijn.');
+      errors.add(loc.targetWeightRange);
     }
+
 
     if (errors.isNotEmpty) {
       if (!mounted) return;

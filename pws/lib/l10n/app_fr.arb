@@ -739,6 +739,9 @@
     "notificationLunchTitle": "C'est l'heure du déjeuner!",
     "notificationLunchBody": "Rechargez vos batteries pour l'après-midi — n'oubliez pas d'enregistrer votre déjeuner!",
     "notificationDinnerTitle": "Bon appétit!",
-    "notificationDinnerBody": "Profitez de votre dîner et pensez à le consigner!"
-   
+    "notificationDinnerBody": "Profitez de votre dîner et pensez à le consigner!",
+    "heightRange": "La taille doit être comprise entre 50 et 300 cm.",
+    "weightRange": "Le poids doit être compris entre 20 et 800 kg.",
+    "waistRange": "Le tour de taille doit être compris entre 30 et 200 cm.",
+    "targetWeightRange": "Le poids cible doit être compris entre 20 et 800 kg."
 }

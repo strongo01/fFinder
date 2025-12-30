@@ -739,5 +739,10 @@
   "notificationLunchTitle": "Lunchtijd!",
   "notificationLunchBody": "Tijd om je energie aan te vullen voor de middag en vergeet je niet je lunch te loggen?",
   "notificationDinnerTitle": "Eet smakelijk!",
-  "notificationDinnerBody": "Geniet van je avondeten en natuurlijk ook het loggen ervan!"
+  "notificationDinnerBody": "Geniet van je avondeten en natuurlijk ook het loggen ervan!",
+  "heightRange": "Lengte moet tussen 50 en 300 cm zijn.",
+  "weightRange": "Gewicht moet tussen 20 en 800 kg zijn.",
+  "waistRange": "Taille moet tussen 30 en 200 cm zijn.",
+  "targetWeightRange": "Streefgewicht moet tussen 20 en 800 kg zijn."
+
 }

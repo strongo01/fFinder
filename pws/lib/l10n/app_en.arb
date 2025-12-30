@@ -739,5 +739,10 @@
     "notificationLunchTitle": "Lunch time!",
     "notificationLunchBody": "Refuel for the afternoon — don't forget to log your lunch!",
     "notificationDinnerTitle": "Enjoy your meal!",
-    "notificationDinnerBody": "Enjoy your dinner and remember to log it!"
+    "notificationDinnerBody": "Enjoy your dinner and remember to log it!",
+    "heightRange": "Height must be between 50 and 300 cm.",
+    "weightRange": "Weight must be between 20 and 800 kg.",
+    "waistRange": "Waist must be between 30 and 200 cm.",
+    "targetWeightRange": "Target weight must be between 20 and 800 kg."
+  
 }

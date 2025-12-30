@@ -4538,6 +4538,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enjoy your dinner and remember to log it!'**
   String get notificationDinnerBody;
+
+  /// No description provided for @heightRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Height must be between 50 and 300 cm.'**
+  String get heightRange;
+
+  /// No description provided for @weightRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight must be between 20 and 800 kg.'**
+  String get weightRange;
+
+  /// No description provided for @waistRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Waist must be between 30 and 200 cm.'**
+  String get waistRange;
+
+  /// No description provided for @targetWeightRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Target weight must be between 20 and 800 kg.'**
+  String get targetWeightRange;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

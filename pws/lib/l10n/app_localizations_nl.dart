@@ -2229,4 +2229,16 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get notificationDinnerBody => 'Geniet van je avondeten en natuurlijk ook het loggen ervan!';
+
+  @override
+  String get heightRange => 'Lengte moet tussen 50 en 300 cm zijn.';
+
+  @override
+  String get weightRange => 'Gewicht moet tussen 20 en 800 kg zijn.';
+
+  @override
+  String get waistRange => 'Taille moet tussen 30 en 200 cm zijn.';
+
+  @override
+  String get targetWeightRange => 'Streefgewicht moet tussen 20 en 800 kg zijn.';
 }

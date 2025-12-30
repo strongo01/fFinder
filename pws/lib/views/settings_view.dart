@@ -391,6 +391,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     setState(() => _saving = true);
+    final loc = AppLocalizations.of(context)!;
 
     try {
       _currentWeight = double.parse(
@@ -404,16 +405,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       final List<String> _errors = [];
       if (!(_height >= 50 && _height <= 300)) {
-        _errors.add('Lengte moet tussen 50 en 300 cm zijn.');
+        _errors.add(loc.heightRange);
       }
       if (!(_currentWeight >= 20 && _currentWeight <= 800)) {
-        _errors.add('Gewicht moet tussen 20 en 800 kg zijn.');
+        _errors.add(loc.weightRange);
       }
       if (!(_targetWeight >= 20 && _targetWeight <= 800)) {
-        _errors.add('Doelgewicht moet tussen 20 en 800 kg zijn.');
+        _errors.add(loc.targetWeightRange);
       }
       if (!(_waist >= 30 && _waist <= 200)) {
-        _errors.add('Taille moet tussen 30 en 200 cm zijn.');
+        _errors.add(loc.waistRange);
       }
       if (_errors.isNotEmpty) {
         if (!mounted) return;

@@ -2229,4 +2229,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get notificationDinnerBody => 'Profitez de votre dîner et pensez à le consigner!';
+
+  @override
+  String get heightRange => 'La taille doit être comprise entre 50 et 300 cm.';
+
+  @override
+  String get weightRange => 'Le poids doit être compris entre 20 et 800 kg.';
+
+  @override
+  String get waistRange => 'Le tour de taille doit être compris entre 30 et 200 cm.';
+
+  @override
+  String get targetWeightRange => 'Le poids cible doit être compris entre 20 et 800 kg.';
 }

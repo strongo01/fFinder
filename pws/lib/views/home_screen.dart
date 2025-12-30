@@ -64,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _settingsKey = GlobalKey();
   final GlobalKey _weightKey = GlobalKey();
 
-  static const String _appVersion = '1.1.1';
+  static const String _appVersion = '1.1.2';
 
   late TutorialCoachMark tutorialCoachMark;
 
