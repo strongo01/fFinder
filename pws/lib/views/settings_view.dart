@@ -77,7 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return _localizedGoalLabel(ctx, key);
   }
 
-    double _activityFactorFromLabel(BuildContext ctx, String activityLabel) {
+  double _activityFactorFromLabel(BuildContext ctx, String activityLabel) {
     final local = AppLocalizations.of(ctx)!;
     final a = activityLabel.trim();
     if (a == local.activityLow) return 1.2;
@@ -165,7 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-    bool _isGenderLocalizedFemale(BuildContext ctx, String? genderLabel) {
+  bool _isGenderLocalizedFemale(BuildContext ctx, String? genderLabel) {
     if (genderLabel == null) return false;
     final g = genderLabel.trim().toLowerCase();
     if (g.isEmpty) return false;
@@ -174,8 +174,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final maleLabel = local.onboarding_genderOptionMan.toLowerCase();
     if (g == femaleLabel) return true;
     if (g == maleLabel) return false;
-    if (g.startsWith('f') || g.contains('vrouw') || g.contains('woman') || g.contains('femme')) return true;
-    if (g.startsWith('m') || g.contains('man') || g.contains('mann')) return false;
+    if (g.startsWith('f') ||
+        g.contains('vrouw') ||
+        g.contains('woman') ||
+        g.contains('femme'))
+      return true;
+    if (g.startsWith('m') || g.contains('man') || g.contains('mann'))
+      return false;
     return false;
   }
 
@@ -186,9 +191,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (g == local.goalLose) return -500;
     if (g == local.goalGainMuscle || g == local.goalGainGeneral) return 300;
     final lower = g.toLowerCase();
-    if (lower.contains('afval') || lower.contains('lose') || lower.contains('perdre') || lower.contains('abnehm')) return -500;
-    if (lower.contains('spier') || lower.contains('muscle') || lower.contains('muskel') || lower.contains('muscler')) return 300;
-    if (lower.contains('aankom') || lower.contains('gain') || lower.contains('prendre') || lower.contains('zunehmen')) return 300;
+    if (lower.contains('afval') ||
+        lower.contains('lose') ||
+        lower.contains('perdre') ||
+        lower.contains('abnehm'))
+      return -500;
+    if (lower.contains('spier') ||
+        lower.contains('muscle') ||
+        lower.contains('muskel') ||
+        lower.contains('muscler'))
+      return 300;
+    if (lower.contains('aankom') ||
+        lower.contains('gain') ||
+        lower.contains('prendre') ||
+        lower.contains('zunehmen'))
+      return 300;
     return 0;
   }
 
@@ -363,6 +380,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Validatie en opslaan
     if (!_formKey.currentState!.validate()) return;
 
+    FocusScope.of(context).unfocus();
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -382,6 +401,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       _height = double.parse(_heightController.text.replaceAll(',', '.'));
       _waist = double.parse(_waistController.text.replaceAll(',', '.'));
+
+      final List<String> _errors = [];
+      if (!(_height >= 50 && _height <= 300)) {
+        _errors.add('Lengte moet tussen 50 en 300 cm zijn.');
+      }
+      if (!(_currentWeight >= 20 && _currentWeight <= 800)) {
+        _errors.add('Gewicht moet tussen 20 en 800 kg zijn.');
+      }
+      if (!(_targetWeight >= 20 && _targetWeight <= 800)) {
+        _errors.add('Doelgewicht moet tussen 20 en 800 kg zijn.');
+      }
+      if (!(_waist >= 30 && _waist <= 200)) {
+        _errors.add('Taille moet tussen 30 en 200 cm zijn.');
+      }
+      if (_errors.isNotEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_errors.join(' ')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        setState(() => _saving = false);
+        return;
+      }
 
       final doc = await FirebaseFirestore.instance
           .collection('users')
@@ -422,19 +466,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         // BMR
         final age = DateTime.now().year - birthDate.year;
-double bmr;
+        double bmr;
         if (_isGenderLocalizedFemale(context, gender)) {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
         } else {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
         }
 
-final activityLabel = _storageActivityValue(context, _activityKey);
+        final activityLabel = _storageActivityValue(context, _activityKey);
         final activityFactor = _activityFactorFromLabel(context, activityLabel);
         double calories = bmr * activityFactor;
         final goalStored = _storageGoalValue(context, _goalKey);
         calories += _goalCaloriesDeltaFromLabel(context, goalStored);
-       
+
         calorieGoal = calories;
 
         // Macro’s
@@ -463,10 +507,10 @@ final activityLabel = _storageActivityValue(context, _activityKey);
               : ages.last;
           final clampedAge = ages.contains(age) ? age : ages.last;
           final entry = table.firstWhere((e) => e['age'] == clampedAge);
-                      final female = _isGenderLocalizedFemale(context, gender);
-            final dataSex = female ? entry['female'] : entry['male'];
-            final mean = (dataSex['mean'] as num).toDouble();
-            final sd = (dataSex['sd'] as num).toDouble();
+          final female = _isGenderLocalizedFemale(context, gender);
+          final dataSex = female ? entry['female'] : entry['male'];
+          final mean = (dataSex['mean'] as num).toDouble();
+          final sd = (dataSex['sd'] as num).toDouble();
 
           if (sd != 0) {
             absiZ = (absi - mean) / sd;
@@ -623,14 +667,14 @@ final activityLabel = _storageActivityValue(context, _activityKey);
       builder: (context) {
         Theme.of(context);
         return AlertDialog(
-            title: Text(
+          title: Text(
             AppLocalizations.of(context)!.confirmDeleteAccountTitle,
             style: TextStyle(
               color: Theme.of(context).colorScheme.brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black,
+                  ? Colors.white
+                  : Colors.black,
             ),
-            ),
+          ),
           content: TextField(
             controller: passwordController,
             style: TextStyle(
@@ -638,7 +682,8 @@ final activityLabel = _storageActivityValue(context, _activityKey);
                   ? Colors.white
                   : Colors.black,
             ),
-            cursorColor: Theme.of(context).colorScheme.brightness == Brightness.dark
+            cursorColor:
+                Theme.of(context).colorScheme.brightness == Brightness.dark
                 ? Colors.white
                 : Colors.black,
             obscureText: true,
@@ -692,7 +737,7 @@ final activityLabel = _storageActivityValue(context, _activityKey);
     }
   }
 
-    Future<bool> _reauthenticateWithGoogle() async {
+  Future<bool> _reauthenticateWithGoogle() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
     try {
@@ -700,7 +745,9 @@ final activityLabel = _storageActivityValue(context, _activityKey);
         final googleProvider = GoogleAuthProvider();
         googleProvider.addScope('email');
         googleProvider.setCustomParameters({'prompt': 'select_account'});
-        final result = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+        final result = await FirebaseAuth.instance.signInWithPopup(
+          googleProvider,
+        );
         final cred = result.credential;
         if (cred != null) {
           await user.reauthenticateWithCredential(cred);
@@ -733,7 +780,9 @@ final activityLabel = _storageActivityValue(context, _activityKey);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context)!.deleteAccountFailedMessage}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context)!.deleteAccountFailedMessage}: $e',
+            ),
           ),
         );
       }
@@ -741,7 +790,7 @@ final activityLabel = _storageActivityValue(context, _activityKey);
     }
   }
 
-    String sha256ofString(String input) {
+  String sha256ofString(String input) {
     final bytes = utf8.encode(input);
     final digest = sha256.convert(bytes);
     return digest.toString();
@@ -781,7 +830,9 @@ final activityLabel = _storageActivityValue(context, _activityKey);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context)!.deleteAccountFailedMessage}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context)!.deleteAccountFailedMessage}: $e',
+            ),
           ),
         );
       }
@@ -807,7 +858,13 @@ final activityLabel = _storageActivityValue(context, _activityKey);
         // Native GitHub reauth usually requires a custom OAuth flow / backend.
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.deleteAccountProviderReauthRequired)),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(
+                  context,
+                )!.deleteAccountProviderReauthRequired,
+              ),
+            ),
           );
         }
         return false;
@@ -816,14 +873,15 @@ final activityLabel = _storageActivityValue(context, _activityKey);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context)!.deleteAccountFailedMessage}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context)!.deleteAccountFailedMessage}: $e',
+            ),
           ),
         );
       }
       return false;
     }
   }
-
 
   Future<void> _deleteAccount() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -833,7 +891,7 @@ final activityLabel = _storageActivityValue(context, _activityKey);
 
     try {
       // Bepaal welke providers de gebruiker heeft
-final providerIds = user.providerData.map((p) => p.providerId).toList();
+      final providerIds = user.providerData.map((p) => p.providerId).toList();
 
       bool reauthed = false;
 
@@ -849,7 +907,13 @@ final providerIds = user.providerData.map((p) => p.providerId).toList();
         // onbekende provider(s)
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.deleteAccountProviderReauthRequired)),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(
+                  context,
+                )!.deleteAccountProviderReauthRequired,
+              ),
+            ),
           );
         }
         return;
@@ -858,7 +922,11 @@ final providerIds = user.providerData.map((p) => p.providerId).toList();
       if (!reauthed) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.deleteAccountRecentLoginError)),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.deleteAccountRecentLoginError,
+              ),
+            ),
           );
         }
         return;
@@ -1409,84 +1477,84 @@ final providerIds = user.providerData.map((p) => p.providerId).toList();
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                              AppLocalizations.of(context)!.language,
-                              style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  color: isDark
-                                    ? Colors.white
-                                    : Colors.black,
-                                ),
+                                AppLocalizations.of(context)!.language,
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
                               ),
                               const SizedBox(height: 8),
                               Row(
-                              children: [
-                                Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  isExpanded: true,
-                                  value:
-                                    (appLocale.value?.languageCode) ??
-                                    Localizations.localeOf(
-                                    context,
-                                    ).languageCode,
-                                  items: const [
-                                  DropdownMenuItem(
-                                    value: 'nl',
-                                    child: Text('Nederlands'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'en',
-                                    child: Text('English'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'fr',
-                                    child: Text('Français'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'de',
-                                    child: Text('Deutsch'),
-                                  ),
-                                  ],
-                                  onChanged: (val) => _setLocale(val),
-                                  decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: isDark
-                                    ? Colors.white10
-                                    : Colors.grey[50],
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                    8,
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonFormField<String>(
+                                      isExpanded: true,
+                                      value:
+                                          (appLocale.value?.languageCode) ??
+                                          Localizations.localeOf(
+                                            context,
+                                          ).languageCode,
+                                      items: const [
+                                        DropdownMenuItem(
+                                          value: 'nl',
+                                          child: Text('Nederlands'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'en',
+                                          child: Text('English'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'fr',
+                                          child: Text('Français'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'de',
+                                          child: Text('Deutsch'),
+                                        ),
+                                      ],
+                                      onChanged: (val) => _setLocale(val),
+                                      decoration: InputDecoration(
+                                        filled: true,
+                                        fillColor: isDark
+                                            ? Colors.white10
+                                            : Colors.grey[50],
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: isDark
+                                                ? Colors.white
+                                                : Colors.black,
+                                          ),
+                                      dropdownColor: cardColor,
                                     ),
                                   ),
-                                  ),
-                                  style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                    color: isDark
-                                      ? Colors.white
-                                      : Colors.black,
+                                  const SizedBox(width: 12),
+                                  Flexible(
+                                    child: TextButton(
+                                      onPressed: () => _setLocale(null),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: isDark
+                                            ? Colors.white70
+                                            : Colors.black87,
+                                      ),
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.useSystemLocale,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                  dropdownColor: cardColor,
-                                ),
-                                ),
-                                const SizedBox(width: 12),
-                                Flexible(
-                                child: TextButton(
-                                  onPressed: () => _setLocale(null),
-                                  style: TextButton.styleFrom(
-                                  foregroundColor: isDark
-                                    ? Colors.white70
-                                    : Colors.black87,
                                   ),
-                                  child: Text(
-                                  AppLocalizations.of(
-                                    context,
-                                  )!.useSystemLocale,
-                                  overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                ),
-                              ],
+                                ],
                               ),
                             ],
                           ),
@@ -1636,10 +1704,8 @@ final providerIds = user.providerData.map((p) => p.providerId).toList();
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
                                     );
-                                    if (v == null || v <= 0) {
-                                      return AppLocalizations.of(
-                                        context,
-                                      )!.enterValidWeight;
+                                    if (v == null || v < 20 || v > 800) {
+                                      return 'Gewicht moet tussen 20 en 800 kg zijn.';
                                     }
                                     return null;
                                   },
@@ -1680,10 +1746,8 @@ final providerIds = user.providerData.map((p) => p.providerId).toList();
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
                                     );
-                                    if (v == null || v < 100 || v > 250) {
-                                      return AppLocalizations.of(
-                                        context,
-                                      )!.enterHeightBetween100And250;
+                                    if (v == null || v < 50 || v > 300) {
+                                      return 'Lengte moet tussen 50 en 300 cm zijn.';
                                     }
                                     return null;
                                   },
@@ -1725,13 +1789,8 @@ final providerIds = user.providerData.map((p) => p.providerId).toList();
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
                                     );
-                                    if (v == null ||
-                                        v <= 0 ||
-                                        v < 30 ||
-                                        v > 200) {
-                                      return AppLocalizations.of(
-                                        context,
-                                      )!.enterValidWaistCircumference;
+                                    if (v == null || v < 30 || v > 200) {
+                                      return 'Taille moet tussen 30 en 200 cm zijn.';
                                     }
                                     return null;
                                   },
@@ -1775,10 +1834,8 @@ final providerIds = user.providerData.map((p) => p.providerId).toList();
                                     final v = double.tryParse(
                                       value.replaceAll(',', '.'),
                                     );
-                                    if (v == null || v <= 0) {
-                                      return AppLocalizations.of(
-                                        context,
-                                      )!.enterValidTargetWeight;
+                                    if (v == null || v < 20 || v > 800) {
+                                      return 'Doelgewicht moet tussen 20 en 800 kg zijn.';
                                     }
                                     return null;
                                   },

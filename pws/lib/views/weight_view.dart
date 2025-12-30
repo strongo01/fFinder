@@ -269,9 +269,13 @@ class _WeightViewState extends State<WeightView> {
       _recalculateBMI();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.weightLoadErrorPrefix} $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context)!.weightLoadErrorPrefix} $e',
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -411,7 +415,61 @@ class _WeightViewState extends State<WeightView> {
     _targetWeightFocusNode.unfocus();
     _waistFocusNode.unfocus();
 
-    setState(() => _saving = true);
+    final waistTextForValidation = _waistController.text.trim();
+    double? parsedWaistForValidation;
+    if (waistTextForValidation.isNotEmpty) {
+      parsedWaistForValidation = double.tryParse(
+        waistTextForValidation.replaceAll(',', '.'),
+      );
+    } else {
+      parsedWaistForValidation = _waist;
+    }
+
+    final targetTextForValidation = _targetWeightController.text.trim();
+    double? parsedTargetForValidation;
+    if (targetTextForValidation.isNotEmpty) {
+      parsedTargetForValidation = double.tryParse(
+        targetTextForValidation.replaceAll(',', '.'),
+      );
+    } else {
+      parsedTargetForValidation = _targetWeight;
+    }
+
+    final List<String> errors = [];
+    if (!(_height >= 50 && _height <= 300)) {
+      errors.add('Lengte moet tussen 50 en 300 cm zijn.');
+    }
+    if (!(_weight >= 20 && _weight <= 800)) {
+      errors.add('Gewicht moet tussen 20 en 800 kg zijn.');
+    }
+    if (!(parsedWaistForValidation != null &&
+        parsedWaistForValidation >= 30 &&
+        parsedWaistForValidation <= 200)) {
+      errors.add('Taille moet tussen 30 en 200 cm zijn.');
+    }
+    if (parsedTargetForValidation != null &&
+        !(parsedTargetForValidation >= 20 &&
+            parsedTargetForValidation <= 800)) {
+      errors.add('Streefgewicht moet tussen 20 en 800 kg zijn.');
+    }
+
+    if (errors.isNotEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errors.join(' ')),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _waist = parsedWaistForValidation ?? _waist;
+      _targetWeight = parsedTargetForValidation ?? _targetWeight;
+      _saving = true;
+    });
+
     SecretKey? userDEK;
     try {
       userDEK = await getUserDEKFromRemoteConfig(user.uid);
@@ -660,9 +718,11 @@ class _WeightViewState extends State<WeightView> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.saveFailedPrefix} $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${AppLocalizations.of(context)!.saveFailedPrefix} $e'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -739,8 +799,9 @@ class _WeightViewState extends State<WeightView> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         shadowColor: Colors.transparent,
-        systemOverlayStyle:
-            isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -1095,9 +1156,7 @@ class _WeightViewState extends State<WeightView> {
                                               )
                                             : const Icon(Icons.save),
                                         label: Text(
-                                          _saving
-                                              ? loc.saving
-                                              : loc.saveWaist,
+                                          _saving ? loc.saving : loc.saveWaist,
                                         ),
                                         onPressed: _saving ? null : _saveWeight,
                                       ),
@@ -1344,11 +1403,26 @@ class _WeightViewState extends State<WeightView> {
       spacing: 12,
       runSpacing: 8,
       children: [
-        item(Colors.redAccent.withOpacity(0.6), AppLocalizations.of(context)!.bmiVeryLow),
-        item(Colors.orange.withOpacity(0.7), AppLocalizations.of(context)!.bmiLow),
-        item(Colors.green.withOpacity(0.7), AppLocalizations.of(context)!.bmiGood),
-        item(Colors.orange.withOpacity(0.7), AppLocalizations.of(context)!.bmiHigh),
-        item(Colors.redAccent.withOpacity(0.6), AppLocalizations.of(context)!.bmiVeryHigh),
+        item(
+          Colors.redAccent.withOpacity(0.6),
+          AppLocalizations.of(context)!.bmiVeryLow,
+        ),
+        item(
+          Colors.orange.withOpacity(0.7),
+          AppLocalizations.of(context)!.bmiLow,
+        ),
+        item(
+          Colors.green.withOpacity(0.7),
+          AppLocalizations.of(context)!.bmiGood,
+        ),
+        item(
+          Colors.orange.withOpacity(0.7),
+          AppLocalizations.of(context)!.bmiHigh,
+        ),
+        item(
+          Colors.redAccent.withOpacity(0.6),
+          AppLocalizations.of(context)!.bmiVeryHigh,
+        ),
       ],
     );
   }
@@ -1380,7 +1454,9 @@ class _WeightViewState extends State<WeightView> {
               context: context,
               builder: (ctx) => AlertDialog(
                 title: Text(AppLocalizations.of(context)!.deleteConfirmTitle),
-                content: Text(AppLocalizations.of(context)!.deleteConfirmContent),
+                content: Text(
+                  AppLocalizations.of(context)!.deleteConfirmContent,
+                ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(ctx).pop(false),
@@ -1388,7 +1464,9 @@ class _WeightViewState extends State<WeightView> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.of(ctx).pop(true),
-                    child: Text(AppLocalizations.of(context)!.deleteConfirmDelete),
+                    child: Text(
+                      AppLocalizations.of(context)!.deleteConfirmDelete,
+                    ),
                   ),
                 ],
               ),
@@ -1396,9 +1474,11 @@ class _WeightViewState extends State<WeightView> {
           },
           onDismissed: (direction) async {
             await _deleteEntry(e);
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.measurementDeleted)));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(AppLocalizations.of(context)!.measurementDeleted),
+              ),
+            );
           },
           child: ListTile(
             dense: true,
@@ -1569,10 +1649,10 @@ class _WeightViewState extends State<WeightView> {
                 ),
                 Text(
                   '${AppLocalizations.of(context)!.chartTitlePrefix} ${_formatMonthYear(displayedDate)} ($unit)',
-                   style: theme.textTheme.titleMedium?.copyWith(
-                     color: primaryTextColor,
-                   ),
-                 ),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: primaryTextColor,
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
                   onPressed: canGoNext
@@ -1659,19 +1739,19 @@ class _WeightViewState extends State<WeightView> {
     if ((lastWeight - _targetWeight!).abs() < 0.01) {
       return Text(
         AppLocalizations.of(context)!.estimateOnTarget,
-         style: theme.textTheme.bodyMedium?.copyWith(
-           color: Colors.green,
-           fontWeight: FontWeight.bold,
-         ),
-       );
-     }
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: Colors.green,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+    }
 
     if (sorted.length < 2) {
       return Text(
         AppLocalizations.of(context)!.estimateNotEnoughData,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-       );
-     }
+      );
+    }
 
     final firstDate = sorted.first.date;
     final n = sorted.length;
@@ -1715,8 +1795,8 @@ class _WeightViewState extends State<WeightView> {
       return Text(
         AppLocalizations.of(context)!.estimateNoTrend,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-       );
-     }
+      );
+    }
 
     final slope = num / den; // kg per dag
     final intercept = meanY - slope * meanX;
@@ -1735,8 +1815,8 @@ class _WeightViewState extends State<WeightView> {
       return Text(
         AppLocalizations.of(context)!.estimateStable,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-       );
-     }
+      );
+    }
 
     final remaining = _targetWeight! - lastWeight;
 
@@ -1745,8 +1825,8 @@ class _WeightViewState extends State<WeightView> {
       return Text(
         AppLocalizations.of(context)!.estimateWrongDirection,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-       );
-     }
+      );
+    }
 
     final daysNeeded = (remaining / slope).abs();
 
@@ -1754,15 +1834,15 @@ class _WeightViewState extends State<WeightView> {
       return Text(
         AppLocalizations.of(context)!.estimateInsufficientInfo,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-       );
-     }
+      );
+    }
 
     if (daysNeeded > maxReasonableDays) {
       return Text(
         AppLocalizations.of(context)!.estimateUnlikelyWithin10Years,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
-       );
-     }
+      );
+    }
 
     final totalDays = daysNeeded.ceil();
     final weeks = totalDays ~/ 7;
@@ -1784,11 +1864,14 @@ class _WeightViewState extends State<WeightView> {
     // Onzekerheidstekst
     String uncertaintyNote = '';
     if (residualStd >= 1.0) {
-      uncertaintyNote = '\n' + AppLocalizations.of(context)!.estimateUncertaintyHigh;
+      uncertaintyNote =
+          '\n' + AppLocalizations.of(context)!.estimateUncertaintyHigh;
     } else if (residualStd >= 0.5) {
-      uncertaintyNote = '\n' + AppLocalizations.of(context)!.estimateUncertaintyMedium;
+      uncertaintyNote =
+          '\n' + AppLocalizations.of(context)!.estimateUncertaintyMedium;
     } else if (residualStd >= 0.25) {
-      uncertaintyNote = '\n' + AppLocalizations.of(context)!.estimateUncertaintyLow;
+      uncertaintyNote =
+          '\n' + AppLocalizations.of(context)!.estimateUncertaintyLow;
     }
 
     final basisLoc = recent.length >= minRecentPoints
@@ -1802,7 +1885,7 @@ class _WeightViewState extends State<WeightView> {
         fontWeight: FontWeight.w600,
       ),
     );
-   }
+  }
 
   String _formatDate(DateTime date) =>
       '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';

@@ -160,7 +160,7 @@ class _OnboardingViewState extends State<OnboardingView> {
           _showError(AppLocalizations.of(context)!.onboardingEnterValidHeight);
           return false;
         }
-        if (value < minHeightCm || value > maxHeightCm) {
+        if (value <= minHeightCm || value >= maxHeightCm) {
           _showError(
             '${AppLocalizations.of(context)!.heightBetween} $minHeightCm cm ${AppLocalizations.of(context)!.and} $maxHeightCm ${AppLocalizations.of(context)!.liggen}.',
           );
@@ -199,7 +199,7 @@ class _OnboardingViewState extends State<OnboardingView> {
           );
           return false;
         }
-        if (value < minWaistCm || value > maxWaistCm) {
+        if (value <= minWaistCm || value >= maxWaistCm) {
           _showError(
             '${AppLocalizations.of(context)!.tailleBetween} $minWaistCm cm ${AppLocalizations.of(context)!.and} $maxWaistCm ${AppLocalizations.of(context)!.cmLiggen}',
           );
