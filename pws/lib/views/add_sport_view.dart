@@ -177,6 +177,8 @@ class _AddSportPageState extends State<AddSportPage> {
     final user = FirebaseAuth.instance.currentUser;
     final loc = AppLocalizations.of(context)!;
 
+       
+
     String sportLabel(String id) {
       switch (id) {
         case 'running':
@@ -521,6 +523,31 @@ class SportsOverviewList extends StatelessWidget {
     return await getUserDEKFromRemoteConfig(userId);
   }
 
+  String _localizedSportLabel(BuildContext context, String raw) {
+    final loc = AppLocalizations.of(context)!;
+    final s = (raw ?? '').toString().toLowerCase();
+    switch (s) {
+      case 'running':
+        return loc.sportRunning;
+      case 'cycling':
+        return loc.sportCycling;
+      case 'swimming':
+        return loc.sportSwimming;
+      case 'walking':
+        return loc.sportWalking;
+      case 'fitness':
+        return loc.sportFitness;
+      case 'football':
+        return loc.sportFootball;
+      case 'tennis':
+        return loc.sportTennis;
+      case 'yoga':
+        return loc.sportYoga;
+      default:
+        return raw; // custom name or already-localized string
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cardColor = isDarkMode ? Colors.grey[900] : Colors.white;
@@ -625,7 +652,7 @@ class SportsOverviewList extends StatelessWidget {
                           color: Theme.of(context).colorScheme.primary,
                         ),
                         title: Text(
-                          sport,
+                          _localizedSportLabel(context, sport),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: textColor,

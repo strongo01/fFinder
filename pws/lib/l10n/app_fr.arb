@@ -625,7 +625,6 @@
     "motivational_almostGoal_4": "Bien joué ! Attention à la dernière étape.",
     "motivational_almostGoal_5": "Vous êtes fantastique, presque là !",
     "motivational_belowHalf_1": "Vous êtes bien parti, continuez !",
-    "motivational_belowHalf_2": "La première moitié est passée, restez concentré !",
     "motivational_belowHalf_3": "Continuez à journaliser vos repas et boissons.",
     "motivational_belowHalf_4": "Vous faites du bon travail, persévérez !",
     "motivational_lowWater_1": "N'oubliez pas de boire aujourd'hui !",
@@ -743,5 +742,21 @@
     "heightRange": "La taille doit être comprise entre 50 et 300 cm.",
     "weightRange": "Le poids doit être compris entre 20 et 800 kg.",
     "waistRange": "Le tour de taille doit être compris entre 30 et 200 cm.",
-    "targetWeightRange": "Le poids cible doit être compris entre 20 et 800 kg."
+    "targetWeightRange": "Le poids cible doit être compris entre 20 et 800 kg.",
+
+"sportsCaloriesInfoTitle": "Activités sportives",
+"sportsCaloriesInfoTextOn": "Votre objectif quotidien est basé sur votre niveau d'activité. Les calories provenant du sport sont maintenant ajoutées à votre total quotidien.",
+"sportsCaloriesInfoTextOff": "Votre objectif quotidien est basé sur votre niveau d'activité. Les calories provenant du sport ne sont pas ajoutées par défaut à votre total quotidien. Vous pouvez modifier ce paramètre dans les réglages.",
+"ok": "OK",
+"waterWarningSevere": "Attention : ne buvez pas trop. Bien au-dessus de votre objectif peut être dangereux !",
+
+
+"includeSportsCaloriesLabel": "Inclure les calories de sport",
+"includeSportsCaloriesSubtitle": "Ajoutez les calories brûlées lors du sport à votre total quotidien (désactivé par défaut, car l'activité est déjà prise en compte via votre niveau d'activité).",
+
+"setAppVersionTitle": "Définir la version de l'application",
+"setAppVersionSubtitle": "Modifier le champ version dans Firestore",
+"versionLabel": "Version",
+"versionUpdated": "Version mise à jour :"
+
 }

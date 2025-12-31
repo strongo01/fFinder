@@ -3669,12 +3669,6 @@ abstract class AppLocalizations {
   /// **'You\'re off to a great start, keep going!'**
   String get motivational_belowHalf_1;
 
-  /// No description provided for @motivational_belowHalf_2.
-  ///
-  /// In en, this message translates to:
-  /// **'The first half is done, stay focused!'**
-  String get motivational_belowHalf_2;
-
   /// No description provided for @motivational_belowHalf_3.
   ///
   /// In en, this message translates to:
@@ -4562,6 +4556,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Target weight must be between 20 and 800 kg.'**
   String get targetWeightRange;
+
+  /// No description provided for @sportsCaloriesInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sports Activities'**
+  String get sportsCaloriesInfoTitle;
+
+  /// No description provided for @sportsCaloriesInfoTextOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Your daily goal is based on your activity level. Calories from sports are now added to your daily total.'**
+  String get sportsCaloriesInfoTextOn;
+
+  /// No description provided for @sportsCaloriesInfoTextOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Your daily goal is based on your activity level. Calories from sports are not added to your daily total by default. You can change this in the settings.'**
+  String get sportsCaloriesInfoTextOff;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// No description provided for @waterWarningSevere.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning: do not drink too much. Far above your goal can be dangerous!'**
+  String get waterWarningSevere;
+
+  /// No description provided for @includeSportsCaloriesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Include sports calories'**
+  String get includeSportsCaloriesLabel;
+
+  /// No description provided for @includeSportsCaloriesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add calories burned through sports to your daily total (off by default, because activity is already included via your activity level).'**
+  String get includeSportsCaloriesSubtitle;
+
+  /// No description provided for @setAppVersionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set app version'**
+  String get setAppVersionTitle;
+
+  /// No description provided for @setAppVersionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Modify the version field in Firestore'**
+  String get setAppVersionSubtitle;
+
+  /// No description provided for @versionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get versionLabel;
+
+  /// No description provided for @versionUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Version updated:'**
+  String get versionUpdated;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

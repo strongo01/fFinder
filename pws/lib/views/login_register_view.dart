@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter_signin_button/flutter_signin_button.dart';
@@ -34,67 +35,70 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
 
   //functie voor inloggen met google
   Future<UserCredential> signInWithGoogle() async {
-    //als het platform web is
     if (kIsWeb) {
-      final googleProvider = GoogleAuthProvider(); //google provider aanmaken
-      googleProvider.addScope('email'); //scopes toevoegen
-      googleProvider.setCustomParameters({
-        'prompt': 'select_account',
-      }); //aanpassen van parameters
-
-      try {
-        final result = await FirebaseAuth.instance.signInWithPopup(
-          //inloggen met popup
-          googleProvider,
-        );
-        return result;
-      } catch (e) {
-        rethrow;
-      }
+      final googleProvider = GoogleAuthProvider();
+      googleProvider.addScope('email');
+      googleProvider.setCustomParameters({'prompt': 'select_account'});
+      return await FirebaseAuth.instance.signInWithPopup(googleProvider);
     }
-    //logica voor ios en android (dus geen web)
+
     try {
-      final signIn = GoogleSignIn.instance;
+      final googleSignIn = GoogleSignIn.instance;
 
-      GoogleSignInAccount? googleUser;
-      // hij probeert inteloggen als de gebruiker al een keertje is ingelogd
-      googleUser = await signIn.attemptLightweightAuthentication();
-      //als dat niet zo is laat hij het inlogscherm zien als popup
-      if (googleUser == null) {
-        if (signIn.supportsAuthenticate()) {
-          //kijken of het platform popup ondersteunt
-          googleUser = await signIn.authenticate();
-        } else {
-          googleUser = await signIn.attemptLightweightAuthentication();
-        }
-      }
-      //als je het scherm wegklikt
-      if (googleUser == null) {
-        throw FirebaseAuthException(
-          code: 'sign_in_cancelled',
-          message: AppLocalizations.of(context)!.googleSignInCancelledMessage,
-        );
-      }
-      //haalt de autehtnicatie tokens op
+      // Optioneel: initialiseer met clientId/serverClientId
+      // Indien je google-services.json / GoogleService-Info.plist correct hebt,
+      // is dit vaak niet nodig. Als je problemen hebt met idToken op Android,
+      // voeg hier je web-client-id toe (default_web_client_id).
+      // await googleSignIn.initialize(serverClientId: '<YOUR_WEB_CLIENT_ID>');
+      // (zet die await in je init logic of voor je de eerste keer signIn aanroept)
+
+      final googleUser = await googleSignIn.authenticate();
+
       final googleAuth = await googleUser.authentication;
-
-      if (googleAuth.idToken == null) {
+      final idToken = googleAuth.idToken;
+      if (idToken == null) {
         throw FirebaseAuthException(
           code: 'missing_id_token',
           message: AppLocalizations.of(context)!.googleMissingIdToken,
         );
       }
-      //maakt een credential aan voor firebase
+
+      // Optioneel: als je een accessToken nodig hebt voor Firebase/platforms:
+      String? accessToken;
+      try {
+        // probeer eerst te hergebruiken (authorizationForScopes).
+        // Als er geen autorisatie bestaat, vraag het aan met authorizeScopes.
+        final scopes = <String>[
+          'openid',
+          'email',
+          'profile',
+        ]; // zet alleen wat je echt nodig hebt
+        var authorization = await googleUser.authorizationClient
+            .authorizationForScopes(scopes);
+        authorization ??= await googleUser.authorizationClient.authorizeScopes(
+          scopes,
+        );
+        accessToken = authorization?.accessToken;
+      } catch (_) {
+        // als je geen access token nodig hebt, mag je dit negeren
+        accessToken = null;
+      }
+
       final credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-      );
-      //logt in met firebase
-      final result = await FirebaseAuth.instance.signInWithCredential(
-        credential,
+        idToken: idToken,
+        accessToken: accessToken,
       );
 
-      return result;
-    } catch (e) {
+      return await FirebaseAuth.instance.signInWithCredential(credential);
+    } on PlatformException catch (e, s) {
+      if (e.code.toLowerCase().contains('cancel')) {
+        throw FirebaseAuthException(
+          code: 'sign_in_cancelled',
+          message: AppLocalizations.of(context)!.googleSignInCancelledMessage,
+        );
+      }
+        debugPrint('Google sign-in error: $e');
+  debugPrintStack(stackTrace: s);
       rethrow;
     }
   }
@@ -142,14 +146,16 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.unknownErrorEnglish),
-        ),
-      );
-    } finally {
+    } catch (e, s) {
+  debugPrint('Handler error: $e');
+  debugPrintStack(stackTrace: s);
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(AppLocalizations.of(context)!.unknownErrorEnglish),
+    ),
+  );
+} finally {
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -616,7 +622,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                           labelText: AppLocalizations.of(
                             context,
                           )!.loginEmailLabel,
-                          hintText: AppLocalizations.of(context)!.loginEmailHint,
+                          hintText: AppLocalizations.of(
+                            context,
+                          )!.loginEmailHint,
                           prefixIcon: const Icon(Icons.email_outlined),
                           border: inputBorder,
                           enabledBorder: inputBorder,

@@ -595,7 +595,6 @@
     "motivational_almostGoal_4": "Good job! Watch the last step.",
     "motivational_almostGoal_5": "You're doing fantastic, almost there!",
     "motivational_belowHalf_1": "You're off to a great start, keep going!",
-    "motivational_belowHalf_2": "The first half is done, stay focused!",
     "motivational_belowHalf_3": "Keep logging your meals and drinks.",
     "motivational_belowHalf_4": "You're doing great, keep it up!",
     "motivational_lowWater_1": "Don't forget to drink today!",
@@ -743,6 +742,21 @@
     "heightRange": "Height must be between 50 and 300 cm.",
     "weightRange": "Weight must be between 20 and 800 kg.",
     "waistRange": "Waist must be between 30 and 200 cm.",
-    "targetWeightRange": "Target weight must be between 20 and 800 kg."
+    "targetWeightRange": "Target weight must be between 20 and 800 kg.",
+
+    "sportsCaloriesInfoTitle": "Sports Activities",
+"sportsCaloriesInfoTextOn": "Your daily goal is based on your activity level. Calories from sports are now added to your daily total.",
+"sportsCaloriesInfoTextOff": "Your daily goal is based on your activity level. Calories from sports are not added to your daily total by default. You can change this in the settings.",
+"ok": "OK",
+"waterWarningSevere": "Warning: do not drink too much. Far above your goal can be dangerous!",
+
+    "includeSportsCaloriesLabel": "Include sports calories",
+"includeSportsCaloriesSubtitle": "Add calories burned through sports to your daily total (off by default, because activity is already included via your activity level).",
+
+"setAppVersionTitle": "Set app version",
+"setAppVersionSubtitle": "Modify the version field in Firestore",
+"versionLabel": "Version",
+"versionUpdated": "Version updated:"
+
   
 }

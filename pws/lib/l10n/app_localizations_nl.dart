@@ -1796,9 +1796,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get motivational_belowHalf_1 => 'Je bent goed op weg, ga zo door!';
 
   @override
-  String get motivational_belowHalf_2 => 'De eerste helft zit erop, houd de focus!';
-
-  @override
   String get motivational_belowHalf_3 => 'Blijf je maaltijden en drankjes loggen.';
 
   @override
@@ -2241,4 +2238,37 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get targetWeightRange => 'Streefgewicht moet tussen 20 en 800 kg zijn.';
+
+  @override
+  String get sportsCaloriesInfoTitle => 'Sportactiviteiten';
+
+  @override
+  String get sportsCaloriesInfoTextOn => 'Je dagdoel is gebaseerd op je activiteitsniveau. Calorieën uit sport worden nu toegevoegd aan je dagtotaal.';
+
+  @override
+  String get sportsCaloriesInfoTextOff => 'Je dagdoel is gebaseerd op je activiteitsniveau. Calorieën uit sport worden standaard niet bij je dagtotaal opgeteld. Je kunt dit wijzigen in de instellingen.';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get waterWarningSevere => 'Let op, drink niet te veel. Ver boven je doel kan gevaarlijk zijn!';
+
+  @override
+  String get includeSportsCaloriesLabel => 'Sportcalorieën meenemen';
+
+  @override
+  String get includeSportsCaloriesSubtitle => 'Voeg verbrande sportcalorieën toe aan het dagtotaal (standaard uitgeschakeld, omdat activiteit al wordt meegenomen via het activiteitsniveau).';
+
+  @override
+  String get setAppVersionTitle => 'Wijzig versie';
+
+  @override
+  String get setAppVersionSubtitle => 'Wijzig het versie veld in Firestore';
+
+  @override
+  String get versionLabel => 'Versie';
+
+  @override
+  String get versionUpdated => 'Versie bijgewerkt:';
 }

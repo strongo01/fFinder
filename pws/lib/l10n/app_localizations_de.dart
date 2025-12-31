@@ -1796,9 +1796,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get motivational_belowHalf_1 => 'Sie sind gut unterwegs, weiter so!';
 
   @override
-  String get motivational_belowHalf_2 => 'Die erste Hälfte ist geschafft, bleiben Sie konzentriert!';
-
-  @override
   String get motivational_belowHalf_3 => 'Protokollieren Sie weiter Ihre Mahlzeiten und Getränke.';
 
   @override
@@ -2241,4 +2238,37 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get targetWeightRange => 'Zielgewicht muss zwischen 20 und 800 kg liegen.';
+
+  @override
+  String get sportsCaloriesInfoTitle => 'Sportaktivitäten';
+
+  @override
+  String get sportsCaloriesInfoTextOn => 'Ihr Tagesziel basiert auf Ihrem Aktivitätsniveau. Sportkalorien werden nun zu Ihrem Tagesgesamtwert hinzugefügt.';
+
+  @override
+  String get sportsCaloriesInfoTextOff => 'Ihr Tagesziel basiert auf Ihrem Aktivitätsniveau. Sportkalorien werden standardmäßig nicht zum Tagesgesamtwert hinzugefügt. Sie können dies in den Einstellungen ändern.';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get waterWarningSevere => 'Achtung: Trinke nicht zu viel. Weit über deinem Ziel kann gefährlich sein!';
+
+  @override
+  String get includeSportsCaloriesLabel => 'Sportkalorien einbeziehen';
+
+  @override
+  String get includeSportsCaloriesSubtitle => 'Fügen Sie die beim Sport verbrannten Kalorien zum Tagesgesamtwert hinzu (standardmäßig deaktiviert, da die Aktivität bereits über das Aktivitätsniveau berücksichtigt wird).';
+
+  @override
+  String get setAppVersionTitle => 'App-Version festlegen';
+
+  @override
+  String get setAppVersionSubtitle => 'Ändern Sie das Versionsfeld in Firestore';
+
+  @override
+  String get versionLabel => 'Version';
+
+  @override
+  String get versionUpdated => 'Version aktualisiert:';
 }

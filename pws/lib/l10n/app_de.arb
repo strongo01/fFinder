@@ -625,7 +625,6 @@
     "motivational_almostGoal_4": "Gut gemacht! Achten Sie auf den letzten Schritt.",
     "motivational_almostGoal_5": "Sie machen das fantastisch, fast geschafft!",
     "motivational_belowHalf_1": "Sie sind gut unterwegs, weiter so!",
-    "motivational_belowHalf_2": "Die erste Hälfte ist geschafft, bleiben Sie konzentriert!",
     "motivational_belowHalf_3": "Protokollieren Sie weiter Ihre Mahlzeiten und Getränke.",
     "motivational_belowHalf_4": "Sie machen großartige Arbeit, halten Sie durch!",
     "motivational_lowWater_1": "Vergessen Sie nicht heute zu trinken!",
@@ -743,6 +742,21 @@
     "heightRange": "Größe muss zwischen 50 und 300 cm liegen.",
     "weightRange": "Gewicht muss zwischen 20 und 800 kg liegen.",
     "waistRange": "Taillenumfang muss zwischen 30 und 200 cm liegen.",
-    "targetWeightRange": "Zielgewicht muss zwischen 20 und 800 kg liegen."
-   
+    "targetWeightRange": "Zielgewicht muss zwischen 20 und 800 kg liegen.",
+
+"sportsCaloriesInfoTitle": "Sportaktivitäten",
+"sportsCaloriesInfoTextOn": "Ihr Tagesziel basiert auf Ihrem Aktivitätsniveau. Sportkalorien werden nun zu Ihrem Tagesgesamtwert hinzugefügt.",
+"sportsCaloriesInfoTextOff": "Ihr Tagesziel basiert auf Ihrem Aktivitätsniveau. Sportkalorien werden standardmäßig nicht zum Tagesgesamtwert hinzugefügt. Sie können dies in den Einstellungen ändern.",
+"ok": "OK",
+"waterWarningSevere": "Achtung: Trinke nicht zu viel. Weit über deinem Ziel kann gefährlich sein!",
+
+
+"includeSportsCaloriesLabel": "Sportkalorien einbeziehen",
+"includeSportsCaloriesSubtitle": "Fügen Sie die beim Sport verbrannten Kalorien zum Tagesgesamtwert hinzu (standardmäßig deaktiviert, da die Aktivität bereits über das Aktivitätsniveau berücksichtigt wird).",
+
+"setAppVersionTitle": "App-Version festlegen",
+"setAppVersionSubtitle": "Ändern Sie das Versionsfeld in Firestore",
+"versionLabel": "Version",
+"versionUpdated": "Version aktualisiert:"
+
 }

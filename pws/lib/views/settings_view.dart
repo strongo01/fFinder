@@ -47,7 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _targetWeightController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _waistController = TextEditingController();
-
+  bool _includeSportsCalories = false;
   bool _loading = true;
   bool _saving = false;
   bool _deletingAccount = false;
@@ -343,6 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _sleepHours = sleepHours > 0 ? sleepHours : _sleepHours;
           _activityKey = validActivityKey;
           _goalKey = validGoalKey;
+          _includeSportsCalories = (data['includeSportsCalories'] == true);
 
           // Werk ook de controllers hier bij
           _weightController.text = _currentWeight.toStringAsFixed(1);
@@ -542,6 +543,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'height': await encryptDouble(_height, userDEK),
         'absi': absi != null ? await encryptDouble(absi, userDEK) : null,
         'absiZ': absiZ != null ? await encryptDouble(absiZ, userDEK) : null,
+        'includeSportsCalories': _includeSportsCalories,
         'absiRange': absiRange != null
             ? await encryptValue(absiRange, userDEK)
             : null,
@@ -1603,6 +1605,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
+                      Card(
+                        color: cardColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: isDark ? 0 : 2,
+                        child: SwitchListTile(
+                          title: Text(
+                            AppLocalizations.of(
+                              context,
+                            )!.includeSportsCaloriesLabel,
+                          ),
+                          subtitle: Text(
+                            AppLocalizations.of(
+                              context,
+                            )!.includeSportsCaloriesSubtitle,
+                          ),
+                          value: _includeSportsCalories,
+                          onChanged: (val) async {
+                            setState(() => _includeSportsCalories = val);
+                            // Persist immediately to Firestore as a plain preference
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user != null) {
+                              await FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(user.uid)
+                                  .set({
+                                    'includeSportsCalories': val,
+                                  }, SetOptions(merge: true));
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       ElevatedButton.icon(
                         icon: const Icon(Icons.refresh),
                         label: Text(
@@ -2077,6 +2113,127 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     );
                                   },
                                 ),
+                                const Divider(),
+                                ListTile(
+                                  leading: Icon(
+                                  Icons.system_update_alt,
+                                  color: isDark ? Colors.white : Colors.black54,
+                                  ),
+                                  tileColor: isDark ? Colors.grey[900] : null,
+                                  title: Text(
+                                  AppLocalizations.of(context)!.setAppVersionTitle,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                  ),
+                                  subtitle: Text(
+                                  AppLocalizations.of(context)!.setAppVersionSubtitle,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white70 : Colors.black54,
+                                  ),
+                                  ),
+                                  onTap: () async {
+                                  final versionController = TextEditingController();
+                                  try {
+                                    final snap = await FirebaseFirestore.instance
+                                      .collection('version')
+                                      .doc('version')
+                                      .get();
+                                    if (snap.exists) {
+                                    final data = snap.data();
+                                    final current = data?['version']?.toString() ?? '';
+                                    versionController.text = current;
+                                    }
+                                  } catch (e) {
+                                    // ignore load error; dialog will open with empty field
+                                  }
+
+                                  final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) {
+                                    return AlertDialog(
+                                      backgroundColor: isDark ? Colors.black : null,
+                                      title: Text(
+                                      AppLocalizations.of(context)!.setAppVersionTitle,
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white : Colors.black,
+                                      ),
+                                      ),
+                                      content: TextField(
+                                      controller: versionController,
+                                      cursorColor: isDark ? Colors.white : Colors.black,
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white : Colors.black,
+                                      ),
+                                      decoration: InputDecoration(
+                                        labelText: AppLocalizations.of(context)!.versionLabel,
+                                        labelStyle: TextStyle(
+                                        color: isDark ? Colors.white70 : Colors.black54,
+                                        ),
+                                        filled: true,
+                                        fillColor: isDark ? Colors.white10 : null,
+                                        enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: isDark ? Colors.white24 : Colors.grey,
+                                        ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: isDark ? Colors.white : Theme.of(context).colorScheme.primary,
+                                          width: 2,
+                                        ),
+                                        ),
+                                      ),
+                                      ),
+                                      actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.of(ctx).pop(false),
+                                        child: Text(
+                                        AppLocalizations.of(context)!.cancelButtonLabel,
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white70 : null,
+                                        ),
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                        backgroundColor: isDark ? Colors.white10 : null,
+                                        foregroundColor: isDark ? Colors.white : Colors.white,
+                                        ),
+                                        onPressed: () => Navigator.of(ctx).pop(true),
+                                        child: Text(
+                                        AppLocalizations.of(context)!.saveSettings,
+                                        ),
+                                      ),
+                                      ],
+                                    );
+                                    },
+                                  );
+
+                                  if (confirmed == true) {
+                                    final ver = versionController.text.trim();
+                                    if (ver.isNotEmpty) {
+                                    await FirebaseFirestore.instance
+                                      .collection('version')
+                                      .doc('version')
+                                      .set({
+                                        'version': ver,
+                                      }, SetOptions(merge: true));
+
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                        '${AppLocalizations.of(context)!.versionUpdated} $ver',
+                                        ),
+                                      ),
+                                      );
+                                    }
+                                    }
+                                  }
+                                  },
+                                ),
+
                                 const Divider(),
                                 ListTile(
                                   leading: const Icon(Icons.edit_note),

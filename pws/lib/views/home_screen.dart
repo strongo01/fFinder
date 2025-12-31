@@ -63,8 +63,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _feedbackKey = GlobalKey();
   final GlobalKey _settingsKey = GlobalKey();
   final GlobalKey _weightKey = GlobalKey();
+  bool _tutorialInitialized = false;
+  bool _tutorialHomeAf = false;
 
-  static const String _appVersion = '1.1.2';
+  static const String _appVersion = '1.1.3';
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -88,8 +90,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void didChangeDependencies() {
     // wordt aangeroepen nadat initState is voltooid
     super.didChangeDependencies();
-    _createTutorial();
-    _showTutorial();
+    //_createTutorial();
+    //_showTutorial();
   }
 
   @override
@@ -358,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         return true; // Return true om de tutorial te sluiten
       },
-      onFinish: () {
+      onFinish: () async {
         debugPrint("Tutorial voltooid");
         prefs.setBool('home_tutorial_shown', true);
         final user = FirebaseAuth.instance.currentUser;
@@ -366,6 +368,15 @@ class _HomeScreenState extends State<HomeScreen> {
           FirebaseFirestore.instance.collection('users').doc(user.uid).update({
             'tutorialHomeAf': true,
           });
+        }
+        if (mounted) {
+          setState(() {
+            _tutorialHomeAf = true;
+          });
+          _listenToAnnouncements();
+          try {
+            await _fetchUserData();
+          } catch (_) {}
         }
       },
     );
@@ -733,6 +744,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final data = doc.data()!;
 
+      final tutorialHomeRaw = doc.data()?['tutorialHomeAf'] ?? false;
+      if (mounted) {
+        setState(() {
+          _tutorialHomeAf = tutorialHomeRaw == true;
+        });
+      }
+
       const requiredFields = [
         'firstName',
         'gender',
@@ -1045,6 +1063,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           );
+        }
+
+        if (!_tutorialInitialized) {
+          _tutorialInitialized = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            _createTutorial();
+            _showTutorial();
+          });
         }
 
         // Als de data succesvol is geladen, bouw de UI
@@ -1647,6 +1673,32 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  String _localizedSportLabel(BuildContext context, String? raw) {
+    final loc = AppLocalizations.of(context)!;
+    final s = (raw ?? '').toString().toLowerCase();
+    switch (s) {
+      case 'running':
+        return loc.sportRunning;
+      case 'cycling':
+        return loc.sportCycling;
+      case 'swimming':
+        return loc.sportSwimming;
+      case 'walking':
+        return loc.sportWalking;
+      case 'fitness':
+        return loc.sportFitness;
+      case 'football':
+        return loc.sportFootball;
+      case 'tennis':
+        return loc.sportTennis;
+      case 'yoga':
+        return loc.sportYoga;
+      default:
+        // Als het geen bekende id is, retourneer de originele waarde (custom naam)
+        return raw ?? loc.unknownSport;
+    }
+  }
+
   Widget _buildDailyLog(String uid, String docId, bool isDarkMode) {
     // bouwt de dagelijkse log voor een specifieke dag
     return StreamBuilder<DocumentSnapshot>(
@@ -1695,781 +1747,1009 @@ class _HomeScreenState extends State<HomeScreen> {
             );
             final endOfDay = startOfDay.add(const Duration(days: 1));
 
-            return StreamBuilder<QuerySnapshot>(
+            return StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('users')
                   .doc(uid)
-                  .collection('sports')
-                  .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-                  .where('timestamp', isLessThan: endOfDay)
                   .snapshots(),
-              builder: (context, sportsSnapshot) {
-                if (sportsSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final sportsDocs = sportsSnapshot.data?.docs ?? [];
+              builder: (context, userPrefSnapshot) {
+                final includeSportsCalories =
+                    userPrefSnapshot.hasData &&
+                    userPrefSnapshot.data!.exists &&
+                    ((userPrefSnapshot.data!.data()
+                            as Map<
+                              String,
+                              dynamic
+                            >?)?['includeSportsCalories'] ==
+                        true);
 
-                // Decrypt alle sportgegevens
-                Future<List<Map<String, dynamic>>> sportsFuture = () async {
-                  final result = <Map<String, dynamic>>[];
-                  for (final doc in sportsDocs) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    result.add({
-                      'id': doc.id, // <-- CORRECTIE: ID hier toevoegen
-                      'name': await decryptValue(data['sport'], userDEK),
-                      'duration': await decryptDouble(
-                        data['duration_min'],
-                        userDEK,
-                      ),
-                      'calories': await decryptDouble(
-                        data['calories_burned'],
-                        userDEK,
-                      ),
-                      'timestamp': data['timestamp'],
-                    });
-                  }
-                  return result;
-                }();
-
-                // Decrypt alle entries
-                return FutureBuilder<List<Map<String, dynamic>>>(
-                  future: () async {
-                    final decryptedEntries = <Map<String, dynamic>>[];
-                    for (final entry in entriesRaw) {
-                      final decryptedEntry = Map<String, dynamic>.from(
-                        entry,
-                      ); // Kopieer de entry
-
-                      decryptedEntry['product_name'] = await decryptValue(
-                        entry['product_name'],
-                        userDEK,
-                      );
-                      decryptedEntry['meal_type'] = await decryptValue(
-                        entry['meal_type'],
-                        userDEK,
-                      );
-
-                      if (entry.containsKey('nutrients')) {
-                        final nutrients =
-                            entry['nutrients'] as Map<String, dynamic>? ?? {};
-                        final decryptedNutrients = <String, dynamic>{};
-                        for (final key in nutrients.keys) {
-                          decryptedNutrients[key] = await decryptDouble(
-                            nutrients[key],
-                            userDEK,
-                          );
-                        }
-                        decryptedEntry['nutrients'] = decryptedNutrients;
-                      }
-
-                      if (entry.containsKey('amount_g')) {
-                        decryptedEntry['amount_g'] = await decryptDouble(
-                          entry['amount_g'],
-                          userDEK,
-                        );
-                      }
-
-                      if (entry.containsKey('quantity')) {
-                        decryptedEntry['quantity'] = await decryptValue(
-                          entry['quantity'],
-                          userDEK,
-                        );
-                      }
-                      if (entry.containsKey('kcal')) {
-                        decryptedEntry['kcal'] = await decryptValue(
-                          entry['kcal'],
-                          userDEK,
-                        );
-                      }
-                      decryptedEntry['timestamp'] = entry['timestamp'];
-                      decryptedEntries.add(decryptedEntry);
-                    }
-                    return decryptedEntries;
-                  }(),
-                  builder: (context, entriesSnapshot) {
-                    if (entriesSnapshot.connectionState ==
+                // Daarna: realtime sports voor de geselecteerde dag
+                return StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .collection('sports')
+                      .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+                      .where('timestamp', isLessThan: endOfDay)
+                      .snapshots(),
+                  builder: (context, sportsSnapshot) {
+                    if (sportsSnapshot.connectionState ==
                         ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    if (!entriesSnapshot.hasData) {
-                      return Center(
-                        child: Text(
-                          AppLocalizations.of(context)!.noEntriesForDate,
-                        ),
-                      );
-                    }
+                    final sportsDocs = sportsSnapshot.data?.docs ?? [];
 
+                    // Decrypt alle sportgegevens (asynchrone future)
+                    Future<List<Map<String, dynamic>>> sportsFuture = () async {
+                      final result = <Map<String, dynamic>>[];
+                      for (final doc in sportsDocs) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        result.add({
+                          'id': doc.id,
+                          'name': await decryptValue(data['sport'], userDEK),
+                          'duration': await decryptDouble(
+                            data['duration_min'],
+                            userDEK,
+                          ),
+                          'calories': await decryptDouble(
+                            data['calories_burned'],
+                            userDEK,
+                          ),
+                          'timestamp': data['timestamp'],
+                        });
+                      }
+                      return result;
+                    }();
+
+                    // Decrypt alle entries
                     return FutureBuilder<List<Map<String, dynamic>>>(
-                      future: sportsFuture,
-                      builder: (context, sportsDataSnapshot) {
-                        final entries = entriesSnapshot.data!;
-                        final sportsList = sportsDataSnapshot.data ?? [];
-                        final double totalBurnedCalories = sportsList.fold(
-                          0.0,
-                          (sum, item) => sum + (item['calories'] ?? 0.0),
-                        );
-
-                        final Map<dynamic, dynamic> originalEntriesMap = {
-                          for (var i = 0; i < entries.length; i++)
-                            entries[i]: entriesRaw[i],
-                        };
-
-                        double totalCalories = 0;
-                        double totalProteins = 0;
-                        double totalFats = 0;
-                        double totalCarbs = 0;
-
-                        for (var entry in entries) {
-                          if (entry.containsKey('quantity')) {
-                            // Drankje: gebruik kcal uit het veld 'kcal'
-                            final kcal =
-                                double.tryParse(
-                                  entry['kcal']?.toString() ?? '0',
-                                ) ??
-                                0.0;
-                            totalCalories += kcal;
-                          } else {
-                            // Voedsel: gebruik kcal uit nutrients
-                            totalCalories +=
-                                (entry['nutrients']?['energy-kcal'] ?? 0.0);
-                            totalProteins +=
-                                (entry['nutrients']?['proteins'] ?? 0.0);
-                            totalFats += (entry['nutrients']?['fat'] ?? 0.0);
-                            totalCarbs +=
-                                (entry['nutrients']?['carbohydrates'] ?? 0.0);
-                          }
-                        }
-
-                        final Map<String, List<dynamic>> meals = {
-                          'breakfast': [],
-                          'lunch': [],
-                          'dinner': [],
-                          'snack': [],
-                        };
-
-                        // Bekende NL-waardes in jouw opslag
-                        final nlBreakfast = 'Ontbijt';
-                        final nlLunch = 'Lunch';
-                        final nlDinner = 'Avondeten';
-                        final nlSnack = 'Tussendoor';
-
-                        // Sets met mogelijke vertalingen (lowercase voor veilige vergelijking)
-                        final breakfastNames = {
-                          AppLocalizations.of(context)!.breakfast.toLowerCase(),
-                          nlBreakfast.toLowerCase(),
-                          'breakfast',
-                          'petit-déjeuner', // Frans
-                          'frühstück', // Duits
-                        };
-                        final lunchNames = {
-                          AppLocalizations.of(context)!.lunch.toLowerCase(),
-                          nlLunch.toLowerCase(),
-                          'lunch',
-                          'déjeuner', // Frans
-                          'mittagessen', // Duits
-                        };
-                        final dinnerNames = {
-                          AppLocalizations.of(context)!.dinner.toLowerCase(),
-                          nlDinner.toLowerCase(),
-                          'dinner',
-                          'dîner', // Frans
-                          'abendessen', // Duits
-                        };
-                        final snackNames = {
-                          AppLocalizations.of(context)!.snack.toLowerCase(),
-                          nlSnack.toLowerCase(),
-                          'snack',
-                          'en-cas', // Frans
-                          'zwischenmahlzeit', // Duits
-                        };
-
-                        for (var entry in entries) {
-                          final rawMealType =
-                              (entry['meal_type'] as String?)?.trim() ?? '';
-                          final mealTypeLower = rawMealType.toLowerCase();
-
-                          if (mealTypeLower.isNotEmpty) {
-                            if (breakfastNames.contains(mealTypeLower)) {
-                              meals['breakfast']!.add(entry);
-                              continue;
-                            } else if (lunchNames.contains(mealTypeLower)) {
-                              meals['lunch']!.add(entry);
-                              continue;
-                            } else if (dinnerNames.contains(mealTypeLower)) {
-                              meals['dinner']!.add(entry);
-                              continue;
-                            } else if (snackNames.contains(mealTypeLower)) {
-                              meals['snack']!.add(entry);
-                              continue;
+                      future: () async {
+                        final decryptedEntries = <Map<String, dynamic>>[];
+                        for (final entry in entriesRaw) {
+                          final decryptedEntry = Map<String, dynamic>.from(
+                            entry,
+                          );
+                          decryptedEntry['product_name'] = await decryptValue(
+                            entry['product_name'],
+                            userDEK,
+                          );
+                          decryptedEntry['meal_type'] = await decryptValue(
+                            entry['meal_type'],
+                            userDEK,
+                          );
+                          if (entry.containsKey('nutrients')) {
+                            final nutrients =
+                                entry['nutrients'] as Map<String, dynamic>? ??
+                                {};
+                            final decryptedNutrients = <String, dynamic>{};
+                            for (final key in nutrients.keys) {
+                              decryptedNutrients[key] = await decryptDouble(
+                                nutrients[key],
+                                userDEK,
+                              );
                             }
+                            decryptedEntry['nutrients'] = decryptedNutrients;
                           }
-
-                          // Fallback op timestamp als meal_type niet herkend wordt
-                          final timestamp =
-                              (entry['timestamp'] as Timestamp?)?.toDate() ??
-                              DateTime.now();
-                          final hour = timestamp.hour;
-                          if (hour >= 5 && hour < 11) {
-                            meals['breakfast']!.add(entry);
-                          } else if (hour >= 11 && hour < 15) {
-                            meals['lunch']!.add(entry);
-                          } else if (hour >= 15 && hour < 22) {
-                            meals['dinner']!.add(entry);
-                          } else {
-                            meals['snack']!.add(entry);
-                          }
-                        }
-
-                        // Titles per interne key — UI blijft gelocaliseerd
-                        final mealTitles = {
-                          'breakfast': AppLocalizations.of(context)!.breakfast,
-                          'lunch': AppLocalizations.of(context)!.lunch,
-                          'dinner': AppLocalizations.of(context)!.dinner,
-                          'snack': AppLocalizations.of(context)!.snack,
-                        };
-
-                        final baseCalorieGoal = _calorieAllowance ?? 0.0;
-                        final proteinGoal =
-                            _userData?['proteinGoal'] as num? ?? 0.0;
-                        final fatGoal = _userData?['fatGoal'] as num? ?? 0.0;
-                        final carbGoal = _userData?['carbGoal'] as num? ?? 0.0;
-
-                        // Nieuw doel = basisdoel + verbrande calorieën
-                        final adjustedCalorieGoal = baseCalorieGoal;
-                        final remainingCalories =
-                            adjustedCalorieGoal - totalCalories;
-                        final progress = adjustedCalorieGoal > 0
-                            ? (totalCalories / adjustedCalorieGoal).clamp(
-                                0.0,
-                                1.0,
-                              )
-                            : 0.0;
-
-                        final Map<String, double> drinkBreakdown = {};
-                        double totalWater = 0;
-                        for (var entry in entries) {
-                          if (entry.containsKey('quantity')) {
-                            final quantityString =
-                                entry['quantity'] as String? ?? '0 ml';
-                            final amount =
-                                double.tryParse(
-                                  quantityString.replaceAll(' ml', ''),
-                                ) ??
-                                0.0;
-                            final drinkName =
-                                entry['product_name'] as String? ??
-                                AppLocalizations.of(context)!.unknown;
-                            drinkBreakdown.update(
-                              drinkName,
-                              (value) => value + amount,
-                              ifAbsent: () => amount,
+                          if (entry.containsKey('amount_g')) {
+                            decryptedEntry['amount_g'] = await decryptDouble(
+                              entry['amount_g'],
+                              userDEK,
                             );
-                            totalWater += amount;
                           }
-                        }
-                        final weight = _userData?['weight'] as num? ?? 70;
-                        double waterGoal = weight * 32.5;
-                        try {
-                          final rawGoal = _userData?['waterGoal'];
-                          if (rawGoal != null) {
-                            final parsed = double.tryParse(rawGoal.toString());
-                            if (parsed != null && parsed > 0) {
-                              waterGoal = parsed;
-                            }
+                          if (entry.containsKey('quantity')) {
+                            decryptedEntry['quantity'] = await decryptValue(
+                              entry['quantity'],
+                              userDEK,
+                            );
                           }
-                        } catch (_) {
-                          // fallback blijft behouden
+                          if (entry.containsKey('kcal')) {
+                            decryptedEntry['kcal'] = await decryptValue(
+                              entry['kcal'],
+                              userDEK,
+                            );
+                          }
+                          decryptedEntry['timestamp'] = entry['timestamp'];
+                          decryptedEntry['_originalEncrypted'] = entry;
+
+                          decryptedEntries.add(decryptedEntry);
                         }
-
-                        final motivationalMessage = _getMotivationalMessage(
-                          context,
-                          totalCalories,
-                          adjustedCalorieGoal,
-                          totalWater,
-                          waterGoal,
-                          entries.isNotEmpty,
-                        );
-
-                        if (_motivationalMessageNotifier.value == null) {
-                          _motivationalMessageNotifier.value =
-                              motivationalMessage;
+                        return decryptedEntries;
+                      }(),
+                      builder: (context, entriesSnapshot) {
+                        if (entriesSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         }
-
-                        return Column(
-                          children: [
-                            _buildAnnouncementsList(isDarkMode),
-                            _buildBannerList(isDarkMode),
-                            Card(
-                              color: isDarkMode
-                                  ? Colors.grey[800]
-                                  : Colors.grey[200],
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      key: _calorieInfoRowKey,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        _buildCalorieInfo(
-                                          AppLocalizations.of(context)!.eaten,
-                                          totalCalories,
-                                          isDarkMode,
-                                        ),
-                                        _buildCalorieInfo(
-                                          AppLocalizations.of(context)!.goal,
-                                          adjustedCalorieGoal, // Gebruik het aangepaste doel
-                                          isDarkMode,
-                                        ),
-                                        _buildCalorieInfo(
-                                          AppLocalizations.of(
-                                            context,
-                                          )!.remaining,
-                                          remainingCalories,
-                                          isDarkMode,
-                                          isRemaining: true,
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 15),
-                                    LinearProgressIndicator(
-                                      value: progress,
-                                      minHeight: 10,
-                                      borderRadius: BorderRadius.circular(5),
-                                      backgroundColor: isDarkMode
-                                          ? Colors.grey[700]
-                                          : Colors.grey[300],
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        progress > 1.0
-                                            ? Colors.red
-                                            : (isDarkMode
-                                                  ? Colors.green[300]!
-                                                  : Colors.green),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceAround,
-                                      children: [
-                                        _buildMacroCircle(
-                                          AppLocalizations.of(context)!.carbs,
-                                          totalCarbs,
-                                          carbGoal.toDouble(),
-                                          isDarkMode,
-                                          Colors.orange,
-                                        ),
-                                        _buildMacroCircle(
-                                          AppLocalizations.of(
-                                            context,
-                                          )!.proteins,
-                                          totalProteins,
-                                          proteinGoal.toDouble(),
-                                          isDarkMode,
-                                          const Color.fromARGB(
-                                            255,
-                                            0,
-                                            140,
-                                            255,
-                                          ),
-                                        ),
-                                        _buildMacroCircle(
-                                          AppLocalizations.of(context)!.fats,
-                                          totalFats,
-                                          fatGoal.toDouble(),
-                                          isDarkMode,
-                                          const Color.fromARGB(
-                                            255,
-                                            0,
-                                            213,
-                                            255,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
+                        if (!entriesSnapshot.hasData) {
+                          return Center(
+                            child: Text(
+                              AppLocalizations.of(context)!.noEntriesForDate,
                             ),
+                          );
+                        }
 
-                            const SizedBox(height: 20),
-                            Center(
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  if (constraints.maxWidth < 500) {
-                                    return Column(
+                        final entries = entriesSnapshot.data!;
+                        final originalEntriesMap =
+                            <Map<String, dynamic>, Map<String, dynamic>>{};
+                        for (final e in entries) {
+                          final orig =
+                              e['_originalEncrypted'] as Map<String, dynamic>?;
+                          if (orig != null) originalEntriesMap[e] = orig;
+                        }
+
+                        return FutureBuilder<List<Map<String, dynamic>>>(
+                          future: sportsFuture,
+                          builder: (context, sportsDataSnapshot) {
+                            //final entries = entriesSnapshot.data!;
+                            final sportsList = sportsDataSnapshot.data ?? [];
+                            final double totalBurnedCalories = sportsList.fold(
+                              0.0,
+                              (sum, item) => sum + (item['calories'] ?? 0.0),
+                            );
+
+                            // Bereken nutritionele totalen (zoals eerder)
+                            double totalCalories = 0;
+                            double totalProteins = 0;
+                            double totalFats = 0;
+                            double totalCarbs = 0;
+                            for (var entry in entries) {
+                              if (entry.containsKey('quantity')) {
+                                final kcal =
+                                    double.tryParse(
+                                      entry['kcal']?.toString() ?? '0',
+                                    ) ??
+                                    0.0;
+                                totalCalories += kcal;
+                              } else {
+                                totalCalories +=
+                                    (entry['nutrients']?['energy-kcal'] ?? 0.0);
+                                totalProteins +=
+                                    (entry['nutrients']?['proteins'] ?? 0.0);
+                                totalFats +=
+                                    (entry['nutrients']?['fat'] ?? 0.0);
+                                totalCarbs +=
+                                    (entry['nutrients']?['carbohydrates'] ??
+                                    0.0);
+                              }
+                            }
+
+                            double adjustedCalorieGoal =
+                                _calorieAllowance ?? 0.0;
+
+                            // Pas lokaal het totaal aan wanneer de gebruiker dat wil (NIET in Firestore schrijven)
+                            if (includeSportsCalories) {
+                              adjustedCalorieGoal += totalBurnedCalories;
+                            }
+
+                            final Map<String, List<dynamic>> meals = {
+                              'breakfast': [],
+                              'lunch': [],
+                              'dinner': [],
+                              'snack': [],
+                            };
+
+                            // Bekende NL-waardes in jouw opslag
+                            final nlBreakfast = 'Ontbijt';
+                            final nlLunch = 'Lunch';
+                            final nlDinner = 'Avondeten';
+                            final nlSnack = 'Tussendoor';
+
+                            // Sets met mogelijke vertalingen (lowercase voor veilige vergelijking)
+                            final breakfastNames = {
+                              AppLocalizations.of(
+                                context,
+                              )!.breakfast.toLowerCase(),
+                              nlBreakfast.toLowerCase(),
+                              'breakfast',
+                              'petit-déjeuner', // Frans
+                              'frühstück', // Duits
+                            };
+                            final lunchNames = {
+                              AppLocalizations.of(context)!.lunch.toLowerCase(),
+                              nlLunch.toLowerCase(),
+                              'lunch',
+                              'déjeuner', // Frans
+                              'mittagessen', // Duits
+                            };
+                            final dinnerNames = {
+                              AppLocalizations.of(
+                                context,
+                              )!.dinner.toLowerCase(),
+                              nlDinner.toLowerCase(),
+                              'dinner',
+                              'dîner', // Frans
+                              'abendessen', // Duits
+                            };
+                            final snackNames = {
+                              AppLocalizations.of(context)!.snack.toLowerCase(),
+                              nlSnack.toLowerCase(),
+                              'snack',
+                              'en-cas', // Frans
+                              'zwischenmahlzeit', // Duits
+                            };
+
+                            for (var entry in entries) {
+                              final rawMealType =
+                                  (entry['meal_type'] as String?)?.trim() ?? '';
+                              final mealTypeLower = rawMealType.toLowerCase();
+
+                              if (mealTypeLower.isNotEmpty) {
+                                if (breakfastNames.contains(mealTypeLower)) {
+                                  meals['breakfast']!.add(entry);
+                                  continue;
+                                } else if (lunchNames.contains(mealTypeLower)) {
+                                  meals['lunch']!.add(entry);
+                                  continue;
+                                } else if (dinnerNames.contains(
+                                  mealTypeLower,
+                                )) {
+                                  meals['dinner']!.add(entry);
+                                  continue;
+                                } else if (snackNames.contains(mealTypeLower)) {
+                                  meals['snack']!.add(entry);
+                                  continue;
+                                }
+                              }
+
+                              // Fallback op timestamp als meal_type niet herkend wordt
+                              final timestamp =
+                                  (entry['timestamp'] as Timestamp?)
+                                      ?.toDate() ??
+                                  DateTime.now();
+                              final hour = timestamp.hour;
+                              if (hour >= 5 && hour < 11) {
+                                meals['breakfast']!.add(entry);
+                              } else if (hour >= 11 && hour < 15) {
+                                meals['lunch']!.add(entry);
+                              } else if (hour >= 15 && hour < 22) {
+                                meals['dinner']!.add(entry);
+                              } else {
+                                meals['snack']!.add(entry);
+                              }
+                            }
+
+                            // Titles per interne key — UI blijft gelocaliseerd
+                            final mealTitles = {
+                              'breakfast': AppLocalizations.of(
+                                context,
+                              )!.breakfast,
+                              'lunch': AppLocalizations.of(context)!.lunch,
+                              'dinner': AppLocalizations.of(context)!.dinner,
+                              'snack': AppLocalizations.of(context)!.snack,
+                            };
+
+                            final baseCalorieGoal = _calorieAllowance ?? 0.0;
+
+                            final proteinGoal =
+                                _userData?['proteinGoal'] as num? ?? 0.0;
+                            final fatGoal =
+                                _userData?['fatGoal'] as num? ?? 0.0;
+                            final carbGoal =
+                                _userData?['carbGoal'] as num? ?? 0.0;
+
+                            final remainingCalories =
+                                adjustedCalorieGoal - totalCalories;
+
+                            final progress = adjustedCalorieGoal > 0
+                                ? (totalCalories / adjustedCalorieGoal).clamp(
+                                    0.0,
+                                    1.0,
+                                  )
+                                : 0.0;
+
+                            final Map<String, double> drinkBreakdown = {};
+                            double totalWater = 0;
+                            for (var entry in entries) {
+                              if (entry.containsKey('quantity')) {
+                                final quantityString =
+                                    entry['quantity'] as String? ?? '0 ml';
+                                final amount =
+                                    double.tryParse(
+                                      quantityString.replaceAll(' ml', ''),
+                                    ) ??
+                                    0.0;
+                                final drinkName =
+                                    entry['product_name'] as String? ??
+                                    AppLocalizations.of(context)!.unknown;
+                                drinkBreakdown.update(
+                                  drinkName,
+                                  (value) => value + amount,
+                                  ifAbsent: () => amount,
+                                );
+                                totalWater += amount;
+                              }
+                            }
+                            final weight = _userData?['weight'] as num? ?? 70;
+                            double waterGoal = weight * 32.5;
+                            try {
+                              final rawGoal = _userData?['waterGoal'];
+                              if (rawGoal != null) {
+                                final parsed = double.tryParse(
+                                  rawGoal.toString(),
+                                );
+                                if (parsed != null && parsed > 0) {
+                                  waterGoal = parsed;
+                                }
+                              }
+                            } catch (_) {
+                              // fallback blijft behouden
+                            }
+
+                            final motivationalMessage = _getMotivationalMessage(
+                              context,
+                              totalCalories,
+                              adjustedCalorieGoal,
+                              totalWater,
+                              waterGoal,
+                              entries.isNotEmpty,
+                            );
+
+                            if (_motivationalMessageNotifier.value == null) {
+                              _motivationalMessageNotifier.value =
+                                  motivationalMessage;
+                            }
+
+                            return Column(
+                              children: [
+                                if (_tutorialHomeAf)
+                                  _buildAnnouncementsList(isDarkMode),
+
+                                _buildBannerList(isDarkMode),
+                                Card(
+                                  color: isDarkMode
+                                      ? Colors.grey[800]
+                                      : Colors.grey[200],
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
                                       children: [
                                         Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          key: _mascotteKey,
+                                          key: _calorieInfoRowKey,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Expanded(
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                  bottom: 80,
-                                                ),
-                                                child: ValueListenableBuilder<String?>(
-                                                  valueListenable:
-                                                      _motivationalMessageNotifier,
-                                                  builder: (context, message, child) {
-                                                    // Gebruik 'message' van de notifier. Als die null is, toon een laadtekst.
-                                                    return BubbleSpecialThree(
-                                                      text:
-                                                          message ??
-                                                          AppLocalizations.of(
-                                                            context,
-                                                          )!.thinking,
-                                                      color: isDarkMode
-                                                          ? const Color(
-                                                              0xFF1B97F3,
-                                                            )
-                                                          : Colors.blueAccent,
-                                                      tail: true,
-                                                      isSender: true,
-                                                      textStyle:
-                                                          const TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 14,
-                                                          ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
+                                            _buildCalorieInfo(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.eaten,
+                                              totalCalories,
+                                              isDarkMode,
                                             ),
-                                            const SizedBox(width: 10),
-                                            StreamBuilder<DocumentSnapshot>(
-                                              stream: FirebaseFirestore.instance
-                                                  .collection('users')
-                                                  .doc(uid)
-                                                  .snapshots(),
-                                              builder: (context, userSnapshot) {
-                                                bool showGif = true;
-                                                if (userSnapshot.hasData &&
-                                                    userSnapshot.data!.exists) {
-                                                  final userData =
-                                                      userSnapshot.data!.data()
-                                                          as Map<
-                                                            String,
-                                                            dynamic
-                                                          >;
-                                                  showGif =
-                                                      userData['gif'] == true;
-                                                }
-                                                return GestureDetector(
-                                                  onTap: () {
-                                                    _motivationalMessageNotifier
-                                                            .value =
-                                                        _getMotivationalMessage(
-                                                          context,
-                                                          totalCalories,
-                                                          adjustedCalorieGoal,
-                                                          totalWater,
-                                                          waterGoal,
-                                                          entries.isNotEmpty,
-                                                        );
-                                                  },
-                                                  child: showGif
-                                                      ? Image.asset(
-                                                          'assets/mascotte/mascottelangzaam.gif',
-                                                          height: 120,
-                                                        )
-                                                      : Image.asset(
-                                                          'assets/mascotte/mascotte1.png',
-                                                          height: 120,
-                                                        ),
-                                                );
-                                              },
+                                            _buildCalorieInfo(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.goal,
+                                              adjustedCalorieGoal, // Gebruik het aangepaste doel
+                                              isDarkMode,
+                                            ),
+                                            _buildCalorieInfo(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.remaining,
+                                              remainingCalories,
+                                              isDarkMode,
+                                              isRemaining: true,
                                             ),
                                           ],
                                         ),
-                                        const SizedBox(height: 20),
-                                        Container(
-                                          key: _waterCircleKey,
-                                          child: GestureDetector(
-                                            onTap: () =>
-                                                _showEditWaterGoalDialog(
-                                                  waterGoal,
-                                                ),
-                                            child: _buildWaterCircle(
-                                              totalWater,
-                                              waterGoal,
-                                              drinkBreakdown,
-                                              isDarkMode,
-                                            ),
+                                        const SizedBox(height: 15),
+                                        LinearProgressIndicator(
+                                          value: progress,
+                                          minHeight: 10,
+                                          borderRadius: BorderRadius.circular(
+                                            5,
                                           ),
+                                          backgroundColor: isDarkMode
+                                              ? Colors.grey[700]
+                                              : Colors.grey[300],
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                progress > 1.0
+                                                    ? Colors.red
+                                                    : (isDarkMode
+                                                          ? Colors.green[300]!
+                                                          : Colors.green),
+                                              ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceAround,
+                                          children: [
+                                            _buildMacroCircle(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.carbs,
+                                              totalCarbs,
+                                              carbGoal.toDouble(),
+                                              isDarkMode,
+                                              Colors.orange,
+                                            ),
+                                            _buildMacroCircle(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.proteins,
+                                              totalProteins,
+                                              proteinGoal.toDouble(),
+                                              isDarkMode,
+                                              const Color.fromARGB(
+                                                255,
+                                                0,
+                                                140,
+                                                255,
+                                              ),
+                                            ),
+                                            _buildMacroCircle(
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.fats,
+                                              totalFats,
+                                              fatGoal.toDouble(),
+                                              isDarkMode,
+                                              const Color.fromARGB(
+                                                255,
+                                                0,
+                                                213,
+                                                255,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
-                                    );
-                                  } else {
-                                    return Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Flexible(
-                                          flex: 1,
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.center,
-                                            key: _mascotteKey,
-                                            children: [
-                                              Expanded(
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                        bottom: 80,
-                                                      ),
-                                                  child: ValueListenableBuilder<String?>(
-                                                    valueListenable:
-                                                        _motivationalMessageNotifier,
-                                                    builder: (context, message, child) {
-                                                      return BubbleSpecialThree(
-                                                        text:
-                                                            message ??
-                                                            AppLocalizations.of(
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 20),
+                                Center(
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      if (constraints.maxWidth < 500) {
+                                        return Column(
+                                          children: [
+                                            Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              key: _mascotteKey,
+                                              children: [
+                                                Expanded(
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          bottom: 80,
+                                                        ),
+                                                    child: ValueListenableBuilder<String?>(
+                                                      valueListenable:
+                                                          _motivationalMessageNotifier,
+                                                      builder: (context, message, child) {
+                                                        // Gebruik 'message' van de notifier. Als die null is, toon een laadtekst.
+                                                        return BubbleSpecialThree(
+                                                          text:
+                                                              message ??
+                                                              AppLocalizations.of(
+                                                                context,
+                                                              )!.thinking,
+                                                          color: isDarkMode
+                                                              ? const Color(
+                                                                  0xFF1B97F3,
+                                                                )
+                                                              : Colors
+                                                                    .blueAccent,
+                                                          tail: true,
+                                                          isSender: true,
+                                                          textStyle:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 14,
+                                                              ),
+                                                        );
+                                                      },
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                StreamBuilder<DocumentSnapshot>(
+                                                  stream: FirebaseFirestore
+                                                      .instance
+                                                      .collection('users')
+                                                      .doc(uid)
+                                                      .snapshots(),
+                                                  builder: (context, userSnapshot) {
+                                                    bool showGif = true;
+                                                    if (userSnapshot.hasData &&
+                                                        userSnapshot
+                                                            .data!
+                                                            .exists) {
+                                                      final userData =
+                                                          userSnapshot.data!
+                                                                  .data()
+                                                              as Map<
+                                                                String,
+                                                                dynamic
+                                                              >;
+                                                      showGif =
+                                                          userData['gif'] ==
+                                                          true;
+                                                    }
+                                                    return GestureDetector(
+                                                      onTap: () {
+                                                        _motivationalMessageNotifier
+                                                                .value =
+                                                            _getMotivationalMessage(
                                                               context,
-                                                            )!.thinking,
-                                                        color: isDarkMode
-                                                            ? const Color(
-                                                                0xFF1B97F3,
-                                                              )
-                                                            : Colors.blueAccent,
-                                                        tail: true,
-                                                        isSender: true,
-                                                        textStyle:
-                                                            const TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: 14,
+                                                              totalCalories,
+                                                              adjustedCalorieGoal,
+                                                              totalWater,
+                                                              waterGoal,
+                                                              entries
+                                                                  .isNotEmpty,
+                                                            );
+                                                      },
+                                                      child: showGif
+                                                          ? Image.asset(
+                                                              'assets/mascotte/mascottelangzaam.gif',
+                                                              height: 120,
+                                                            )
+                                                          : Image.asset(
+                                                              'assets/mascotte/mascotte1.png',
+                                                              height: 120,
                                                             ),
+                                                    );
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 20),
+                                            Container(
+                                              key: _waterCircleKey,
+                                              child: GestureDetector(
+                                                onTap: () =>
+                                                    _showEditWaterGoalDialog(
+                                                      waterGoal,
+                                                    ),
+                                                child: _buildWaterCircle(
+                                                  totalWater,
+                                                  waterGoal,
+                                                  drinkBreakdown,
+                                                  isDarkMode,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      } else {
+                                        return Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Flexible(
+                                              flex: 1,
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.center,
+                                                key: _mascotteKey,
+                                                children: [
+                                                  Expanded(
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 80,
+                                                          ),
+                                                      child: ValueListenableBuilder<String?>(
+                                                        valueListenable:
+                                                            _motivationalMessageNotifier,
+                                                        builder: (context, message, child) {
+                                                          return BubbleSpecialThree(
+                                                            text:
+                                                                message ??
+                                                                AppLocalizations.of(
+                                                                  context,
+                                                                )!.thinking,
+                                                            color: isDarkMode
+                                                                ? const Color(
+                                                                    0xFF1B97F3,
+                                                                  )
+                                                                : Colors
+                                                                      .blueAccent,
+                                                            tail: true,
+                                                            isSender: true,
+                                                            textStyle:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontSize: 14,
+                                                                ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  StreamBuilder<
+                                                    DocumentSnapshot
+                                                  >(
+                                                    stream: FirebaseFirestore
+                                                        .instance
+                                                        .collection('users')
+                                                        .doc(uid)
+                                                        .snapshots(),
+                                                    builder: (context, userSnapshot) {
+                                                      bool showGif = true;
+                                                      if (userSnapshot
+                                                              .hasData &&
+                                                          userSnapshot
+                                                              .data!
+                                                              .exists) {
+                                                        final userData =
+                                                            userSnapshot.data!
+                                                                    .data()
+                                                                as Map<
+                                                                  String,
+                                                                  dynamic
+                                                                >;
+                                                        showGif =
+                                                            userData['gif'] ==
+                                                            true;
+                                                      }
+                                                      return GestureDetector(
+                                                        onTap: () {
+                                                          _motivationalMessageNotifier
+                                                                  .value =
+                                                              _getMotivationalMessage(
+                                                                context,
+                                                                totalCalories,
+                                                                adjustedCalorieGoal,
+                                                                totalWater,
+                                                                waterGoal,
+                                                                entries
+                                                                    .isNotEmpty,
+                                                              );
+                                                        },
+                                                        child: showGif
+                                                            ? Image.asset(
+                                                                'assets/mascotte/mascottelangzaam.gif',
+                                                                height: 120,
+                                                              )
+                                                            : Image.asset(
+                                                                'assets/mascotte/mascotte1.png',
+                                                                height: 120,
+                                                              ),
                                                       );
                                                     },
                                                   ),
-                                                ),
+                                                ],
                                               ),
-                                              const SizedBox(width: 10),
-                                              StreamBuilder<DocumentSnapshot>(
-                                                stream: FirebaseFirestore
-                                                    .instance
-                                                    .collection('users')
-                                                    .doc(uid)
-                                                    .snapshots(),
-                                                builder: (context, userSnapshot) {
-                                                  bool showGif = true;
-                                                  if (userSnapshot.hasData &&
-                                                      userSnapshot
-                                                          .data!
-                                                          .exists) {
-                                                    final userData =
-                                                        userSnapshot.data!
-                                                                .data()
-                                                            as Map<
-                                                              String,
-                                                              dynamic
-                                                            >;
-                                                    showGif =
-                                                        userData['gif'] == true;
-                                                  }
-                                                  return GestureDetector(
-                                                    onTap: () {
-                                                      _motivationalMessageNotifier
-                                                              .value =
-                                                          _getMotivationalMessage(
-                                                            context,
-                                                            totalCalories,
-                                                            adjustedCalorieGoal,
-                                                            totalWater,
-                                                            waterGoal,
-                                                            entries.isNotEmpty,
-                                                          );
-                                                    },
-                                                    child: showGif
-                                                        ? Image.asset(
-                                                            'assets/mascotte/mascottelangzaam.gif',
-                                                            height: 120,
-                                                          )
-                                                        : Image.asset(
-                                                            'assets/mascotte/mascotte1.png',
-                                                            height: 120,
-                                                          ),
-                                                  );
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 30),
-                                        Flexible(
-                                          flex: 1,
-                                          child: Container(
-                                            key: _waterCircleKey,
-                                            child: GestureDetector(
-                                              onTap: () =>
-                                                  _showEditWaterGoalDialog(
+                                            ),
+                                            const SizedBox(width: 30),
+                                            Flexible(
+                                              flex: 1,
+                                              child: Container(
+                                                key: _waterCircleKey,
+                                                child: GestureDetector(
+                                                  onTap: () =>
+                                                      _showEditWaterGoalDialog(
+                                                        waterGoal,
+                                                      ),
+                                                  child: _buildWaterCircle(
+                                                    totalWater,
                                                     waterGoal,
+                                                    drinkBreakdown,
+                                                    isDarkMode,
                                                   ),
-                                              child: _buildWaterCircle(
-                                                totalWater,
-                                                waterGoal,
-                                                drinkBreakdown,
-                                                isDarkMode,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  }
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            if (sportsList.isNotEmpty)
-                              Card(
-                                margin: const EdgeInsets.only(top: 20.0),
-                                color: isDarkMode
-                                    ? Colors.grey[850]
-                                    : Colors.white,
-                                elevation: 1,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              AppLocalizations.of(
-                                                context,
-                                              )!.sports,
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                color: isDarkMode
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Flexible(
-                                            fit: FlexFit.loose,
-                                            child: Text(
-                                              '${AppLocalizations.of(context)!.totalBurned} ${totalBurnedCalories.round()} kcal',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: isDarkMode
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                              ),
-                                              textAlign: TextAlign.end,
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const Divider(height: 20),
-                                      ...sportsList.map(
-                                        (sport) => Dismissible(
-                                          key: ValueKey(sport['id']),
-                                          direction:
-                                              DismissDirection.endToStart,
-                                          onDismissed: (direction) {
-                                            _deleteSportEntry(sport['id']);
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                  '${sport['name']} ${AppLocalizations.of(context)!.deleted}',
                                                 ),
                                               ),
-                                            );
-                                          },
-                                          background: Container(
-                                            color: Colors.red,
-                                            alignment: Alignment.centerRight,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 20.0,
                                             ),
-                                            child: const Icon(
-                                              Icons.delete,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 4.0,
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  sport['name'] ??
+                                          ],
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                if (sportsList.isNotEmpty)
+                                  Card(
+                                    margin: const EdgeInsets.only(top: 20.0),
+                                    color: isDarkMode
+                                        ? Colors.grey[850]
+                                        : Colors.white,
+                                    elevation: 1,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                    children: [
+                                                    Expanded(
+                                                      child: Text(
                                                       AppLocalizations.of(
                                                         context,
-                                                      )!.unknownSport,
+                                                      )!.sports,
+                                                      style: TextStyle(
+                                                        fontSize: 18,
+                                                        fontWeight:
+                                                          FontWeight.bold,
+                                                        color: isDarkMode
+                                                          ? Colors.white
+                                                          : Colors.black,
+                                                      ),
+                                                      softWrap: true,
+                                                      maxLines: null,
+                                                      overflow: TextOverflow
+                                                        .visible,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    // Info knopje naast de titel
+                                                    IconButton(
+                                                      padding: EdgeInsets.zero,
+                                                      constraints:
+                                                        const BoxConstraints(),
+                                                      icon: Icon(
+                                                      Icons.info_outline,
+                                                      size: 20,
+                                                      color: isDarkMode
+                                                        ? Colors.white70
+                                                        : Colors.black54,
+                                                      ),
+                                                      onPressed: () {
+                                                      showDialog<void>(
+                                                        context: context,
+                                                        builder: (context) {
+                                                        final loc =
+                                                          AppLocalizations.of(
+                                                            context,
+                                                          )!;
+                                                        final infoText =
+                                                          includeSportsCalories
+                                                            ? loc
+                                                              .sportsCaloriesInfoTextOn
+                                                            : loc
+                                                              .sportsCaloriesInfoTextOff;
+
+                                                        // forceer dialog-theme zodat donkere modus consistent is
+                                                        return Theme(
+                                                          data: Theme.of(
+                                                              context)
+                                                            .copyWith(
+                                                          dialogBackgroundColor:
+                                                            isDarkMode
+                                                              ? Colors
+                                                                .grey[900]
+                                                              : Theme.of(
+                                                                  context)
+                                                                .dialogBackgroundColor,
+                                                          colorScheme:
+                                                            isDarkMode
+                                                              ? ColorScheme
+                                                                .dark()
+                                                              : Theme.of(
+                                                                  context)
+                                                                .colorScheme,
+                                                          textTheme: isDarkMode
+                                                            ? ThemeData
+                                                              .dark()
+                                                              .textTheme
+                                                            : Theme.of(
+                                                                context)
+                                                              .textTheme,
+                                                          ),
+                                                          child: AlertDialog(
+                                                          backgroundColor:
+                                                            isDarkMode
+                                                              ? Colors
+                                                                .grey[900]
+                                                              : null,
+                                                          title: Text(
+                                                            loc
+                                                              .sportsCaloriesInfoTitle,
+                                                            style: TextStyle(
+                                                            color: isDarkMode
+                                                              ? Colors
+                                                                .white
+                                                              : Colors
+                                                                .black,
+                                                            ),
+                                                          ),
+                                                          content: Text(
+                                                            infoText,
+                                                            style:
+                                                              TextStyle(
+                                                            color: isDarkMode
+                                                              ? Colors
+                                                                .white70
+                                                              : Colors
+                                                                .black87,
+                                                            ),
+                                                          ),
+                                                          actions: [
+                                                            TextButton(
+                                                            style: TextButton
+                                                              .styleFrom(
+                                                              foregroundColor:
+                                                                isDarkMode
+                                                                  ? Colors
+                                                                    .tealAccent
+                                                                  : null,
+                                                            ),
+                                                            onPressed: () =>
+                                                              Navigator.of(
+                                                                context,
+                                                              )
+                                                                .pop(),
+                                                            child: Text(
+                                                              AppLocalizations.of(
+                                                              context,
+                                                              )!
+                                                                .ok,
+                                                            ),
+                                                            ),
+                                                          ],
+                                                          ),
+                                                        );
+                                                        },
+                                                      );
+                                                      },
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Flexible(
+                                                fit: FlexFit.loose,
+                                                child: Text(
+                                                  '${AppLocalizations.of(context)!.totalBurned} ${totalBurnedCalories.round()} kcal',
                                                   style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
                                                     color: isDarkMode
                                                         ? Colors.white
                                                         : Colors.black,
                                                   ),
+                                                  textAlign: TextAlign.end,
+                                                  softWrap: true,
+                                                  maxLines: null,
+                                                  overflow:
+                                                      TextOverflow.visible,
                                                 ),
-                                                Text(
-                                                  '${(sport['calories'] ?? 0.0).toStringAsFixed(0)} kcal',
-                                                  style: TextStyle(
-                                                    color: isDarkMode
-                                                        ? Colors.white70
-                                                        : Colors.black87,
+                                              ),
+                                            ],
+                                          ),
+                                          const Divider(height: 20),
+                                          ...sportsList.map(
+                                            (sport) => Dismissible(
+                                              key: ValueKey(sport['id']),
+                                              direction:
+                                                  DismissDirection.endToStart,
+                                              onDismissed: (direction) {
+                                                _deleteSportEntry(sport['id']);
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      '${_localizedSportLabel(context, (sport['name'] as String?) ?? '')} ${AppLocalizations.of(context)!.deleted}',
+                                                    ),
                                                   ),
+                                                );
+                                              },
+                                              background: Container(
+                                                color: Colors.red,
+                                                alignment:
+                                                    Alignment.centerRight,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 20.0,
+                                                    ),
+                                                child: const Icon(
+                                                  Icons.delete,
+                                                  color: Colors.white,
                                                 ),
-                                              ],
+                                              ),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 4.0,
+                                                    ),
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      _localizedSportLabel(
+                                                        context,
+                                                        (sport['name']
+                                                                as String?) ??
+                                                            '',
+                                                      ),
+                                                      style: TextStyle(
+                                                        color: isDarkMode
+                                                            ? Colors.white
+                                                            : Colors.black,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      '${(sport['calories'] ?? 0.0).toStringAsFixed(0)} kcal',
+                                                      style: TextStyle(
+                                                        color: isDarkMode
+                                                            ? Colors.white70
+                                                            : Colors.black87,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
                                             ),
                                           ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 20),
+                                ...() {
+                                  bool mealKeyAssigned = false;
+                                  final widgets = <Widget>[];
+                                  final anyNonEmpty = meals.values.any(
+                                    (list) => list.isNotEmpty,
+                                  );
+
+                                  if (!anyNonEmpty) {
+                                    widgets.add(
+                                      // onzichtbaar maar aanwezig in de layout
+                                      Opacity(
+                                        opacity: 0,
+                                        child: SizedBox(
+                                          key: _mealKey,
+                                          width: 300,
+                                          height: 100,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(height: 20),
-                            ...() {
-                              bool mealKeyAssigned = false;
-                              return meals.entries.map((mealEntry) {
-                                Key? currentKey;
-                                if (!mealKeyAssigned) {
-                                  currentKey = _mealKey;
-                                  mealKeyAssigned = true;
-                                }
+                                    );
+                                  }
 
-                                if (mealEntry.value.isEmpty) {
-                                  return SizedBox.shrink(); // Toon niets als de maaltijd leeg is
-                                }
+                                  for (final mealEntry in meals.entries) {
+                                    Key? currentKey;
+                                    if (!mealKeyAssigned &&
+                                        mealEntry.value.isNotEmpty) {
+                                      currentKey = _mealKey;
+                                      mealKeyAssigned = true;
+                                    }
 
-                                return _buildMealSection(
-                                  key: currentKey,
-                                  title:
-                                      mealTitles[mealEntry.key] ??
-                                      mealEntry.key,
-                                  entries: mealEntry.value,
-                                  originalEntriesMap: originalEntriesMap,
-                                  isDarkMode: isDarkMode,
-                                );
-                              }).toList();
-                            }(),
-                            const SizedBox(height: 80),
-                          ],
+                                    if (mealEntry.value.isEmpty) {
+                                      continue;
+                                    }
+
+                                    widgets.add(
+                                      _buildMealSection(
+                                        key: currentKey,
+                                        title:
+                                            mealTitles[mealEntry.key] ??
+                                            mealEntry.key,
+                                        entries: mealEntry.value,
+                                        originalEntriesMap: originalEntriesMap,
+                                        isDarkMode: isDarkMode,
+                                      ),
+                                    );
+                                  }
+
+                                  return widgets;
+                                }(),
+                                const SizedBox(height: 80),
+                              ],
+                            );
+                          },
                         );
                       },
                     );
@@ -2654,7 +2934,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (calorieGoal > 0 && totalCalories < calorieGoal * 0.5) {
       final messages = [
         AppLocalizations.of(context)!.motivational_belowHalf_1,
-        AppLocalizations.of(context)!.motivational_belowHalf_2,
         AppLocalizations.of(context)!.motivational_belowHalf_3,
         AppLocalizations.of(context)!.motivational_belowHalf_4,
       ];
@@ -2697,20 +2976,28 @@ class _HomeScreenState extends State<HomeScreen> {
             (a, b) => a.key.compareTo(b.key),
           ); // Sorteer de breakdown op naam
 
+        final bool overGoal = goal > 0 && consumed > goal;
+        final bool severelyOver = goal > 0 && consumed > goal * 2;
+        final warningColor = severelyOver
+            ? Colors.redAccent
+            : (isDarkMode ? Colors.orangeAccent : Colors.orange);
+        final loc = AppLocalizations.of(context)!;
+
         return Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // Cirkel
             SizedBox(
               width: 100,
               height: 100,
               child: CustomPaint(
                 painter: SegmentedArcPainter(
-                  // aangepaste kleur voor soorten
                   progress: value,
                   goal: goal,
                   breakdown: sortedBreakdown,
                   isDarkMode: isDarkMode,
                   strokeWidth: 8,
-                  loc: AppLocalizations.of(context)!,
+                  loc: loc,
                 ),
                 child: Center(
                   child: Column(
@@ -2722,7 +3009,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         size: 24,
                       ),
                       Text(
-                        '${(consumed * value / (progress.isFinite && progress > 0 ? progress : 1.0)).round()} ml', // Animeer de hoeveelheid water
+                        '${(consumed * value / (progress.isFinite && progress > 0 ? progress : 1.0)).round()} ml',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -2734,9 +3021,49 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+
+            const SizedBox(height: 8),
+
+            // Waarschuwing onder de cirkel wanneer boven doel
+            if (overGoal)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0,
+                  vertical: 8.0,
+                ),
+                margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                decoration: BoxDecoration(
+                  color: warningColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: warningColor.withOpacity(0.4)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: warningColor,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        loc.waterWarningSevere,
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black87,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Doel onderaan, altijd zichtbaar
             const SizedBox(height: 8),
             Text(
-              '${AppLocalizations.of(context)!.goal}: ${goal.round()} ml', // Toon doel
+              '${AppLocalizations.of(context)!.goal}: ${goal.round()} ml',
               style: TextStyle(
                 fontSize: 14,
                 color: isDarkMode ? Colors.white70 : Colors.black87,
@@ -2958,7 +3285,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 (sport) => ListTile(
                   leading: const Icon(Icons.fitness_center, size: 24),
                   title: Text(
-                    sport['name'] ?? AppLocalizations.of(context)!.unknownSport,
+                    _localizedSportLabel(
+                      context,
+                      (sport['name'] as String?) ?? '',
+                    ),
                   ),
                   trailing: Text(
                     '-${(sport['calories'] ?? 0.0).toStringAsFixed(0)} kcal',

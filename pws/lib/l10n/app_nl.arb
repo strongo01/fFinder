@@ -625,7 +625,6 @@
   "motivational_almostGoal_4": "Goed bezig! Let op de laatste stap.",
   "motivational_almostGoal_5": "Je doet het fantastisch, bijna daar!",
   "motivational_belowHalf_1": "Je bent goed op weg, ga zo door!",
-  "motivational_belowHalf_2": "De eerste helft zit erop, houd de focus!",
   "motivational_belowHalf_3": "Blijf je maaltijden en drankjes loggen.",
   "motivational_belowHalf_4": "Je doet het geweldig, blijf volhouden!",
   "motivational_lowWater_1": "Vergeet niet te drinken vandaag!",
@@ -743,6 +742,21 @@
   "heightRange": "Lengte moet tussen 50 en 300 cm zijn.",
   "weightRange": "Gewicht moet tussen 20 en 800 kg zijn.",
   "waistRange": "Taille moet tussen 30 en 200 cm zijn.",
-  "targetWeightRange": "Streefgewicht moet tussen 20 en 800 kg zijn."
+  "targetWeightRange": "Streefgewicht moet tussen 20 en 800 kg zijn.",
+
+"sportsCaloriesInfoTitle": "Sportactiviteiten",
+"sportsCaloriesInfoTextOn": "Je dagdoel is gebaseerd op je activiteitsniveau. Calorieën uit sport worden nu toegevoegd aan je dagtotaal.",
+"sportsCaloriesInfoTextOff": "Je dagdoel is gebaseerd op je activiteitsniveau. Calorieën uit sport worden standaard niet bij je dagtotaal opgeteld. Je kunt dit wijzigen in de instellingen.",
+"ok": "OK",
+
+"includeSportsCaloriesLabel": "Sportcalorieën meenemen",
+"includeSportsCaloriesSubtitle": "Voeg verbrande sportcalorieën toe aan het dagtotaal (standaard uitgeschakeld, omdat activiteit al wordt meegenomen via het activiteitsniveau).",
+"waterWarningSevere": "Let op, drink niet te veel. Ver boven je doel kan gevaarlijk zijn!",
+
+"setAppVersionTitle": "Wijzig versie",
+"setAppVersionSubtitle": "Wijzig het versie veld in Firestore",
+"versionLabel": "Versie",
+"versionUpdated": "Versie bijgewerkt:"
+
 
 }

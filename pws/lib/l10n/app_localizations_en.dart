@@ -1796,9 +1796,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get motivational_belowHalf_1 => 'You\'re off to a great start, keep going!';
 
   @override
-  String get motivational_belowHalf_2 => 'The first half is done, stay focused!';
-
-  @override
   String get motivational_belowHalf_3 => 'Keep logging your meals and drinks.';
 
   @override
@@ -2241,4 +2238,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get targetWeightRange => 'Target weight must be between 20 and 800 kg.';
+
+  @override
+  String get sportsCaloriesInfoTitle => 'Sports Activities';
+
+  @override
+  String get sportsCaloriesInfoTextOn => 'Your daily goal is based on your activity level. Calories from sports are now added to your daily total.';
+
+  @override
+  String get sportsCaloriesInfoTextOff => 'Your daily goal is based on your activity level. Calories from sports are not added to your daily total by default. You can change this in the settings.';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get waterWarningSevere => 'Warning: do not drink too much. Far above your goal can be dangerous!';
+
+  @override
+  String get includeSportsCaloriesLabel => 'Include sports calories';
+
+  @override
+  String get includeSportsCaloriesSubtitle => 'Add calories burned through sports to your daily total (off by default, because activity is already included via your activity level).';
+
+  @override
+  String get setAppVersionTitle => 'Set app version';
+
+  @override
+  String get setAppVersionSubtitle => 'Modify the version field in Firestore';
+
+  @override
+  String get versionLabel => 'Version';
+
+  @override
+  String get versionUpdated => 'Version updated:';
 }
