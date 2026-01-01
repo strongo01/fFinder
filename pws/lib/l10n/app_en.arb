@@ -736,7 +736,7 @@
         "notificationBreakfastTitle": "Time for breakfast!",
     "notificationBreakfastBody": "Start your day right with a nutritious breakfast. Don't forget to log it!",
     "notificationLunchTitle": "Lunch time!",
-    "notificationLunchBody": "Refuel for the afternoon — don't forget to log your lunch!",
+    "notificationLunchBody": "Refuel for the afternoon. Don't forget to log your lunch!",
     "notificationDinnerTitle": "Enjoy your meal!",
     "notificationDinnerBody": "Enjoy your dinner and remember to log it!",
     "heightRange": "Height must be between 50 and 300 cm.",
@@ -756,7 +756,9 @@
 "setAppVersionTitle": "Set app version",
 "setAppVersionSubtitle": "Modify the version field in Firestore",
 "versionLabel": "Version",
-"versionUpdated": "Version updated:"
+"versionUpdated": "Version updated:",
+"bmiForChildrenTitle": "Child BMI Info",
+"bmiForChildrenExplanation": "The BMI for children is calculated based on age, sex, height, and weight. Instead of fixed cutoffs, this app uses BMI percentiles, making the assessment better suited to children's growth. Small differences with other BMI charts are normal."
 
   
 }

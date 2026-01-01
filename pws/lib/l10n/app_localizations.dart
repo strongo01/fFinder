@@ -4518,7 +4518,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationLunchBody.
   ///
   /// In en, this message translates to:
-  /// **'Refuel for the afternoon — don\'t forget to log your lunch!'**
+  /// **'Refuel for the afternoon. Don\'t forget to log your lunch!'**
   String get notificationLunchBody;
 
   /// No description provided for @notificationDinnerTitle.
@@ -4622,6 +4622,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Version updated:'**
   String get versionUpdated;
+
+  /// No description provided for @bmiForChildrenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Child BMI Info'**
+  String get bmiForChildrenTitle;
+
+  /// No description provided for @bmiForChildrenExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The BMI for children is calculated based on age, sex, height, and weight. Instead of fixed cutoffs, this app uses BMI percentiles, making the assessment better suited to children\'s growth. Small differences with other BMI charts are normal.'**
+  String get bmiForChildrenExplanation;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

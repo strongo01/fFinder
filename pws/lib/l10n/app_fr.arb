@@ -736,7 +736,7 @@
     "notificationBreakfastTitle": "Il est l'heure du petit-déjeuner!",
     "notificationBreakfastBody": "Commencez bien votre journée avec un petit-déjeuner nutritif. N'oubliez pas de le consigner!",
     "notificationLunchTitle": "C'est l'heure du déjeuner!",
-    "notificationLunchBody": "Rechargez vos batteries pour l'après-midi — n'oubliez pas d'enregistrer votre déjeuner!",
+    "notificationLunchBody": "Rechargez vos batteries pour l'après-midi. N'oubliez pas d'enregistrer votre déjeuner!",
     "notificationDinnerTitle": "Bon appétit!",
     "notificationDinnerBody": "Profitez de votre dîner et pensez à le consigner!",
     "heightRange": "La taille doit être comprise entre 50 et 300 cm.",
@@ -757,6 +757,8 @@
 "setAppVersionTitle": "Définir la version de l'application",
 "setAppVersionSubtitle": "Modifier le champ version dans Firestore",
 "versionLabel": "Version",
-"versionUpdated": "Version mise à jour :"
+"versionUpdated": "Version mise à jour :",
+"bmiForChildrenTitle": "Info IMC enfants",
+"bmiForChildrenExplanation": "L'IMC des enfants est calculé en fonction de l'âge, du sexe, de la taille et du poids. Au lieu de limites fixes, cette application utilise des percentiles d'IMC, ce qui rend l'évaluation mieux adaptée à la croissance des enfants. De petites différences avec d'autres tableaux d'IMC sont normales."
 
 }

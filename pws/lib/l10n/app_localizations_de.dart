@@ -2219,7 +2219,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get notificationLunchTitle => 'Mittagessen!';
 
   @override
-  String get notificationLunchBody => 'Tanke Energie für den Nachmittag - vergiss nicht, dein Mittagessen zu protokollieren!';
+  String get notificationLunchBody => 'Tanke Energie für den Nachmittag. Vergiss nicht, dein Mittagessen zu protokollieren!';
 
   @override
   String get notificationDinnerTitle => 'Guten Appetit!';
@@ -2271,4 +2271,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get versionUpdated => 'Version aktualisiert:';
+
+  @override
+  String get bmiForChildrenTitle => 'Kinder-BMI Info';
+
+  @override
+  String get bmiForChildrenExplanation => 'Der BMI von Kindern wird basierend auf Alter, Geschlecht, Größe und Gewicht berechnet. Anstelle fester Grenzen verwendet diese App BMI-Perzentile, sodass die Bewertung besser zum Wachstum der Kinder passt. Kleine Unterschiede zu anderen BMI-Tabellen sind normal.';
 }

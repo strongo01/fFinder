@@ -2219,7 +2219,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationLunchTitle => 'Lunch time!';
 
   @override
-  String get notificationLunchBody => 'Refuel for the afternoon — don\'t forget to log your lunch!';
+  String get notificationLunchBody => 'Refuel for the afternoon. Don\'t forget to log your lunch!';
 
   @override
   String get notificationDinnerTitle => 'Enjoy your meal!';
@@ -2271,4 +2271,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get versionUpdated => 'Version updated:';
+
+  @override
+  String get bmiForChildrenTitle => 'Child BMI Info';
+
+  @override
+  String get bmiForChildrenExplanation => 'The BMI for children is calculated based on age, sex, height, and weight. Instead of fixed cutoffs, this app uses BMI percentiles, making the assessment better suited to children\'s growth. Small differences with other BMI charts are normal.';
 }

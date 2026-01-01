@@ -374,7 +374,7 @@ class _OnboardingViewState extends State<OnboardingView> {
     final g = gender.trim().toLowerCase();
     if (g == femaleLabel) return '2';
     if (g == maleLabel) return '1';
-    if (g.contains('vrouw') || g.contains('woman') || g.startsWith('f'))
+    if (g.contains('vrouw') || g.contains('woman') || g.contains('femme') || g.contains('weiblich') || g.startsWith('f'))
       return '2';
     return '1';
   }

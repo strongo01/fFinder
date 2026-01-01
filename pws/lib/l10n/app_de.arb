@@ -736,7 +736,7 @@
     "notificationBreakfastTitle": "Zeit fürs Frühstück!",
     "notificationBreakfastBody": "Beginne deinen Tag mit einem nahrhaften Frühstück. Vergiss nicht, es zu protokollieren!",
     "notificationLunchTitle": "Mittagessen!",
-    "notificationLunchBody": "Tanke Energie für den Nachmittag - vergiss nicht, dein Mittagessen zu protokollieren!",
+    "notificationLunchBody": "Tanke Energie für den Nachmittag. Vergiss nicht, dein Mittagessen zu protokollieren!",
     "notificationDinnerTitle": "Guten Appetit!",
     "notificationDinnerBody": "Genieße dein Abendessen und denke daran, es zu protokollieren!",
     "heightRange": "Größe muss zwischen 50 und 300 cm liegen.",
@@ -757,6 +757,8 @@
 "setAppVersionTitle": "App-Version festlegen",
 "setAppVersionSubtitle": "Ändern Sie das Versionsfeld in Firestore",
 "versionLabel": "Version",
-"versionUpdated": "Version aktualisiert:"
+"versionUpdated": "Version aktualisiert:",
+"bmiForChildrenTitle": "Kinder-BMI Info",
+"bmiForChildrenExplanation": "Der BMI von Kindern wird basierend auf Alter, Geschlecht, Größe und Gewicht berechnet. Anstelle fester Grenzen verwendet diese App BMI-Perzentile, sodass die Bewertung besser zum Wachstum der Kinder passt. Kleine Unterschiede zu anderen BMI-Tabellen sind normal."
 
 }

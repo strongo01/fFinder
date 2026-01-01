@@ -49,6 +49,13 @@ class _WeightViewState extends State<WeightView> {
     return bmi.clamp(_bmiMin, _bmiMax);
   }
 
+  DateTime? _userBirthDate;
+  String _userGender = 'Man';
+  final Map<String, Map<int, Map<String, double>>> _lmsCache = {
+    '1': {}, // man
+    '2': {}, // vrouw
+  };
+
   final TextEditingController _weightController = TextEditingController();
 
   final TextEditingController _targetWeightController = TextEditingController();
@@ -62,6 +69,7 @@ class _WeightViewState extends State<WeightView> {
     super.initState();
     _loadUserData();
     _loadAbsiReference();
+    _ensureCdcLmsLoaded().catchError((_) {}); // Laad LMS data op de achtergrond
   }
 
   @override
@@ -138,6 +146,30 @@ class _WeightViewState extends State<WeightView> {
         }
       } else {
         _waist = _parseDouble(data['waist']) ?? _waist;
+      }
+
+      if (data['gender'] is String) {
+        if (userDEK != null) {
+          try {
+            _userGender = await decryptValue(data['gender'] as String, userDEK);
+          } catch (_) {
+            _userGender = data['gender'] as String;
+          }
+        } else {
+          _userGender = data['gender'] as String;
+        }
+      }
+      final String? birthDateStrEnc = data['birthDate'] as String?;
+      if (birthDateStrEnc != null) {
+        String birthDecoded = birthDateStrEnc;
+        if (userDEK != null) {
+          try {
+            birthDecoded = await decryptValue(birthDateStrEnc, userDEK);
+          } catch (_) {}
+        }
+        _userBirthDate = birthDecoded.isNotEmpty
+            ? DateTime.tryParse(birthDecoded)
+            : null;
       }
 
       if (userDEK != null && data['targetWeight'] is String) {
@@ -266,6 +298,12 @@ class _WeightViewState extends State<WeightView> {
         _targetWeightController.text = _targetWeight!.toStringAsFixed(1);
       }
       _waistController.text = _waist.toStringAsFixed(1);
+      debugPrint('--- USER DATA LOADED ---');
+      debugPrint('Gender (raw): $_userGender');
+      debugPrint('Birthdate: $_userBirthDate');
+      debugPrint('Age years: ${_ageYearsFromBirthDate(_userBirthDate)}');
+      debugPrint('Age months: ${_ageMonthsFromBirthDate(_userBirthDate)}');
+
       _recalculateBMI();
     } catch (e) {
       if (!mounted) return;
@@ -293,18 +331,18 @@ class _WeightViewState extends State<WeightView> {
 
   void _recalculateBMI() {
     if (_height <= 0 || _weight <= 0) {
+      debugPrint('[BMI] Invalid height or weight');
       setState(() => _bmi = null);
-      setState(() {
-        _absi = null;
-        _absiZ = null;
-        _absiRange = null;
-      });
       return;
     }
+
     final hMeters = _height / 100;
     final bmi = _weight / (hMeters * hMeters);
+
+    debugPrint('[BMI] height=$_height cm, weight=$_weight kg');
+    debugPrint('[BMI] calculated bmi=$bmi');
+
     setState(() => _bmi = bmi);
-    _computeAbsi();
   }
 
   Future<void> _computeAbsi() async {
@@ -392,6 +430,93 @@ class _WeightViewState extends State<WeightView> {
     });
   }
 
+  Future<void> _ensureCdcLmsLoaded() async {
+    if ((_lmsCache['1']?.isNotEmpty ?? false) &&
+        (_lmsCache['2']?.isNotEmpty ?? false)) {
+      return;
+    }
+    final csvString = await rootBundle.loadString('assets/cdc/bmiagerev.csv');
+    final lines = const LineSplitter().convert(csvString);
+    if (lines.isEmpty) throw Exception('Leeg CSV bestand');
+
+    final header = lines.first
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .toList();
+    final idxSex = header.indexWhere((h) => h.contains('sex'));
+    final idxAge = header.indexWhere(
+      (h) => h.contains('agemos') || h.contains('age'),
+    );
+    final idxL = header.indexWhere(
+      (h) => h == 'l' || h.contains(' l') || h == 'l ',
+    );
+    final idxM = header.indexWhere(
+      (h) => h == 'm' || h.contains(' m') || h == 'm ',
+    );
+    final idxS = header.indexWhere(
+      (h) => h == 's' || h.contains(' s') || h == 's ',
+    );
+
+    if (idxSex == -1 ||
+        idxAge == -1 ||
+        idxL == -1 ||
+        idxM == -1 ||
+        idxS == -1) {
+      throw Exception('CSV header heeft niet verwachte kolommen');
+    }
+    _lmsCache['1']?.clear();
+    _lmsCache['2']?.clear();
+
+    for (var i = 1; i < lines.length; i++) {
+      final row = lines[i].split(',');
+      if (row.length <= max(idxSex, max(idxAge, max(idxL, max(idxM, idxS))))) {
+        continue;
+      }
+      final sex = row[idxSex].trim();
+      final agemos = double.tryParse(row[idxAge].trim())?.round();
+      final L = double.tryParse(row[idxL].trim());
+      final M = double.tryParse(row[idxM].trim());
+      final S = double.tryParse(row[idxS].trim());
+      if (agemos != null && L != null && M != null && S != null) {
+        _lmsCache[sex]?[agemos] = {'L': L, 'M': M, 'S': S};
+      }
+    }
+  }
+
+  double _bmiFromLms(double z, double L, double M, double S) {
+    if (L == 0) return M * exp(S * z);
+    return M * pow(1 + L * S * z, 1 / L);
+  }
+
+  int _ageYearsFromBirthDate(DateTime? bd) {
+    if (bd == null) return 0;
+    final now = DateTime.now();
+    int years = now.year - bd.year;
+    if (now.month < bd.month || (now.month == bd.month && now.day < bd.day)) {
+      years--;
+    }
+    return years;
+  }
+
+  int _ageMonthsFromBirthDate(DateTime? bd) {
+    if (bd == null) return 0;
+    final now = DateTime.now();
+    int months = (now.year - bd.year) * 12 + (now.month - bd.month);
+    if (now.day < bd.day) months--;
+    return max(0, months);
+  }
+
+  String _genderCodeFromLocalized(String gender) {
+    final g = gender.trim().toLowerCase();
+    final code =
+        (g.contains('vrouw') || g.contains('woman') || g.startsWith('f'))
+        ? '2'
+        : '1';
+
+    debugPrint('[GENDER] input="$gender" → normalized="$g" → sexCode=$code');
+    return code;
+  }
+
   Color _absiCategoryColor(String? rangeKey, bool isDark) {
     if (rangeKey == null) return isDark ? Colors.white : Colors.black;
     switch (rangeKey) {
@@ -410,7 +535,7 @@ class _WeightViewState extends State<WeightView> {
   Future<void> _saveWeight() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-
+    debugPrint("--- SAVE WEIGHT TRIGGERED ---");
     _weightFocusNode.unfocus();
     _targetWeightFocusNode.unfocus();
     _waistFocusNode.unfocus();
@@ -436,7 +561,6 @@ class _WeightViewState extends State<WeightView> {
     }
     final loc = AppLocalizations.of(context)!;
 
-
     final List<String> errors = [];
     if (!(_height >= 50 && _height <= 300)) {
       errors.add(loc.heightRange);
@@ -454,7 +578,6 @@ class _WeightViewState extends State<WeightView> {
             parsedTargetForValidation <= 800)) {
       errors.add(loc.targetWeightRange);
     }
-
 
     if (errors.isNotEmpty) {
       if (!mounted) return;
@@ -763,14 +886,133 @@ class _WeightViewState extends State<WeightView> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   String _bmiCategory(double bmi) {
-    if (bmi < 16) return AppLocalizations.of(context)!.bmiVeryLow;
-    if (bmi < 18.5) return AppLocalizations.of(context)!.bmiLow;
-    if (bmi < 25) return AppLocalizations.of(context)!.bmiGood;
-    if (bmi < 30) return AppLocalizations.of(context)!.bmiHigh;
-    return AppLocalizations.of(context)!.bmiVeryHigh;
+    final loc = AppLocalizations.of(context)!;
+    debugPrint('--- BMI CATEGORY CHECK ---');
+    debugPrint('BMI value: $bmi');
+    debugPrint('Birthdate: $_userBirthDate');
+    debugPrint('Age years: ${_ageYearsFromBirthDate(_userBirthDate)}');
+    debugPrint('Age months: ${_ageMonthsFromBirthDate(_userBirthDate)}');
+    debugPrint('Gender: $_userGender');
+
+    // Probeer kinder-BMI logica
+    try {
+      final ageYears = _ageYearsFromBirthDate(_userBirthDate);
+      final ageMonths = _ageMonthsFromBirthDate(_userBirthDate);
+
+      if (_userBirthDate != null && ageYears < 18 && ageMonths >= 24) {
+        final sexCode = _genderCodeFromLocalized(_userGender);
+        final lmsDataForSex = _lmsCache[sexCode];
+        debugPrint('[LMS] sexCode=$sexCode');
+        debugPrint('[LMS] LMS loaded for sex: ${lmsDataForSex != null}');
+        debugPrint('[LMS] LMS entries count: ${lmsDataForSex?.length}');
+        debugPrint('[LMS] Requested ageMonths=$ageMonths');
+
+        if (lmsDataForSex != null && lmsDataForSex.isNotEmpty) {
+          Map<String, double>? lms = lmsDataForSex[ageMonths];
+          if (lms != null) {
+            debugPrint('[LMS] Found LMS for month (or nearest)');
+            debugPrint('[LMS] L=${lms['L']} M=${lms['M']} S=${lms['S']}');
+          } else {
+            debugPrint(
+              '[LMS] ❌ No LMS found for this age, selecting nearest available month',
+            );
+            final keys = lmsDataForSex.keys.toList()..sort();
+            final nearest = keys.reduce(
+              (a, b) => (a - ageMonths).abs() < (b - ageMonths).abs() ? a : b,
+            );
+            lms = lmsDataForSex[nearest];
+            debugPrint('[LMS] using nearest month=$nearest');
+            debugPrint('[LMS] L=${lms!['L']} M=${lms['M']} S=${lms['S']}');
+          }
+
+          final L = lms['L']!;
+          final M = lms['M']!;
+          final S = lms['S']!;
+
+          const z1 = -2.33; // 1e percentiel (ernstig ondergewicht)
+          const z5 = -1.645; // 5e percentiel
+          const z85 = 1.036; // 85e percentiel
+          const z95 = 1.645; // 95e percentiel
+          final bmi1 = _bmiFromLms(z1, L, M, S);
+
+          final bmi5 = _bmiFromLms(z5, L, M, S);
+          final bmi85 = _bmiFromLms(z85, L, M, S);
+          final bmi95 = _bmiFromLms(z95, L, M, S);
+          debugPrint('[BMI PERCENTILES]');
+          debugPrint('BMI 1p  = $bmi1');
+
+          debugPrint('BMI 5p  = $bmi5');
+          debugPrint('BMI 85p = $bmi85');
+          debugPrint('BMI 95p = $bmi95');
+          debugPrint('User BMI = $bmi');
+
+          debugPrint('[BMI RESULT] category decided for bmi=$bmi');
+
+          if (bmi < bmi1) return loc.bmiVeryLow; // Ernstig ondergewicht
+          if (bmi < bmi5) return loc.bmiLow; // Ondergewicht
+          if (bmi < bmi85) return loc.bmiGood;
+          if (bmi < bmi95) return loc.bmiHigh;
+          return loc.bmiVeryHigh;
+        }
+      }
+    } catch (_) {
+      // Val terug op volwassen logica bij een fout
+    }
+
+    // Fallback voor volwassenen (of als kinder-BMI faalt)
+    if (bmi < 16) return loc.bmiVeryLow;
+    if (bmi < 18.5) return loc.bmiLow;
+    if (bmi < 25) return loc.bmiGood;
+    if (bmi < 30) return loc.bmiHigh;
+    return loc.bmiVeryHigh;
   }
 
   Color _bmiCategoryColor(double bmi, bool isDark) {
+    // Probeer kinder-BMI logica
+    try {
+      final ageYears = _ageYearsFromBirthDate(_userBirthDate);
+      final ageMonths = _ageMonthsFromBirthDate(_userBirthDate);
+
+      if (_userBirthDate != null && ageYears < 18 && ageMonths >= 24) {
+        final sexCode = _genderCodeFromLocalized(_userGender);
+        final lmsDataForSex = _lmsCache[sexCode];
+        if (lmsDataForSex != null && lmsDataForSex.isNotEmpty) {
+          Map<String, double>? lms = lmsDataForSex[ageMonths];
+          if (lms == null) {
+            final keys = lmsDataForSex.keys.toList()..sort();
+            int nearest = keys.reduce(
+              (a, b) => (a - ageMonths).abs() < (b - ageMonths).abs() ? a : b,
+            );
+            lms = lmsDataForSex[nearest]!;
+          }
+
+          final L = lms['L']!;
+          final M = lms['M']!;
+          final S = lms['S']!;
+          const z1 = -2.33; // 1e percentiel (ernstig ondergewicht)
+
+          const z5 = -1.645; // 5e percentiel (was incorrect)
+          const z85 = 1.036; // 85e percentiel
+          const z95 = 1.645; // 95e percentiel
+          final bmi1 = _bmiFromLms(z1, L, M, S);
+
+          final bmi5 = _bmiFromLms(z5, L, M, S);
+          final bmi85 = _bmiFromLms(z85, L, M, S);
+          final bmi95 = _bmiFromLms(z95, L, M, S);
+
+          if (bmi < bmi1) return Colors.redAccent; // Ernstig ondergewicht
+          if (bmi < bmi5) return Colors.orange; // Ondergewicht
+
+          if (bmi < bmi85) return Colors.green; // Gezond
+          if (bmi < bmi95) return Colors.orange; // Overgewicht
+          return Colors.redAccent; // Obesitas
+        }
+      }
+    } catch (_) {
+      // Val terug op volwassen logica bij een fout
+    }
+
+    // Fallback voor volwassenen
     if (bmi < 16) return Colors.redAccent;
     if (bmi < 18.5) return Colors.orange;
     if (bmi < 25) return Colors.green;
@@ -1002,11 +1244,64 @@ class _WeightViewState extends State<WeightView> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text(
-                                loc.bmiTitle,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: primaryTextColor,
-                                ),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    loc.bmiTitle,
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(color: primaryTextColor),
+                                  ),
+                                  if (_userBirthDate != null &&
+                                      _ageYearsFromBirthDate(_userBirthDate) <
+                                          18)
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.info_outline,
+                                        color:
+                                            secondaryTextColor ??
+                                            (isDark
+                                                ? Colors.white
+                                                : Colors.black),
+                                      ),
+                                      tooltip: loc.bmiForChildrenTitle,
+                                      onPressed: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            backgroundColor:
+                                                theme.colorScheme.surface,
+                                            title: Text(
+                                              loc.bmiForChildrenTitle,
+                                              style: theme.textTheme.titleMedium
+                                                  ?.copyWith(
+                                                    color: primaryTextColor,
+                                                  ),
+                                            ),
+                                            content: Text(
+                                              loc.bmiForChildrenExplanation,
+                                              style: theme.textTheme.bodyMedium
+                                                  ?.copyWith(
+                                                    color: secondaryTextColor,
+                                                  ),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.of(context).pop(),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor:
+                                                      theme.colorScheme.primary,
+                                                ),
+                                                child: Text(loc.close),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                ],
                               ),
                               const SizedBox(height: 8),
                               if (_bmi == null)
@@ -1259,22 +1554,67 @@ class _WeightViewState extends State<WeightView> {
   }
 
   Widget _buildBmiBar(ThemeData theme, bool isDark) {
-    //  BMI-balk bouwen
     if (_bmi == null) return const SizedBox.shrink();
-    final bmi = _clampBmi(_bmi!); // clamp de BMI binnen het bereik
 
+    // Standaard drempels voor volwassenen
+    double veryLowEnd = _bmiVeryLowEnd;
+    double lowEnd = _bmiLowEnd;
+    double goodEnd = _bmiGoodEnd;
+    double highEnd = _bmiHighEnd;
+
+    // Probeer drempels voor kinderen te berekenen
+    try {
+      final ageYears = _ageYearsFromBirthDate(_userBirthDate);
+      final ageMonths = _ageMonthsFromBirthDate(_userBirthDate);
+
+      if (_userBirthDate != null && ageYears < 20 && ageMonths >= 24) {
+        final sexCode = _genderCodeFromLocalized(_userGender);
+        final lmsDataForSex = _lmsCache[sexCode];
+
+        if (lmsDataForSex != null && lmsDataForSex.isNotEmpty) {
+          Map<String, double>? lms = lmsDataForSex[ageMonths];
+          if (lms == null) {
+            final keys = lmsDataForSex.keys.toList()..sort();
+            int nearest = keys.reduce(
+              (a, b) => (a - ageMonths).abs() < (b - ageMonths).abs() ? a : b,
+            );
+            lms = lmsDataForSex[nearest]!;
+          }
+
+          final L = lms['L']!;
+          final M = lms['M']!;
+          final S = lms['S']!;
+
+          // Bereken BMI-waarden voor de percentielen
+          veryLowEnd = _bmiFromLms(-2.33, L, M, S); // ~1e percentiel
+          lowEnd = _bmiFromLms(-1.645, L, M, S); // 5e percentiel
+          goodEnd = _bmiFromLms(1.036, L, M, S); // 85e percentiel
+          highEnd = _bmiFromLms(1.645, L, M, S); // 95e percentiel
+        }
+      }
+    } catch (_) {
+      // Val terug op volwassen drempels bij een fout
+    }
+
+    final bmi = _clampBmi(_bmi!);
     const totalRange = _bmiMax - _bmiMin;
-    final veryLowWidth = _bmiVeryLowEnd - _bmiMin; // 10–16
-    final lowWidth = _bmiLowEnd - _bmiVeryLowEnd; // 16–18.5
-    final goodWidth = _bmiGoodEnd - _bmiLowEnd; // 18.5–25
-    final highWidth = _bmiHighEnd - _bmiGoodEnd; // 25–30
-    final veryHighWidth = _bmiMax - _bmiHighEnd; // 30–40
 
-    final veryLowFlex = veryLowWidth / totalRange;
-    final lowFlex = lowWidth / totalRange;
-    final goodFlex = goodWidth / totalRange;
-    final highFlex = highWidth / totalRange;
-    final veryHighFlex = veryHighWidth / totalRange;
+    // Bereken de breedte van de segmenten dynamisch
+    final veryLowWidth = (veryLowEnd - _bmiMin).clamp(0, totalRange);
+    final lowWidth = (lowEnd - veryLowEnd).clamp(0, totalRange);
+    final goodWidth = (goodEnd - lowEnd).clamp(0, totalRange);
+    final highWidth = (highEnd - goodEnd).clamp(0, totalRange);
+    final veryHighWidth = (_bmiMax - highEnd).clamp(0, totalRange);
+
+    final totalCalculatedWidth =
+        veryLowWidth + lowWidth + goodWidth + highWidth + veryHighWidth;
+
+    // Normaliseer naar flex-waarden
+    final veryLowFlex = (veryLowWidth / totalCalculatedWidth * 1000).round();
+    final lowFlex = (lowWidth / totalCalculatedWidth * 1000).round();
+    final goodFlex = (goodWidth / totalCalculatedWidth * 1000).round();
+    final highFlex = (highWidth / totalCalculatedWidth * 1000).round();
+    final veryHighFlex = (veryHighWidth / totalCalculatedWidth * 1000).round();
 
     return SizedBox(
       height: 32,
@@ -1289,23 +1629,23 @@ class _WeightViewState extends State<WeightView> {
               Row(
                 children: [
                   _bmiSegment(
-                    flex: (veryLowFlex * 1000).round(),
+                    flex: veryLowFlex,
                     color: Colors.redAccent.withOpacity(0.6),
                   ),
                   _bmiSegment(
-                    flex: (lowFlex * 1000).round(),
+                    flex: lowFlex,
                     color: Colors.orange.withOpacity(0.7),
                   ),
                   _bmiSegment(
-                    flex: (goodFlex * 1000).round(),
+                    flex: goodFlex,
                     color: Colors.green.withOpacity(0.7),
                   ),
                   _bmiSegment(
-                    flex: (highFlex * 1000).round(),
+                    flex: highFlex,
                     color: Colors.orange.withOpacity(0.7),
                   ),
                   _bmiSegment(
-                    flex: (veryHighFlex * 1000).round(),
+                    flex: veryHighFlex,
                     color: Colors.redAccent.withOpacity(0.6),
                   ),
                 ],

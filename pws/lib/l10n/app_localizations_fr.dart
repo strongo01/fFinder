@@ -2219,7 +2219,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get notificationLunchTitle => 'C\'est l\'heure du déjeuner!';
 
   @override
-  String get notificationLunchBody => 'Rechargez vos batteries pour l\'après-midi — n\'oubliez pas d\'enregistrer votre déjeuner!';
+  String get notificationLunchBody => 'Rechargez vos batteries pour l\'après-midi. N\'oubliez pas d\'enregistrer votre déjeuner!';
 
   @override
   String get notificationDinnerTitle => 'Bon appétit!';
@@ -2271,4 +2271,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get versionUpdated => 'Version mise à jour :';
+
+  @override
+  String get bmiForChildrenTitle => 'Info IMC enfants';
+
+  @override
+  String get bmiForChildrenExplanation => 'L\'IMC des enfants est calculé en fonction de l\'âge, du sexe, de la taille et du poids. Au lieu de limites fixes, cette application utilise des percentiles d\'IMC, ce qui rend l\'évaluation mieux adaptée à la croissance des enfants. De petites différences avec d\'autres tableaux d\'IMC sont normales.';
 }
