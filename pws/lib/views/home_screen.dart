@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _tutorialInitialized = false;
   bool _tutorialHomeAf = false;
 
-  static const String _appVersion = '1.1.5';
+  static const String _appVersion = '1.1.6';
 
   late TutorialCoachMark tutorialCoachMark;
 

@@ -67,9 +67,22 @@ class _WeightViewState extends State<WeightView> {
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-    _loadAbsiReference();
-    _ensureCdcLmsLoaded().catchError((_) {}); // Laad LMS data op de achtergrond
+    _initAsync();
+  }
+
+  Future<void> _initAsync() async {
+    await _loadAbsiReference().catchError((_) {});
+    await _ensureCdcLmsLoaded().catchError((_) {});
+
+    await _loadUserData().catchError((_) {});
+
+    if ((_bmi == null) && _height > 0 && _weight > 0) {
+      _recalculateBMI();
+    }
+
+    await _computeAbsi().catchError((e) {
+      debugPrint('[INIT] _computeAbsi error: $e');
+    });
   }
 
   @override
@@ -305,6 +318,7 @@ class _WeightViewState extends State<WeightView> {
       debugPrint('Age months: ${_ageMonthsFromBirthDate(_userBirthDate)}');
 
       _recalculateBMI();
+      _computeAbsi();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -346,7 +360,23 @@ class _WeightViewState extends State<WeightView> {
   }
 
   Future<void> _computeAbsi() async {
+    debugPrint(
+      '[ABSI] compute start: waist=$_waist, bmi=$_bmi, height=$_height, weight=$_weight',
+    );
+
+    // Als bmi nog null is maar we hebben wel hoogte/gewicht, probeer deze direct te (her)berekenen
+    if (_bmi == null && _height > 0 && _weight > 0) {
+      debugPrint(
+        '[ABSI] bmi is null maar height & weight aanwezig — (her)berekenen',
+      );
+      _recalculateBMI();
+      debugPrint('[ABSI] after recalc bmi=$_bmi');
+    }
+
     if (_waist <= 0 || _bmi == null || _height <= 0) {
+      debugPrint(
+        '[ABSI] onvoldoende data voor ABSI: waist=$_waist, bmi=$_bmi, height=$_height',
+      );
       setState(() {
         _absi = null;
         _absiZ = null;
@@ -358,6 +388,7 @@ class _WeightViewState extends State<WeightView> {
     final heightM = _height / 100.0;
     final waistM = _waist / 100.0;
     final absi = waistM / (pow(_bmi!, 2.0 / 3.0) * pow(heightM, 0.5));
+    debugPrint('[ABSI] computed absi=$absi');
 
     String? rangeKey;
     double? z;
@@ -378,7 +409,6 @@ class _WeightViewState extends State<WeightView> {
           if (data['birthDate'] is String) {
             String birthStr = data['birthDate'] as String;
             try {
-              // try decrypt if encrypted
               final userDEK = await getUserDEKFromRemoteConfig(user.uid);
               if (userDEK != null) {
                 try {
@@ -401,9 +431,9 @@ class _WeightViewState extends State<WeightView> {
               (e) => e['age'] == clampedAge,
             );
             final isFemale = (gender).toLowerCase() == 'vrouw';
-            final data = isFemale ? entry['female'] : entry['male'];
-            final mean = (data['mean'] as num).toDouble();
-            final sd = (data['sd'] as num).toDouble();
+            final ref = isFemale ? entry['female'] : entry['male'];
+            final mean = (ref['mean'] as num).toDouble();
+            final sd = (ref['sd'] as num).toDouble();
             if (sd != 0) {
               z = (absi - mean) / sd;
               if (z <= -1.0) {
@@ -417,17 +447,31 @@ class _WeightViewState extends State<WeightView> {
               } else {
                 rangeKey = 'high';
               }
+              debugPrint('[ABSI] ref mean=$mean sd=$sd z=$z range=$rangeKey');
+            } else {
+              debugPrint('[ABSI] ref sd == 0, geen z-score');
             }
+          } else {
+            debugPrint(
+              '[ABSI] geen geboortedatum in Firestore voor absi referentie',
+            );
           }
         }
+      } else {
+        debugPrint('[ABSI] geen absi reference table geladen');
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[ABSI] fout bij referentie lookup: $e');
+    }
 
     setState(() {
       _absi = absi;
       _absiZ = z;
       _absiRange = rangeKey;
     });
+    debugPrint(
+      '[ABSI] setState done: _absi=$_absi _absiZ=$_absiZ _absiRange=$_absiRange',
+    );
   }
 
   Future<void> _ensureCdcLmsLoaded() async {
@@ -852,6 +896,7 @@ class _WeightViewState extends State<WeightView> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+    _computeAbsi();
     _weightFocusNode.unfocus(); // Verberg het toetsenbord na het opslaan
     _targetWeightFocusNode.unfocus();
     _waistFocusNode.unfocus();
@@ -1121,6 +1166,7 @@ class _WeightViewState extends State<WeightView> {
                                   if (v != null && v > 0) {
                                     setState(() => _weight = v);
                                     _recalculateBMI();
+                                    _computeAbsi();
                                   }
                                 },
                               ),
@@ -1195,6 +1241,7 @@ class _WeightViewState extends State<WeightView> {
                                               .toStringAsFixed(1);
                                         });
                                         _recalculateBMI();
+                                        _computeAbsi();
                                       },
                                     ),
                                   ),
@@ -1795,24 +1842,41 @@ class _WeightViewState extends State<WeightView> {
           confirmDismiss: (direction) async {
             return await showDialog<bool>(
               context: context,
-              builder: (ctx) => AlertDialog(
-                title: Text(AppLocalizations.of(context)!.deleteConfirmTitle),
+              builder: (ctx) {
+              final dialogTheme = Theme.of(ctx);
+              final onSurface = dialogTheme.colorScheme.onSurface;
+              return AlertDialog(
+                backgroundColor: dialogTheme.colorScheme.surface,
+                title: Text(
+                AppLocalizations.of(context)!.deleteConfirmTitle,
+                style: dialogTheme.textTheme.titleMedium
+                  ?.copyWith(color: onSurface),
+                ),
                 content: Text(
-                  AppLocalizations.of(context)!.deleteConfirmContent,
+                AppLocalizations.of(context)!.deleteConfirmContent,
+                style:
+                  dialogTheme.textTheme.bodyMedium?.copyWith(color: onSurface),
                 ),
                 actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: Text(AppLocalizations.of(context)!.cancel),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  style: TextButton.styleFrom(
+                  foregroundColor: dialogTheme.colorScheme.primary,
                   ),
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: Text(
-                      AppLocalizations.of(context)!.deleteConfirmDelete,
-                    ),
+                  child: Text(AppLocalizations.of(context)!.cancel),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  style: TextButton.styleFrom(
+                  foregroundColor: dialogTheme.colorScheme.error,
                   ),
+                  child: Text(
+                  AppLocalizations.of(context)!.deleteConfirmDelete,
+                  ),
+                ),
                 ],
-              ),
+              );
+              },
             );
           },
           onDismissed: (direction) async {
@@ -1876,6 +1940,7 @@ class _WeightViewState extends State<WeightView> {
         _weight = _entries.isNotEmpty ? _entries.last.weight : 0.0;
         _weightController.text = _weight.toStringAsFixed(1);
         _recalculateBMI();
+        _computeAbsi();
       } else {
         _waistEntries.removeWhere(
           (e) => e.date == entry.date && e.weight == entry.weight,
