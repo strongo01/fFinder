@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'home_screen.dart';
 
 import '../l10n/app_localizations.dart';
@@ -32,7 +33,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   bool _isLogin = true; //wisselt tussen inloggen en registereren
   bool _loading = false; //laad icoon
   bool _obscurePassword = true; //wachtwoord met bolletjes
-
+bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
+  final Uri _privacyUri = Uri.parse('https://sites.google.com/view/ffinderreppy/homepage');
   //functie voor inloggen met google
   Future<UserCredential> signInWithGoogle() async {
     if (kIsWeb) {
@@ -698,29 +700,78 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                 if (_loading)
                   const Center(child: CircularProgressIndicator())
                 else
-                  ElevatedButton(
-                    onPressed: _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 2,
-                    ),
-                    child: Text(
-                      _isLogin
-                          ? AppLocalizations.of(context)!.loginButtonLogin
-                          : AppLocalizations.of(context)!.loginButtonRegister,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                  IgnorePointer(
+                    ignoring: !_agreedPrivacy,
+                    child: Opacity(
+                      opacity: _agreedPrivacy ? 1.0 : 0.75,
+                      child: ElevatedButton(
+                        onPressed: _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: Text(
+                          _isLogin
+                              ? AppLocalizations.of(context)!.loginButtonLogin
+                              : AppLocalizations.of(context)!.loginButtonRegister,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ),
 
                 const SizedBox(height: 24),
+
+                Row(
+                 children: [
+                   Checkbox(
+                     value: _agreedPrivacy,
+                     onChanged: (v) => setState(() => _agreedPrivacy = v ?? false),
+                   ),
+                   Expanded(
+                     child: GestureDetector(
+                       onTap: () async {
+                         if (await canLaunchUrl(_privacyUri)) {
+                           await launchUrl(_privacyUri, mode: LaunchMode.externalApplication);
+                         } else {
+                           // fallback: kopieer of toon link
+                           if (!mounted) return;
+                           showDialog(
+                             context: context,
+                             builder: (ctx) => AlertDialog(
+                               title: Text(AppLocalizations.of(context)!.privacyPolicy),
+                               content: SelectableText(_privacyUri.toString()),
+                               actions: [
+                                 TextButton(
+                                   onPressed: () => Navigator.of(ctx).pop(),
+                                   child: Text(AppLocalizations.of(context)!.ok),
+                                 ),
+                               ],
+                             ),
+                           );
+                         }
+                       },
+                       child: Text(
+                         AppLocalizations.of(context)!.privacyAgreement,
+                         style: TextStyle(
+                           decoration: TextDecoration.underline,
+                           color: Theme.of(context).colorScheme.primary,
+                         ),
+                       ),
+                     ),
+                   ),
+                 ],
+               ),
+               const SizedBox(height: 24),
+
 
                 // Scheidingslijn
                 Row(
@@ -743,29 +794,36 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                 ),
                 const SizedBox(height: 24),
 
-                Column(
-                  mainAxisSize: MainAxisSize
-                      .min, //zorgt dat de kolom niet te veel ruimte inneemt
+                                Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    SignInButton(
-                      isDarkMode
-                          ? Buttons.GoogleDark
-                          : Buttons
-                                .Google, //Buttons.Google is een standaard google knop van de package
-                      text: AppLocalizations.of(context)!.loginWithGoogle,
-                      onPressed: _signInWithGoogleHandler,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                    IgnorePointer(
+                      ignoring: !_agreedPrivacy,
+                      child: Opacity(
+                        opacity: _agreedPrivacy ? 1.0 : 0.75,
+                        child: SignInButton(
+                          isDarkMode ? Buttons.GoogleDark : Buttons.Google,
+                          text: AppLocalizations.of(context)!.loginWithGoogle,
+                          onPressed: _signInWithGoogleHandler,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    SignInButton(
-                      Buttons
-                          .GitHub, //Buttons.GitHub is een standaard github knop van de package
-                      text: AppLocalizations.of(context)!.loginWithGitHub,
-                      onPressed: _signInWithGitHubHandler,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                    IgnorePointer(
+                      ignoring: !_agreedPrivacy,
+                      child: Opacity(
+                        opacity: _agreedPrivacy ? 1.0 : 0.75,
+                        child: SignInButton(
+                          Buttons.GitHub,
+                          text: AppLocalizations.of(context)!.loginWithGitHub,
+                          onPressed: _signInWithGitHubHandler,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                       ),
                     ),
                     //knop is alleen zichtbaar voor ios en macos, niet op web
@@ -773,12 +831,18 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                         (defaultTargetPlatform == TargetPlatform.iOS ||
                             defaultTargetPlatform == TargetPlatform.macOS)) ...[
                       const SizedBox(height: 12),
-                      SignInButton(
-                        Buttons.Apple,
-                        text: AppLocalizations.of(context)!.loginWithApple,
-                        onPressed: _signInWithAppleHandler,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                      IgnorePointer(
+                        ignoring: !_agreedPrivacy,
+                        child: Opacity(
+                          opacity: _agreedPrivacy ? 1.0 : 0.75,
+                          child: SignInButton(
+                            Buttons.Apple,
+                            text: AppLocalizations.of(context)!.loginWithApple,
+                            onPressed: _signInWithAppleHandler,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         ),
                       ),
                     ],

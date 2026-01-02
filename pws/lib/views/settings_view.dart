@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'login_register_view.dart';
 import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -2116,121 +2117,170 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 const Divider(),
                                 ListTile(
                                   leading: Icon(
-                                  Icons.system_update_alt,
-                                  color: isDark ? Colors.white : Colors.black54,
+                                    Icons.system_update_alt,
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black54,
                                   ),
                                   tileColor: isDark ? Colors.grey[900] : null,
                                   title: Text(
-                                  AppLocalizations.of(context)!.setAppVersionTitle,
-                                  style: TextStyle(
-                                    color: isDark ? Colors.white : Colors.black,
-                                  ),
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.setAppVersionTitle,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
                                   ),
                                   subtitle: Text(
-                                  AppLocalizations.of(context)!.setAppVersionSubtitle,
-                                  style: TextStyle(
-                                    color: isDark ? Colors.white70 : Colors.black54,
-                                  ),
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.setAppVersionSubtitle,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
                                   ),
                                   onTap: () async {
-                                  final versionController = TextEditingController();
-                                  try {
-                                    final snap = await FirebaseFirestore.instance
-                                      .collection('version')
-                                      .doc('version')
-                                      .get();
-                                    if (snap.exists) {
-                                    final data = snap.data();
-                                    final current = data?['version']?.toString() ?? '';
-                                    versionController.text = current;
+                                    final versionController =
+                                        TextEditingController();
+                                    try {
+                                      final snap = await FirebaseFirestore
+                                          .instance
+                                          .collection('version')
+                                          .doc('version')
+                                          .get();
+                                      if (snap.exists) {
+                                        final data = snap.data();
+                                        final current =
+                                            data?['version']?.toString() ?? '';
+                                        versionController.text = current;
+                                      }
+                                    } catch (e) {
+                                      // ignore load error; dialog will open with empty field
                                     }
-                                  } catch (e) {
-                                    // ignore load error; dialog will open with empty field
-                                  }
 
-                                  final confirmed = await showDialog<bool>(
-                                    context: context,
-                                    builder: (ctx) {
-                                    return AlertDialog(
-                                      backgroundColor: isDark ? Colors.black : null,
-                                      title: Text(
-                                      AppLocalizations.of(context)!.setAppVersionTitle,
-                                      style: TextStyle(
-                                        color: isDark ? Colors.white : Colors.black,
-                                      ),
-                                      ),
-                                      content: TextField(
-                                      controller: versionController,
-                                      cursorColor: isDark ? Colors.white : Colors.black,
-                                      style: TextStyle(
-                                        color: isDark ? Colors.white : Colors.black,
-                                      ),
-                                      decoration: InputDecoration(
-                                        labelText: AppLocalizations.of(context)!.versionLabel,
-                                        labelStyle: TextStyle(
-                                        color: isDark ? Colors.white70 : Colors.black54,
-                                        ),
-                                        filled: true,
-                                        fillColor: isDark ? Colors.white10 : null,
-                                        enabledBorder: OutlineInputBorder(
-                                        borderSide: BorderSide(
-                                          color: isDark ? Colors.white24 : Colors.grey,
-                                        ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                        borderSide: BorderSide(
-                                          color: isDark ? Colors.white : Theme.of(context).colorScheme.primary,
-                                          width: 2,
-                                        ),
-                                        ),
-                                      ),
-                                      ),
-                                      actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.of(ctx).pop(false),
-                                        child: Text(
-                                        AppLocalizations.of(context)!.cancelButtonLabel,
-                                        style: TextStyle(
-                                          color: isDark ? Colors.white70 : null,
-                                        ),
-                                        ),
-                                      ),
-                                      ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                        backgroundColor: isDark ? Colors.white10 : null,
-                                        foregroundColor: isDark ? Colors.white : Colors.white,
-                                        ),
-                                        onPressed: () => Navigator.of(ctx).pop(true),
-                                        child: Text(
-                                        AppLocalizations.of(context)!.saveSettings,
-                                        ),
-                                      ),
-                                      ],
+                                    final confirmed = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) {
+                                        return AlertDialog(
+                                          backgroundColor: isDark
+                                              ? Colors.black
+                                              : null,
+                                          title: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.setAppVersionTitle,
+                                            style: TextStyle(
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : Colors.black,
+                                            ),
+                                          ),
+                                          content: TextField(
+                                            controller: versionController,
+                                            cursorColor: isDark
+                                                ? Colors.white
+                                                : Colors.black,
+                                            style: TextStyle(
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : Colors.black,
+                                            ),
+                                            decoration: InputDecoration(
+                                              labelText: AppLocalizations.of(
+                                                context,
+                                              )!.versionLabel,
+                                              labelStyle: TextStyle(
+                                                color: isDark
+                                                    ? Colors.white70
+                                                    : Colors.black54,
+                                              ),
+                                              filled: true,
+                                              fillColor: isDark
+                                                  ? Colors.white10
+                                                  : null,
+                                              enabledBorder: OutlineInputBorder(
+                                                borderSide: BorderSide(
+                                                  color: isDark
+                                                      ? Colors.white24
+                                                      : Colors.grey,
+                                                ),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderSide: BorderSide(
+                                                  color: isDark
+                                                      ? Colors.white
+                                                      : Theme.of(
+                                                          context,
+                                                        ).colorScheme.primary,
+                                                  width: 2,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(false),
+                                              child: Text(
+                                                AppLocalizations.of(
+                                                  context,
+                                                )!.cancelButtonLabel,
+                                                style: TextStyle(
+                                                  color: isDark
+                                                      ? Colors.white70
+                                                      : null,
+                                                ),
+                                              ),
+                                            ),
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: isDark
+                                                    ? Colors.white10
+                                                    : null,
+                                                foregroundColor: isDark
+                                                    ? Colors.white
+                                                    : Colors.white,
+                                              ),
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(true),
+                                              child: Text(
+                                                AppLocalizations.of(
+                                                  context,
+                                                )!.saveSettings,
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
                                     );
-                                    },
-                                  );
 
-                                  if (confirmed == true) {
-                                    final ver = versionController.text.trim();
-                                    if (ver.isNotEmpty) {
-                                    await FirebaseFirestore.instance
-                                      .collection('version')
-                                      .doc('version')
-                                      .set({
-                                        'version': ver,
-                                      }, SetOptions(merge: true));
+                                    if (confirmed == true) {
+                                      final ver = versionController.text.trim();
+                                      if (ver.isNotEmpty) {
+                                        await FirebaseFirestore.instance
+                                            .collection('version')
+                                            .doc('version')
+                                            .set({
+                                              'version': ver,
+                                            }, SetOptions(merge: true));
 
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                        '${AppLocalizations.of(context)!.versionUpdated} $ver',
-                                        ),
-                                      ),
-                                      );
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                '${AppLocalizations.of(context)!.versionUpdated} $ver',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
                                     }
-                                    }
-                                  }
                                   },
                                 ),
 
@@ -2317,7 +2367,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
 
                       const SizedBox(height: 12),
-
+                      
+                      OutlinedButton.icon(
+                        icon: Icon(
+                          Icons.privacy_tip,
+                          color: colorScheme.primary,
+                        ),
+                        label: Text(
+                          AppLocalizations.of(context)!.privacyPolicy,
+                          style: TextStyle(color: colorScheme.primary),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: colorScheme.primary),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final uri = Uri.parse(
+                            'https://sites.google.com/view/ffinderreppy/homepage',
+                          );
+                          try {
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              );
+                            } else {
+                              // Fallback: toon dialog met link
+                              if (!mounted) return;
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text(
+                                    AppLocalizations.of(context)!.privacyPolicy,
+                                  ),
+                                  content: SelectableText(uri.toString()),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(ctx).pop(),
+                                      child: Text(
+                                        AppLocalizations.of(context)!.close,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Kan link niet openen: $e'),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
                       OutlinedButton.icon(
                         icon: Icon(
                           Icons.info_outline,

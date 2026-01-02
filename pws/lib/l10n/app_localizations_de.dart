@@ -2277,4 +2277,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bmiForChildrenExplanation => 'Der BMI von Kindern wird basierend auf Alter, Geschlecht, Größe und Gewicht berechnet. Anstelle fester Grenzen verwendet diese App BMI-Perzentile, sodass die Bewertung besser zum Wachstum der Kinder passt. Kleine Unterschiede zu anderen BMI-Tabellen sind normal.';
+
+  @override
+  String get privacyPolicy => 'Klicken Sie hier, um die Datenschutzerklärung anzusehen';
+
+  @override
+  String get privacyAgreement => 'Ich stimme der Datenschutzerklärung zu';
 }

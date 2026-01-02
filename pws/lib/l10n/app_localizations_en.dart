@@ -2277,4 +2277,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bmiForChildrenExplanation => 'The BMI for children is calculated based on age, sex, height, and weight. Instead of fixed cutoffs, this app uses BMI percentiles, making the assessment better suited to children\'s growth. Small differences with other BMI charts are normal.';
+
+  @override
+  String get privacyPolicy => 'Click to view the privacy policy';
+
+  @override
+  String get privacyAgreement => 'I agree to the privacy policy';
 }

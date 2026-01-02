@@ -4634,6 +4634,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The BMI for children is calculated based on age, sex, height, and weight. Instead of fixed cutoffs, this app uses BMI percentiles, making the assessment better suited to children\'s growth. Small differences with other BMI charts are normal.'**
   String get bmiForChildrenExplanation;
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Click to view the privacy policy'**
+  String get privacyPolicy;
+
+  /// No description provided for @privacyAgreement.
+  ///
+  /// In en, this message translates to:
+  /// **'I agree to the privacy policy'**
+  String get privacyAgreement;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

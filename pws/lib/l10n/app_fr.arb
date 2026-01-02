@@ -759,6 +759,10 @@
 "versionLabel": "Version",
 "versionUpdated": "Version mise à jour :",
 "bmiForChildrenTitle": "Info IMC enfants",
-"bmiForChildrenExplanation": "L'IMC des enfants est calculé en fonction de l'âge, du sexe, de la taille et du poids. Au lieu de limites fixes, cette application utilise des percentiles d'IMC, ce qui rend l'évaluation mieux adaptée à la croissance des enfants. De petites différences avec d'autres tableaux d'IMC sont normales."
+"bmiForChildrenExplanation": "L'IMC des enfants est calculé en fonction de l'âge, du sexe, de la taille et du poids. Au lieu de limites fixes, cette application utilise des percentiles d'IMC, ce qui rend l'évaluation mieux adaptée à la croissance des enfants. De petites différences avec d'autres tableaux d'IMC sont normales.",
+"privacyPolicy": "Cliquez pour consulter la politique de confidentialité",
+"privacyAgreement": "J'accepte la politique de confidentialité"
+
+
 
 }

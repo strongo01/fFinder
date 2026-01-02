@@ -2277,4 +2277,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bmiForChildrenExplanation => 'L\'IMC des enfants est calculé en fonction de l\'âge, du sexe, de la taille et du poids. Au lieu de limites fixes, cette application utilise des percentiles d\'IMC, ce qui rend l\'évaluation mieux adaptée à la croissance des enfants. De petites différences avec d\'autres tableaux d\'IMC sont normales.';
+
+  @override
+  String get privacyPolicy => 'Cliquez pour consulter la politique de confidentialité';
+
+  @override
+  String get privacyAgreement => 'J\'accepte la politique de confidentialité';
 }

@@ -2277,4 +2277,10 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get bmiForChildrenExplanation => 'De BMI voor kinderen wordt berekend op basis van leeftijd, geslacht, lengte en gewicht. In plaats van vaste grenzen gebruikt deze app BMI-percentielen, zodat de beoordeling beter aansluit bij de groei van kinderen. Kleine verschillen met andere BMI-tabellen zijn normaal.';
+
+  @override
+  String get privacyPolicy => 'Klik voor het privacybeleid';
+
+  @override
+  String get privacyAgreement => 'Ik ga akkoord met het privacybeleid';
 }

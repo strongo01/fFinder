@@ -759,6 +759,10 @@
 "versionLabel": "Version",
 "versionUpdated": "Version aktualisiert:",
 "bmiForChildrenTitle": "Kinder-BMI Info",
-"bmiForChildrenExplanation": "Der BMI von Kindern wird basierend auf Alter, Geschlecht, Größe und Gewicht berechnet. Anstelle fester Grenzen verwendet diese App BMI-Perzentile, sodass die Bewertung besser zum Wachstum der Kinder passt. Kleine Unterschiede zu anderen BMI-Tabellen sind normal."
+"bmiForChildrenExplanation": "Der BMI von Kindern wird basierend auf Alter, Geschlecht, Größe und Gewicht berechnet. Anstelle fester Grenzen verwendet diese App BMI-Perzentile, sodass die Bewertung besser zum Wachstum der Kinder passt. Kleine Unterschiede zu anderen BMI-Tabellen sind normal.",
+"privacyPolicy": "Klicken Sie hier, um die Datenschutzerklärung anzusehen",
+"privacyAgreement": "Ich stimme der Datenschutzerklärung zu"
+
+
 
 }

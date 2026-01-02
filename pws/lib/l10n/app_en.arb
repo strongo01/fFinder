@@ -758,7 +758,11 @@
 "versionLabel": "Version",
 "versionUpdated": "Version updated:",
 "bmiForChildrenTitle": "Child BMI Info",
-"bmiForChildrenExplanation": "The BMI for children is calculated based on age, sex, height, and weight. Instead of fixed cutoffs, this app uses BMI percentiles, making the assessment better suited to children's growth. Small differences with other BMI charts are normal."
+"bmiForChildrenExplanation": "The BMI for children is calculated based on age, sex, height, and weight. Instead of fixed cutoffs, this app uses BMI percentiles, making the assessment better suited to children's growth. Small differences with other BMI charts are normal.",
+"privacyPolicy": "Click to view the privacy policy",
+"privacyAgreement": "I agree to the privacy policy"
+
+
 
   
 }

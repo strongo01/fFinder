@@ -758,7 +758,10 @@
 "versionLabel": "Versie",
 "versionUpdated": "Versie bijgewerkt:",
 "bmiForChildrenTitle": "Kinder-BMI uitleg",
-"bmiForChildrenExplanation": "De BMI voor kinderen wordt berekend op basis van leeftijd, geslacht, lengte en gewicht. In plaats van vaste grenzen gebruikt deze app BMI-percentielen, zodat de beoordeling beter aansluit bij de groei van kinderen. Kleine verschillen met andere BMI-tabellen zijn normaal."
+"bmiForChildrenExplanation": "De BMI voor kinderen wordt berekend op basis van leeftijd, geslacht, lengte en gewicht. In plaats van vaste grenzen gebruikt deze app BMI-percentielen, zodat de beoordeling beter aansluit bij de groei van kinderen. Kleine verschillen met andere BMI-tabellen zijn normaal.",
+"privacyPolicy": "Klik voor het privacybeleid",
+"privacyAgreement": "Ik ga akkoord met het privacybeleid"
+
 
 
 }
