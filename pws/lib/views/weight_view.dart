@@ -2141,10 +2141,11 @@ class _WeightViewState extends State<WeightView> {
 
     final sorted = recent.length >= minRecentPoints ? recent : allSorted;
 
-    final lastWeight = sorted.last.weight;
+    final lastEntry = sorted.last;
+    final lastWeight = lastEntry.weight;
 
     // Op streefgewicht?
-    if ((lastWeight - _targetWeight!).abs() < 0.01) {
+    if ((lastWeight - _targetWeight!).abs() < 0.1) {
       return Text(
         AppLocalizations.of(context)!.estimateOnTarget,
         style: theme.textTheme.bodyMedium?.copyWith(
@@ -2226,10 +2227,13 @@ class _WeightViewState extends State<WeightView> {
       );
     }
 
-    final remaining = _targetWeight! - lastWeight;
+    // Gebruik de trendwaarde op het laatste moment voor de projectie
+    // Dit is stabieler dan de 'lastWeight' die een uitschieter kan zijn.
+    final currentTrendWeight = intercept + slope * lastX;
+    final remaining = _targetWeight! - currentTrendWeight;
 
     // Verkeerde richting?
-    if ((remaining > 0 && slope <= 0) || (remaining < 0 && slope >= 0)) {
+    if ((remaining < 0 && slope >= 0) || (remaining > 0 && slope <= 0)) {
       return Text(
         AppLocalizations.of(context)!.estimateWrongDirection,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
@@ -2266,7 +2270,8 @@ class _WeightViewState extends State<WeightView> {
     }
     if (timeStr.isEmpty) timeStr = 'minder dan een dag';
 
-    final targetDate = DateTime.now().add(Duration(days: totalDays));
+    // De datum moet berekend worden vanaf de laatste meting, niet vanaf nu.
+    final targetDate = lastEntry.date.add(Duration(days: totalDays));
     final dateStr = '${targetDate.day}-${targetDate.month}-${targetDate.year}';
 
     // Onzekerheidstekst
