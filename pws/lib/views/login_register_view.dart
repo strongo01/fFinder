@@ -49,13 +49,6 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
     try {
       final googleSignIn = GoogleSignIn.instance;
 
-      // Optioneel: initialiseer met clientId/serverClientId
-      // Indien je google-services.json / GoogleService-Info.plist correct hebt,
-      // is dit vaak niet nodig. Als je problemen hebt met idToken op Android,
-      // voeg hier je web-client-id toe (default_web_client_id).
-      // await googleSignIn.initialize(serverClientId: '<YOUR_WEB_CLIENT_ID>');
-      // (zet die await in je init logic of voor je de eerste keer signIn aanroept)
-
       final googleUser = await googleSignIn.authenticate();
 
       final googleAuth = await googleUser.authentication;

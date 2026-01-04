@@ -1843,39 +1843,41 @@ class _WeightViewState extends State<WeightView> {
             return await showDialog<bool>(
               context: context,
               builder: (ctx) {
-              final dialogTheme = Theme.of(ctx);
-              final onSurface = dialogTheme.colorScheme.onSurface;
-              return AlertDialog(
-                backgroundColor: dialogTheme.colorScheme.surface,
-                title: Text(
-                AppLocalizations.of(context)!.deleteConfirmTitle,
-                style: dialogTheme.textTheme.titleMedium
-                  ?.copyWith(color: onSurface),
-                ),
-                content: Text(
-                AppLocalizations.of(context)!.deleteConfirmContent,
-                style:
-                  dialogTheme.textTheme.bodyMedium?.copyWith(color: onSurface),
-                ),
-                actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  style: TextButton.styleFrom(
-                  foregroundColor: dialogTheme.colorScheme.primary,
+                final dialogTheme = Theme.of(ctx);
+                final onSurface = dialogTheme.colorScheme.onSurface;
+                return AlertDialog(
+                  backgroundColor: dialogTheme.colorScheme.surface,
+                  title: Text(
+                    AppLocalizations.of(context)!.deleteConfirmTitle,
+                    style: dialogTheme.textTheme.titleMedium?.copyWith(
+                      color: onSurface,
+                    ),
                   ),
-                  child: Text(AppLocalizations.of(context)!.cancel),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  style: TextButton.styleFrom(
-                  foregroundColor: dialogTheme.colorScheme.error,
+                  content: Text(
+                    AppLocalizations.of(context)!.deleteConfirmContent,
+                    style: dialogTheme.textTheme.bodyMedium?.copyWith(
+                      color: onSurface,
+                    ),
                   ),
-                  child: Text(
-                  AppLocalizations.of(context)!.deleteConfirmDelete,
-                  ),
-                ),
-                ],
-              );
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      style: TextButton.styleFrom(
+                        foregroundColor: dialogTheme.colorScheme.primary,
+                      ),
+                      child: Text(AppLocalizations.of(context)!.cancel),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      style: TextButton.styleFrom(
+                        foregroundColor: dialogTheme.colorScheme.error,
+                      ),
+                      child: Text(
+                        AppLocalizations.of(context)!.deleteConfirmDelete,
+                      ),
+                    ),
+                  ],
+                );
               },
             );
           },

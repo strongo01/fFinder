@@ -53,36 +53,36 @@ class _AddSportPageState extends State<AddSportPage> {
   ];
 
   Future<void> _updateCaloriesLive() async {
-    if (_caloriesManuallyEdited) return;
-    if (_selectedSport == null) return;
-    if (_durationController.text.isEmpty) return;
+  if (_caloriesManuallyEdited) return;
+  if (_selectedSport == null) return;
+  if (_durationController.text.isEmpty) return;
 
-    final duration = double.tryParse(_durationController.text);
-    if (duration == null || duration <= 0) return;
+  final duration = double.tryParse(_durationController.text);
+  if (duration == null || duration <= 0) return;
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
 
-    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
-    if (userDEK == null) return;
+  final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+  if (userDEK == null) return;
 
-    try {
-      final weightKg = await _getDecryptedWeight(user.uid, userDEK);
+  try {
+    final weightKg = await _getDecryptedWeight(user.uid, userDEK);
 
-      final met = (_selectedSport == 'Overig' || _selectedSport == 'Other')
-          ? _overigIntensityMET
-          : (_metValues[_selectedSport] ?? _defaultOverigMET);
+    final met = (_selectedSport == 'Overig' || _selectedSport == 'Other')
+        ? _overigIntensityMET
+        : (_metValues[_selectedSport] ?? _defaultOverigMET);
 
-      final calories = met * weightKg * (duration / 60);
+    final calories = ((met * 3.5 * weightKg) / 200) * duration;
 
-      // 👇 live invullen
-      setState(() {
-        _caloriesController.text = calories.toStringAsFixed(0);
-      });
-    } catch (_) {
-      // stil falen (geen UI-spam)
-    }
+    // 👇 live invullen
+    setState(() {
+      _caloriesController.text = calories.toStringAsFixed(0);
+    });
+  } catch (_) {
   }
+}
+
 
   Future<double> _getDecryptedWeight(String uid, SecretKey userDEK) async {
     final doc = await FirebaseFirestore.instance
