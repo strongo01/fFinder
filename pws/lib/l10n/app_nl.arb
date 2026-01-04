@@ -575,7 +575,7 @@
   "tutorial_additems_text": "Gebruik deze knop om snel maaltijden, drankjes of sport toe te voegen.",
   "tutorial_meals_title": "Maaltijden",
   "tutorial_meals_text": "Bekijk je maaltijden en wijzig ze door erop te tikken.",
-  "updateAvailable": "Er is een nieuwe update uit! Update de app via testFlight voor Apple of via Google Play Store voor Android.",
+  "updateAvailable": "Er is een nieuwe update uit!",
   "announcement_default": "Mededeling",
   "water_goal_dialog_title": "Waterdoel instellen",
   "water_goal_dialog_label": "Doel (ml)",
@@ -761,13 +761,42 @@
 "bmiForChildrenExplanation": "De BMI voor kinderen wordt berekend op basis van leeftijd, geslacht, lengte en gewicht. In plaats van vaste grenzen gebruikt deze app BMI-percentielen, zodat de beoordeling beter aansluit bij de groei van kinderen. Kleine verschillen met andere BMI-tabellen zijn normaal.",
 "privacyPolicy": "Klik voor het privacybeleid",
 "privacyAgreement": "Ik ga akkoord met het privacybeleid",
+  "sourcesName1": "Caloriebehoefte Formule",
+  "sourcesExplain1": "Dagelijkse energie- en caloriebehoefte",
+  "sourcesAttribution1": "Mifflin-St Jeor formule, gebruikt om BMR en TDEE te schatten.",
+  "sourcesUrl1": "https://www.healthcarechain.nl/caloriebehoefte-calculator",
+
+  "sourcesName2": "Eiwit, vet en koolhydraat behoefte",
+  "sourcesExplain2": "Macronutriëntenbehoefte (koolhydraten, vetten, eiwitten)",
+  "sourcesAttribution2": "Richtlijnen voor energie uit macronutriënten volgens Nederlandse voedingsrichtlijnen.",
+  "sourcesUrl2": "https://www.ru.nl/sites/default/files/2023-05/1a_basisvoeding_hoofddocument_mei_2021%20%282%29.pdf",
+
+  "sourcesName3": "BMI",
+  "sourcesExplain3": "Indeling van ondergewicht, gezond gewicht, overgewicht en obesitas.",
+  "sourcesAttribution3": "WHO & CDC (wereldwijde standaard voor BMI-classificatie)",
+  "sourcesUrl3": "https://apps.who.int/nutrition/landscape/help.aspx?helpid=420&menu=0",
+
+  "sourcesName4": "ABSI",
+  "sourcesExplain4": "Beter risico-indicator dan BMI, gebaseerd op tailleomtrek, gewicht en lengte.",
+  "sourcesAttribution4": "Artikel en informatie over ABSI concept (Engels)",
+  "sourcesUrl4": "https://en.wikipedia.org/wiki/Body_shape_index",
+  
+  "sourcesName5": "Calorieverbruik bij sport",
+  "sourcesExplain5": "Geschat energieverbruik tijdens fysieke activiteit op basis van MET-waarden, gewicht en duur.",
+  "sourcesAttribution5": "Compendium of Physical Activities, Ainsworth BE et al., 2011",
+  "sourcesUrl5": "https://intuitionlabs.ai/software/cardiac-pulmonary-rehabilitation/metabolic-equivalent-met-calculation/mets-calculator",
+
   "exactAlarmsTitle": "Nauwkeurige alarmen",
 
   "exactAlarmsMessage": "Om maaltijdherinneringen precies op het gekozen tijdstip te laten verschijnen, moet je \"exacte alarmen\" inschakelen in de Android-instellingen. Wil je deze instellingen nu openen?",
 
   "exactAlarmsNotNow": "Niet nu",
 
-  "exactAlarmsOpenSettings": "Open instellingen"
+  "exactAlarmsOpenSettings": "Open instellingen",
+  "disclaimerText": "Deze app biedt algemene informatie over voeding, hydratatie, lichaamsbeweging en gewicht, gebaseerd op publiek beschikbare richtlijnen en wetenschappelijke bronnen. De informatie en berekeningen in deze app zijn uitsluitend bedoeld voor informatieve doeleinden en vormen geen medisch advies. Deze app is niet bedoeld om professioneel medisch advies, diagnose of behandeling te vervangen. Raadpleeg bij gezondheidsklachten, vragen of twijfels altijd een arts of andere gekwalificeerde zorgverlener. Het gebruik van deze app en de interpretatie van de weergegeven gegevens is volledig de verantwoordelijkheid van de gebruiker.",
+  "disclaimer": "Disclaimer",
+  "cannotOpenLink": "Kan link niet openen.",
+  "bronnen": "Bronnen"
 
 
 }

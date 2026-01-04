@@ -33,8 +33,10 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   bool _isLogin = true; //wisselt tussen inloggen en registereren
   bool _loading = false; //laad icoon
   bool _obscurePassword = true; //wachtwoord met bolletjes
-bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
-  final Uri _privacyUri = Uri.parse('https://sites.google.com/view/ffinderreppy/homepage');
+  bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
+  final Uri _privacyUri = Uri.parse(
+    'https://sites.google.com/view/ffinderreppy/homepage',
+  );
   //functie voor inloggen met google
   Future<UserCredential> signInWithGoogle() async {
     if (kIsWeb) {
@@ -99,8 +101,8 @@ bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
           message: AppLocalizations.of(context)!.googleSignInCancelledMessage,
         );
       }
-        debugPrint('Google sign-in error: $e');
-  debugPrintStack(stackTrace: s);
+      debugPrint('Google sign-in error: $e');
+      debugPrintStack(stackTrace: s);
       rethrow;
     }
   }
@@ -149,15 +151,15 @@ bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e, s) {
-  debugPrint('Handler error: $e');
-  debugPrintStack(stackTrace: s);
-  if (!mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(AppLocalizations.of(context)!.unknownErrorEnglish),
-    ),
-  );
-} finally {
+      debugPrint('Handler error: $e');
+      debugPrintStack(stackTrace: s);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.unknownErrorEnglish),
+        ),
+      );
+    } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -209,9 +211,15 @@ bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
     final nonce = sha256ofString(rawNonce);
     // vraag om apple id credential
     final appleCredential = await SignInWithApple.getAppleIDCredential(
-      scopes: [AppleIDAuthorizationScopes.email],
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
       nonce: nonce,
     );
+
+    debugPrint('AppleSignIn: appleCredential identityToken: ${appleCredential.identityToken != null}');
+    debugPrint('AppleSignIn: givenName=${appleCredential.givenName}, familyName=${appleCredential.familyName}, email=${appleCredential.email}');
 
     if (appleCredential.identityToken == null) {
       //als er geen identity token is
@@ -227,7 +235,34 @@ bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
       accessToken: appleCredential.authorizationCode,
     );
     //logt in met firebase
-    return await FirebaseAuth.instance.signInWithCredential(oauthCredential);
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(
+      oauthCredential,
+    );
+
+    // Log wat Firebase teruggeeft
+    final userBefore = FirebaseAuth.instance.currentUser;
+    debugPrint('AppleSignIn: currentUser before update: uid=${userBefore?.uid}, displayName=${userBefore?.displayName}');
+
+    // Als Apple returned givenName, bewaar die als displayName in Firebase Auth
+    try {
+      final given = appleCredential.givenName;
+      if (userBefore != null &&
+          given != null &&
+          given.trim().isNotEmpty &&
+          (userBefore.displayName == null || userBefore.displayName!.trim().isEmpty)) {
+        debugPrint('AppleSignIn: updating displayName to: $given');
+        await userBefore.updateDisplayName(given.trim());
+        await userBefore.reload();
+      }
+    } catch (e) {
+      debugPrint('Apple sign-in: kon displayName niet updaten: $e');
+    }
+
+    final userAfter = FirebaseAuth.instance.currentUser;
+    debugPrint('AppleSignIn: currentUser after update: uid=${userAfter?.uid}, displayName=${userAfter?.displayName}');
+    debugPrint('AppleSignIn: providerData=${userAfter?.providerData.map((p) => "${p.providerId}:${p.displayName}").toList()}');
+
+    return userCredential;
   }
 
   //de handler voor apple sign in
@@ -235,21 +270,43 @@ bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
     setState(() => _loading = true); //start met laden
     try {
       final userCredential = await signInWithApple();
-      //sla de gebruiker op in de firestore als die nog niet bestaat
-      final user = userCredential.user;
+
+      // haal actuele user (na eventuele updateDisplayName)
+      final user = FirebaseAuth.instance.currentUser;
+      debugPrint('AppleSignInHandler: userCredential.user uid=${userCredential.user?.uid}, displayName=${userCredential.user?.displayName}');
+      debugPrint('AppleSignInHandler: currentUser uid=${user?.uid}, displayName=${user?.displayName}');
+
       if (user != null) {
-        final usersRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid);
+        final usersRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
         final doc = await usersRef.get();
         if (!doc.exists) {
+          // probeer meerdere bronnen voor voornaam
+          String? firstName;
+          if (user.displayName != null && user.displayName!.trim().isNotEmpty) {
+            firstName = user.displayName!.trim().split(' ').first;
+          } else {
+            for (final p in user.providerData) {
+              if (p.displayName != null && p.displayName!.trim().isNotEmpty) {
+                firstName = p.displayName!.trim().split(' ').first;
+                break;
+              }
+            }
+          }
+
+          debugPrint('AppleSignInHandler: resolved firstName=$firstName');
+
           await usersRef.set({
             'uid': user.uid,
             'email': user.email,
-            'name': user.displayName,
+            'firstName': firstName,
             'createdAt': FieldValue.serverTimestamp(),
           });
+          debugPrint('AppleSignInHandler: created user doc for ${user.uid}');
+        } else {
+          debugPrint('AppleSignInHandler: user doc already exists for ${user.uid}, data=${doc.data()}');
         }
+      } else {
+        debugPrint('AppleSignInHandler: user is null after signInWithApple');
       }
 
       if (!mounted) return; //check of de widget nog bestaat
@@ -718,7 +775,9 @@ bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
                         child: Text(
                           _isLogin
                               ? AppLocalizations.of(context)!.loginButtonLogin
-                              : AppLocalizations.of(context)!.loginButtonRegister,
+                              : AppLocalizations.of(
+                                  context,
+                                )!.loginButtonRegister,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -731,47 +790,54 @@ bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
                 const SizedBox(height: 24),
 
                 Row(
-                 children: [
-                   Checkbox(
-                     value: _agreedPrivacy,
-                     onChanged: (v) => setState(() => _agreedPrivacy = v ?? false),
-                   ),
-                   Expanded(
-                     child: GestureDetector(
-                       onTap: () async {
-                         if (await canLaunchUrl(_privacyUri)) {
-                           await launchUrl(_privacyUri, mode: LaunchMode.externalApplication);
-                         } else {
-                           // fallback: kopieer of toon link
-                           if (!mounted) return;
-                           showDialog(
-                             context: context,
-                             builder: (ctx) => AlertDialog(
-                               title: Text(AppLocalizations.of(context)!.privacyPolicy),
-                               content: SelectableText(_privacyUri.toString()),
-                               actions: [
-                                 TextButton(
-                                   onPressed: () => Navigator.of(ctx).pop(),
-                                   child: Text(AppLocalizations.of(context)!.ok),
-                                 ),
-                               ],
-                             ),
-                           );
-                         }
-                       },
-                       child: Text(
-                         AppLocalizations.of(context)!.privacyAgreement,
-                         style: TextStyle(
-                           decoration: TextDecoration.underline,
-                           color: Theme.of(context).colorScheme.primary,
-                         ),
-                       ),
-                     ),
-                   ),
-                 ],
-               ),
-               const SizedBox(height: 24),
-
+                  children: [
+                    Checkbox(
+                      value: _agreedPrivacy,
+                      onChanged: (v) =>
+                          setState(() => _agreedPrivacy = v ?? false),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () async {
+                          if (await canLaunchUrl(_privacyUri)) {
+                            await launchUrl(
+                              _privacyUri,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          } else {
+                            // fallback: kopieer of toon link
+                            if (!mounted) return;
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: Text(
+                                  AppLocalizations.of(context)!.privacyPolicy,
+                                ),
+                                content: SelectableText(_privacyUri.toString()),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                    child: Text(
+                                      AppLocalizations.of(context)!.ok,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        },
+                        child: Text(
+                          AppLocalizations.of(context)!.privacyAgreement,
+                          style: TextStyle(
+                            decoration: TextDecoration.underline,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
 
                 // Scheidingslijn
                 Row(
@@ -794,7 +860,7 @@ bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
                 ),
                 const SizedBox(height: 24),
 
-                                Column(
+                Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IgnorePointer(

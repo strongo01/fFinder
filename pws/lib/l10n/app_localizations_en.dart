@@ -1646,7 +1646,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tutorial_meals_text => 'View your meals and edit them by tapping on them.';
 
   @override
-  String get updateAvailable => 'A new update is available! Update the app via TestFlight for Apple or the Google Play Store for Android.';
+  String get updateAvailable => 'A new update is available!';
 
   @override
   String get announcement_default => 'Announcement';
@@ -2285,6 +2285,66 @@ class AppLocalizationsEn extends AppLocalizations {
   String get privacyAgreement => 'I agree to the privacy policy';
 
   @override
+  String get sourcesName1 => 'Calorie requirement formula';
+
+  @override
+  String get sourcesExplain1 => 'Daily energy and calorie requirements';
+
+  @override
+  String get sourcesAttribution1 => 'Mifflin-St Jeor formula, commonly used to estimate BMR and TDEE.';
+
+  @override
+  String get sourcesUrl1 => 'https://www.healthcarechain.nl/caloriebehoefte-calculator';
+
+  @override
+  String get sourcesName2 => 'Protein, fat and carbohydrate requirements';
+
+  @override
+  String get sourcesExplain2 => 'Macronutrient requirements (carbs, fats, proteins)';
+
+  @override
+  String get sourcesAttribution2 => 'Guidelines for energy from macronutrients according to Dutch nutrition guidance.';
+
+  @override
+  String get sourcesUrl2 => 'https://www.ru.nl/sites/default/files/2023-05/1a_basisvoeding_hoofddocument_mei_2021%20%282%29.pdf';
+
+  @override
+  String get sourcesName3 => 'BMI';
+
+  @override
+  String get sourcesExplain3 => 'Classification of underweight, healthy weight, overweight and obesity.';
+
+  @override
+  String get sourcesAttribution3 => 'WHO & CDC (global standard for BMI classification)';
+
+  @override
+  String get sourcesUrl3 => 'https://apps.who.int/nutrition/landscape/help.aspx?helpid=420&menu=0';
+
+  @override
+  String get sourcesName4 => 'ABSI';
+
+  @override
+  String get sourcesExplain4 => 'A risk indicator based on waist circumference, weight and height.';
+
+  @override
+  String get sourcesAttribution4 => 'Article and info about the ABSI concept (English)';
+
+  @override
+  String get sourcesUrl4 => 'https://en.wikipedia.org/wiki/Body_shape_index';
+
+  @override
+  String get sourcesName5 => 'Calories Burned During Exercise';
+
+  @override
+  String get sourcesExplain5 => 'Estimated energy expenditure during physical activity based on MET values, weight, and duration.';
+
+  @override
+  String get sourcesAttribution5 => 'Compendium of Physical Activities, Ainsworth BE et al., 2011';
+
+  @override
+  String get sourcesUrl5 => 'https://intuitionlabs.ai/software/cardiac-pulmonary-rehabilitation/metabolic-equivalent-met-calculation/mets-calculator';
+
+  @override
   String get exactAlarmsTitle => 'Precise alarms';
 
   @override
@@ -2295,4 +2355,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exactAlarmsOpenSettings => 'Open settings';
+
+  @override
+  String get disclaimerText => 'This app provides general information about nutrition, hydration, physical activity, and weight based on publicly available guidelines and scientific sources. The information and calculations in this app are for informational purposes only and do not constitute medical advice. This app is not intended to replace professional medical advice, diagnosis, or treatment. Always consult a physician or other qualified healthcare provider if you have health concerns, questions, or doubts. Use of this app and interpretation of the displayed data are entirely the responsibility of the user.';
+
+  @override
+  String get disclaimer => 'Disclaimer';
+
+  @override
+  String get cannotOpenLink => 'Cannot open link.';
+
+  @override
+  String get bronnen => 'Sources';
 }

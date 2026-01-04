@@ -112,6 +112,109 @@ class _OnboardingViewState extends State<OnboardingView> {
       _scheduleRangeUpdate,
     ); // update range bij veranderen lengte
     _weightController.addListener(_scheduleRangeUpdate);
+
+    _maybeSkipFirstNameIfApple();
+  }
+
+Future<void> _maybeSkipFirstNameIfApple() async {
+    try {
+      final initialUser = FirebaseAuth.instance.currentUser;
+      if (initialUser == null) return;
+
+      final isApple =
+          initialUser.providerData.any((p) => p.providerId == 'apple.com');
+      if (!isApple) return;
+
+      String? name;
+
+      // Probeer direct een reload en server-read één keer eerst (sneller)
+      try {
+        await FirebaseAuth.instance.currentUser?.reload();
+      } catch (e) {
+        debugPrint('Onboarding: initial reload failed: $e');
+      }
+
+      final updatedUser = FirebaseAuth.instance.currentUser;
+      if (updatedUser != null) {
+        // 1) check displayName
+        final disp = updatedUser.displayName;
+        if (disp != null && disp.trim().isNotEmpty) {
+          name = disp.trim().split(' ').first;
+        }
+
+        // 2) forceer server-read van Firestore (kan direct beschikbaar zijn)
+        if (name == null) {
+          try {
+            final doc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(updatedUser.uid)
+                .get(const GetOptions(source: Source.server));
+            if (doc.exists) {
+              final data = doc.data() ?? <String, dynamic>{};
+              for (final key in ['firstName', 'givenName', 'name', 'displayName']) {
+                final v = data[key];
+                if (v is String && v.trim().isNotEmpty) {
+                  name = v.trim().split(' ').first;
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint('Onboarding: server Firestore read failed: $e');
+          }
+        }
+      }
+
+      // Als nog niet gevonden, probeer kort (snelle retries)
+      for (int attempt = 0; attempt < 3 && mounted && name == null; attempt++) {
+        try {
+          await FirebaseAuth.instance.currentUser?.reload();
+        } catch (e) {
+          debugPrint('Onboarding: reload failed (attempt $attempt): $e');
+        }
+
+        final u = FirebaseAuth.instance.currentUser;
+        if (u != null) {
+          final disp = u.displayName;
+          if (disp != null && disp.trim().isNotEmpty) {
+            name = disp.trim().split(' ').first;
+            break;
+          }
+
+          try {
+            final doc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(u.uid)
+                .get(); // local/cache read (faster)
+            if (doc.exists) {
+              final data = doc.data() ?? <String, dynamic>{};
+              for (final key in ['firstName', 'givenName', 'name', 'displayName']) {
+                final v = data[key];
+                if (v is String && v.trim().isNotEmpty) {
+                  name = v.trim().split(' ').first;
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint('Onboarding: Firestore read failed (attempt $attempt): $e');
+          }
+        }
+
+        if (name == null) await Future.delayed(const Duration(milliseconds: 150));
+      }
+
+      if (name != null && mounted) {
+        _firstNameController.text = name;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _pageController.jumpToPage(1);
+          setState(() => _currentIndex = 1);
+        });
+      }
+    } catch (e) {
+      debugPrint('Onboarding: skip first name check failed: $e');
+    }
   }
 
   @override

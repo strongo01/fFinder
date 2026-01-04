@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _tutorialInitialized = false;
   bool _tutorialHomeAf = false;
 
-  static const String _appVersion = '1.1.7';
+  static const String _appVersion = '1.1.8';
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -1085,144 +1085,204 @@ class _HomeScreenState extends State<HomeScreen> {
   // iOS layout
   Widget _buildIOSLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final bool isAdmin = (_userData?['role'] ?? '') == 'admin';
+
+final items = <BottomNavigationBarItem>[
+      BottomNavigationBarItem(
+        icon: const Icon(CupertinoIcons.home),
+        label: AppLocalizations.of(context)!.logs,
+      ),
+      if (isAdmin)
+        BottomNavigationBarItem(
+          key: _recipesKey,
+          icon: const Icon(CupertinoIcons.book),
+          label: AppLocalizations.of(context)!.recipesTitle,
+        ),
+      BottomNavigationBarItem(
+        key: _weightKey,
+        icon: const Icon(CupertinoIcons.chart_bar),
+        label: AppLocalizations.of(context)!.weightTitle,
+      ),
+    ];
+
     return CupertinoTabScaffold(
-      // Tab scaffold voor iOS stijl tabs
       tabBar: CupertinoTabBar(
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(CupertinoIcons.home),
-            label: AppLocalizations.of(context)!.logs,
-          ),
-          BottomNavigationBarItem(
-            key: _recipesKey,
-            icon: const Icon(CupertinoIcons.book),
-            label: AppLocalizations.of(context)!.recipesTitle,
-          ),
-          BottomNavigationBarItem(
-            key: _weightKey,
-            icon: const Icon(CupertinoIcons.chart_bar),
-            label: AppLocalizations.of(context)!.weightTitle,
-          ),
-        ],
+        items: items,
       ),
       tabBuilder: (context, index) {
-        // bouwt de inhoud voor elke tab
-        if (index == 0) {
-          return CupertinoPageScaffold(
-            navigationBar: CupertinoNavigationBar(
-              middle: GestureDetector(
-                key: _dateKey,
-                onTap: () => _selectDate(context),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDarkMode
-                        ? Colors.white.withOpacity(0.1)
-                        : Colors.black.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_formatDate(context, _selectedDate)),
-                      const SizedBox(width: 8),
-                      const Icon(CupertinoIcons.calendar, size: 22),
-                    ],
-                  ),
-                ),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    key: _barcodeKey,
-                    child: const Icon(
-                      CupertinoIcons.barcode_viewfinder,
-                      size: 28,
+        // Map index depending on whether recipes tab is present
+        if (isAdmin) {
+          if (index == 0) {
+            return CupertinoPageScaffold(
+              navigationBar: CupertinoNavigationBar(
+                middle: GestureDetector(
+                  key: _dateKey,
+                  onTap: () => _selectDate(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
                     ),
-                    onPressed: _scanBarcode,
+                    decoration: BoxDecoration(
+                      color: isDarkMode
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.black.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_formatDate(context, _selectedDate)),
+                        const SizedBox(width: 8),
+                        const Icon(CupertinoIcons.calendar, size: 22),
+                      ],
+                    ),
                   ),
-                  CupertinoButton(
-                    padding: const EdgeInsets.only(left: 8),
-                    key: _settingsKey,
-                    child: const Icon(CupertinoIcons.settings, size: 26),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const SettingsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            child: SafeArea(
-              child: Material(
-                child: Scaffold(
-                  body: Stack(
-                    children: [
-                      _buildHomeContent(),
-                      Positioned(
-                        right: 16,
-                        bottom: 120,
-                        key: _feedbackKey,
-                        child: const FeedbackButton(),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      key: _barcodeKey,
+                      child: const Icon(
+                        CupertinoIcons.barcode_viewfinder,
+                        size: 28,
                       ),
-                    ],
-                  ),
-                  floatingActionButton: _buildSpeedDial(),
+                      onPressed: _scanBarcode,
+                    ),
+                    CupertinoButton(
+                      padding: const EdgeInsets.only(left: 8),
+                      key: _settingsKey,
+                      child: const Icon(CupertinoIcons.settings, size: 26),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
-            ),
-          );
-        } else if (index == 1) {
-          // Tab 2: Recepten
-          return CupertinoPageScaffold(
-            navigationBar: CupertinoNavigationBar(
-              middle: Text(AppLocalizations.of(context)!.recipesTitle),
-            ),
-            child: (() {
-              final roleFromLocal = _userData?['role'];
-              if (roleFromLocal != null) {
-                return roleFromLocal == 'admin'
-                    ? const RecipesScreen()
-                    : const UnderConstructionScreen();
-              }
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(FirebaseAuth.instance.currentUser?.uid)
-                    .get(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CupertinoActivityIndicator());
-                  }
-                  if (!snapshot.hasData || !snapshot.data!.exists) {
-                    return const UnderConstructionScreen();
-                  }
-                  final data =
-                      snapshot.data!.data() as Map<String, dynamic>? ?? {};
-                  final role = data['role'] ?? data['rol'] ?? 'user';
-                  return role == 'admin'
-                      ? const RecipesScreen()
-                      : const UnderConstructionScreen();
-                },
-              );
-            })(),
-          );
+              child: SafeArea(
+                child: Material(
+                  child: Scaffold(
+                    body: Stack(
+                      children: [
+                        _buildHomeContent(),
+                        Positioned(
+                          right: 16,
+                          bottom: 120,
+                          key: _feedbackKey,
+                          child: const FeedbackButton(),
+                        ),
+                      ],
+                    ),
+                    floatingActionButton: _buildSpeedDial(),
+                  ),
+                ),
+              ),
+            );
+          } else if (index == 1) {
+            return CupertinoPageScaffold(
+              navigationBar: CupertinoNavigationBar(
+                middle: Text(AppLocalizations.of(context)!.recipesTitle),
+              ),
+              child: const RecipesScreen(),
+            );
+          } else {
+            return CupertinoPageScaffold(
+              navigationBar: CupertinoNavigationBar(
+                middle: Text(AppLocalizations.of(context)!.weightTitle),
+              ),
+              child: const WeightView(),
+            );
+          }
         } else {
-          // Tab 3: Gewicht
-          return CupertinoPageScaffold(
-            navigationBar: CupertinoNavigationBar(
-              middle: Text(AppLocalizations.of(context)!.weightTitle),
-            ),
-            child: const WeightView(),
-          );
+          // Non-admin: index 0 = home, index 1 = weight
+          if (index == 0) {
+            return CupertinoPageScaffold(
+              navigationBar: CupertinoNavigationBar(
+                middle: GestureDetector(
+                  key: _dateKey,
+                  onTap: () => _selectDate(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDarkMode
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.black.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_formatDate(context, _selectedDate)),
+                        const SizedBox(width: 8),
+                        const Icon(CupertinoIcons.calendar, size: 22),
+                      ],
+                    ),
+                  ),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      key: _barcodeKey,
+                      child: const Icon(
+                        CupertinoIcons.barcode_viewfinder,
+                        size: 28,
+                      ),
+                      onPressed: _scanBarcode,
+                    ),
+                    CupertinoButton(
+                      padding: const EdgeInsets.only(left: 8),
+                      key: _settingsKey,
+                      child: const Icon(CupertinoIcons.settings, size: 26),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              child: SafeArea(
+                child: Material(
+                  child: Scaffold(
+                    body: Stack(
+                      children: [
+                        _buildHomeContent(),
+                        Positioned(
+                          right: 16,
+                          bottom: 120,
+                          key: _feedbackKey,
+                          child: const FeedbackButton(),
+                        ),
+                      ],
+                    ),
+                    floatingActionButton: _buildSpeedDial(),
+                  ),
+                ),
+              ),
+            );
+          } else {
+            return CupertinoPageScaffold(
+              navigationBar: CupertinoNavigationBar(
+                middle: Text(AppLocalizations.of(context)!.weightTitle),
+              ),
+              child: const WeightView(),
+            );
+          }
         }
       },
     );
@@ -1361,11 +1421,12 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.home),
             label: AppLocalizations.of(context)!.logs,
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.menu_book),
-            label: AppLocalizations.of(context)!.recipesTitle,
-            key: _recipesKey,
-          ),
+          if ((_userData?['role'] ?? '') == 'admin')
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.menu_book),
+              label: AppLocalizations.of(context)!.recipesTitle,
+              key: _recipesKey,
+            ),
           BottomNavigationBarItem(
             key: _weightKey,
             icon: const Icon(Icons.monitor_weight),

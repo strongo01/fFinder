@@ -2367,6 +2367,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
 
                       const SizedBox(height: 12),
+
+ OutlinedButton.icon(
+                        icon: Icon(
+                          Icons.warning_amber_rounded,
+                          color: colorScheme.primary,
+                        ),
+                        label: Text(
+                          // Gebruik gelokaliseerde tekst indien beschikbaar
+                          AppLocalizations.of(context)!.disclaimer,
+                          style: TextStyle(color: colorScheme.primary),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: colorScheme.primary),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          showDialog<void>(
+                            context: context,
+                            builder: (ctx) {
+                              return AlertDialog(
+                                title: Text(AppLocalizations.of(context)!.disclaimer),
+                                content: SingleChildScrollView(
+                                  child: Text(
+                                 AppLocalizations.of(context)!.disclaimerText,
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                    child: Text(AppLocalizations.of(context)!.close),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      ),
+
+                        const SizedBox(height: 12),
+
+                       OutlinedButton.icon(
+                        icon: Icon(
+                          Icons.book,
+                          color: colorScheme.primary,
+                        ),
+                        label: Text(
+                          AppLocalizations.of(context)!.bronnen,
+                          style: TextStyle(color: colorScheme.primary),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: colorScheme.primary),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const SourcesPage()),
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 12),
                       
                       OutlinedButton.icon(
                         icon: Icon(
@@ -3329,6 +3402,141 @@ class _DecryptViewState extends State<DecryptView> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class SourcesPage extends StatelessWidget {
+  const SourcesPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = cs.brightness == Brightness.dark;
+
+    final loc = AppLocalizations.of(context)!;
+    final List<Map<String, String>> items = [
+      {
+        'name': loc.sourcesName1,
+        'explain': loc.sourcesExplain1,
+        'source': loc.sourcesAttribution1,
+        'url': 'https://www.healthcarechain.nl/caloriebehoefte-calculator'
+      },
+      {
+        'name': loc.sourcesName2,
+        'explain': loc.sourcesExplain2,
+        'source': loc.sourcesAttribution2,
+        'url': 'https://www.ru.nl/sites/default/files/2023-05/1a_basisvoeding_hoofddocument_mei_2021%20%282%29.pdf'
+      },
+      {
+        'name': loc.sourcesName3,
+        'explain': loc.sourcesExplain3,
+        'source': loc.sourcesAttribution3,
+        'url': 'https://apps.who.int/nutrition/landscape/help.aspx?helpid=420&menu=0'
+      },
+      {
+        'name': loc.sourcesName4,
+        'explain': loc.sourcesExplain4,
+        'source': loc.sourcesAttribution4,
+        'url': 'https://en.wikipedia.org/wiki/Body_shape_index'
+      },
+            {
+        'name': loc.sourcesName5,
+        'explain': loc.sourcesExplain5,
+        'source': loc.sourcesAttribution5,
+        'url': 'https://intuitionlabs.ai/software/cardiac-pulmonary-rehabilitation/metabolic-equivalent-met-calculation/mets-calculator'
+      },
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context)!.disclaimer),
+        backgroundColor: isDark ? Colors.black : cs.background,
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
+      ),
+      body: SafeArea(
+        child: ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, idx) {
+            final it = items[idx];
+            final uri = Uri.tryParse(it['url'] ?? '') ;
+            return Card(
+              color: isDark ? Colors.grey.shade900 : theme.cardColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: isDark ? 0 : 1,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      it['name'] ?? '',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      it['explain'] ?? '',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            it['source'] ?? '',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: isDark ? Colors.white60 : Colors.black54,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.open_in_new),
+                          color: cs.primary,
+                          onPressed: uri == null
+                              ? null
+                              : () async {
+                                  try {
+                                    if (await canLaunchUrl(uri)) {
+                                      await launchUrl(uri,
+                                          mode: LaunchMode.externalApplication);
+                                    } else {
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              AppLocalizations.of(context)!.cannotOpenLink),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('${AppLocalizations.of(context)!.cannotOpenLink}: $e')),
+                                    );
+                                  }
+                                },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

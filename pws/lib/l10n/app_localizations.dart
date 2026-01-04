@@ -3372,7 +3372,7 @@ abstract class AppLocalizations {
   /// No description provided for @updateAvailable.
   ///
   /// In en, this message translates to:
-  /// **'A new update is available! Update the app via TestFlight for Apple or the Google Play Store for Android.'**
+  /// **'A new update is available!'**
   String get updateAvailable;
 
   /// No description provided for @announcement_default.
@@ -4647,6 +4647,126 @@ abstract class AppLocalizations {
   /// **'I agree to the privacy policy'**
   String get privacyAgreement;
 
+  /// No description provided for @sourcesName1.
+  ///
+  /// In en, this message translates to:
+  /// **'Calorie requirement formula'**
+  String get sourcesName1;
+
+  /// No description provided for @sourcesExplain1.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily energy and calorie requirements'**
+  String get sourcesExplain1;
+
+  /// No description provided for @sourcesAttribution1.
+  ///
+  /// In en, this message translates to:
+  /// **'Mifflin-St Jeor formula, commonly used to estimate BMR and TDEE.'**
+  String get sourcesAttribution1;
+
+  /// No description provided for @sourcesUrl1.
+  ///
+  /// In en, this message translates to:
+  /// **'https://www.healthcarechain.nl/caloriebehoefte-calculator'**
+  String get sourcesUrl1;
+
+  /// No description provided for @sourcesName2.
+  ///
+  /// In en, this message translates to:
+  /// **'Protein, fat and carbohydrate requirements'**
+  String get sourcesName2;
+
+  /// No description provided for @sourcesExplain2.
+  ///
+  /// In en, this message translates to:
+  /// **'Macronutrient requirements (carbs, fats, proteins)'**
+  String get sourcesExplain2;
+
+  /// No description provided for @sourcesAttribution2.
+  ///
+  /// In en, this message translates to:
+  /// **'Guidelines for energy from macronutrients according to Dutch nutrition guidance.'**
+  String get sourcesAttribution2;
+
+  /// No description provided for @sourcesUrl2.
+  ///
+  /// In en, this message translates to:
+  /// **'https://www.ru.nl/sites/default/files/2023-05/1a_basisvoeding_hoofddocument_mei_2021%20%282%29.pdf'**
+  String get sourcesUrl2;
+
+  /// No description provided for @sourcesName3.
+  ///
+  /// In en, this message translates to:
+  /// **'BMI'**
+  String get sourcesName3;
+
+  /// No description provided for @sourcesExplain3.
+  ///
+  /// In en, this message translates to:
+  /// **'Classification of underweight, healthy weight, overweight and obesity.'**
+  String get sourcesExplain3;
+
+  /// No description provided for @sourcesAttribution3.
+  ///
+  /// In en, this message translates to:
+  /// **'WHO & CDC (global standard for BMI classification)'**
+  String get sourcesAttribution3;
+
+  /// No description provided for @sourcesUrl3.
+  ///
+  /// In en, this message translates to:
+  /// **'https://apps.who.int/nutrition/landscape/help.aspx?helpid=420&menu=0'**
+  String get sourcesUrl3;
+
+  /// No description provided for @sourcesName4.
+  ///
+  /// In en, this message translates to:
+  /// **'ABSI'**
+  String get sourcesName4;
+
+  /// No description provided for @sourcesExplain4.
+  ///
+  /// In en, this message translates to:
+  /// **'A risk indicator based on waist circumference, weight and height.'**
+  String get sourcesExplain4;
+
+  /// No description provided for @sourcesAttribution4.
+  ///
+  /// In en, this message translates to:
+  /// **'Article and info about the ABSI concept (English)'**
+  String get sourcesAttribution4;
+
+  /// No description provided for @sourcesUrl4.
+  ///
+  /// In en, this message translates to:
+  /// **'https://en.wikipedia.org/wiki/Body_shape_index'**
+  String get sourcesUrl4;
+
+  /// No description provided for @sourcesName5.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories Burned During Exercise'**
+  String get sourcesName5;
+
+  /// No description provided for @sourcesExplain5.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated energy expenditure during physical activity based on MET values, weight, and duration.'**
+  String get sourcesExplain5;
+
+  /// No description provided for @sourcesAttribution5.
+  ///
+  /// In en, this message translates to:
+  /// **'Compendium of Physical Activities, Ainsworth BE et al., 2011'**
+  String get sourcesAttribution5;
+
+  /// No description provided for @sourcesUrl5.
+  ///
+  /// In en, this message translates to:
+  /// **'https://intuitionlabs.ai/software/cardiac-pulmonary-rehabilitation/metabolic-equivalent-met-calculation/mets-calculator'**
+  String get sourcesUrl5;
+
   /// No description provided for @exactAlarmsTitle.
   ///
   /// In en, this message translates to:
@@ -4670,6 +4790,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open settings'**
   String get exactAlarmsOpenSettings;
+
+  /// No description provided for @disclaimerText.
+  ///
+  /// In en, this message translates to:
+  /// **'This app provides general information about nutrition, hydration, physical activity, and weight based on publicly available guidelines and scientific sources. The information and calculations in this app are for informational purposes only and do not constitute medical advice. This app is not intended to replace professional medical advice, diagnosis, or treatment. Always consult a physician or other qualified healthcare provider if you have health concerns, questions, or doubts. Use of this app and interpretation of the displayed data are entirely the responsibility of the user.'**
+  String get disclaimerText;
+
+  /// No description provided for @disclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Disclaimer'**
+  String get disclaimer;
+
+  /// No description provided for @cannotOpenLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot open link.'**
+  String get cannotOpenLink;
+
+  /// No description provided for @bronnen.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get bronnen;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -545,7 +545,7 @@
     "tutorial_additems_text": "Use this button to quickly add meals, drinks, or sports.",
     "tutorial_meals_title": "Meals",
     "tutorial_meals_text": "View your meals and edit them by tapping on them.",
-    "updateAvailable": "A new update is available! Update the app via TestFlight for Apple or the Google Play Store for Android.",
+    "updateAvailable": "A new update is available!",
     "announcement_default": "Announcement",
     "water_goal_dialog_title": "Set water goal",
     "water_goal_dialog_label": "Goal (ml)",
@@ -761,13 +761,43 @@
 "bmiForChildrenExplanation": "The BMI for children is calculated based on age, sex, height, and weight. Instead of fixed cutoffs, this app uses BMI percentiles, making the assessment better suited to children's growth. Small differences with other BMI charts are normal.",
 "privacyPolicy": "Click to view the privacy policy",
 "privacyAgreement": "I agree to the privacy policy",
+"sourcesName1": "Calorie requirement formula",
+"sourcesExplain1": "Daily energy and calorie requirements",
+"sourcesAttribution1": "Mifflin-St Jeor formula, commonly used to estimate BMR and TDEE.",
+"sourcesUrl1": "https://www.healthcarechain.nl/caloriebehoefte-calculator",
+
+"sourcesName2": "Protein, fat and carbohydrate requirements",
+"sourcesExplain2": "Macronutrient requirements (carbs, fats, proteins)",
+"sourcesAttribution2": "Guidelines for energy from macronutrients according to Dutch nutrition guidance.",
+"sourcesUrl2": "https://www.ru.nl/sites/default/files/2023-05/1a_basisvoeding_hoofddocument_mei_2021%20%282%29.pdf",
+
+"sourcesName3": "BMI",
+"sourcesExplain3": "Classification of underweight, healthy weight, overweight and obesity.",
+"sourcesAttribution3": "WHO & CDC (global standard for BMI classification)",
+"sourcesUrl3": "https://apps.who.int/nutrition/landscape/help.aspx?helpid=420&menu=0",
+
+"sourcesName4": "ABSI",
+"sourcesExplain4": "A risk indicator based on waist circumference, weight and height.",
+"sourcesAttribution4": "Article and info about the ABSI concept (English)",
+"sourcesUrl4": "https://en.wikipedia.org/wiki/Body_shape_index",
+
+  "sourcesName5": "Calories Burned During Exercise",
+  "sourcesExplain5": "Estimated energy expenditure during physical activity based on MET values, weight, and duration.",
+  "sourcesAttribution5": "Compendium of Physical Activities, Ainsworth BE et al., 2011",
+  "sourcesUrl5": "https://intuitionlabs.ai/software/cardiac-pulmonary-rehabilitation/metabolic-equivalent-met-calculation/mets-calculator",
+
   "exactAlarmsTitle": "Precise alarms",
 
   "exactAlarmsMessage": "To have meal reminders appear exactly at the chosen time, you need to enable \"exact alarms\" in the Android settings. Would you like to open these settings now?",
 
   "exactAlarmsNotNow": "Not now",
 
-  "exactAlarmsOpenSettings": "Open settings"
+  "exactAlarmsOpenSettings": "Open settings",
+  "disclaimerText": "This app provides general information about nutrition, hydration, physical activity, and weight based on publicly available guidelines and scientific sources. The information and calculations in this app are for informational purposes only and do not constitute medical advice. This app is not intended to replace professional medical advice, diagnosis, or treatment. Always consult a physician or other qualified healthcare provider if you have health concerns, questions, or doubts. Use of this app and interpretation of the displayed data are entirely the responsibility of the user.",
+  "disclaimer": "Disclaimer",
+  "cannotOpenLink": "Cannot open link.",
+  "bronnen": "Sources"
+
 
 
   

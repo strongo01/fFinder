@@ -575,7 +575,7 @@
     "tutorial_additems_text": "Verwenden Sie diese Schaltfläche, um schnell Mahlzeiten, Getränke oder Sport hinzuzufügen.",
     "tutorial_meals_title": "Mahlzeiten",
     "tutorial_meals_text": "Sehen Sie Ihre Mahlzeiten ein und ändern Sie sie, indem Sie darauf tippen.",
-    "updateAvailable": "Ein neues Update ist verfügbar! Aktualisieren Sie die App über TestFlight für Apple oder über den Google Play Store für Android.",
+    "updateAvailable": "Ein neues Update ist verfügbar!",
     "announcement_default": "Mitteilung",
     "water_goal_dialog_title": "Wasserziel festlegen",
     "water_goal_dialog_label": "Ziel (ml)",
@@ -762,13 +762,43 @@
 "bmiForChildrenExplanation": "Der BMI von Kindern wird basierend auf Alter, Geschlecht, Größe und Gewicht berechnet. Anstelle fester Grenzen verwendet diese App BMI-Perzentile, sodass die Bewertung besser zum Wachstum der Kinder passt. Kleine Unterschiede zu anderen BMI-Tabellen sind normal.",
 "privacyPolicy": "Klicken Sie hier, um die Datenschutzerklärung anzusehen",
 "privacyAgreement": "Ich stimme der Datenschutzerklärung zu",
+"sourcesName1": "Kalorienbedarf Formel",
+"sourcesExplain1": "Täglicher Energie- und Kalorienbedarf",
+"sourcesAttribution1": "Mifflin-St Jeor Formel, verwendet zur Schätzung von BMR und TDEE.",
+"sourcesUrl1": "https://www.healthcarechain.nl/caloriebehoefte-calculator",
+
+"sourcesName2": "Protein-, Fett- und Kohlenhydratbedarf",
+"sourcesExplain2": "Makronährstoffbedarf (Kohlenhydrate, Fette, Proteine)",
+"sourcesAttribution2": "Richtlinien für Energie aus Makronährstoffen gemäß niederländischen Ernährungsempfehlungen.",
+"sourcesUrl2": "https://www.ru.nl/sites/default/files/2023-05/1a_basisvoeding_hoofddocument_mei_2021%20%282%29.pdf",
+
+"sourcesName3": "BMI",
+"sourcesExplain3": "Einteilung von Untergewicht, Normalgewicht, Übergewicht und Adipositas.",
+"sourcesAttribution3": "WHO & CDC (weltweiter Standard für BMI-Klassifikation)",
+"sourcesUrl3": "https://apps.who.int/nutrition/landscape/help.aspx?helpid=420&menu=0",
+
+"sourcesName4": "ABSI",
+"sourcesExplain4": "Ein besserer Risikoindikator als BMI, basierend auf Taillenumfang, Gewicht und Größe.",
+"sourcesAttribution4": "Artikel und Informationen zum ABSI-Konzept (Englisch)",
+"sourcesUrl4": "https://en.wikipedia.org/wiki/Body_shape_index",
+
+  "sourcesName5": "Kalorienverbrauch beim Sport",
+  "sourcesExplain5": "Geschätzter Energieverbrauch bei körperlicher Aktivität basierend auf MET-Werten, Gewicht und Dauer.",
+  "sourcesAttribution5": "Compendium of Physical Activities, Ainsworth BE et al., 2011",
+  "sourcesUrl5": "https://intuitionlabs.ai/software/cardiac-pulmonary-rehabilitation/metabolic-equivalent-met-calculation/mets-calculator",
+
   "exactAlarmsTitle": "Exakte Alarme",
 
   "exactAlarmsMessage": "Damit Erinnerungen an Mahlzeiten genau zur gewählten Zeit angezeigt werden, müssen Sie in den Android‑Einstellungen \"exakte Alarme\" aktivieren. Möchten Sie die Einstellungen jetzt öffnen?",
 
   "exactAlarmsNotNow": "Nicht jetzt",
 
-  "exactAlarmsOpenSettings": "Einstellungen öffnen"
+  "exactAlarmsOpenSettings": "Einstellungen öffnen",
+  "disclaimerText": "Diese App stellt allgemeine Informationen zu Ernährung, Flüssigkeitszufuhr, körperlicher Aktivität und Gewicht auf Grundlage öffentlich zugänglicher Richtlinien und wissenschaftlicher Quellen bereit. Die in dieser App enthaltenen Informationen und Berechnungen dienen ausschließlich zu Informationszwecken und stellen keine medizinische Beratung dar. Diese App ist nicht dazu bestimmt, eine professionelle medizinische Beratung, Diagnose oder Behandlung zu ersetzen. Bei gesundheitlichen Fragen oder Bedenken wenden Sie sich bitte immer an einen Arzt oder eine andere qualifizierte medizinische Fachkraft. Die Nutzung dieser App sowie die Interpretation der dargestellten Daten erfolgen vollständig auf eigene Verantwortung des Nutzers.",
+  "disclaimer": "Haftungsausschluss",
+  "cannotOpenLink": "Link kann nicht geöffnet werden",
+  "bronnen": "Quellen"
+
 
 
 }

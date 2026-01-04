@@ -575,7 +575,7 @@
     "tutorial_additems_text": "Utilisez ce bouton pour ajouter rapidement des repas, boissons ou activités sportives.",
     "tutorial_meals_title": "Repas",
     "tutorial_meals_text": "Consultez vos repas et modifiez-les en les touchant.",
-    "updateAvailable": "Une nouvelle mise à jour est disponible ! Mettez à jour l'application via TestFlight pour Apple ou via Google Play Store pour Android.",
+    "updateAvailable": "Une nouvelle mise à jour est disponible!",
     "announcement_default": "Annonce",
     "water_goal_dialog_title": "Définir l'objectif d'eau",
     "water_goal_dialog_label": "Objectif (ml)",
@@ -762,6 +762,31 @@
 "bmiForChildrenExplanation": "L'IMC des enfants est calculé en fonction de l'âge, du sexe, de la taille et du poids. Au lieu de limites fixes, cette application utilise des percentiles d'IMC, ce qui rend l'évaluation mieux adaptée à la croissance des enfants. De petites différences avec d'autres tableaux d'IMC sont normales.",
 "privacyPolicy": "Cliquez pour consulter la politique de confidentialité",
 "privacyAgreement": "J'accepte la politique de confidentialité",
+"sourcesName1": "Formule des besoins caloriques",
+"sourcesExplain1": "Besoins quotidiens en énergie et en calories",
+"sourcesAttribution1": "Formule de Mifflin-St Jeor, utilisée pour estimer le BMR et le TDEE.",
+"sourcesUrl1": "https://www.healthcarechain.nl/caloriebehoefte-calculator",
+
+"sourcesName2": "Besoins en protéines, graisses et glucides",
+"sourcesExplain2": "Besoins en macronutriments (glucides, graisses, protéines)",
+"sourcesAttribution2": "Directives pour l'énergie provenant des macronutriments selon les recommandations nutritionnelles néerlandaises.",
+"sourcesUrl2": "https://www.ru.nl/sites/default/files/2023-05/1a_basisvoeding_hoofddocument_mei_2021%20%282%29.pdf",
+
+"sourcesName3": "IMC",
+"sourcesExplain3": "Classification de la maigreur, du poids santé, du surpoids et de l'obésité.",
+"sourcesAttribution3": "OMS & CDC (norme mondiale pour la classification de l'IMC)",
+"sourcesUrl3": "https://apps.who.int/nutrition/landscape/help.aspx?helpid=420&menu=0",
+
+"sourcesName4": "ABSI",
+"sourcesExplain4": "Indicateur de risque basé sur le tour de taille, le poids et la taille.",
+"sourcesAttribution4": "Article et informations sur le concept ABSI (anglais)",
+"sourcesUrl4": "https://en.wikipedia.org/wiki/Body_shape_index",
+
+  "sourcesName5": "Calories brûlées pendant l'exercice",
+  "sourcesExplain5": "Dépense énergétique estimée pendant l'activité physique basée sur les valeurs MET, le poids et la durée.",
+  "sourcesAttribution5": "Compendium of Physical Activities, Ainsworth BE et al., 2011",
+  "sourcesUrl5": "https://intuitionlabs.ai/software/cardiac-pulmonary-rehabilitation/metabolic-equivalent-met-calculation/mets-calculator",
+
 
   "exactAlarmsTitle": "Alarmes précises",
 
@@ -769,6 +794,11 @@
 
   "exactAlarmsNotNow": "Pas maintenant",
 
-  "exactAlarmsOpenSettings": "Ouvrir les paramètres"
+  "exactAlarmsOpenSettings": "Ouvrir les paramètres",
+  "disclaimerText": "Cette application fournit des informations générales sur la nutrition, l’hydratation, l’activité physique et le poids, basées sur des sources scientifiques et des recommandations publiques. Les informations et calculs fournis par cette application sont uniquement destinés à des fins informatives et ne constituent pas un avis médical. Cette application ne remplace en aucun cas un avis médical professionnel, un diagnostic ou un traitement. En cas de questions ou de préoccupations concernant votre santé, consultez toujours un médecin ou un professionnel de santé qualifié. L’utilisation de cette application et l’interprétation des données affichées relèvent entièrement de la responsabilité de l’utilisateur.",
+  "disclaimer": "Clause de non-responsabilité",
+  "cannotOpenLink": "Impossible d’ouvrir le lien",
+  "bronnen": "Sources"
+
 
 }

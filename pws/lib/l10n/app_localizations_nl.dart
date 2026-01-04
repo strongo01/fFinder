@@ -1646,7 +1646,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get tutorial_meals_text => 'Bekijk je maaltijden en wijzig ze door erop te tikken.';
 
   @override
-  String get updateAvailable => 'Er is een nieuwe update uit! Update de app via testFlight voor Apple of via Google Play Store voor Android.';
+  String get updateAvailable => 'Er is een nieuwe update uit!';
 
   @override
   String get announcement_default => 'Mededeling';
@@ -2285,6 +2285,66 @@ class AppLocalizationsNl extends AppLocalizations {
   String get privacyAgreement => 'Ik ga akkoord met het privacybeleid';
 
   @override
+  String get sourcesName1 => 'Caloriebehoefte Formule';
+
+  @override
+  String get sourcesExplain1 => 'Dagelijkse energie- en caloriebehoefte';
+
+  @override
+  String get sourcesAttribution1 => 'Mifflin-St Jeor formule, gebruikt om BMR en TDEE te schatten.';
+
+  @override
+  String get sourcesUrl1 => 'https://www.healthcarechain.nl/caloriebehoefte-calculator';
+
+  @override
+  String get sourcesName2 => 'Eiwit, vet en koolhydraat behoefte';
+
+  @override
+  String get sourcesExplain2 => 'Macronutriëntenbehoefte (koolhydraten, vetten, eiwitten)';
+
+  @override
+  String get sourcesAttribution2 => 'Richtlijnen voor energie uit macronutriënten volgens Nederlandse voedingsrichtlijnen.';
+
+  @override
+  String get sourcesUrl2 => 'https://www.ru.nl/sites/default/files/2023-05/1a_basisvoeding_hoofddocument_mei_2021%20%282%29.pdf';
+
+  @override
+  String get sourcesName3 => 'BMI';
+
+  @override
+  String get sourcesExplain3 => 'Indeling van ondergewicht, gezond gewicht, overgewicht en obesitas.';
+
+  @override
+  String get sourcesAttribution3 => 'WHO & CDC (wereldwijde standaard voor BMI-classificatie)';
+
+  @override
+  String get sourcesUrl3 => 'https://apps.who.int/nutrition/landscape/help.aspx?helpid=420&menu=0';
+
+  @override
+  String get sourcesName4 => 'ABSI';
+
+  @override
+  String get sourcesExplain4 => 'Beter risico-indicator dan BMI, gebaseerd op tailleomtrek, gewicht en lengte.';
+
+  @override
+  String get sourcesAttribution4 => 'Artikel en informatie over ABSI concept (Engels)';
+
+  @override
+  String get sourcesUrl4 => 'https://en.wikipedia.org/wiki/Body_shape_index';
+
+  @override
+  String get sourcesName5 => 'Calorieverbruik bij sport';
+
+  @override
+  String get sourcesExplain5 => 'Geschat energieverbruik tijdens fysieke activiteit op basis van MET-waarden, gewicht en duur.';
+
+  @override
+  String get sourcesAttribution5 => 'Compendium of Physical Activities, Ainsworth BE et al., 2011';
+
+  @override
+  String get sourcesUrl5 => 'https://intuitionlabs.ai/software/cardiac-pulmonary-rehabilitation/metabolic-equivalent-met-calculation/mets-calculator';
+
+  @override
   String get exactAlarmsTitle => 'Nauwkeurige alarmen';
 
   @override
@@ -2295,4 +2355,16 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get exactAlarmsOpenSettings => 'Open instellingen';
+
+  @override
+  String get disclaimerText => 'Deze app biedt algemene informatie over voeding, hydratatie, lichaamsbeweging en gewicht, gebaseerd op publiek beschikbare richtlijnen en wetenschappelijke bronnen. De informatie en berekeningen in deze app zijn uitsluitend bedoeld voor informatieve doeleinden en vormen geen medisch advies. Deze app is niet bedoeld om professioneel medisch advies, diagnose of behandeling te vervangen. Raadpleeg bij gezondheidsklachten, vragen of twijfels altijd een arts of andere gekwalificeerde zorgverlener. Het gebruik van deze app en de interpretatie van de weergegeven gegevens is volledig de verantwoordelijkheid van de gebruiker.';
+
+  @override
+  String get disclaimer => 'Disclaimer';
+
+  @override
+  String get cannotOpenLink => 'Kan link niet openen.';
+
+  @override
+  String get bronnen => 'Bronnen';
 }

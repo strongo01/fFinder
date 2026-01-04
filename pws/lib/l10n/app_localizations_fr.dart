@@ -1646,7 +1646,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tutorial_meals_text => 'Consultez vos repas et modifiez-les en les touchant.';
 
   @override
-  String get updateAvailable => 'Une nouvelle mise à jour est disponible ! Mettez à jour l\'application via TestFlight pour Apple ou via Google Play Store pour Android.';
+  String get updateAvailable => 'Une nouvelle mise à jour est disponible!';
 
   @override
   String get announcement_default => 'Annonce';
@@ -2285,6 +2285,66 @@ class AppLocalizationsFr extends AppLocalizations {
   String get privacyAgreement => 'J\'accepte la politique de confidentialité';
 
   @override
+  String get sourcesName1 => 'Formule des besoins caloriques';
+
+  @override
+  String get sourcesExplain1 => 'Besoins quotidiens en énergie et en calories';
+
+  @override
+  String get sourcesAttribution1 => 'Formule de Mifflin-St Jeor, utilisée pour estimer le BMR et le TDEE.';
+
+  @override
+  String get sourcesUrl1 => 'https://www.healthcarechain.nl/caloriebehoefte-calculator';
+
+  @override
+  String get sourcesName2 => 'Besoins en protéines, graisses et glucides';
+
+  @override
+  String get sourcesExplain2 => 'Besoins en macronutriments (glucides, graisses, protéines)';
+
+  @override
+  String get sourcesAttribution2 => 'Directives pour l\'énergie provenant des macronutriments selon les recommandations nutritionnelles néerlandaises.';
+
+  @override
+  String get sourcesUrl2 => 'https://www.ru.nl/sites/default/files/2023-05/1a_basisvoeding_hoofddocument_mei_2021%20%282%29.pdf';
+
+  @override
+  String get sourcesName3 => 'IMC';
+
+  @override
+  String get sourcesExplain3 => 'Classification de la maigreur, du poids santé, du surpoids et de l\'obésité.';
+
+  @override
+  String get sourcesAttribution3 => 'OMS & CDC (norme mondiale pour la classification de l\'IMC)';
+
+  @override
+  String get sourcesUrl3 => 'https://apps.who.int/nutrition/landscape/help.aspx?helpid=420&menu=0';
+
+  @override
+  String get sourcesName4 => 'ABSI';
+
+  @override
+  String get sourcesExplain4 => 'Indicateur de risque basé sur le tour de taille, le poids et la taille.';
+
+  @override
+  String get sourcesAttribution4 => 'Article et informations sur le concept ABSI (anglais)';
+
+  @override
+  String get sourcesUrl4 => 'https://en.wikipedia.org/wiki/Body_shape_index';
+
+  @override
+  String get sourcesName5 => 'Calories brûlées pendant l\'exercice';
+
+  @override
+  String get sourcesExplain5 => 'Dépense énergétique estimée pendant l\'activité physique basée sur les valeurs MET, le poids et la durée.';
+
+  @override
+  String get sourcesAttribution5 => 'Compendium of Physical Activities, Ainsworth BE et al., 2011';
+
+  @override
+  String get sourcesUrl5 => 'https://intuitionlabs.ai/software/cardiac-pulmonary-rehabilitation/metabolic-equivalent-met-calculation/mets-calculator';
+
+  @override
   String get exactAlarmsTitle => 'Alarmes précises';
 
   @override
@@ -2295,4 +2355,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get exactAlarmsOpenSettings => 'Ouvrir les paramètres';
+
+  @override
+  String get disclaimerText => 'Cette application fournit des informations générales sur la nutrition, l’hydratation, l’activité physique et le poids, basées sur des sources scientifiques et des recommandations publiques. Les informations et calculs fournis par cette application sont uniquement destinés à des fins informatives et ne constituent pas un avis médical. Cette application ne remplace en aucun cas un avis médical professionnel, un diagnostic ou un traitement. En cas de questions ou de préoccupations concernant votre santé, consultez toujours un médecin ou un professionnel de santé qualifié. L’utilisation de cette application et l’interprétation des données affichées relèvent entièrement de la responsabilité de l’utilisateur.';
+
+  @override
+  String get disclaimer => 'Clause de non-responsabilité';
+
+  @override
+  String get cannotOpenLink => 'Impossible d’ouvrir le lien';
+
+  @override
+  String get bronnen => 'Sources';
 }
