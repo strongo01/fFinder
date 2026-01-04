@@ -22,11 +22,21 @@ class NotificationService {
       const AndroidNotificationChannel(
         'high_importance_channel',
         'High Importance Notifications',
-        description: 'This channel is used for important notifications.',
+        description: 'Dagelijkse herinneringen voor maaltijden.',
         importance: Importance.high,
       );
 
+  final AndroidNotificationChannel _mealChannel =
+      const AndroidNotificationChannel(
+        'meal_reminders_channel_v2',
+        'Maaltijdherinneringen',
+        description: 'Dagelijkse herinneringen voor maaltijden.',
+        importance: Importance.high,
+        playSound: true,
+      );
+
   Future<void> initialize() async {
+    debugPrint('NotificationService: initialize() gestart');
     if (kIsWeb) {
       return;
     }
@@ -41,6 +51,7 @@ class NotificationService {
       final String timeZoneName = timezoneInfo.identifier;
 
       tz.setLocalLocation(tz.getLocation(timeZoneName));
+      debugPrint('NotificationService: Tijdzone ingesteld op $timeZoneName');
     } catch (e) {
       debugPrint("Kon tijdzone niet ophalen: $e");
       // Fallback
@@ -55,7 +66,7 @@ class NotificationService {
     );
 
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/launcher_icon');
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings();
@@ -69,14 +80,23 @@ class NotificationService {
 
     await _localNotifications.initialize(initializationSettings);
 
-    await _localNotifications
+    // Haal de Android implementatie op
+    final androidImplementation = _localNotifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(_androidChannel);
+        >();
+
+    // Maak beide kanalen expliciet aan
+    await androidImplementation?.createNotificationChannel(_androidChannel);
+    await androidImplementation?.createNotificationChannel(_mealChannel);
+
+    // Expliciet permissie vragen voor lokale notificaties (Android 13+)
+    await androidImplementation?.requestNotificationsPermission();
+    //await androidImplementation?.requestExactAlarmsPermission();
 
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     _setupForegroundMessageHandler();
+    debugPrint('NotificationService: initialize() voltooid');
   }
 
   void _setupForegroundMessageHandler() {
@@ -96,7 +116,7 @@ class NotificationService {
               _androidChannel.id,
               _androidChannel.name,
               channelDescription: _androidChannel.description,
-              icon: '@mipmap/ic_launcher',
+              icon: '@mipmap/launcher_icon',
               importance: Importance.high,
               priority: Priority.high,
             ),
@@ -111,6 +131,59 @@ class NotificationService {
     });
   }
 
+  Future<void> _maybeAskExactAlarmsPermission(BuildContext context) async {
+    if (kIsWeb) return;
+
+    final androidImpl = _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+
+    if (androidImpl == null) return;
+
+    // Toon korte uitleg aan de gebruiker
+    final shouldOpen = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title:  Text(AppLocalizations.of(context)!
+              .exactAlarmsTitle),
+          content:  Text(
+            AppLocalizations.of(context)!
+                .exactAlarmsMessage,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child:  Text(AppLocalizations.of(context)!
+                  .exactAlarmsNotNow),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child:  Text(AppLocalizations.of(context)!
+                  .exactAlarmsOpenSettings),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldOpen == true) {
+      try {
+        await androidImpl.requestExactAlarmsPermission();
+        debugPrint('NotificationService: Exact alarms permission requested');
+      } catch (e) {
+        debugPrint(
+          'NotificationService: Fout bij requestExactAlarmsPermission: $e',
+        );
+      }
+    } else {
+      debugPrint(
+        'NotificationService: Gebruiker weigerde exact alarms settings te openen',
+      );
+    }
+  }
+
   Future<void> scheduleMealReminders({
     required BuildContext context,
     required bool areEnabled,
@@ -118,14 +191,23 @@ class NotificationService {
     required TimeOfDay lunchTime,
     required TimeOfDay dinnerTime,
   }) async {
+    debugPrint(
+      'NotificationService: scheduleMealReminders aangeroepen. Enabled: $areEnabled',
+    );
     if (kIsWeb) {
       return;
     }
 
     await _localNotifications.cancelAll();
+    debugPrint('NotificationService: Alle oude notificaties geannuleerd');
 
     if (areEnabled) {
-            final loc = AppLocalizations.of(context)!;
+      await _maybeAskExactAlarmsPermission(context);
+
+      debugPrint(
+        'NotificationService: Tijden instellen - Ontbijt: $breakfastTime, Lunch: $lunchTime, Diner: $dinnerTime',
+      );
+      final loc = AppLocalizations.of(context)!;
       final breakfastTitle = loc.notificationBreakfastTitle;
       final breakfastBody = loc.notificationBreakfastBody;
       final lunchTitle = loc.notificationLunchTitle;
@@ -137,20 +219,22 @@ class NotificationService {
         id: 1,
         title: breakfastTitle,
         body: breakfastBody,
-       time: breakfastTime,
+        time: breakfastTime,
       );
       await _scheduleDailyNotification(
         id: 2,
         title: lunchTitle,
         body: lunchBody,
-         time: lunchTime,
+        time: lunchTime,
       );
       await _scheduleDailyNotification(
         id: 3,
         title: dinnerTitle,
         body: dinnerBody,
-         time: dinnerTime,
+        time: dinnerTime,
       );
+    } else {
+      debugPrint('NotificationService: Notificaties zijn uitgeschakeld.');
     }
   }
 
@@ -160,46 +244,70 @@ class NotificationService {
     required String body,
     required TimeOfDay time,
   }) async {
-    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    try {
+      final bool? granted = await _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.areNotificationsEnabled();
 
-    tz.TZDateTime scheduledDate = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      time.hour,
-      time.minute,
-    );
+      debugPrint(
+        'NotificationService: Permissies status voor Android: $granted',
+      );
 
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
+      final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+
+      tz.TZDateTime scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        time.hour,
+        time.minute,
+      );
+
+      if (scheduledDate.isBefore(now)) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+        debugPrint(
+          'NotificationService: Tijdstip $time is al geweest vandaag. Gepland voor morgen: $scheduledDate',
+        );
+      } else {
+        debugPrint(
+          'NotificationService: Tijdstip $time is nog in de toekomst. Gepland voor vandaag: $scheduledDate',
+        );
+      }
+
+      await _localNotifications.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        NotificationDetails(
+          // Let op: 'const' weggehaald hier
+          android: AndroidNotificationDetails(
+            _mealChannel.id, // Gebruik het nieuwe v2 kanaal
+            _mealChannel.name,
+            channelDescription: _mealChannel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/launcher_icon',
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentSound: true,
+            presentAlert: true,
+            presentBadge: true,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+      debugPrint('NotificationService: Succesvol gepland (ID: $id)');
+    } catch (e, stackTrace) {
+      debugPrint(
+        'NotificationService: Fout bij plannen notificatie (ID: $id): $e',
+      );
+      debugPrint('StackTrace: $stackTrace');
     }
-
-    await _localNotifications.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledDate,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'meal_reminders_channel',
-          'Maaltijdherinneringen',
-          channelDescription: 'Dagelijkse herinneringen voor maaltijden.',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-
-        iOS: DarwinNotificationDetails(
-          presentSound: true,
-          presentAlert: true,
-          presentBadge: true,
-        ),
-      ),
-      // --- 2. SCHEDULE MODE CORRECTIE ---
-      // We gebruiken 'inexact' om crashes te voorkomen op jouw Android versie
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
   }
 }

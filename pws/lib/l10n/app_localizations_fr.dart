@@ -2283,4 +2283,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get privacyAgreement => 'J\'accepte la politique de confidentialité';
+
+  @override
+  String get exactAlarmsTitle => 'Alarmes précises';
+
+  @override
+  String get exactAlarmsMessage => 'Pour que les rappels de repas s’affichent exactement à l’heure choisie, vous devez activer les \"alarmes précises\" dans les paramètres Android. Voulez‑vous ouvrir ces paramètres maintenant ?';
+
+  @override
+  String get exactAlarmsNotNow => 'Pas maintenant';
+
+  @override
+  String get exactAlarmsOpenSettings => 'Ouvrir les paramètres';
 }

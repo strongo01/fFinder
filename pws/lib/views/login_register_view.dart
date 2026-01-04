@@ -80,7 +80,7 @@ bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
         authorization ??= await googleUser.authorizationClient.authorizeScopes(
           scopes,
         );
-        accessToken = authorization?.accessToken;
+        accessToken = authorization.accessToken;
       } catch (_) {
         // als je geen access token nodig hebt, mag je dit negeren
         accessToken = null;

@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _tutorialInitialized = false;
   bool _tutorialHomeAf = false;
 
-  static const String _appVersion = '1.1.6';
+  static const String _appVersion = '1.1.7';
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -2020,7 +2020,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               'snack': AppLocalizations.of(context)!.snack,
                             };
 
-                            final baseCalorieGoal = _calorieAllowance ?? 0.0;
 
                             final proteinGoal =
                                 _userData?['proteinGoal'] as num? ?? 0.0;

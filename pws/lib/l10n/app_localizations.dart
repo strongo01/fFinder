@@ -4646,6 +4646,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I agree to the privacy policy'**
   String get privacyAgreement;
+
+  /// No description provided for @exactAlarmsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Precise alarms'**
+  String get exactAlarmsTitle;
+
+  /// No description provided for @exactAlarmsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'To have meal reminders appear exactly at the chosen time, you need to enable \"exact alarms\" in the Android settings. Would you like to open these settings now?'**
+  String get exactAlarmsMessage;
+
+  /// No description provided for @exactAlarmsNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get exactAlarmsNotNow;
+
+  /// No description provided for @exactAlarmsOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get exactAlarmsOpenSettings;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

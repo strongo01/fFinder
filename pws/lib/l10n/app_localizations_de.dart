@@ -2283,4 +2283,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyAgreement => 'Ich stimme der Datenschutzerklärung zu';
+
+  @override
+  String get exactAlarmsTitle => 'Exakte Alarme';
+
+  @override
+  String get exactAlarmsMessage => 'Damit Erinnerungen an Mahlzeiten genau zur gewählten Zeit angezeigt werden, müssen Sie in den Android‑Einstellungen \"exakte Alarme\" aktivieren. Möchten Sie die Einstellungen jetzt öffnen?';
+
+  @override
+  String get exactAlarmsNotNow => 'Nicht jetzt';
+
+  @override
+  String get exactAlarmsOpenSettings => 'Einstellungen öffnen';
 }

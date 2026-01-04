@@ -761,8 +761,14 @@
 "bmiForChildrenTitle": "Kinder-BMI Info",
 "bmiForChildrenExplanation": "Der BMI von Kindern wird basierend auf Alter, Geschlecht, Größe und Gewicht berechnet. Anstelle fester Grenzen verwendet diese App BMI-Perzentile, sodass die Bewertung besser zum Wachstum der Kinder passt. Kleine Unterschiede zu anderen BMI-Tabellen sind normal.",
 "privacyPolicy": "Klicken Sie hier, um die Datenschutzerklärung anzusehen",
-"privacyAgreement": "Ich stimme der Datenschutzerklärung zu"
+"privacyAgreement": "Ich stimme der Datenschutzerklärung zu",
+  "exactAlarmsTitle": "Exakte Alarme",
 
+  "exactAlarmsMessage": "Damit Erinnerungen an Mahlzeiten genau zur gewählten Zeit angezeigt werden, müssen Sie in den Android‑Einstellungen \"exakte Alarme\" aktivieren. Möchten Sie die Einstellungen jetzt öffnen?",
+
+  "exactAlarmsNotNow": "Nicht jetzt",
+
+  "exactAlarmsOpenSettings": "Einstellungen öffnen"
 
 
 }

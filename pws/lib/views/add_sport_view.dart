@@ -525,7 +525,7 @@ class SportsOverviewList extends StatelessWidget {
 
   String _localizedSportLabel(BuildContext context, String raw) {
     final loc = AppLocalizations.of(context)!;
-    final s = (raw ?? '').toString().toLowerCase();
+    final s = (raw).toString().toLowerCase();
     switch (s) {
       case 'running':
         return loc.sportRunning;

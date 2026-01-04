@@ -2283,4 +2283,16 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get privacyAgreement => 'Ik ga akkoord met het privacybeleid';
+
+  @override
+  String get exactAlarmsTitle => 'Nauwkeurige alarmen';
+
+  @override
+  String get exactAlarmsMessage => 'Om maaltijdherinneringen precies op het gekozen tijdstip te laten verschijnen, moet je \"exacte alarmen\" inschakelen in de Android-instellingen. Wil je deze instellingen nu openen?';
+
+  @override
+  String get exactAlarmsNotNow => 'Niet nu';
+
+  @override
+  String get exactAlarmsOpenSettings => 'Open instellingen';
 }

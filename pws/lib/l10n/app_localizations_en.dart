@@ -2283,4 +2283,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyAgreement => 'I agree to the privacy policy';
+
+  @override
+  String get exactAlarmsTitle => 'Precise alarms';
+
+  @override
+  String get exactAlarmsMessage => 'To have meal reminders appear exactly at the chosen time, you need to enable \"exact alarms\" in the Android settings. Would you like to open these settings now?';
+
+  @override
+  String get exactAlarmsNotNow => 'Not now';
+
+  @override
+  String get exactAlarmsOpenSettings => 'Open settings';
 }
