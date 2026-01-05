@@ -1313,13 +1313,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   //  Android layout
-  Widget _buildAndroidLayout() {
+Widget _buildAndroidLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+// bepaal of gebruiker admin is
+    final bool isAdmin = (_userData?['role'] ?? '') == 'admin';
+    final int itemsCount = isAdmin ? 3 : 2;
+    final int effectiveIndex =
+        _selectedIndex >= itemsCount ? itemsCount - 1 : _selectedIndex;
 
     Widget body;
     Widget? fab;
 
-    if (_selectedIndex == 0) {
+    if (effectiveIndex == 0) {
       body = Stack(
         children: [
           Positioned.fill(
@@ -1334,45 +1340,22 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       );
       fab = _buildSpeedDial();
-    } else if (_selectedIndex == 1) {
-      body = (() {
-        // Als we de role al in _userData hebben (geladen in _fetchUserData), gebruik die
-        final roleFromLocal = _userData?['role'];
-        if (roleFromLocal != null) {
-          return roleFromLocal == 'admin'
-              ? const RecipesScreen()
-              : const UnderConstructionScreen();
-        }
-
-        // Fallback: haal role asynchroon op uit Firestore
-        return FutureBuilder<DocumentSnapshot>(
-          future: FirebaseFirestore.instance
-              .collection('users')
-              .doc(FirebaseAuth.instance.currentUser?.uid)
-              .get(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (!snapshot.hasData || !snapshot.data!.exists) {
-              return const UnderConstructionScreen();
-            }
-            final data = snapshot.data!.data() as Map<String, dynamic>;
-            final role = data['role'] ?? data['rol'] ?? 'user';
-            return role == 'admin'
-                ? const RecipesScreen()
-                : const UnderConstructionScreen();
-          },
-        );
-      })();
+    } else if (effectiveIndex == 1) {
+// effectiveIndex == 1
+      if (isAdmin) {
+        body = const RecipesScreen();
+      } else {
+        body = const WeightView();
+      }
       fab = null;
     } else {
+// effectiveIndex == 2
       body = const WeightView();
       fab = null;
     }
 
     return Scaffold(
-      appBar: _selectedIndex == 0
+      appBar: effectiveIndex == 0
           ? AppBar(
               title: GestureDetector(
                 key: _dateKey,
@@ -1420,7 +1403,7 @@ class _HomeScreenState extends State<HomeScreen> {
             )
           : AppBar(
               title: Text(
-                _selectedIndex == 1
+                effectiveIndex == 1 && isAdmin
                     ? AppLocalizations.of(context)!.recipesTitle
                     : AppLocalizations.of(context)!.weightTitle,
               ),
@@ -1430,7 +1413,7 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: fab,
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
+        currentIndex: effectiveIndex,
         selectedItemColor: isDarkMode ? Colors.tealAccent : Colors.teal,
         unselectedItemColor: isDarkMode ? Colors.grey[500] : Colors.grey[600],
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
@@ -1445,7 +1428,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.home),
             label: AppLocalizations.of(context)!.logs,
           ),
-          if ((_userData?['role'] ?? '') == 'admin')
+          if (isAdmin)
             BottomNavigationBarItem(
               icon: const Icon(Icons.menu_book),
               label: AppLocalizations.of(context)!.recipesTitle,
