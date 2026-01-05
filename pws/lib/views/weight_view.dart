@@ -2231,17 +2231,37 @@ class _WeightViewState extends State<WeightView> {
 
     // Gebruik de trendwaarde op het laatste moment voor de projectie
     // Dit is stabieler dan de 'lastWeight' die een uitschieter kan zijn.
-    final currentTrendWeight = intercept + slope * lastX;
-    final remaining = _targetWeight! - currentTrendWeight;
+    //final currentTrendWeight = intercept + slope * lastX;
+    //final remaining = _targetWeight! - currentTrendWeight;
 
-    // Verkeerde richting?
-    if ((remaining < 0 && slope >= 0) || (remaining > 0 && slope <= 0)) {
+    final trendWeightAtLastPoint = intercept + slope * lastX;
+    double startProjectionWeight;
+
+    if (_targetWeight! < trendWeightAtLastPoint) {
+      // Afvallen: geloof de weegschaal als die lager is dan de trend
+      startProjectionWeight = lastWeight < trendWeightAtLastPoint
+          ? lastWeight
+          : trendWeightAtLastPoint;
+    } else {
+      // Aankomen: geloof de weegschaal als die hoger is dan de trend
+      startProjectionWeight = lastWeight > trendWeightAtLastPoint
+          ? lastWeight
+          : trendWeightAtLastPoint;
+    }
+
+    final remaining = _targetWeight! - startProjectionWeight;
+    bool passedTarget =
+        (_targetWeight! < startProjectionWeight &&
+            _targetWeight! > lastWeight) ||
+        (_targetWeight! > startProjectionWeight && _targetWeight! < lastWeight);
+
+    if (!passedTarget &&
+        ((remaining < 0 && slope >= 0) || (remaining > 0 && slope <= 0))) {
       return Text(
         AppLocalizations.of(context)!.estimateWrongDirection,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
       );
     }
-
     final daysNeeded = (remaining / slope).abs();
 
     if (daysNeeded.isNaN || daysNeeded.isInfinite) {
