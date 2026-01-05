@@ -35,7 +35,7 @@ class _WeightViewState extends State<WeightView> {
   String _measurementType = 'weight';
 
   String _viewMode = 'table';
-  final TextEditingController _waistController = TextEditingController();
+  final TextEditingController _waistController = TextEditingController(); // taille invoerveld controller
   int _currentMonthIndex = 0;
 
   static const double _bmiMin = 10.0;
@@ -45,8 +45,8 @@ class _WeightViewState extends State<WeightView> {
   static const double _bmiHighEnd = 30.0;
   static const double _bmiMax = 40.0;
 
-  double _clampBmi(double bmi) {
-    return bmi.clamp(_bmiMin, _bmiMax);
+  double _clampBmi(double bmi) { // clamp bmi waarde binnen min/max
+    return bmi.clamp(_bmiMin, _bmiMax); // clamp binnen min/max. clamp betekent beperken
   }
 
   DateTime? _userBirthDate;
@@ -70,13 +70,13 @@ class _WeightViewState extends State<WeightView> {
     _initAsync();
   }
 
-  Future<void> _initAsync() async {
+  Future<void> _initAsync() async { // asynchrone initialisatie
     await _loadAbsiReference().catchError((_) {});
     await _ensureCdcLmsLoaded().catchError((_) {});
 
     await _loadUserData().catchError((_) {});
 
-    if ((_bmi == null) && _height > 0 && _weight > 0) {
+    if ((_bmi == null) && _height > 0 && _weight > 0) { // als bmi nog niet berekend is
       _recalculateBMI();
     }
 
@@ -96,7 +96,7 @@ class _WeightViewState extends State<WeightView> {
     super.dispose();
   }
 
-  Future<void> _loadAbsiReference() async {
+  Future<void> _loadAbsiReference() async { // laad ABSI referentietabel
     try {
       final jsonString = await rootBundle.loadString(
         'assets/absi_reference/absi_reference.json',
@@ -107,7 +107,7 @@ class _WeightViewState extends State<WeightView> {
     }
   }
 
-  Future<void> _loadUserData() async {
+  Future<void> _loadUserData() async { // laad gebruikersdata uit Firestore
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       setState(() => _loading = false);
@@ -128,7 +128,7 @@ class _WeightViewState extends State<WeightView> {
           .get();
       final data = doc.data() ?? {};
 
-      if (userDEK != null && data['weight'] is String) {
+      if (userDEK != null && data['weight'] is String) { // als gewicht een String is, probeer te decrypten
         try {
           final dec = await decryptValue(data['weight'] as String, userDEK);
           _weight = double.tryParse(dec.replaceAll(',', '.')) ?? _weight;
@@ -139,7 +139,7 @@ class _WeightViewState extends State<WeightView> {
         _weight = _parseDouble(data['weight']) ?? _weight;
       }
 
-      if (userDEK != null && data['height'] is String) {
+      if (userDEK != null && data['height'] is String) { // als hoogte een String is, probeer te decrypten
         try {
           final dec = await decryptValue(data['height'] as String, userDEK);
           _height = double.tryParse(dec.replaceAll(',', '.')) ?? _height;
@@ -150,7 +150,7 @@ class _WeightViewState extends State<WeightView> {
         _height = _parseDouble(data['height']) ?? _height;
       }
 
-      if (userDEK != null && data['waist'] is String) {
+      if (userDEK != null && data['waist'] is String) { // als taille een String is, probeer te decrypten
         try {
           final dec = await decryptValue(data['waist'] as String, userDEK);
           _waist = double.tryParse(dec.replaceAll(',', '.')) ?? _waist;
@@ -161,7 +161,7 @@ class _WeightViewState extends State<WeightView> {
         _waist = _parseDouble(data['waist']) ?? _waist;
       }
 
-      if (data['gender'] is String) {
+      if (data['gender'] is String) { // laad geslacht
         if (userDEK != null) {
           try {
             _userGender = await decryptValue(data['gender'] as String, userDEK);
@@ -172,8 +172,8 @@ class _WeightViewState extends State<WeightView> {
           _userGender = data['gender'] as String;
         }
       }
-      final String? birthDateStrEnc = data['birthDate'] as String?;
-      if (birthDateStrEnc != null) {
+      final String? birthDateStrEnc = data['birthDate'] as String?; // laad geboortedatum
+      if (birthDateStrEnc != null) { // als aanwezig
         String birthDecoded = birthDateStrEnc;
         if (userDEK != null) {
           try {
@@ -185,7 +185,7 @@ class _WeightViewState extends State<WeightView> {
             : null;
       }
 
-      if (userDEK != null && data['targetWeight'] is String) {
+      if (userDEK != null && data['targetWeight'] is String) { // als targetWeight een String is, probeer te decrypten
         try {
           final dec = await decryptValue(
             data['targetWeight'] as String,
@@ -201,11 +201,11 @@ class _WeightViewState extends State<WeightView> {
 
       final weightsRaw = data['weights'] as List<dynamic>? ?? [];
       final List<WeightEntry> loaded = [];
-      for (final item in weightsRaw) {
+      for (final item in weightsRaw) { // doorloop alle gewicht items
         try {
           if (item is String && userDEK != null) {
             final dec = await decryptValue(item, userDEK);
-            final Map<String, dynamic> m = Map<String, dynamic>.from(
+            final Map<String, dynamic> m = Map<String, dynamic>.from( // decodeer JSON
               jsonDecode(dec),
             );
             final date =
@@ -232,11 +232,11 @@ class _WeightViewState extends State<WeightView> {
 
             final weightField = item['weight'];
             double weightVal = 0.0;
-            if (weightField is String) {
+            if (weightField is String) { // als gewicht een String is
               if (userDEK != null) {
                 try {
                   final decW = await decryptValue(weightField, userDEK);
-                  weightVal = double.tryParse(decW.replaceAll(',', '.')) ?? 0.0;
+                  weightVal = double.tryParse(decW.replaceAll(',', '.')) ?? 0.0; // probeer te parsen
                 } catch (_) {
                   weightVal = _parseDouble(weightField) ?? 0.0;
                 }
@@ -252,12 +252,12 @@ class _WeightViewState extends State<WeightView> {
       }
 
       final tailleRaw = data['taille'] as List<dynamic>? ?? [];
-      final List<WeightEntry> loadedWaists = [];
-      for (final item in tailleRaw) {
+      final List<WeightEntry> loadedWaists = []; // lijst voor taille entries
+      for (final item in tailleRaw) { // doorloop alle taille items
         try {
           if (item is String && userDEK != null) {
-            final dec = await decryptValue(item, userDEK);
-            final Map<String, dynamic> m = Map<String, dynamic>.from(
+            final dec = await decryptValue(item, userDEK); // decryptie
+            final Map<String, dynamic> m = Map<String, dynamic>.from( // decodeer JSON
               jsonDecode(dec),
             );
             final date =
@@ -284,7 +284,7 @@ class _WeightViewState extends State<WeightView> {
 
             final weightField = item['weight'];
             double weightVal = 0.0;
-            if (weightField is String) {
+            if (weightField is String) { // als gewicht een String is
               if (userDEK != null) {
                 try {
                   final decW = await decryptValue(weightField, userDEK);
@@ -298,27 +298,27 @@ class _WeightViewState extends State<WeightView> {
             } else if (weightField is num) {
               weightVal = weightField.toDouble();
             }
-            loadedWaists.add(WeightEntry(date: date, weight: weightVal));
+            loadedWaists.add(WeightEntry(date: date, weight: weightVal)); // voeg toe aan lijst
           }
         } catch (_) {}
       }
 
-      _entries = loaded..sort((a, b) => a.date.compareTo(b.date));
-      _waistEntries = loadedWaists..sort((a, b) => a.date.compareTo(b.date));
+      _entries = loaded..sort((a, b) => a.date.compareTo(b.date)); // sorteer op datum
+      _waistEntries = loadedWaists..sort((a, b) => a.date.compareTo(b.date)); // sorteer taille entries op datum
       _currentMonthIndex = 0;
       _weightController.text = _weight.toStringAsFixed(1);
       if (_targetWeight != null) {
         _targetWeightController.text = _targetWeight!.toStringAsFixed(1);
       }
       _waistController.text = _waist.toStringAsFixed(1);
-      debugPrint('--- USER DATA LOADED ---');
+      debugPrint('--- USER DATA LOADED ---');   
       debugPrint('Gender (raw): $_userGender');
       debugPrint('Birthdate: $_userBirthDate');
       debugPrint('Age years: ${_ageYearsFromBirthDate(_userBirthDate)}');
       debugPrint('Age months: ${_ageMonthsFromBirthDate(_userBirthDate)}');
 
-      _recalculateBMI();
-      _computeAbsi();
+      _recalculateBMI();  // herbereken BMI
+      _computeAbsi(); // herbereken ABSI
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -343,7 +343,7 @@ class _WeightViewState extends State<WeightView> {
     return null;
   }
 
-  void _recalculateBMI() {
+  void _recalculateBMI() { // herbereken BMI
     if (_height <= 0 || _weight <= 0) {
       debugPrint('[BMI] Invalid height or weight');
       setState(() => _bmi = null);
@@ -359,7 +359,7 @@ class _WeightViewState extends State<WeightView> {
     setState(() => _bmi = bmi);
   }
 
-  Future<void> _computeAbsi() async {
+  Future<void> _computeAbsi() async { // bereken ABSI
     debugPrint(
       '[ABSI] compute start: waist=$_waist, bmi=$_bmi, height=$_height, weight=$_weight',
     );
@@ -387,14 +387,14 @@ class _WeightViewState extends State<WeightView> {
 
     final heightM = _height / 100.0;
     final waistM = _waist / 100.0;
-    final absi = waistM / (pow(_bmi!, 2.0 / 3.0) * pow(heightM, 0.5));
+    final absi = waistM / (pow(_bmi!, 2.0 / 3.0) * pow(heightM, 0.5)); // ABSI formule
     debugPrint('[ABSI] computed absi=$absi');
 
     String? rangeKey;
     double? z;
-    // try compute z-score if reference table available and birthDate/gender loaded in _loadUserData
-    try {
-      if (_absiReferenceTable.isNotEmpty) {
+
+    try { // probeer referentietabel lookup
+      if (_absiReferenceTable.isNotEmpty) { // als referentietabel geladen is
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
           final doc = await FirebaseFirestore.instance
@@ -433,8 +433,8 @@ class _WeightViewState extends State<WeightView> {
             final isFemale = (gender).toLowerCase() == 'vrouw';
             final ref = isFemale ? entry['female'] : entry['male'];
             final mean = (ref['mean'] as num).toDouble();
-            final sd = (ref['sd'] as num).toDouble();
-            if (sd != 0) {
+            final sd = (ref['sd'] as num).toDouble(); // standaarddeviatie
+            if (sd != 0) { // vermijd deling door nul
               z = (absi - mean) / sd;
               if (z <= -1.0) {
                 rangeKey = 'very_low';
@@ -474,7 +474,7 @@ class _WeightViewState extends State<WeightView> {
     );
   }
 
-  Future<void> _ensureCdcLmsLoaded() async {
+  Future<void> _ensureCdcLmsLoaded() async { // laad CDC LMS data
     if ((_lmsCache['1']?.isNotEmpty ?? false) &&
         (_lmsCache['2']?.isNotEmpty ?? false)) {
       return;
@@ -489,7 +489,7 @@ class _WeightViewState extends State<WeightView> {
         .toList();
     final idxSex = header.indexWhere((h) => h.contains('sex'));
     final idxAge = header.indexWhere(
-      (h) => h.contains('agemos') || h.contains('age'),
+      (h) => h.contains('agemos') || h.contains('age'), // leeftijd in maanden
     );
     final idxL = header.indexWhere(
       (h) => h == 'l' || h.contains(' l') || h == 'l ',
@@ -506,43 +506,43 @@ class _WeightViewState extends State<WeightView> {
         idxL == -1 ||
         idxM == -1 ||
         idxS == -1) {
-      throw Exception('CSV header heeft niet verwachte kolommen');
+      throw Exception('CSV header heeft niet verwachte kolommen'); // unexpected columnse
     }
     _lmsCache['1']?.clear();
     _lmsCache['2']?.clear();
 
-    for (var i = 1; i < lines.length; i++) {
+    for (var i = 1; i < lines.length; i++) { // begin bij 1 om header over te slaan
       final row = lines[i].split(',');
-      if (row.length <= max(idxSex, max(idxAge, max(idxL, max(idxM, idxS))))) {
+      if (row.length <= max(idxSex, max(idxAge, max(idxL, max(idxM, idxS))))) { // onvolledige rij
         continue;
       }
       final sex = row[idxSex].trim();
-      final agemos = double.tryParse(row[idxAge].trim())?.round();
+      final agemos = double.tryParse(row[idxAge].trim())?.round(); // leeftijd in maanden afronden
       final L = double.tryParse(row[idxL].trim());
       final M = double.tryParse(row[idxM].trim());
       final S = double.tryParse(row[idxS].trim());
       if (agemos != null && L != null && M != null && S != null) {
-        _lmsCache[sex]?[agemos] = {'L': L, 'M': M, 'S': S};
+        _lmsCache[sex]?[agemos] = {'L': L, 'M': M, 'S': S}; // sla op in cache
       }
     }
   }
 
-  double _bmiFromLms(double z, double L, double M, double S) {
+  double _bmiFromLms(double z, double L, double M, double S) { // bereken BMI vanuit LMS waarden
     if (L == 0) return M * exp(S * z);
-    return M * pow(1 + L * S * z, 1 / L);
+    return M * pow(1 + L * S * z, 1 / L); // formule voor berekening/ pow is machtsverheffen
   }
 
-  int _ageYearsFromBirthDate(DateTime? bd) {
+  int _ageYearsFromBirthDate(DateTime? bd) { // bereken leeftijd in jaren
     if (bd == null) return 0;
     final now = DateTime.now();
     int years = now.year - bd.year;
-    if (now.month < bd.month || (now.month == bd.month && now.day < bd.day)) {
+    if (now.month < bd.month || (now.month == bd.month && now.day < bd.day)) { // nog niet jarig dit jaar
       years--;
     }
     return years;
   }
 
-  int _ageMonthsFromBirthDate(DateTime? bd) {
+  int _ageMonthsFromBirthDate(DateTime? bd) { // bereken leeftijd in maanden
     if (bd == null) return 0;
     final now = DateTime.now();
     int months = (now.year - bd.year) * 12 + (now.month - bd.month);
@@ -550,7 +550,7 @@ class _WeightViewState extends State<WeightView> {
     return max(0, months);
   }
 
-  String _genderCodeFromLocalized(String gender) {
+  String _genderCodeFromLocalized(String gender) { // normaliseer geslacht naar code
     final g = gender.trim().toLowerCase();
     final code =
         (g.contains('vrouw') || g.contains('woman') || g.startsWith('f'))
@@ -561,7 +561,7 @@ class _WeightViewState extends State<WeightView> {
     return code;
   }
 
-  Color _absiCategoryColor(String? rangeKey, bool isDark) {
+  Color _absiCategoryColor(String? rangeKey, bool isDark) { // bepaal kleur op basis van ABSI categorie
     if (rangeKey == null) return isDark ? Colors.white : Colors.black;
     switch (rangeKey) {
       case 'very_low':
@@ -576,7 +576,7 @@ class _WeightViewState extends State<WeightView> {
     }
   }
 
-  Future<void> _saveWeight() async {
+  Future<void> _saveWeight() async { // sla gewicht op
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     debugPrint("--- SAVE WEIGHT TRIGGERED ---");
@@ -606,7 +606,7 @@ class _WeightViewState extends State<WeightView> {
     final loc = AppLocalizations.of(context)!;
 
     final List<String> errors = [];
-    if (!(_height >= 50 && _height <= 300)) {
+    if (!(_height >= 50 && _height <= 300)) { // validatie hoogte. errors.add omdat je dan meerdere fouten kunt tonen
       errors.add(loc.heightRange);
     }
     if (!(_weight >= 20 && _weight <= 800)) {
@@ -635,8 +635,8 @@ class _WeightViewState extends State<WeightView> {
     }
 
     setState(() {
-      _waist = parsedWaistForValidation ?? _waist;
-      _targetWeight = parsedTargetForValidation ?? _targetWeight;
+      _waist = parsedWaistForValidation ?? _waist; // update taille
+      _targetWeight = parsedTargetForValidation ?? _targetWeight; // update target gewicht
       _saving = true;
     });
 
@@ -731,8 +731,7 @@ class _WeightViewState extends State<WeightView> {
         heightVal = _parseDouble(data['height']) ?? _height;
       }
       final targetWeightVal = _targetWeight ?? _weight;
-
-      // Recompute goals if possible
+// Bereken BMI en caloriebehoefte
       double? bmi;
       double? calorieGoal;
       double? proteinGoal;
@@ -802,9 +801,9 @@ class _WeightViewState extends State<WeightView> {
 
       final onlyDate = DateTime(now.year, now.month, now.day);
       final newWaistEntry = WeightEntry(date: onlyDate, weight: _waist);
-      _waistEntries.removeWhere((e) => _isSameDay(e.date, newWaistEntry.date));
-      _waistEntries.add(newWaistEntry);
-      _waistEntries.sort((a, b) => a.date.compareTo(b.date));
+      _waistEntries.removeWhere((e) => _isSameDay(e.date, newWaistEntry.date)); // verwijder oude entry voor dezelfde dag
+      _waistEntries.add(newWaistEntry);   // voeg nieuwe toe
+      _waistEntries.sort((a, b) => a.date.compareTo(b.date)); // sorteer op datum
 
       if (userDEK != null) {
         saveMap['weight'] = await encryptDouble(_weight, userDEK);
@@ -825,11 +824,11 @@ class _WeightViewState extends State<WeightView> {
         saveMap['activityLevel'] = await encryptValue(activityLevel, userDEK);
         saveMap['goal'] = await encryptValue(goal, userDEK);
         saveMap['targetWeight'] = await encryptDouble(targetWeightVal, userDEK);
-        // weights list: encrypt each entry
+     // encrypt gewicht entries
         final List<dynamic> weightsToSave = [];
         for (final e in _entries) {
           final m = e.toMap();
-          // encrypt both date and weight
+        // encrypt date en gewicht
           final encDate = await encryptValue(m['date'] as String, userDEK);
           final encWeight = await encryptDouble(
             (m['weight'] as num).toDouble(),
@@ -850,7 +849,7 @@ class _WeightViewState extends State<WeightView> {
         }
         saveMap['taille'] = waistsToSave;
       } else {
-        // store plaintext
+        // zonder encryptie
         saveMap['weight'] = _weight;
         saveMap['height'] = heightVal;
         saveMap['waist'] = _waist;
@@ -870,7 +869,7 @@ class _WeightViewState extends State<WeightView> {
         saveMap['taille'] = _waistEntries.map((e) => e.toMap()).toList();
       }
 
-      // keep notificationsEnabled and other booleans untouched if present
+// Behoud bestaande notificatie-instellingen
       if (data.containsKey('notificationsEnabled')) {
         saveMap['notificationsEnabled'] = data['notificationsEnabled'];
       }
@@ -902,7 +901,7 @@ class _WeightViewState extends State<WeightView> {
     _waistFocusNode.unfocus();
   }
 
-  List<_MonthGroup> _groupEntriesByMonthFor(List<WeightEntry> entries) {
+  List<_MonthGroup> _groupEntriesByMonthFor(List<WeightEntry> entries) { // groepeer gewicht entries per maand
     if (entries.isEmpty) return [];
     final Map<String, List<WeightEntry>> byMonth = {};
     for (final e in entries) {
@@ -911,7 +910,7 @@ class _WeightViewState extends State<WeightView> {
     }
 
     final groups = <_MonthGroup>[];
-    byMonth.forEach((key, list) {
+    byMonth.forEach((key, list) { // sorteer entries binnen de maand
       list.sort((a, b) => a.date.compareTo(b.date));
       final parts = key.split('-');
       final year = int.parse(parts[0]);
@@ -928,9 +927,9 @@ class _WeightViewState extends State<WeightView> {
   }
 
   bool _isSameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
+      a.year == b.year && a.month == b.month && a.day == b.day; // controleer of twee datums dezelfde dag zijn
 
-  String _bmiCategory(double bmi) {
+  String _bmiCategory(double bmi) { // bepaal BMI categorie
     final loc = AppLocalizations.of(context)!;
     debugPrint('--- BMI CATEGORY CHECK ---');
     debugPrint('BMI value: $bmi');
@@ -952,25 +951,25 @@ class _WeightViewState extends State<WeightView> {
         debugPrint('[LMS] LMS entries count: ${lmsDataForSex?.length}');
         debugPrint('[LMS] Requested ageMonths=$ageMonths');
 
-        if (lmsDataForSex != null && lmsDataForSex.isNotEmpty) {
+        if (lmsDataForSex != null && lmsDataForSex.isNotEmpty) { // LMS data beschikbaar
           Map<String, double>? lms = lmsDataForSex[ageMonths];
-          if (lms != null) {
+          if (lms != null) { // exacte maand gevonden
             debugPrint('[LMS] Found LMS for month (or nearest)');
             debugPrint('[LMS] L=${lms['L']} M=${lms['M']} S=${lms['S']}');
           } else {
             debugPrint(
               '[LMS] ❌ No LMS found for this age, selecting nearest available month',
             );
-            final keys = lmsDataForSex.keys.toList()..sort();
+            final keys = lmsDataForSex.keys.toList()..sort(); // sorteer beschikbare maanden
             final nearest = keys.reduce(
-              (a, b) => (a - ageMonths).abs() < (b - ageMonths).abs() ? a : b,
+              (a, b) => (a - ageMonths).abs() < (b - ageMonths).abs() ? a : b, // vind dichtstbijzijnde maand
             );
             lms = lmsDataForSex[nearest];
             debugPrint('[LMS] using nearest month=$nearest');
             debugPrint('[LMS] L=${lms!['L']} M=${lms['M']} S=${lms['S']}');
           }
 
-          final L = lms['L']!;
+          final L = lms['L']!; // haal L, M, S waarden op
           final M = lms['M']!;
           final S = lms['S']!;
 
@@ -978,11 +977,11 @@ class _WeightViewState extends State<WeightView> {
           const z5 = -1.645; // 5e percentiel
           const z85 = 1.036; // 85e percentiel
           const z95 = 1.645; // 95e percentiel
-          final bmi1 = _bmiFromLms(z1, L, M, S);
+          final bmi1 = _bmiFromLms(z1, L, M, S); // bereken BMI percentielen
 
-          final bmi5 = _bmiFromLms(z5, L, M, S);
-          final bmi85 = _bmiFromLms(z85, L, M, S);
-          final bmi95 = _bmiFromLms(z95, L, M, S);
+          final bmi5 = _bmiFromLms(z5, L, M, S); // 5e percentiel
+          final bmi85 = _bmiFromLms(z85, L, M, S); // 85e percentiel
+          final bmi95 = _bmiFromLms(z95, L, M, S); // 95e percentiel
           debugPrint('[BMI PERCENTILES]');
           debugPrint('BMI 1p  = $bmi1');
 
@@ -995,8 +994,8 @@ class _WeightViewState extends State<WeightView> {
 
           if (bmi < bmi1) return loc.bmiVeryLow; // Ernstig ondergewicht
           if (bmi < bmi5) return loc.bmiLow; // Ondergewicht
-          if (bmi < bmi85) return loc.bmiGood;
-          if (bmi < bmi95) return loc.bmiHigh;
+          if (bmi < bmi85) return loc.bmiGood; // Gezond
+          if (bmi < bmi95) return loc.bmiHigh; // Overgewicht
           return loc.bmiVeryHigh;
         }
       }
@@ -1012,17 +1011,17 @@ class _WeightViewState extends State<WeightView> {
     return loc.bmiVeryHigh;
   }
 
-  Color _bmiCategoryColor(double bmi, bool isDark) {
+  Color _bmiCategoryColor(double bmi, bool isDark) { // bepaal kleur op basis van BMI categorie
     // Probeer kinder-BMI logica
     try {
       final ageYears = _ageYearsFromBirthDate(_userBirthDate);
       final ageMonths = _ageMonthsFromBirthDate(_userBirthDate);
 
-      if (_userBirthDate != null && ageYears < 18 && ageMonths >= 24) {
-        final sexCode = _genderCodeFromLocalized(_userGender);
+      if (_userBirthDate != null && ageYears < 18 && ageMonths >= 24) { // alleen voor kinderen ouder dan 2 jaar
+        final sexCode = _genderCodeFromLocalized(_userGender); // normaliseer geslacht
         final lmsDataForSex = _lmsCache[sexCode];
-        if (lmsDataForSex != null && lmsDataForSex.isNotEmpty) {
-          Map<String, double>? lms = lmsDataForSex[ageMonths];
+        if (lmsDataForSex != null && lmsDataForSex.isNotEmpty) { // LMS data beschikbaar
+          Map<String, double>? lms = lmsDataForSex[ageMonths]; // probeer exacte maand te vinden
           if (lms == null) {
             final keys = lmsDataForSex.keys.toList()..sort();
             int nearest = keys.reduce(
@@ -1087,7 +1086,7 @@ class _WeightViewState extends State<WeightView> {
         // Gebruik de surface-kleur (stabieler) en verwijder surface tint / schaduw
         backgroundColor: theme.colorScheme.surface,
         elevation: 0,
-        surfaceTintColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent, // verwijder surface tint
         shadowColor: Colors.transparent,
         systemOverlayStyle: isDark
             ? SystemUiOverlayStyle.light
@@ -1434,7 +1433,7 @@ class _WeightViewState extends State<WeightView> {
                                 },
                               ),
                               const SizedBox(height: 12),
-                              if (_absi == null)
+                              if (_absi == null) // geen ABSI berekend
                                 Text(
                                   loc.absiInsufficient,
                                   style: theme.textTheme.bodySmall?.copyWith(
@@ -1562,7 +1561,7 @@ class _WeightViewState extends State<WeightView> {
 
                       const SizedBox(height: 12),
 
-                      if (selectedEntries.isEmpty)
+                      if (selectedEntries.isEmpty) // geen metingen beschikbaar
                         Text(
                           _measurementType == 'weight'
                               ? loc.noMeasurements
@@ -1593,14 +1592,14 @@ class _WeightViewState extends State<WeightView> {
                 ),
               ),
             ),
-      floatingActionButton: Padding(
+      floatingActionButton: Padding( // extra padding voor iOS bottom bar
         padding: const EdgeInsets.only(bottom: 80.0),
         child: const FeedbackButton(),
       ),
     );
   }
-
-  Widget _buildBmiBar(ThemeData theme, bool isDark) {
+ 
+  Widget _buildBmiBar(ThemeData theme, bool isDark) { // bouw de BMI balk
     if (_bmi == null) return const SizedBox.shrink();
 
     // Standaard drempels voor volwassenen
@@ -1633,7 +1632,7 @@ class _WeightViewState extends State<WeightView> {
           final S = lms['S']!;
 
           // Bereken BMI-waarden voor de percentielen
-          veryLowEnd = _bmiFromLms(-2.33, L, M, S); // ~1e percentiel
+          veryLowEnd = _bmiFromLms(-2.33, L, M, S); // 1e percentiel
           lowEnd = _bmiFromLms(-1.645, L, M, S); // 5e percentiel
           goodEnd = _bmiFromLms(1.036, L, M, S); // 85e percentiel
           highEnd = _bmiFromLms(1.645, L, M, S); // 95e percentiel
@@ -1731,7 +1730,7 @@ class _WeightViewState extends State<WeightView> {
     }
   }
 
-  Widget _absiLegendItem(BuildContext context, Color color, String label) {
+  Widget _absiLegendItem(BuildContext context, Color color, String label) { // bouw een ABSI legenda item
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onSurface;
 
@@ -1755,7 +1754,7 @@ class _WeightViewState extends State<WeightView> {
     );
   }
 
-  Widget _bmiSegment({required int flex, required Color color}) {
+  Widget _bmiSegment({required int flex, required Color color}) { // bouw een BMI segment
     return Expanded(
       flex: flex,
       child: Container(
@@ -1765,7 +1764,7 @@ class _WeightViewState extends State<WeightView> {
     );
   }
 
-  Widget _buildBmiLegend(ThemeData theme, bool isDark) {
+  Widget _buildBmiLegend(ThemeData theme, bool isDark) { // bouw de BMI legenda
     final textColor = isDark ? Colors.white : Colors.black;
 
     Widget item(Color color, String label) {
@@ -1817,14 +1816,14 @@ class _WeightViewState extends State<WeightView> {
     );
   }
 
-  Widget _buildTableView(
+  Widget _buildTableView( // bouw de tabel weergave
     ThemeData theme,
     Color primaryTextColor,
     Color? secondaryTextColor, {
     required List<WeightEntry> entries,
     required String unit,
   }) {
-    final reversed = entries.reversed.toList();
+    final reversed = entries.reversed.toList(); // nieuwste eerst
 
     final rows = <Widget>[];
     for (var i = 0; i < reversed.length; i++) {
@@ -1920,7 +1919,7 @@ class _WeightViewState extends State<WeightView> {
         children: [
           ListTile(
             title: Text(
-              '${AppLocalizations.of(context)!.tableMeasurementsTitle} ($unit)',
+              '${AppLocalizations.of(context)!.tableMeasurementsTitle} ($unit)', // tabel koptekst
               style: TextStyle(color: primaryTextColor),
             ),
           ),
@@ -1931,14 +1930,14 @@ class _WeightViewState extends State<WeightView> {
     );
   }
 
-  Future<void> _deleteEntry(WeightEntry entry) async {
+  Future<void> _deleteEntry(WeightEntry entry) async { // verwijder een meting
     setState(() {
       if (_entries.any(
-        (e) => e.date == entry.date && e.weight == entry.weight,
-      )) {
+        (e) => e.date == entry.date && e.weight == entry.weight, // controleer of het een gewicht meting is
+      )) { 
         _entries.removeWhere(
           (e) => e.date == entry.date && e.weight == entry.weight,
-        );
+        ); // verwijder de meting
         _weight = _entries.isNotEmpty ? _entries.last.weight : 0.0;
         _weightController.text = _weight.toStringAsFixed(1);
         _recalculateBMI();
@@ -1946,7 +1945,7 @@ class _WeightViewState extends State<WeightView> {
       } else {
         _waistEntries.removeWhere(
           (e) => e.date == entry.date && e.weight == entry.weight,
-        );
+        ); // verwijder de taille meting
         _waist = _waistEntries.isNotEmpty ? _waistEntries.last.weight : _waist;
         _waistController.text = _waist.toStringAsFixed(1);
       }
@@ -1995,7 +1994,7 @@ class _WeightViewState extends State<WeightView> {
     }
   }
 
-  Widget _buildChartView(
+  Widget _buildChartView( // bouw de grafiek weergave
     ThemeData theme,
     Color primaryTextColor,
     Color? secondaryTextColor, {
@@ -2017,17 +2016,17 @@ class _WeightViewState extends State<WeightView> {
       _currentMonthIndex = 0;
     }
 
-    final current = monthGroups[_currentMonthIndex];
-    final monthEntries = current.entries;
+    final current = monthGroups[_currentMonthIndex]; // huidige maand groep
+    final monthEntries = current.entries; // metingen voor de huidige maand
 
-    final canGoPrev = _currentMonthIndex < monthGroups.length - 1;
-    final canGoNext = _currentMonthIndex > 0;
+    final canGoPrev = _currentMonthIndex < monthGroups.length - 1; // kan naar vorige maand
+    final canGoNext = _currentMonthIndex > 0; // kan naar volgende maand
 
-    final displayedDate = DateTime(current.year, current.month, 1);
+    final displayedDate = DateTime(current.year, current.month, 1); // weergegeven maand
 
     double? minWeight;
     double? maxWeight;
-    if (monthEntries.length >= 2) {
+    if (monthEntries.length >= 2) { // bereken min/max gewicht voor de grafiek
       minWeight = monthEntries
           .map((e) => e.weight)
           .reduce((a, b) => a < b ? a : b);
@@ -2058,7 +2057,7 @@ class _WeightViewState extends State<WeightView> {
                       : null,
                 ),
                 Text(
-                  '${AppLocalizations.of(context)!.chartTitlePrefix} ${_formatMonthYear(displayedDate)} ($unit)',
+                  '${AppLocalizations.of(context)!.chartTitlePrefix} ${_formatMonthYear(displayedDate)} ($unit)', // grafiek titel
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: primaryTextColor,
                   ),
@@ -2086,7 +2085,7 @@ class _WeightViewState extends State<WeightView> {
                   color: secondaryTextColor,
                 ),
               ),
-            ] else ...[
+            ] else ...[ // voldoende metingen: toon grafiek
               SizedBox(
                 height: 200,
                 child: CustomPaint(
@@ -2112,42 +2111,41 @@ class _WeightViewState extends State<WeightView> {
     );
   }
 
-  Widget _buildTargetWeightEstimate(
+  Widget _buildTargetWeightEstimate( // bouw de streefgewicht schatting
     ThemeData theme,
     Color primaryTextColor,
     Color? secondaryTextColor,
   ) {
-    if (_entries.length < 2 || _targetWeight == null) {
+    if (_entries.length < 2 || _targetWeight == null) { // niet genoeg data
       return Text(
         AppLocalizations.of(context)!.estimateNotEnoughData,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
       );
     }
-
-    // ===== CONFIG =====
-    const int lookbackMonths = 1;
-    const int minRecentPoints = 3;
+// Parameters voor de schatting
+    const int lookbackMonths = 1; // maanden terugkijken
+    const int minRecentPoints = 3; // minimale recente punten
     const double slopeThreshold = 0.001; // kg/dag (≈ 1g/dag)
     const int maxReasonableDays = 3650; // 10 jaar
     const double halfLifeDays = 14; // exponentiële halfwaardetijd
 
     final now = DateTime.now();
-    final cutoffDate = DateTime(now.year, now.month - lookbackMonths, now.day);
+    final cutoffDate = DateTime(now.year, now.month - lookbackMonths, now.day); // cutoff datum
 
     // Sorteer alle metingen
     final allSorted = _entries.toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
+      ..sort((a, b) => a.date.compareTo(b.date)); 
 
     // Gebruik recente data indien mogelijk
     final recent = allSorted.where((e) => e.date.isAfter(cutoffDate)).toList();
 
-    final sorted = recent.length >= minRecentPoints ? recent : allSorted;
+    final sorted = recent.length >= minRecentPoints ? recent : allSorted; // kies dataset
 
     final lastEntry = sorted.last;
     final lastWeight = lastEntry.weight;
 
     // Op streefgewicht?
-    if ((lastWeight - _targetWeight!).abs() < 0.1) {
+    if ((lastWeight - _targetWeight!).abs() < 0.1) { // binnen 0.1 kg
       return Text(
         AppLocalizations.of(context)!.estimateOnTarget,
         style: theme.textTheme.bodyMedium?.copyWith(
@@ -2157,34 +2155,33 @@ class _WeightViewState extends State<WeightView> {
       );
     }
 
-    if (sorted.length < 2) {
+    if (sorted.length < 2) { // niet genoeg data na selectie
       return Text(
         AppLocalizations.of(context)!.estimateNotEnoughData,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
       );
     }
 
-    final firstDate = sorted.first.date;
-    final n = sorted.length;
+    final firstDate = sorted.first.date; // datum van eerste meting
+    final n = sorted.length; // aantal metingen
 
-    // x = dagen sinds eerste meting (fractioneel)
+    // x = dagen sinds eerste meting 
     final xs = List<double>.generate(n, (i) {
-      final ms = sorted[i].date.difference(firstDate).inMilliseconds;
-      return ms / Duration.millisecondsPerDay;
+      final ms = sorted[i].date.difference(firstDate).inMilliseconds; //  milliseconden verschil
+      return ms / Duration.millisecondsPerDay; // converteer naar dagen
     });
     final ys = List<double>.generate(n, (i) => sorted[i].weight.toDouble());
 
-    // ===== Exponentiële gewichten =====
-    // Recentere punten krijgen meer gewicht
+// Exponentiële gewogen regressie
     final lastX = xs.last;
-    final lambda = log(2) / halfLifeDays;
+    final lambda = log(2) / halfLifeDays; // afkappingsconstante
 
     final ws = List<double>.generate(n, (i) {
       final ageDays = lastX - xs[i];
       return exp(-lambda * ageDays);
     });
 
-    final wSum = ws.reduce((a, b) => a + b);
+    final wSum = ws.reduce((a, b) => a + b); // som van gewichten
 
     // Gewogen gemiddelden
     final meanX =
@@ -2195,50 +2192,47 @@ class _WeightViewState extends State<WeightView> {
     double num = 0.0;
     double den = 0.0;
 
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++) { // bereken teller en noemer voor de helling
       final dx = xs[i] - meanX;
       final dy = ys[i] - meanY;
-      num += ws[i] * dx * dy;
-      den += ws[i] * dx * dx;
+      num += ws[i] * dx * dy; // teller
+      den += ws[i] * dx * dx; // noemer
     }
 
-    if (den == 0) {
-      return Text(
+    if (den == 0) { // geen variatie in x
+      return Text( 
         AppLocalizations.of(context)!.estimateNoTrend,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
       );
     }
 
     final slope = num / den; // kg per dag
-    final intercept = meanY - slope * meanX;
+    final intercept = meanY - slope * meanX; // y-as intercept
 
-    // ===== Residuals (onzekerheid) =====
+// Bereken standaarddeviatie van de residuen
     double varNum = 0.0;
-    for (int i = 0; i < n; i++) {
-      final pred = intercept + slope * xs[i];
-      final res = ys[i] - pred;
-      varNum += ws[i] * res * res;
+    for (int i = 0; i < n; i++) { // residuen
+      final pred = intercept + slope * xs[i]; // voorspelde waarde
+      final res = ys[i] - pred; // residu
+      varNum += ws[i] * res * res; //  gewogen som van kwadraten
     }
-    final residualStd = sqrt(varNum / wSum);
-
-    // Stabiel?
-    if (slope.abs() < slopeThreshold) {
+    final residualStd = sqrt(varNum / wSum); // standaarddeviatie van residuen
+// Evalueer de schatting
+    if (slope.abs() < slopeThreshold) { // te kleine helling
       return Text(
         AppLocalizations.of(context)!.estimateStable,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
       );
     }
 
-    // Gebruik de trendwaarde op het laatste moment voor de projectie
-    // Dit is stabieler dan de 'lastWeight' die een uitschieter kan zijn.
     //final currentTrendWeight = intercept + slope * lastX;
     //final remaining = _targetWeight! - currentTrendWeight;
 
-    final trendWeightAtLastPoint = intercept + slope * lastX;
-    double startProjectionWeight;
+    final trendWeightAtLastPoint = intercept + slope * lastX; // trend gewicht bij laatste punt
+    double startProjectionWeight; 
 
     if (_targetWeight! < trendWeightAtLastPoint) {
-      // Afvallen: geloof de weegschaal als die lager is dan de trend
+// Afvallen: geloof de weegschaal als die lager is dan de trend
       startProjectionWeight = lastWeight < trendWeightAtLastPoint
           ? lastWeight
           : trendWeightAtLastPoint;
@@ -2256,7 +2250,7 @@ class _WeightViewState extends State<WeightView> {
         (_targetWeight! > startProjectionWeight && _targetWeight! < lastWeight);
 
     if (!passedTarget &&
-        ((remaining < 0 && slope >= 0) || (remaining > 0 && slope <= 0))) {
+        ((remaining < 0 && slope >= 0) || (remaining > 0 && slope <= 0))) { // verkeerde richting
       return Text(
         AppLocalizations.of(context)!.estimateWrongDirection,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
@@ -2264,7 +2258,7 @@ class _WeightViewState extends State<WeightView> {
     }
     final daysNeeded = (remaining / slope).abs();
 
-    if (daysNeeded.isNaN || daysNeeded.isInfinite) {
+    if (daysNeeded.isNaN || daysNeeded.isInfinite) { // ongeldige schatting
       return Text(
         AppLocalizations.of(context)!.estimateInsufficientInfo,
         style: theme.textTheme.bodySmall?.copyWith(color: secondaryTextColor),
@@ -2294,7 +2288,7 @@ class _WeightViewState extends State<WeightView> {
 
     // De datum moet berekend worden vanaf de laatste meting, niet vanaf nu.
     final targetDate = lastEntry.date.add(Duration(days: totalDays));
-    final dateStr = '${targetDate.day}-${targetDate.month}-${targetDate.year}';
+    final dateStr = '${targetDate.day}-${targetDate.month}-${targetDate.year}'; // geformatteerde datum
 
     // Onzekerheidstekst
     String uncertaintyNote = '';
@@ -2323,9 +2317,9 @@ class _WeightViewState extends State<WeightView> {
   }
 
   String _formatDate(DateTime date) =>
-      '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
+      '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}'; // formatteer datum als DD-MM-YYYY
 
-  String _formatShortMonth(DateTime date) {
+  String _formatShortMonth(DateTime date) { // formatteer korte maandnaam
     const months = [
       'jan',
       'feb',
@@ -2343,7 +2337,7 @@ class _WeightViewState extends State<WeightView> {
     return months[date.month - 1];
   }
 
-  String _formatMonthYear(DateTime date) {
+  String _formatMonthYear(DateTime date) { // formatteer maand en jaar
     const months = [
       'januari',
       'februari',
@@ -2366,9 +2360,9 @@ class WeightEntry {
   final DateTime date;
   final double weight;
 
-  WeightEntry({required this.date, required this.weight});
+  WeightEntry({required this.date, required this.weight}); /// maak een WeightEntry instantie
 
-  factory WeightEntry.fromMap(Map<String, dynamic> map) {
+  factory WeightEntry.fromMap(Map<String, dynamic> map) { // maak een WeightEntry van een map. factory is een constructor die een nieuw object kan retourneren
     final dateStr = map['date'] as String? ?? '';
     DateTime date;
     try {
@@ -2380,7 +2374,7 @@ class WeightEntry {
     final dynamic rawWeight = map['weight'];
     double weight;
 
-    if (rawWeight is num) {
+    if (rawWeight is num) { // controleer of het een nummer is
       weight = rawWeight.toDouble();
     } else if (rawWeight is String) {
       weight = double.tryParse(rawWeight.replaceAll(',', '.')) ?? 0.0;
@@ -2388,17 +2382,17 @@ class WeightEntry {
       weight = 0.0;
     }
 
-    return WeightEntry(date: date, weight: weight);
+    return WeightEntry(date: date, weight: weight); // retourneer een nieuwe WeightEntry
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toMap() { // converteer een WeightEntry naar een map
     final d = date;
     final onlyDate = DateTime(d.year, d.month, d.day);
     return {'date': onlyDate.toIso8601String(), 'weight': weight};
   }
 }
 
-class _WeightChartPainter extends CustomPainter {
+class _WeightChartPainter extends CustomPainter { // teken de gewicht grafiek
   final List<WeightEntry> entries;
   final double minWeight;
   final double maxWeight;
@@ -2412,7 +2406,7 @@ class _WeightChartPainter extends CustomPainter {
   });
 
   @override
-  void paint(Canvas canvas, Size size) {
+  void paint(Canvas canvas, Size size) { // teken de grafiek
     if (entries.isEmpty) return;
 
     const double leftPad = 32;
@@ -2426,10 +2420,10 @@ class _WeightChartPainter extends CustomPainter {
     final first = entries.first.date;
     final last = entries.last.date;
     final startDay = first.day.toDouble();
-    final endDay = last.day.toDouble();
+    final endDay = last.day.toDouble(); // laatste dag in de maand
     final dayRange = (endDay - startDay).clamp(1, 31);
 
-    final wRange = (maxWeight - minWeight).abs().clamp(1, 100);
+    final wRange = (maxWeight - minWeight).abs().clamp(1, 100); // gewicht bereik
 
     final paintAxis = Paint()
       ..color = Colors.grey.shade400
@@ -2448,7 +2442,7 @@ class _WeightChartPainter extends CustomPainter {
 
     final List<Offset> points = [];
 
-    for (int i = 0; i < entries.length; i++) {
+    for (int i = 0; i < entries.length; i++) { // bereken punten
       final e = entries[i];
       final dayPos = (e.date.day - startDay) / dayRange;
       final weightPos = (e.weight - minWeight) / wRange;
@@ -2486,7 +2480,7 @@ class _WeightChartPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     );
 
-    for (int i = 0; i < entries.length; i++) {
+    for (int i = 0; i < entries.length; i++) { // teken x-as labels
       final e = entries[i];
       final p = points[i];
 
@@ -2498,8 +2492,8 @@ class _WeightChartPainter extends CustomPainter {
       textPainter.paint(canvas, offset);
     }
 
-    final Set<String> usedWeightLabels = {};
-    for (int i = 0; i < entries.length; i++) {
+    final Set<String> usedWeightLabels = {}; // voorkom dubbele y-as labels
+    for (int i = 0; i < entries.length; i++) { // teken y-as labels
       final e = entries[i];
       final p = points[i];
 
@@ -2519,7 +2513,7 @@ class _WeightChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _WeightChartPainter oldDelegate) {
+  bool shouldRepaint(covariant _WeightChartPainter oldDelegate) { // bepaal of de grafiek opnieuw getekend moet worden
     return oldDelegate.entries != entries ||
         oldDelegate.minWeight != minWeight ||
         oldDelegate.maxWeight != maxWeight ||
@@ -2527,10 +2521,10 @@ class _WeightChartPainter extends CustomPainter {
   }
 }
 
-class _MonthGroup {
+class _MonthGroup { // groep metingen per maand
   final int year;
   final int month;
   final List<WeightEntry> entries;
 
-  _MonthGroup({required this.year, required this.month, required this.entries});
+  _MonthGroup({required this.year, required this.month, required this.entries}); // maak een MonthGroup instantie
 }

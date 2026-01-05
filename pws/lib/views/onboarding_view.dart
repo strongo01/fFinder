@@ -16,7 +16,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fFinder/l10n/app_localizations.dart';
 
-class AbsiReference {
+class AbsiReference { // referentie data voor ABSI
   final double mean;
   final double sd;
   AbsiReference(this.mean, this.sd);
@@ -32,7 +32,7 @@ class OnboardingView extends StatefulWidget {
 class _OnboardingViewState extends State<OnboardingView> {
   final PageController _pageController =
       PageController(); // Controller voor pageView
-  int _currentIndex = 0;
+  int _currentIndex = 0; // Huidige index van de pagina
 
   // Controllers en variabelen voor data
   final TextEditingController _firstNameController = TextEditingController();
@@ -54,7 +54,7 @@ class _OnboardingViewState extends State<OnboardingView> {
   static const int maxWeightKg = 800;
   bool _waistUnknown = false;
   final int _totalQuestions = 11;
-  bool _localeDefaultsApplied = false;
+  bool _localeDefaultsApplied = false; // of locale defaults al toegepast
 
   String _rangeText = '';
   bool _rangeLoading = false;
@@ -86,6 +86,7 @@ class _OnboardingViewState extends State<OnboardingView> {
   late FocusNode _focusNode; // focus node voor keyboard events
 
   List<dynamic> _absiReferenceTable = [];
+
   Future<void> _loadAbsiReference() async {
     final jsonString = await rootBundle.loadString(
       'assets/absi_reference/absi_reference.json',
@@ -116,13 +117,14 @@ class _OnboardingViewState extends State<OnboardingView> {
     _maybeSkipFirstNameIfApple();
   }
 
-Future<void> _maybeSkipFirstNameIfApple() async {
+  Future<void> _maybeSkipFirstNameIfApple() async { // probeer voor Apple ID gebruikers
     try {
       final initialUser = FirebaseAuth.instance.currentUser;
       if (initialUser == null) return;
 
-      final isApple =
-          initialUser.providerData.any((p) => p.providerId == 'apple.com');
+      final isApple = initialUser.providerData.any(
+        (p) => p.providerId == 'apple.com',
+      );
       if (!isApple) return;
 
       String? name;
@@ -142,7 +144,7 @@ Future<void> _maybeSkipFirstNameIfApple() async {
           name = disp.trim().split(' ').first;
         }
 
-        // 2) forceer server-read van Firestore (kan direct beschikbaar zijn)
+        // forceer server-read van Firestore (kan direct beschikbaar zijn)
         if (name == null) {
           try {
             final doc = await FirebaseFirestore.instance
@@ -151,7 +153,12 @@ Future<void> _maybeSkipFirstNameIfApple() async {
                 .get(const GetOptions(source: Source.server));
             if (doc.exists) {
               final data = doc.data() ?? <String, dynamic>{};
-              for (final key in ['firstName', 'givenName', 'name', 'displayName']) {
+              for (final key in [
+                'firstName',
+                'givenName',
+                'name',
+                'displayName',
+              ]) {
                 final v = data[key];
                 if (v is String && v.trim().isNotEmpty) {
                   name = v.trim().split(' ').first;
@@ -188,7 +195,12 @@ Future<void> _maybeSkipFirstNameIfApple() async {
                 .get(); // local/cache read (faster)
             if (doc.exists) {
               final data = doc.data() ?? <String, dynamic>{};
-              for (final key in ['firstName', 'givenName', 'name', 'displayName']) {
+              for (final key in [
+                'firstName',
+                'givenName',
+                'name',
+                'displayName',
+              ]) {
                 final v = data[key];
                 if (v is String && v.trim().isNotEmpty) {
                   name = v.trim().split(' ').first;
@@ -197,11 +209,14 @@ Future<void> _maybeSkipFirstNameIfApple() async {
               }
             }
           } catch (e) {
-            debugPrint('Onboarding: Firestore read failed (attempt $attempt): $e');
+            debugPrint(
+              'Onboarding: Firestore read failed (attempt $attempt): $e',
+            );
           }
         }
 
-        if (name == null) await Future.delayed(const Duration(milliseconds: 150));
+        if (name == null)
+          await Future.delayed(const Duration(milliseconds: 150));
       }
 
       if (name != null && mounted) {
@@ -384,8 +399,8 @@ Future<void> _maybeSkipFirstNameIfApple() async {
     return local.absiHigh; // "hoog"
   }
 
-  AbsiReference getAbsiReference(int age, String gender) {
-    if (_absiReferenceTable.isEmpty) {
+  AbsiReference getAbsiReference(int age, String gender) { // haal ABSI referentie data op
+    if (_absiReferenceTable.isEmpty) { 
       throw Exception('ABSI reference table not loaded');
     }
 
@@ -395,11 +410,11 @@ Future<void> _maybeSkipFirstNameIfApple() async {
 
     // beschikbare leeftijden
     final ages = _absiReferenceTable.map((e) => e["age"] as int).toList()
-      ..sort();
+      ..sort(); // sorteer oplopend
 
     final clampedAge = ages.contains(age) ? age : ages.last;
 
-    final entry = _absiReferenceTable.firstWhere((e) => e["age"] == clampedAge);
+    final entry = _absiReferenceTable.firstWhere((e) => e["age"] == clampedAge); // vind entry voor leeftijd
 
     // bepaal vrouw/man op basis van gelokaliseerde labels, met fallback
     final g = gender.trim().toLowerCase();
@@ -431,7 +446,7 @@ Future<void> _maybeSkipFirstNameIfApple() async {
     );
   }
 
-  double _activityFactorFromLocalized(String activity) {
+  double _activityFactorFromLocalized(String activity) { // bepaal activiteitsfactor uit gelokaliseerde string
     final local = AppLocalizations.of(context)!;
     final a = activity.trim();
     if (a == local.activityLow) return 1.2;
@@ -459,13 +474,13 @@ Future<void> _maybeSkipFirstNameIfApple() async {
     return 1.2; // veilige fallback
   }
 
-  // Geef calorie-aanpassing terug gebaseerd op gelokaliseerd doel (neg = minder kcal)
+  // Geef calorie-aanpassing terug gebaseerd op gelokaliseerd doel
   int _goalCaloriesDeltaFromLocalized(String goal) {
     final local = AppLocalizations.of(context)!;
     final g = goal.trim();
     if (g == local.goalLose) return -500;
     if (g == local.goalGainMuscle || g == local.goalGainGeneral) return 300;
-    // maintain / default
+   // veilige fallback
     return 0;
   }
 
@@ -477,7 +492,11 @@ Future<void> _maybeSkipFirstNameIfApple() async {
     final g = gender.trim().toLowerCase();
     if (g == femaleLabel) return '2';
     if (g == maleLabel) return '1';
-    if (g.contains('vrouw') || g.contains('woman') || g.contains('femme') || g.contains('weiblich') || g.startsWith('f'))
+    if (g.contains('vrouw') ||
+        g.contains('woman') ||
+        g.contains('femme') ||
+        g.contains('weiblich') ||
+        g.startsWith('f'))
       return '2';
     return '1';
   }
@@ -502,7 +521,7 @@ Future<void> _maybeSkipFirstNameIfApple() async {
       // 1️⃣ Global DEK ophalen (Remote Config)
       final remoteConfig = FirebaseRemoteConfig.instance;
       // Zorg ervoor dat we de laatste versie hebben, negeer de cache voor deze belangrijke stap.
-      await remoteConfig.setConfigSettings(
+      await remoteConfig.setConfigSettings( // configuratie-instellingen
         RemoteConfigSettings(
           fetchTimeout: const Duration(minutes: 1),
           minimumFetchInterval: Duration.zero,
@@ -516,10 +535,9 @@ Future<void> _maybeSkipFirstNameIfApple() async {
       }
       final globalDEK = SecretKey(base64Decode(globalDEKString));
 
-      // 2️⃣ User-specifieke DEK afleiden
+      // User-specifieke DEK afleiden
       final userDEK = await deriveUserKey(globalDEK, user.uid);
 
-      // --- De rest van je logica blijft hetzelfde ---
       final heightCm = double.tryParse(_heightController.text);
       final weightKg = double.tryParse(_weightController.text);
       final waistCm = double.tryParse(
@@ -539,7 +557,7 @@ Future<void> _maybeSkipFirstNameIfApple() async {
       double? absi;
       double? heightM;
       if (heightCm != null && heightCm > 0) {
-        heightM = heightCm / 100;
+        heightM = heightCm / 100; // converteer naar meters
       }
 
       if (heightCm != null &&
@@ -548,13 +566,13 @@ Future<void> _maybeSkipFirstNameIfApple() async {
           weightKg > 0 &&
           birthDate != null) {
         // Bereken BMI
-        bmi = weightKg / (heightM! * heightM);
+        bmi = weightKg / (heightM! * heightM); // BMI formule
 
         // Bereken caloriebehoefte
         final age = DateTime.now().year - birthDate.year;
 
         double bmr;
-        if (_isGenderLocalizedFemale(gender)) {
+        if (_isGenderLocalizedFemale(gender)) { // vrouw
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
         } else {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
@@ -562,20 +580,20 @@ Future<void> _maybeSkipFirstNameIfApple() async {
 
         final activityFactor = _activityFactorFromLocalized(activityFull);
 
-        double calories = bmr * activityFactor;
+        double calories = bmr * activityFactor; // TDEE berekening
 
         // pas calories aan volgens het gelokaliseerde doel
-        final delta = _goalCaloriesDeltaFromLocalized(goal);
+        final delta = _goalCaloriesDeltaFromLocalized(goal); // calorie aanpassing
         calories += delta;
 
-        calorieGoal = calories;
+        calorieGoal = calories; // uiteindelijke calorie doel
 
         proteinGoal = weightKg; // 1g per kg
         final fatCalories = calorieGoal * 0.30;
         fatGoal = fatCalories / 9; // 1 gram per 9 kcal vet
 
         final proteinCalories = proteinGoal * 4; // 1 gram per 4 eiwitten eiwit
-        final carbCalories = calorieGoal - fatCalories - proteinCalories;
+        final carbCalories = calorieGoal - fatCalories - proteinCalories; // resterende kcal naar koolhydraten
         carbGoal = carbCalories / 4; // 1 gram per 4 kcal koolhydraten
       }
 
@@ -585,7 +603,7 @@ Future<void> _maybeSkipFirstNameIfApple() async {
           heightM != null &&
           heightM > 0) {
         final waistM = waistCm / 100.0;
-        absi = waistM / (pow(bmi, 2.0 / 3.0) * pow(heightM, 0.5));
+        absi = waistM / (pow(bmi, 2.0 / 3.0) * pow(heightM, 0.5)); // ABSI formule
       }
 
       double? absiZ;
@@ -594,9 +612,9 @@ Future<void> _maybeSkipFirstNameIfApple() async {
       if (absi != null && birthDate != null) {
         final age = DateTime.now().year - birthDate.year;
 
-        // 👇 lookup uit jouw JSON (voorbeeldfunctie)
+// haal referentie data voor ABSI
         final ref = getAbsiReference(age, gender);
-        // ref.mean, ref.sd
+
 
         absiZ = (absi - ref.mean) / ref.sd;
         absiRange = absiCategory(absiZ);
@@ -657,7 +675,7 @@ Future<void> _maybeSkipFirstNameIfApple() async {
     return Row(
       // Horizontale rij
       mainAxisAlignment: MainAxisAlignment.center, // midden uitlijnen
-      children: List.generate(_totalQuestions, (index) {
+      children: List.generate(_totalQuestions, (index) { // voor elke vraag
         // Maak voor elk vraag een bolletje
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -832,12 +850,12 @@ Future<void> _maybeSkipFirstNameIfApple() async {
     final lines = const LineSplitter().convert(csvString);
     if (lines.isEmpty) throw Exception('Leeg CSV bestand');
 
-    final header = lines.first
+    final header = lines.first // header rij
         .split(',')
         .map((s) => s.trim().toLowerCase())
         .toList();
-    final idxSex = header.indexWhere((h) => h.contains('sex'));
-    final idxAge = header.indexWhere(
+    final idxSex = header.indexWhere((h) => h.contains('sex')); // vind kolom indexen
+    final idxAge = header.indexWhere( //  leeftijd kolom
       (h) => h.contains('agemos') || h.contains('age'),
     );
     final idxL = header.indexWhere(
@@ -861,9 +879,9 @@ Future<void> _maybeSkipFirstNameIfApple() async {
     _lmsCache['1']?.clear();
     _lmsCache['2']?.clear();
 
-    for (var i = 1; i < lines.length; i++) {
+    for (var i = 1; i < lines.length; i++) { // verwerk elke rij
       final row = _splitCsvLine(lines[i]);
-      if (row.length <= max(idxSex, max(idxAge, max(idxL, max(idxM, idxS)))))
+      if (row.length <= max(idxSex, max(idxAge, max(idxL, max(idxM, idxS))))) //  onverwachte rij
         continue;
 
       final sexRaw = row[idxSex].trim();
@@ -878,7 +896,7 @@ Future<void> _maybeSkipFirstNameIfApple() async {
       final M = double.tryParse(mRaw);
       final S = double.tryParse(sRaw);
 
-      if (agemos == null || L == null || M == null || S == null) continue;
+      if (agemos == null || L == null || M == null || S == null) continue; // ongeldige data
 
       _lmsCache[sex]?[agemos] = {'L': L, 'M': M, 'S': S};
     }
@@ -890,11 +908,11 @@ Future<void> _maybeSkipFirstNameIfApple() async {
   }
 
   // eenvoudige CSV-splitter die rekening houdt met aanhalingstekens
-  List<String> _splitCsvLine(String line) {
-    final List<String> result = [];
-    final buffer = StringBuffer();
-    bool inQuotes = false;
-    for (int i = 0; i < line.length; i++) {
+  List<String> _splitCsvLine(String line) { 
+    final List<String> result = []; //  resultaat lijst
+    final buffer = StringBuffer(); // buffer voor huidige veld
+    bool inQuotes = false; // of we in aanhalingstekens zitten
+    for (int i = 0; i < line.length; i++) { // voor elk karakter
       final ch = line[i];
       if (ch == '"') {
         inQuotes = !inQuotes;
@@ -937,7 +955,7 @@ Future<void> _maybeSkipFirstNameIfApple() async {
     final inputTextStyle = TextStyle(
       color: isDarkMode ? Colors.white : Colors.black,
     );
-    final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+    final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0; // toetsenbord zichtbaar
 
     return Scaffold(
       body: SafeArea(
@@ -945,7 +963,7 @@ Future<void> _maybeSkipFirstNameIfApple() async {
           focusNode: _focusNode,
           autofocus: true,
           onKey: (node, event) {
-            if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
+            if (event.isKeyPressed(LogicalKeyboardKey.enter)) { // Enter toets
               _nextPage();
               return KeyEventResult.handled;
             }

@@ -7,7 +7,7 @@ import 'crypto_class.dart';
 import 'package:fFinder/l10n/app_localizations.dart';
 
 // MET-waardes per sport
-const Map<String, double> _metValues = {
+const Map<String, double> _metValues = { // MET-waardes voor verschillende sporten
   'running': 9.8,
   'cycling': 7.5,
   'swimming': 8.0,
@@ -18,7 +18,7 @@ const Map<String, double> _metValues = {
   'yoga': 2.5,
 };
 
-// Overig → snelle vuistregel (normaal)
+// Overig → snelle vuistregel
 const double _defaultOverigMET = 5.0;
 
 class AddSportPage extends StatefulWidget {
@@ -52,7 +52,7 @@ class _AddSportPageState extends State<AddSportPage> {
     'other',
   ];
 
-  Future<void> _updateCaloriesLive() async {
+  Future<void> _updateCaloriesLive() async { // live bijwerken van calorieën
   if (_caloriesManuallyEdited) return;
   if (_selectedSport == null) return;
   if (_durationController.text.isEmpty) return;
@@ -73,9 +73,9 @@ class _AddSportPageState extends State<AddSportPage> {
         ? _overigIntensityMET
         : (_metValues[_selectedSport] ?? _defaultOverigMET);
 
-    final calories = ((met * 3.5 * weightKg) / 200) * duration;
+    final calories = ((met * 3.5 * weightKg) / 200) * duration; // formule voor calorieverbranding
 
-    // 👇 live invullen
+    //  live invullen
     setState(() {
       _caloriesController.text = calories.toStringAsFixed(0);
     });
@@ -84,7 +84,7 @@ class _AddSportPageState extends State<AddSportPage> {
 }
 
 
-  Future<double> _getDecryptedWeight(String uid, SecretKey userDEK) async {
+  Future<double> _getDecryptedWeight(String uid, SecretKey userDEK) async { // haal en ontsleutel gewicht
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -95,7 +95,7 @@ class _AddSportPageState extends State<AddSportPage> {
     return await decryptDouble(encryptedWeight, userDEK);
   }
 
-  Future<void> _saveSport() async {
+  Future<void> _saveSport() async { // sla sportactiviteit op
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
 
@@ -164,7 +164,7 @@ class _AddSportPageState extends State<AddSportPage> {
   }
 
   @override
-  void dispose() {
+  void dispose() { // controllers opruimen om geheugenlekken te voorkomen
     _durationController.dispose();
     _caloriesController.dispose();
     _customSportController.dispose();
@@ -176,13 +176,11 @@ class _AddSportPageState extends State<AddSportPage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final user = FirebaseAuth.instance.currentUser;
     final loc = AppLocalizations.of(context)!;
-
-       
-
-    String sportLabel(String id) {
+ 
+    String sportLabel(String id) { // vertaal sport ID naar label
       switch (id) {
         case 'running':
-          return loc.sportRunning; // vervang door jouw sleutel
+          return loc.sportRunning;
         case 'cycling':
           return loc.sportCycling;
         case 'swimming':
@@ -253,7 +251,7 @@ class _AddSportPageState extends State<AddSportPage> {
                           ).textTheme.titleLarge?.copyWith(color: textColor),
                         ),
                         const SizedBox(height: 24),
-                        DropdownButtonFormField<String>(
+                        DropdownButtonFormField<String>( // dropdown voor sportselectie
                           value: _selectedSport,
                           items: _sports
                               .map(
@@ -293,7 +291,7 @@ class _AddSportPageState extends State<AddSportPage> {
                           ),
                           dropdownColor: cardColor,
                           onChanged: (value) {
-                            setState(() {
+                            setState(() { // bijwerken geselecteerde sport
                               _selectedSport = value;
                               _caloriesManuallyEdited = false;
                             });
@@ -303,7 +301,7 @@ class _AddSportPageState extends State<AddSportPage> {
                           validator: (value) =>
                               value == null ? loc.chooseSport : null,
                         ),
-                        if (_selectedSport == 'other') ...[
+                        if (_selectedSport == 'other') ...[ //  extra veld voor aangepaste sportnaam
                           const SizedBox(height: 18),
                           TextFormField(
                             controller: _customSportController,
@@ -327,7 +325,7 @@ class _AddSportPageState extends State<AddSportPage> {
                             },
                           ),
                           const SizedBox(height: 18),
-                          DropdownButtonFormField<double>(
+                          DropdownButtonFormField<double>( // intensiteit dropdown voor 'Overig'
                             value: _overigIntensityMET,
                             items: [
                               DropdownMenuItem(
@@ -509,8 +507,7 @@ class _AddSportPageState extends State<AddSportPage> {
   }
 }
 
-// Kleine widget voor het sportoverzicht
-class SportsOverviewList extends StatelessWidget {
+class SportsOverviewList extends StatelessWidget { // lijst met sportactiviteiten
   final String userId;
   final bool isDarkMode;
   const SportsOverviewList({
@@ -523,7 +520,7 @@ class SportsOverviewList extends StatelessWidget {
     return await getUserDEKFromRemoteConfig(userId);
   }
 
-  String _localizedSportLabel(BuildContext context, String raw) {
+  String _localizedSportLabel(BuildContext context, String raw) { // vertaal sportnaam naar gelokaliseerde string
     final loc = AppLocalizations.of(context)!;
     final s = (raw).toString().toLowerCase();
     switch (s) {
@@ -544,7 +541,7 @@ class SportsOverviewList extends StatelessWidget {
       case 'yoga':
         return loc.sportYoga;
       default:
-        return raw; // custom name or already-localized string
+        return raw;
     }
   }
 
@@ -608,7 +605,7 @@ class SportsOverviewList extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.only(top: 8, bottom: 32),
               itemCount: docs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, __) => const SizedBox(height: 10), // ruimte tussen kaarten
               itemBuilder: (context, i) {
                 final data = docs[i].data() as Map<String, dynamic>;
                 final timestamp = data['timestamp'] as Timestamp?;
@@ -631,7 +628,7 @@ class SportsOverviewList extends StatelessWidget {
                           leading: CircularProgressIndicator(),
                           title: Text(
                             loc.loading,
-                          ), // vervang loc.loading door jouw sleutel
+                          ),
                         ),
                       );
                     }
@@ -652,7 +649,7 @@ class SportsOverviewList extends StatelessWidget {
                           color: Theme.of(context).colorScheme.primary,
                         ),
                         title: Text(
-                          _localizedSportLabel(context, sport),
+                          _localizedSportLabel(context, sport), // gelokaliseerde sportnaam
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: textColor,

@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _tutorialInitialized = false;
   bool _tutorialHomeAf = false;
 
-  static const String _appVersion = '1.2.1';
+  static const String _appVersion = '1.2.1'; // huidige app versie
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -181,12 +181,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   int _compareVersions(String a, String b) {
-    List<int> pa = a.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-    List<int> pb = b.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-    while (pa.length < 3) pa.add(0);
-    while (pb.length < 3) pb.add(0);
+    List<int> pa = a
+        .split('.')
+        .map((e) => int.tryParse(e) ?? 0)
+        .toList(); // split en parse
+    List<int> pb = b
+        .split('.')
+        .map((e) => int.tryParse(e) ?? 0)
+        .toList(); // split en parse
+    while (pa.length < 3) pa.add(0); // vul aan met nullen
+    while (pb.length < 3) pb.add(0); // vul aan met nullen
     for (int i = 0; i < 3; i++) {
-      if (pa[i] != pb[i]) return pa[i].compareTo(pb[i]);
+      // vergelijk elk deel
+      if (pa[i] != pb[i]) return pa[i].compareTo(pb[i]); // return verschil
     }
     return 0;
   }
@@ -194,11 +201,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildAnnouncementsList(bool isDarkMode) {
     //bouw de lijst met admin-berichten
     if (_activeAnnouncements.isEmpty) {
-      return const SizedBox.shrink();
+      return const SizedBox.shrink(); // geen berichten om te tonen
     }
 
     return Column(
       children: _activeAnnouncements.map((announcement) {
+        // voor elk bericht
         return Card(
           color: isDarkMode ? Colors.blue[900] : Colors.blue[100],
           margin: const EdgeInsets.only(bottom: 16),
@@ -267,7 +275,8 @@ class _HomeScreenState extends State<HomeScreen> {
           return const SizedBox.shrink();
         }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final data =
+            snapshot.data!.data() as Map<String, dynamic>; // haal data op
         final remoteVersionRaw = data['version'];
         final remoteVersion = (remoteVersionRaw as String?)?.trim();
         debugPrint("[BANNER] Local: $_appVersion, Remote: $remoteVersionRaw");
@@ -277,7 +286,9 @@ class _HomeScreenState extends State<HomeScreen> {
           return const SizedBox.shrink();
         }
 
-        final isNewer = _compareVersions(remoteVersion, _appVersion) > 0;
+        final isNewer =
+            _compareVersions(remoteVersion, _appVersion) >
+            0; // vergelijk versies
         debugPrint("[BANNER] isNewer=$isNewer");
 
         if (!isNewer) return const SizedBox.shrink();
@@ -588,6 +599,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _formatDate(BuildContext context, DateTime date) {
+    // formatteer datum voor weergave
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
@@ -607,6 +619,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final todayWithoutTime = DateTime(today.year, today.month, today.day);
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
+      // als iOS
       // iOS datumkiezer
       showCupertinoModalPopup(
         context: context,
@@ -691,6 +704,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       );
       if (picked != null && picked != _selectedDate) {
+        // als een datum is gekozen
         final today = DateTime.now();
         final todayWithoutTime = DateTime(today.year, today.month, today.day);
         final pickedWithoutTime = DateTime(
@@ -698,9 +712,10 @@ class _HomeScreenState extends State<HomeScreen> {
           picked.month,
           picked.day,
         );
-        final difference = pickedWithoutTime
-            .difference(todayWithoutTime)
-            .inDays;
+        final difference =
+            pickedWithoutTime //  het verschil berekenen
+                .difference(todayWithoutTime)
+                .inDays;
         _pageController.jumpToPage(_initialPage + difference);
       }
     }
@@ -717,12 +732,14 @@ class _HomeScreenState extends State<HomeScreen> {
       await remoteConfig.setConfigSettings(
         RemoteConfigSettings(
           fetchTimeout: const Duration(minutes: 1),
-          minimumFetchInterval: Duration.zero, // Belangrijk voor debuggen!
+          minimumFetchInterval: Duration.zero, // geen caching
         ),
       );
 
       await remoteConfig.fetchAndActivate(); // haal nieuwste config op
-      if (!mounted) return; // Stop if the widget is no longer in the tree.
+      if (!mounted) return;
+
+      /// controleer of widget nog bestaat
       final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
 
       if (globalDEKString.isEmpty) {
@@ -731,10 +748,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final globalDEK = SecretKey(base64Decode(globalDEKString));
 
-      // 2️⃣ User-specifieke DEK afleiden
+      //  User-specifieke DEK afleiden
       final userDEK = await deriveUserKey(globalDEK, user.uid);
 
-      // 3️⃣ Haal data op
+      //  Haal data op
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -792,12 +809,15 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         _rawWaterGoal = null;
       }
-      final double? parsedWaterGoal = _rawWaterGoal != null
+      final double? parsedWaterGoal =
+          _rawWaterGoal !=
+              null //  parse waterdoel
           ? double.tryParse(_rawWaterGoal)
           : null;
 
       // 4️⃣ Decrypt alle geëncryptte velden
       final decryptedData = {
+        // bouw gedecodeerde data map
         'firstName': await decryptValue(data['firstName'], userDEK),
         'gender': await decryptValue(data['gender'], userDEK),
         'birthDate': await decryptValue(data['birthDate'], userDEK),
@@ -884,7 +904,7 @@ class _HomeScreenState extends State<HomeScreen> {
           10 * weight +
           6.25 * height -
           5 * age -
-          161; // Harris-Benedict formule voor vrouwen
+          161; // Mifflin-St Jeor formule voor vrouwen
     } else {
       bmr = 10 * weight + 6.25 * height - 5 * age + 5; // voor mannen
     }
@@ -932,6 +952,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _showEditWaterGoalDialog(double currentGoal) async {
+    // toon dialoog om waterdoel te bewerken
     final amountController = TextEditingController(
       text: currentGoal.round().toString(),
     );
@@ -960,6 +981,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 )!.water_goal_dialog_label,
               ),
               validator: (value) {
+                // validatie van invoer
                 if (value == null ||
                     value.isEmpty ||
                     double.tryParse(value) == null ||
@@ -977,6 +999,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             TextButton(
               onPressed: () {
+                // opslaan
                 if (formKey.currentState!.validate()) {
                   Navigator.of(
                     context,
@@ -991,13 +1014,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (newGoal != null && newGoal != currentGoal) {
+      // als er een nieuw doel is gekozen
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
       // update lokaal direct voor snellere UI feedback
       setState(() {
         if (_userData == null) _userData = {};
-        _userData!['waterGoal'] = newGoal.toString();
+        _userData!['waterGoal'] = newGoal.toString(); // update lokaal
       });
 
       try {
@@ -1006,7 +1030,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final encrypted = await encryptValue(newGoal.toString(), userDEK);
 
-        // Schrijf naar Firestore in veld 'goal' zoals je aangaf
+        // opslaan in Firestore
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -1030,7 +1054,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           );
-          // revert lokaal
+          // herstel lokaal naar oude waarde
           setState(() {
             _userData!['waterGoal'] = currentGoal.toString();
           });
@@ -1087,7 +1111,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final bool isAdmin = (_userData?['role'] ?? '') == 'admin';
 
-final items = <BottomNavigationBarItem>[
+    final items = <BottomNavigationBarItem>[
       BottomNavigationBarItem(
         icon: const Icon(CupertinoIcons.home),
         label: AppLocalizations.of(context)!.logs,
@@ -1106,11 +1130,9 @@ final items = <BottomNavigationBarItem>[
     ];
 
     return CupertinoTabScaffold(
-      tabBar: CupertinoTabBar(
-        items: items,
-      ),
+      tabBar: CupertinoTabBar(items: items),
       tabBuilder: (context, index) {
-        // Map index depending on whether recipes tab is present
+        // Admin: index 0 = home, index 1 = recipes, index 2 = weight
         if (isAdmin) {
           if (index == 0) {
             return CupertinoPageScaffold(
@@ -1201,7 +1223,7 @@ final items = <BottomNavigationBarItem>[
             );
           }
         } else {
-          // Non-admin: index 0 = home, index 1 = weight
+          // Niet-admin: index 0 = home, index 1 = weight
           if (index == 0) {
             return CupertinoPageScaffold(
               navigationBar: CupertinoNavigationBar(
@@ -1601,7 +1623,7 @@ final items = <BottomNavigationBarItem>[
               debugPrint(
                 "[HOME_SCREEN] User DEK not found. Using encrypted data as fallback.",
               );
-              productData = encryptedData; // Fallback to encrypted
+              productData = encryptedData; // Fallback naar encrypted
             }
           } else {
             debugPrint(
@@ -1735,6 +1757,7 @@ final items = <BottomNavigationBarItem>[
   }
 
   String _localizedSportLabel(BuildContext context, String? raw) {
+    // retourneert de gelokaliseerde sportnaam
     final loc = AppLocalizations.of(context)!;
     final s = (raw ?? '').toString().toLowerCase();
     switch (s) {
@@ -1802,6 +1825,7 @@ final items = <BottomNavigationBarItem>[
 
             final selectedDate = DateTime.parse(docId);
             final startOfDay = DateTime(
+              // begin van de dag
               selectedDate.year,
               selectedDate.month,
               selectedDate.day,
@@ -1821,7 +1845,7 @@ final items = <BottomNavigationBarItem>[
                             as Map<
                               String,
                               dynamic
-                            >?)?['includeSportsCalories'] ==
+                            >?)?['includeSportsCalories'] == // voorkeur van de gebruiker
                         true);
 
                 // Daarna: realtime sports voor de geselecteerde dag
@@ -1864,6 +1888,7 @@ final items = <BottomNavigationBarItem>[
 
                     // Decrypt alle entries
                     return FutureBuilder<List<Map<String, dynamic>>>(
+                      // decrypted entries
                       future: () async {
                         final decryptedEntries = <Map<String, dynamic>>[];
                         for (final entry in entriesRaw) {
@@ -1917,6 +1942,7 @@ final items = <BottomNavigationBarItem>[
                         return decryptedEntries;
                       }(),
                       builder: (context, entriesSnapshot) {
+                        // decrypted entries
                         if (entriesSnapshot.connectionState ==
                             ConnectionState.waiting) {
                           return const Center(
@@ -1935,14 +1961,17 @@ final items = <BottomNavigationBarItem>[
                         final originalEntriesMap =
                             <Map<String, dynamic>, Map<String, dynamic>>{};
                         for (final e in entries) {
+                          /// bewaar originele encrypted entries voor latere updates
                           final orig =
                               e['_originalEncrypted'] as Map<String, dynamic>?;
                           if (orig != null) originalEntriesMap[e] = orig;
                         }
 
                         return FutureBuilder<List<Map<String, dynamic>>>(
+                          // sports data
                           future: sportsFuture,
                           builder: (context, sportsDataSnapshot) {
+                            // decrypted sports
                             //final entries = entriesSnapshot.data!;
                             final sportsList = sportsDataSnapshot.data ?? [];
                             final double totalBurnedCalories = sportsList.fold(
@@ -2032,11 +2061,13 @@ final items = <BottomNavigationBarItem>[
                             };
 
                             for (var entry in entries) {
+                              // verdeel in maaltijden
                               final rawMealType =
                                   (entry['meal_type'] as String?)?.trim() ?? '';
                               final mealTypeLower = rawMealType.toLowerCase();
 
                               if (mealTypeLower.isNotEmpty) {
+                                // Controleer bekende meal_type waarden
                                 if (breakfastNames.contains(mealTypeLower)) {
                                   meals['breakfast']!.add(entry);
                                   continue;
@@ -2071,7 +2102,7 @@ final items = <BottomNavigationBarItem>[
                               }
                             }
 
-                            // Titles per interne key — UI blijft gelocaliseerd
+                            // Lokalisatie van maaltijdtitels
                             final mealTitles = {
                               'breakfast': AppLocalizations.of(
                                 context,
@@ -2080,7 +2111,6 @@ final items = <BottomNavigationBarItem>[
                               'dinner': AppLocalizations.of(context)!.dinner,
                               'snack': AppLocalizations.of(context)!.snack,
                             };
-
 
                             final proteinGoal =
                                 _userData?['proteinGoal'] as num? ?? 0.0;
@@ -2099,7 +2129,8 @@ final items = <BottomNavigationBarItem>[
                                   )
                                 : 0.0;
 
-                            final Map<String, double> drinkBreakdown = {};
+                            final Map<String, double> drinkBreakdown =
+                                {}; // voor waterinname per drankje
                             double totalWater = 0;
                             for (var entry in entries) {
                               if (entry.containsKey('quantity')) {
@@ -2122,7 +2153,8 @@ final items = <BottomNavigationBarItem>[
                               }
                             }
                             final weight = _userData?['weight'] as num? ?? 70;
-                            double waterGoal = weight * 32.5;
+                            double waterGoal =
+                                weight * 32.5; // standaard waterdoel
                             try {
                               final rawGoal = _userData?['waterGoal'];
                               if (rawGoal != null) {
@@ -2138,6 +2170,7 @@ final items = <BottomNavigationBarItem>[
                             }
 
                             final motivationalMessage = _getMotivationalMessage(
+                              // haal een motiverende boodschap op
                               context,
                               totalCalories,
                               adjustedCalorieGoal,
@@ -2196,6 +2229,7 @@ final items = <BottomNavigationBarItem>[
                                         ),
                                         const SizedBox(height: 15),
                                         LinearProgressIndicator(
+                                          // voortgangsbalk calorieën
                                           value: progress,
                                           minHeight: 10,
                                           borderRadius: BorderRadius.circular(
@@ -2433,6 +2467,7 @@ final items = <BottomNavigationBarItem>[
                                                   StreamBuilder<
                                                     DocumentSnapshot
                                                   >(
+                                                    // mascotte afbeelding
                                                     stream: FirebaseFirestore
                                                         .instance
                                                         .collection('users')
@@ -2511,7 +2546,7 @@ final items = <BottomNavigationBarItem>[
                                   ),
                                 ),
                                 const SizedBox(height: 20),
-                                if (sportsList.isNotEmpty)
+                                if (sportsList.isNotEmpty) // sportsectie
                                   Card(
                                     margin: const EdgeInsets.only(top: 20.0),
                                     color: isDarkMode
@@ -2530,24 +2565,24 @@ final items = <BottomNavigationBarItem>[
                                                 child: Row(
                                                   crossAxisAlignment:
                                                       CrossAxisAlignment.start,
-                                                    children: [
+                                                  children: [
                                                     Expanded(
                                                       child: Text(
-                                                      AppLocalizations.of(
-                                                        context,
-                                                      )!.sports,
-                                                      style: TextStyle(
-                                                        fontSize: 18,
-                                                        fontWeight:
-                                                          FontWeight.bold,
-                                                        color: isDarkMode
-                                                          ? Colors.white
-                                                          : Colors.black,
-                                                      ),
-                                                      softWrap: true,
-                                                      maxLines: null,
-                                                      overflow: TextOverflow
-                                                        .visible,
+                                                        AppLocalizations.of(
+                                                          context,
+                                                        )!.sports,
+                                                        style: TextStyle(
+                                                          fontSize: 18,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: isDarkMode
+                                                              ? Colors.white
+                                                              : Colors.black,
+                                                        ),
+                                                        softWrap: true,
+                                                        maxLines: null,
+                                                        overflow: TextOverflow
+                                                            .visible,
                                                       ),
                                                     ),
                                                     const SizedBox(width: 6),
@@ -2555,111 +2590,102 @@ final items = <BottomNavigationBarItem>[
                                                     IconButton(
                                                       padding: EdgeInsets.zero,
                                                       constraints:
-                                                        const BoxConstraints(),
+                                                          const BoxConstraints(),
                                                       icon: Icon(
-                                                      Icons.info_outline,
-                                                      size: 20,
-                                                      color: isDarkMode
-                                                        ? Colors.white70
-                                                        : Colors.black54,
+                                                        Icons.info_outline,
+                                                        size: 20,
+                                                        color: isDarkMode
+                                                            ? Colors.white70
+                                                            : Colors.black54,
                                                       ),
                                                       onPressed: () {
-                                                      showDialog<void>(
-                                                        context: context,
-                                                        builder: (context) {
-                                                        final loc =
-                                                          AppLocalizations.of(
-                                                            context,
-                                                          )!;
-                                                        final infoText =
-                                                          includeSportsCalories
-                                                            ? loc
-                                                              .sportsCaloriesInfoTextOn
-                                                            : loc
-                                                              .sportsCaloriesInfoTextOff;
+                                                        showDialog<void>(
+                                                          context: context,
+                                                          builder: (context) {
+                                                            final loc =
+                                                                AppLocalizations.of(
+                                                                  context,
+                                                                )!;
+                                                            final infoText =
+                                                                includeSportsCalories
+                                                                ? loc.sportsCaloriesInfoTextOn
+                                                                : loc.sportsCaloriesInfoTextOff;
 
-                                                        // forceer dialog-theme zodat donkere modus consistent is
-                                                        return Theme(
-                                                          data: Theme.of(
-                                                              context)
-                                                            .copyWith(
-                                                          dialogBackgroundColor:
-                                                            isDarkMode
-                                                              ? Colors
-                                                                .grey[900]
-                                                              : Theme.of(
-                                                                  context)
-                                                                .dialogBackgroundColor,
-                                                          colorScheme:
-                                                            isDarkMode
-                                                              ? ColorScheme
-                                                                .dark()
-                                                              : Theme.of(
-                                                                  context)
-                                                                .colorScheme,
-                                                          textTheme: isDarkMode
-                                                            ? ThemeData
-                                                              .dark()
-                                                              .textTheme
-                                                            : Theme.of(
-                                                                context)
-                                                              .textTheme,
-                                                          ),
-                                                          child: AlertDialog(
-                                                          backgroundColor:
-                                                            isDarkMode
-                                                              ? Colors
-                                                                .grey[900]
-                                                              : null,
-                                                          title: Text(
-                                                            loc
-                                                              .sportsCaloriesInfoTitle,
-                                                            style: TextStyle(
-                                                            color: isDarkMode
-                                                              ? Colors
-                                                                .white
-                                                              : Colors
-                                                                .black,
-                                                            ),
-                                                          ),
-                                                          content: Text(
-                                                            infoText,
-                                                            style:
-                                                              TextStyle(
-                                                            color: isDarkMode
-                                                              ? Colors
-                                                                .white70
-                                                              : Colors
-                                                                .black87,
-                                                            ),
-                                                          ),
-                                                          actions: [
-                                                            TextButton(
-                                                            style: TextButton
-                                                              .styleFrom(
-                                                              foregroundColor:
-                                                                isDarkMode
-                                                                  ? Colors
-                                                                    .tealAccent
-                                                                  : null,
-                                                            ),
-                                                            onPressed: () =>
-                                                              Navigator.of(
-                                                                context,
-                                                              )
-                                                                .pop(),
-                                                            child: Text(
-                                                              AppLocalizations.of(
-                                                              context,
-                                                              )!
-                                                                .ok,
-                                                            ),
-                                                            ),
-                                                          ],
-                                                          ),
+                                                            // forceer dialog-theme zodat donkere modus consistent is
+                                                            return Theme(
+                                                              data: Theme.of(context).copyWith(
+                                                                dialogBackgroundColor:
+                                                                    isDarkMode
+                                                                    ? Colors
+                                                                          .grey[900]
+                                                                    : Theme.of(
+                                                                        context,
+                                                                      ).dialogBackgroundColor,
+                                                                colorScheme:
+                                                                    isDarkMode
+                                                                    ? ColorScheme.dark()
+                                                                    : Theme.of(
+                                                                        context,
+                                                                      ).colorScheme,
+                                                                textTheme:
+                                                                    isDarkMode
+                                                                    ? ThemeData.dark()
+                                                                          .textTheme
+                                                                    : Theme.of(
+                                                                        context,
+                                                                      ).textTheme,
+                                                              ),
+                                                              child: AlertDialog(
+                                                                backgroundColor:
+                                                                    isDarkMode
+                                                                    ? Colors
+                                                                          .grey[900]
+                                                                    : null,
+                                                                title: Text(
+                                                                  loc.sportsCaloriesInfoTitle,
+                                                                  style: TextStyle(
+                                                                    color:
+                                                                        isDarkMode
+                                                                        ? Colors
+                                                                              .white
+                                                                        : Colors
+                                                                              .black,
+                                                                  ),
+                                                                ),
+                                                                content: Text(
+                                                                  infoText,
+                                                                  style: TextStyle(
+                                                                    color:
+                                                                        isDarkMode
+                                                                        ? Colors
+                                                                              .white70
+                                                                        : Colors
+                                                                              .black87,
+                                                                  ),
+                                                                ),
+                                                                actions: [
+                                                                  TextButton(
+                                                                    style: TextButton.styleFrom(
+                                                                      foregroundColor:
+                                                                          isDarkMode
+                                                                          ? Colors.tealAccent
+                                                                          : null,
+                                                                    ),
+                                                                    onPressed: () =>
+                                                                        Navigator.of(
+                                                                          context,
+                                                                        ).pop(),
+                                                                    child: Text(
+                                                                      AppLocalizations.of(
+                                                                        context,
+                                                                      )!.ok,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            );
+                                                          },
                                                         );
-                                                        },
-                                                      );
                                                       },
                                                     ),
                                                   ],
@@ -2688,11 +2714,13 @@ final items = <BottomNavigationBarItem>[
                                           ),
                                           const Divider(height: 20),
                                           ...sportsList.map(
+                                            // sport entries
                                             (sport) => Dismissible(
                                               key: ValueKey(sport['id']),
                                               direction:
                                                   DismissDirection.endToStart,
                                               onDismissed: (direction) {
+                                                // verwijder sport entry
                                                 _deleteSportEntry(sport['id']);
                                                 ScaffoldMessenger.of(
                                                   context,
@@ -2759,6 +2787,7 @@ final items = <BottomNavigationBarItem>[
                                   ),
                                 const SizedBox(height: 20),
                                 ...() {
+                                  // maaltijd secties
                                   bool mealKeyAssigned = false;
                                   final widgets = <Widget>[];
                                   final anyNonEmpty = meals.values.any(
@@ -2766,6 +2795,7 @@ final items = <BottomNavigationBarItem>[
                                   );
 
                                   if (!anyNonEmpty) {
+                                    // geen maaltijden, voeg onzichtbare widget toe voor layout consistentie
                                     widgets.add(
                                       // onzichtbaar maar aanwezig in de layout
                                       Opacity(
@@ -2780,6 +2810,7 @@ final items = <BottomNavigationBarItem>[
                                   }
 
                                   for (final mealEntry in meals.entries) {
+                                    // doorloop maaltijden
                                     Key? currentKey;
                                     if (!mealKeyAssigned &&
                                         mealEntry.value.isNotEmpty) {
@@ -2824,6 +2855,7 @@ final items = <BottomNavigationBarItem>[
   }
 
   Future<void> _showEditGoalDialog(double currentGoal) async {
+    // dialoog om calorie doel aan te passen
     final amountController = TextEditingController(
       text: currentGoal.round().toString(),
     );
@@ -2831,8 +2863,10 @@ final items = <BottomNavigationBarItem>[
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     final newGoal = await showDialog<double>(
+      // toon dialoog
       context: context,
       builder: (context) {
+        // bouw dialoog
         return AlertDialog(
           title: Text(
             AppLocalizations.of(context)!.calorie_goal_dialog_title,
@@ -2852,6 +2886,7 @@ final items = <BottomNavigationBarItem>[
                 )!.calorie_goal_dialog_label,
               ),
               validator: (value) {
+                // validatie
                 if (value == null ||
                     value.isEmpty ||
                     double.tryParse(value) == null ||
@@ -2929,6 +2964,7 @@ final items = <BottomNavigationBarItem>[
   }
 
   String _getMotivationalMessage(
+    // genereer motiverende boodschap
     BuildContext context,
     double totalCalories,
     double calorieGoal,
@@ -3014,7 +3050,9 @@ final items = <BottomNavigationBarItem>[
       return allMessages[random.nextInt(allMessages.length)];
     }
 
-    return defaultMessages[random.nextInt(defaultMessages.length)];
+    return defaultMessages[random.nextInt(
+      defaultMessages.length,
+    )]; // standaard bericht
   }
 
   Widget _buildWaterCircle(
@@ -3031,10 +3069,12 @@ final items = <BottomNavigationBarItem>[
       tween: Tween<double>(begin: 0.0, end: progress),
       duration: const Duration(milliseconds: 750),
       builder: (context, value, child) {
-        final sortedBreakdown = breakdown.entries.toList()
-          ..sort(
-            (a, b) => a.key.compareTo(b.key),
-          ); // Sorteer de breakdown op naam
+        final sortedBreakdown =
+            breakdown.entries
+                .toList() // de breakdown is een map, converteer naar lijst
+              ..sort(
+                (a, b) => a.key.compareTo(b.key),
+              ); // Sorteer de breakdown op naam
 
         final bool overGoal = goal > 0 && consumed > goal;
         final bool severelyOver = goal > 0 && consumed > goal * 2;
@@ -3052,6 +3092,7 @@ final items = <BottomNavigationBarItem>[
               height: 100,
               child: CustomPaint(
                 painter: SegmentedArcPainter(
+                  // aangepaste painter voor segmenten
                   progress: value,
                   goal: goal,
                   breakdown: sortedBreakdown,
@@ -3069,7 +3110,7 @@ final items = <BottomNavigationBarItem>[
                         size: 24,
                       ),
                       Text(
-                        '${(consumed * value / (progress.isFinite && progress > 0 ? progress : 1.0)).round()} ml',
+                        '${(consumed * value / (progress.isFinite && progress > 0 ? progress : 1.0)).round()} ml', // animeer de waarde in de cirkel
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -3217,7 +3258,7 @@ final items = <BottomNavigationBarItem>[
     );
 
     if (title == AppLocalizations.of(context)!.goal) {
-      return GestureDetector(
+      return GestureDetector( // maak doel aanpasbaar
         onTap: () => _showEditGoalDialog(value),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -3285,7 +3326,7 @@ final items = <BottomNavigationBarItem>[
     List<Map<String, dynamic>>? sports,
   }) {
     double totalMealCalories = 0;
-    for (var entry in entries) {
+    for (var entry in entries) { // bereken totale kcal voor maaltijd
       if (entry.containsKey('quantity')) {
         // Drankje: gebruik kcal uit het veld 'kcal'
         final kcal = double.tryParse(entry['kcal']?.toString() ?? '0') ?? 0.0;
@@ -3341,7 +3382,7 @@ final items = <BottomNavigationBarItem>[
                   ),
                 ),
               ),
-              ...sports.map(
+              ...sports.map( // sport entries
                 (sport) => ListTile(
                   leading: const Icon(Icons.fitness_center, size: 24),
                   title: Text(
@@ -3364,9 +3405,9 @@ final items = <BottomNavigationBarItem>[
               ),
               const Divider(height: 20),
             ],
-            ...entries.asMap().entries.map((entryPair) {
-              final i = entryPair.key;
-              final entry = entryPair.value;
+            ...entries.asMap().entries.map((entryPair) { // doorloop maaltijd entries
+              final i = entryPair.key; // index
+              final entry = entryPair.value; // huidige entry
 
               final originalEncryptedEntry = originalEntriesMap[entry];
 
@@ -3392,7 +3433,7 @@ final items = <BottomNavigationBarItem>[
                 final kcalRaw = entry['kcal'];
                 final kcalNumber = kcalRaw is num
                     ? kcalRaw.toDouble()
-                    : double.tryParse(kcalRaw?.toString() ?? '') ?? 0.0;
+                    : double.tryParse(kcalRaw?.toString() ?? '') ?? 0.0; // parse kcal
                 final kcalValue = kcalNumber.round().toString();
 
                 rightSideText = '${amount.round()} ml | ${kcalValue} kcal';
@@ -3402,10 +3443,10 @@ final items = <BottomNavigationBarItem>[
                 rightSideText = '$calories kcal';
               }
 
-              return Dismissible(
+              return Dismissible( 
                 // veeg om te verwijderen
                 key: Key(
-                  'entry-${timestamp?.millisecondsSinceEpoch ?? 'noTs'}-$i',
+                  'entry-${timestamp?.millisecondsSinceEpoch ?? 'noTs'}-$i', // unieke key
                 ),
 
                 direction: DismissDirection.endToStart,
@@ -3503,7 +3544,7 @@ final items = <BottomNavigationBarItem>[
         .doc(docId);
 
     // Normaliseer helper
-    dynamic _normalize(dynamic v) {
+    dynamic _normalize(dynamic v) { // recursieve normalisatie
       if (v is Map) {
         final map = <String, dynamic>{};
         v.forEach((k, val) => map[k] = _normalize(val));
@@ -3515,7 +3556,7 @@ final items = <BottomNavigationBarItem>[
       return v;
     }
 
-    final targetNormalized = _normalize(entry);
+    final targetNormalized = _normalize(entry); // normaliseer target entry
 
     try {
       // Log current doc state for debugging
@@ -3531,7 +3572,7 @@ final items = <BottomNavigationBarItem>[
         }
       } else {}
 
-      await FirebaseFirestore.instance.runTransaction((tx) async {
+      await FirebaseFirestore.instance.runTransaction((tx) async { // transactie
         final doc = await tx.get(docRef);
         if (!doc.exists) {
           return;
@@ -3540,11 +3581,11 @@ final items = <BottomNavigationBarItem>[
         final data = doc.data()!;
         final entries = List.from(data['entries'] as List<dynamic>? ?? []);
 
-        int? foundIndex;
-        final eq = const DeepCollectionEquality();
+        int? foundIndex; // index van te verwijderen entry
+        final eq = const DeepCollectionEquality(); // diepe vergelijking
 
-        for (var i = 0; i < entries.length; i++) {
-          final candidateNorm = _normalize(entries[i]);
+        for (var i = 0; i < entries.length; i++) { // zoek naar exacte match
+          final candidateNorm = _normalize(entries[i]); // normaliseer kandidaat
           if (eq.equals(candidateNorm, targetNormalized)) {
             foundIndex = i;
             break;
@@ -3695,7 +3736,7 @@ final items = <BottomNavigationBarItem>[
                       },
                     ),
                     const SizedBox(height: 12),
-                    // Eenheid selectie - drinks default naar ml maar gebruiker kan wisselen
+                    // Eenheid selectie drinks default naar ml maar gebruiker kan wisselen
                     InputDecorator(
                       decoration: InputDecoration(
                         labelText: AppLocalizations.of(context)!.unit,
@@ -3789,7 +3830,7 @@ final items = <BottomNavigationBarItem>[
     }
 
     try {
-      if (decryptedEntry.containsKey('quantity')) {
+      if (decryptedEntry.containsKey('quantity')) { // drink entry
         // Drink: parse origineel amount & kcal en schaal beide
         final qtyString = decryptedEntry['quantity'] as String? ?? '100 ml';
         final origMatch = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(qtyString);

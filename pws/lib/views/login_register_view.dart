@@ -34,25 +34,25 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   bool _loading = false; //laad icoon
   bool _obscurePassword = true; //wachtwoord met bolletjes
   bool _agreedPrivacy = false; // of gebruiker akkoord is met privacybeleid
-  final Uri _privacyUri = Uri.parse(
+  final Uri _privacyUri = Uri.parse( //link naar privacybeleid
     'https://sites.google.com/view/ffinderreppy/homepage',
   );
   //functie voor inloggen met google
   Future<UserCredential> signInWithGoogle() async {
     if (kIsWeb) {
-      final googleProvider = GoogleAuthProvider();
-      googleProvider.addScope('email');
-      googleProvider.setCustomParameters({'prompt': 'select_account'});
-      return await FirebaseAuth.instance.signInWithPopup(googleProvider);
-    }
+      final googleProvider = GoogleAuthProvider(); //maak google provider aan
+      googleProvider.addScope('email'); //vraag email scope aan
+      googleProvider.setCustomParameters({'prompt': 'select_account'}); //vraag account selectie
+      return await FirebaseAuth.instance.signInWithPopup(googleProvider); //inloggen met popup
+    } 
 
     try {
       final googleSignIn = GoogleSignIn.instance;
 
-      final googleUser = await googleSignIn.authenticate();
+      final googleUser = await googleSignIn.authenticate(); //vraag om inloggen
 
-      final googleAuth = await googleUser.authentication;
-      final idToken = googleAuth.idToken;
+      final googleAuth = await googleUser.authentication; //haal authenticatie tokens op
+      final idToken = googleAuth.idToken; //haal id token op 
       if (idToken == null) {
         throw FirebaseAuthException(
           code: 'missing_id_token',
@@ -63,17 +63,17 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       // Optioneel: als je een accessToken nodig hebt voor Firebase/platforms:
       String? accessToken;
       try {
-        // probeer eerst te hergebruiken (authorizationForScopes).
+
         // Als er geen autorisatie bestaat, vraag het aan met authorizeScopes.
         final scopes = <String>[
           'openid',
           'email',
           'profile',
-        ]; // zet alleen wat je echt nodig hebt
-        var authorization = await googleUser.authorizationClient
-            .authorizationForScopes(scopes);
+        ]; /// scopes die we willen
+        var authorization = await googleUser.authorizationClient 
+            .authorizationForScopes(scopes); // check bestaande autorisatie
         authorization ??= await googleUser.authorizationClient.authorizeScopes(
-          scopes,
+          scopes, // vraag autorisatie aan
         );
         accessToken = authorization.accessToken;
       } catch (_) {
@@ -81,13 +81,13 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
         accessToken = null;
       }
 
-      final credential = GoogleAuthProvider.credential(
+      final credential = GoogleAuthProvider.credential( //maak firebase credential aan
         idToken: idToken,
         accessToken: accessToken,
       );
 
-      return await FirebaseAuth.instance.signInWithCredential(credential);
-    } on PlatformException catch (e, s) {
+      return await FirebaseAuth.instance.signInWithCredential(credential); //log in met credential
+    } on PlatformException catch (e, s) { //specifieke foutafhandeling voor platform exceptions
       if (e.code.toLowerCase().contains('cancel')) {
         throw FirebaseAuthException(
           code: 'sign_in_cancelled',
@@ -101,17 +101,17 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   }
 
   //handler voor inloggen met google
-  Future<void> _signInWithGoogleHandler() async {
+  Future<void> _signInWithGoogleHandler() async { //de handler voor google sign in
     setState(() => _loading = true);
     try {
-      final userCredential = await signInWithGoogle();
+      final userCredential = await signInWithGoogle(); //log in met google
 
       final user = userCredential.user;
       if (user != null) {
         final usersRef = FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid);
-        final doc = await usersRef.get();
+        final doc = await usersRef.get(); //haal document op
         if (!doc.exists) {
           await usersRef.set({
             'uid': user.uid,
@@ -125,7 +125,7 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (!mounted) return;
       Navigator.of(
         context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen())); //ga naar home scherm
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       String message;
@@ -200,21 +200,25 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
 
   // functie voor inloggen met apple
   Future<UserCredential> signInWithApple() async {
-    final rawNonce = generateNonce();
-    final nonce = sha256ofString(rawNonce);
+    final rawNonce = generateNonce(); // genereer nonce
+    final nonce = sha256ofString(rawNonce); // maak sha256 van nonce
     // vraag om apple id credential
-    final appleCredential = await SignInWithApple.getAppleIDCredential(
-      scopes: [
+    final appleCredential = await SignInWithApple.getAppleIDCredential( // vraag apple id credential aan
+      scopes: [ // de scopes die we willen
         AppleIDAuthorizationScopes.email,
         AppleIDAuthorizationScopes.fullName,
       ],
       nonce: nonce,
     );
 
-    debugPrint('AppleSignIn: appleCredential identityToken: ${appleCredential.identityToken != null}');
-    debugPrint('AppleSignIn: givenName=${appleCredential.givenName}, familyName=${appleCredential.familyName}, email=${appleCredential.email}');
+    debugPrint(
+      'AppleSignIn: appleCredential identityToken: ${appleCredential.identityToken != null}',
+    );
+    debugPrint(
+      'AppleSignIn: givenName=${appleCredential.givenName}, familyName=${appleCredential.familyName}, email=${appleCredential.email}',
+    );
 
-    if (appleCredential.identityToken == null) {
+    if (appleCredential.identityToken == null) { 
       //als er geen identity token is
       throw FirebaseAuthException(
         code: 'null_identity_token',
@@ -234,7 +238,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
 
     // Log wat Firebase teruggeeft
     final userBefore = FirebaseAuth.instance.currentUser;
-    debugPrint('AppleSignIn: currentUser before update: uid=${userBefore?.uid}, displayName=${userBefore?.displayName}');
+    debugPrint(
+      'AppleSignIn: currentUser before update: uid=${userBefore?.uid}, displayName=${userBefore?.displayName}',
+    );
 
     // Als Apple returned givenName, bewaar die als displayName in Firebase Auth
     try {
@@ -242,7 +248,8 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
       if (userBefore != null &&
           given != null &&
           given.trim().isNotEmpty &&
-          (userBefore.displayName == null || userBefore.displayName!.trim().isEmpty)) {
+          (userBefore.displayName == null ||
+              userBefore.displayName!.trim().isEmpty)) {
         debugPrint('AppleSignIn: updating displayName to: $given');
         await userBefore.updateDisplayName(given.trim());
         await userBefore.reload();
@@ -252,8 +259,12 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
     }
 
     final userAfter = FirebaseAuth.instance.currentUser;
-    debugPrint('AppleSignIn: currentUser after update: uid=${userAfter?.uid}, displayName=${userAfter?.displayName}');
-    debugPrint('AppleSignIn: providerData=${userAfter?.providerData.map((p) => "${p.providerId}:${p.displayName}").toList()}');
+    debugPrint(
+      'AppleSignIn: currentUser after update: uid=${userAfter?.uid}, displayName=${userAfter?.displayName}',
+    );
+    debugPrint(
+      'AppleSignIn: providerData=${userAfter?.providerData.map((p) => "${p.providerId}:${p.displayName}").toList()}',
+    );
 
     return userCredential;
   }
@@ -266,11 +277,17 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
 
       // haal actuele user (na eventuele updateDisplayName)
       final user = FirebaseAuth.instance.currentUser;
-      debugPrint('AppleSignInHandler: userCredential.user uid=${userCredential.user?.uid}, displayName=${userCredential.user?.displayName}');
-      debugPrint('AppleSignInHandler: currentUser uid=${user?.uid}, displayName=${user?.displayName}');
+      debugPrint(
+        'AppleSignInHandler: userCredential.user uid=${userCredential.user?.uid}, displayName=${userCredential.user?.displayName}',
+      );
+      debugPrint(
+        'AppleSignInHandler: currentUser uid=${user?.uid}, displayName=${user?.displayName}',
+      );
 
       if (user != null) {
-        final usersRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+        final usersRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid);
         final doc = await usersRef.get();
         if (!doc.exists) {
           // probeer meerdere bronnen voor voornaam
@@ -296,7 +313,9 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
           });
           debugPrint('AppleSignInHandler: created user doc for ${user.uid}');
         } else {
-          debugPrint('AppleSignInHandler: user doc already exists for ${user.uid}, data=${doc.data()}');
+          debugPrint(
+            'AppleSignInHandler: user doc already exists for ${user.uid}, data=${doc.data()}',
+          );
         }
       } else {
         debugPrint('AppleSignInHandler: user is null after signInWithApple');

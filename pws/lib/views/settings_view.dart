@@ -26,7 +26,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final _formKey =
+      GlobalKey<FormState>(); // formulier sleutel om validatie te doen
 
   //fallback
   double _currentWeight = 72;
@@ -69,16 +70,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     'aankomen_algemeen',
   ];
 
-  // Map key -> Dutch text (this is what will be saved to Firestore)
+  // Vertaal opgeslagen activity key naar gelokaliseerde label
   String _storageActivityValue(BuildContext ctx, String key) {
-    return _localizedActivityLabel(ctx, key);
+    return _localizedActivityLabel(ctx, key); // gebruik gelokaliseerde label
   }
 
   String _storageGoalValue(BuildContext ctx, String key) {
+    // vertaal opgeslagen goal key
     return _localizedGoalLabel(ctx, key);
   }
 
   double _activityFactorFromLabel(BuildContext ctx, String activityLabel) {
+    // bepaal factor van gelokaliseerde label
     final local = AppLocalizations.of(ctx)!;
     final a = activityLabel.trim();
     if (a == local.activityLow) return 1.2;
@@ -89,7 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final lower = a.toLowerCase();
 
-    // Nederlands, Engels, Frans, Duits keywords (inclusief veelvoorkomende varianten/accents)
+    // Nederlands, Engels, Frans, Duits keywords
     if (lower.contains('weinig') ||
         lower.contains('low') ||
         lower.contains('sedentary') ||
@@ -133,8 +136,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return 1.2;
   }
 
-  // Map key -> localized label for display (must be defined in ARB files)
+  // Vertaal activity key naar gelokaliseerde label
   String _localizedActivityLabel(BuildContext ctx, String key) {
+    // vertaal key naar label
     final t = AppLocalizations.of(ctx)!;
     switch (key) {
       case 'licht_actief':
@@ -152,6 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String _localizedGoalLabel(BuildContext ctx, String key) {
+    // vertaal goal key naar label
     final t = AppLocalizations.of(ctx)!;
     switch (key) {
       case 'op_gewicht_blijven':
@@ -167,6 +172,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   bool _isGenderLocalizedFemale(BuildContext ctx, String? genderLabel) {
+    // bepaal of gender vrouw of man is
     if (genderLabel == null) return false;
     final g = genderLabel.trim().toLowerCase();
     if (g.isEmpty) return false;
@@ -185,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return false;
   }
 
-  // Bepaal calorie-delta voor een doel-label (herkent nl/en/fr/de keywords)
+  // Bepaal calorie-delta voor een doel-label
   int _goalCaloriesDeltaFromLabel(BuildContext ctx, String goalLabel) {
     final local = AppLocalizations.of(ctx)!;
     final g = goalLabel.trim();
@@ -210,8 +216,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return 0;
   }
 
-  @override
+  @override // lifecycle methode
   void initState() {
+    // initialisatie
     super.initState();
     _loadSettings();
     _loadProfile();
@@ -219,6 +226,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadLocaleFromPrefs() async {
+    // laad opgeslagen taal uit SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     final code = prefs.getString('locale');
     if (code != null && code.isNotEmpty) {
@@ -227,6 +235,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _setLocale(String? code) async {
+    // sla taal op in SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     if (code == null || code.isEmpty) {
       await prefs.remove('locale');
@@ -260,6 +269,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _updateNotificationSchedule() async {
+    // werk notificatieschema bij
     await _notificationService.scheduleMealReminders(
       context: context,
       areEnabled: _mealNotificationsEnabled,
@@ -270,6 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _pickTime(
+    // tijdkiezer tonen
     BuildContext context,
     TimeOfDay initialTime,
     Function(TimeOfDay) onTimePicked,
@@ -284,6 +295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadProfile() async {
+    // laad profielgegevens uit Firestore
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       setState(() => _loading = false);
@@ -320,21 +332,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final goalDutch = await decryptValue(data['goal'] ?? '', userDEK);
 
         String findActivityKey(String stored) {
+          // vind geldige activity key
           for (final k in _activityOptionKeys) {
-            if (_storageActivityValue(context, k) == stored) return k;
+            // door alle keys
+            if (_storageActivityValue(context, k) == stored)
+              return k; // als match, return key
           }
-          return _activityOptionKeys.first;
+          return _activityOptionKeys.first; // anders eerste key
         }
 
         String findGoalKey(String stored) {
+          // vind geldige goal key
           for (final k in _goalOptionKeys) {
-            if (_storageGoalValue(context, k) == stored) return k;
+            // door alle keys
+            if (_storageGoalValue(context, k) == stored)
+              return k; // als match, return key
           }
           return _goalOptionKeys.first;
         }
 
-        final validActivityKey = findActivityKey(activityLevelDutch);
-        final validGoalKey = findGoalKey(goalDutch);
+        final validActivityKey = findActivityKey(
+          activityLevelDutch,
+        ); // vind geldige activity key
+        final validGoalKey = findGoalKey(goalDutch); // vind geldige goal key
         setState(() {
           _isAdmin = data['admin'] ?? false;
           _currentWeight = currentWeight > 0 ? currentWeight : _currentWeight;
@@ -393,7 +413,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     setState(() => _saving = true);
-    final loc = AppLocalizations.of(context)!;
+    final loc = AppLocalizations.of(context)!; // lokalisatie instantie
 
     try {
       _currentWeight = double.parse(
@@ -435,7 +455,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           .doc(user.uid)
           .get();
 
-      final data = doc.data() ?? {};
+      final data = doc.data() ?? {}; // bestaand documentdata ophalen
 
       final gender = await decryptValue(data['gender'], userDEK);
       final birthDateStrEncrypted = data['birthDate'];
@@ -471,6 +491,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final age = DateTime.now().year - birthDate.year;
         double bmr;
         if (_isGenderLocalizedFemale(context, gender)) {
+          // vrouw
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
         } else {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
@@ -494,6 +515,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       if (_waist > 0 && bmi != null && bmi > 0 && _height > 0) {
+        // ABSI berekenen
         final heightM = _height / 100.0;
         final waistM = _waist / 100.0;
         absi = waistM / (pow(bmi, 2.0 / 3.0) * pow(heightM, 0.5));
@@ -520,12 +542,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             final loc = AppLocalizations.of(context)!;
             // absiRange instellen met gelokaliseerde labels
             if (absiZ <= -1.0) {
+              // zeer laag risico
               absiRange = loc.absiVeryLowRisk;
             } else if (absiZ <= -0.5) {
+              // laag risico
               absiRange = loc.absiLowRisk;
             } else if (absiZ <= 0.5) {
+              // gemiddeld risico
               absiRange = loc.absiMedium;
             } else if (absiZ <= 1.0) {
+              // verhoogd risico
               absiRange = loc.absiElevated;
             } else {
               absiRange = loc.absiHigh;
@@ -601,7 +627,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _signOut() async {
-    await FirebaseAuth.instance.signOut();
+    await FirebaseAuth.instance.signOut(); // Firebase sign-out
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const LoginRegisterView()),
@@ -610,6 +636,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmSignOut() async {
+    // bevestig sign-out
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -648,12 +675,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String _generateDeletionCode() {
+    // genereer verwijderingscode
     // Genereer een eenvoudige 6-cijferige code
     final random = DateTime.now().millisecondsSinceEpoch.remainder(1000000);
     return random.toString().padLeft(6, '0');
   }
 
   Future<bool> _reauthenticateWithPassword(String? email) async {
+    // probeer opnieuw te authenticeren met wachtwoord omdat recent login vereist is
     if (email == null || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -717,6 +746,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         password: passwordController.text.trim(),
       );
       await FirebaseAuth.instance.currentUser!.reauthenticateWithCredential(
+        // probeer opnieuw te authenticeren
         cred,
       );
       return true;
@@ -742,6 +772,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<bool> _reauthenticateWithGoogle() async {
+    // probeer opnieuw te authenticeren voor Google
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
     try {
@@ -754,7 +785,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
         final cred = result.credential;
         if (cred != null) {
-          await user.reauthenticateWithCredential(cred);
+          await user.reauthenticateWithCredential(cred); // reauthenticatie
           return true;
         }
         return false;
@@ -762,19 +793,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final signIn = GoogleSignIn.instance;
         GoogleSignInAccount? googleUser;
         // probeer eerst lightweight auth
-        googleUser = await signIn.attemptLightweightAuthentication();
+        googleUser = await signIn
+            .attemptLightweightAuthentication(); // probeer lichte auth
         // fallback naar interactive auth indien nodig
         if (googleUser == null) {
           if (signIn.supportsAuthenticate()) {
-            googleUser = await signIn.authenticate();
+            // als interactieve auth wordt ondersteund
+            googleUser = await signIn.authenticate(); // interactieve auth
           } else {
-            googleUser = await signIn.attemptLightweightAuthentication();
+            // anders opnieuw lichte auth proberen
+            googleUser = await signIn
+                .attemptLightweightAuthentication(); // lichte auth
           }
         }
         if (googleUser == null) return false;
-        final googleAuth = await googleUser.authentication;
+        final googleAuth =
+            await googleUser.authentication; // haal Google auth details op
         if (googleAuth.idToken == null) return false;
         final credential = GoogleAuthProvider.credential(
+          // maak Firebase credential aan
           idToken: googleAuth.idToken,
         );
         await user.reauthenticateWithCredential(credential);
@@ -795,6 +832,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String sha256ofString(String input) {
+    // genereer SHA-256 hash van string
     final bytes = utf8.encode(input);
     final digest = sha256.convert(bytes);
     return digest.toString();
@@ -810,24 +848,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final result = await FirebaseAuth.instance.signInWithPopup(provider);
         final cred = result.credential;
         if (cred != null) {
-          await user.reauthenticateWithCredential(cred);
+          await user.reauthenticateWithCredential(cred); // reauthenticatie
           return true;
         }
         return false;
       } else {
         final rawNonce = generateNonce();
         final nonce = sha256ofString(rawNonce);
+
+        /// SHA-256 hash van nonce
         final appleCredential = await SignInWithApple.getAppleIDCredential(
+          // Apple ID credential ophalen
           scopes: [AppleIDAuthorizationScopes.email],
           nonce: nonce,
         );
         if (appleCredential.identityToken == null) return false;
         final credential = OAuthProvider("apple.com").credential(
+          // maak Firebase credential aan
           idToken: appleCredential.identityToken,
           rawNonce: rawNonce,
           accessToken: appleCredential.authorizationCode,
         );
-        await user.reauthenticateWithCredential(credential);
+        await user.reauthenticateWithCredential(credential); //
         return true;
       }
     } catch (e) {
@@ -844,8 +886,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // Probeer opnieuw te authenticeren voor GitHub (web). Native GitHub reauth may require custom OAuth.
+  // Probeer opnieuw te authenticeren voor GitHub
   Future<bool> _reauthenticateWithGitHub() async {
+    // probeer opnieuw te authenticeren voor GitHub
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
     try {
@@ -859,7 +902,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
         return false;
       } else {
-        // Native GitHub reauth usually requires a custom OAuth flow / backend.
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -894,7 +936,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _deletingAccount = true);
 
     try {
-      // Bepaal welke providers de gebruiker heeft
+      // Controleer welke provider(s) de gebruiker heeft
       final providerIds = user.providerData.map((p) => p.providerId).toList();
 
       bool reauthed = false;
@@ -924,6 +966,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       if (!reauthed) {
+        // als re-authenticatie niet gelukt is
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -986,11 +1029,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmDeleteAccount() async {
+    // bevestig verwijdering account
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = colorScheme.brightness == Brightness.dark;
 
-    final code = _generateDeletionCode();
+    final code = _generateDeletionCode(); // genereer verwijderingscode
     final TextEditingController codeController = TextEditingController();
 
     final bool? confirmed = await showDialog<bool>(
@@ -1110,6 +1154,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showCreateAnnouncementDialog() async {
+    // dialoog voor nieuw aankondiging
     final titleController = TextEditingController(); // Controller voor de titel
     final messageController = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -1258,9 +1303,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final cardColor = theme.cardColor;
 
     return WillPopScope(
+      // onderschep terug-navigatie
       onWillPop: () async {
         if (_hasUnsavedChanges) {
           final shouldLeave = await showDialog<bool>(
+            // toon dialoog bij onopgeslagen wijzigingen
             context: context,
             builder: (context) {
               final theme = Theme.of(context);
@@ -1379,6 +1426,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                               ),
                               SwitchListTile(
+                                // schakelaar voor maaltijdmeldingen
                                 title: Text(
                                   AppLocalizations.of(
                                     context,
@@ -1494,6 +1542,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 children: [
                                   Expanded(
                                     child: DropdownButtonFormField<String>(
+                                      // taalkeuze dropdown
                                       isExpanded: true,
                                       value:
                                           (appLocale.value?.languageCode) ??
@@ -1626,7 +1675,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           value: _includeSportsCalories,
                           onChanged: (val) async {
                             setState(() => _includeSportsCalories = val);
-                            // Persist immediately to Firestore as a plain preference
+                            // Sla de instelling op in Firestore
                             final user = FirebaseAuth.instance.currentUser;
                             if (user != null) {
                               await FirebaseFirestore.instance
@@ -2090,7 +2139,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       context,
                                     )!.createAnnouncementSubtitle,
                                   ),
-                                  onTap: _showCreateAnnouncementDialog,
+                                  onTap:
+                                      _showCreateAnnouncementDialog, // toon dialoog voor nieuwe aankondiging
                                 ),
                                 const Divider(),
                                 ListTile(
@@ -2151,7 +2201,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           .instance
                                           .collection('version')
                                           .doc('version')
-                                          .get();
+                                          .get(); // haal huidige versie op
                                       if (snap.exists) {
                                         final data = snap.data();
                                         final current =
@@ -2159,7 +2209,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         versionController.text = current;
                                       }
                                     } catch (e) {
-                                      // ignore load error; dialog will open with empty field
+                                      // fout bij ophalen huidige versie, negeer
                                     }
 
                                     final confirmed = await showDialog<bool>(
@@ -2259,6 +2309,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     );
 
                                     if (confirmed == true) {
+                                      // gebruiker heeft bevestigd
                                       final ver = versionController.text.trim();
                                       if (ver.isNotEmpty) {
                                         await FirebaseFirestore.instance
@@ -2368,7 +2419,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                       const SizedBox(height: 12),
 
- OutlinedButton.icon(
+                      OutlinedButton.icon(
                         icon: Icon(
                           Icons.warning_amber_rounded,
                           color: colorScheme.primary,
@@ -2393,16 +2444,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             context: context,
                             builder: (ctx) {
                               return AlertDialog(
-                                title: Text(AppLocalizations.of(context)!.disclaimer),
+                                title: Text(
+                                  AppLocalizations.of(context)!.disclaimer,
+                                ),
                                 content: SingleChildScrollView(
                                   child: Text(
-                                 AppLocalizations.of(context)!.disclaimerText,
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.disclaimerText,
                                   ),
                                 ),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.of(ctx).pop(),
-                                    child: Text(AppLocalizations.of(context)!.close),
+                                    child: Text(
+                                      AppLocalizations.of(context)!.close,
+                                    ),
                                   ),
                                 ],
                               );
@@ -2411,13 +2468,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         },
                       ),
 
-                        const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
-                       OutlinedButton.icon(
-                        icon: Icon(
-                          Icons.book,
-                          color: colorScheme.primary,
-                        ),
+                      OutlinedButton.icon(
+                        icon: Icon(Icons.book, color: colorScheme.primary),
                         label: Text(
                           AppLocalizations.of(context)!.bronnen,
                           style: TextStyle(color: colorScheme.primary),
@@ -2434,13 +2488,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         onPressed: () {
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const SourcesPage()),
+                            MaterialPageRoute(
+                              builder: (_) => const SourcesPage(),
+                            ),
                           );
                         },
                       ),
 
                       const SizedBox(height: 12),
-                      
+
                       OutlinedButton.icon(
                         icon: Icon(
                           Icons.privacy_tip,
@@ -2613,7 +2669,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
       .collection('announcements');
 
   Future<void> _toggleActive(DocumentSnapshot doc) async {
-    await _announcements.doc(doc.id).update({
+    await _announcements.doc(doc.id).update({ // Update the document
       'isActive': !doc['isActive'],
     }); // Toggle the isActive field
   }
@@ -2646,7 +2702,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextFormField(
-                  controller: titleController,
+                  controller: titleController, // titel controller
                   style: TextStyle(color: isDark ? Colors.white : Colors.black),
                   decoration: InputDecoration(
                     labelText: AppLocalizations.of(context)!.title,
@@ -2674,7 +2730,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: messageController,
+                  controller: messageController, // bericht controller
                   maxLines: 3,
                   style: TextStyle(color: isDark ? Colors.white : Colors.black),
                   decoration: InputDecoration(
@@ -2743,7 +2799,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
     );
   }
 
-  Future<void> _deleteAnnouncement(String docId) async {
+  Future<void> _deleteAnnouncement(String docId) async { // verwijder aankondiging
     await _announcements.doc(docId).delete();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2826,7 +2882,7 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
               final isActive = data['isActive'] ?? false;
               final timestamp = data['createdAt'] as Timestamp?;
               final date = timestamp != null
-                  ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate())
+                  ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate()) // format date
                   : AppLocalizations.of(context)!.unknownDate;
 
               return Card(
@@ -2961,10 +3017,10 @@ class _DecryptViewState extends State<DecryptView> {
       final encryptedJson = _encryptedController.text.trim();
       final requesterUid = FirebaseAuth.instance.currentUser!.uid;
       final requestsCollection = FirebaseFirestore.instance.collection(
-        'decryption_requests',
+        'decryption_requests', // collectie voor decryptieverzoeken
       );
 
-      // 1. Check for duplicate pending requests
+      // check voor dubbele verzoeken
       final existing = await requestsCollection
           .where('targetUid', isEqualTo: targetUid)
           .where('encryptedJson', isEqualTo: encryptedJson)
@@ -2982,14 +3038,14 @@ class _DecryptViewState extends State<DecryptView> {
         return;
       }
 
-      // 2. Create new pending request
+  // maak nieuw verzoek aan
       await requestsCollection.add({
         'targetUid': targetUid,
         'encryptedJson': encryptedJson,
         'status': 'pending',
         'requestedAt': FieldValue.serverTimestamp(),
         'requesterUid': requesterUid,
-        'fieldKey': 'custom', // You can make this dynamic if needed
+        'fieldKey': 'custom',// aanduiding dat dit een aangepast veld is
       });
 
       if (!mounted) return;
@@ -2998,7 +3054,7 @@ class _DecryptViewState extends State<DecryptView> {
           content: Text(AppLocalizations.of(context)!.requestSubmittedSuccess),
         ),
       );
-      _encryptedController.clear(); // Clear field after submission
+      _encryptedController.clear(); /// maak het veld leeg na verzending
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3013,22 +3069,22 @@ class _DecryptViewState extends State<DecryptView> {
     }
   }
 
-  Future<void> _approveRequest(String requestId) async {
+  Future<void> _approveRequest(String requestId) async { // goedkeuringsverzoek
     try {
       final approverUid = FirebaseAuth.instance.currentUser!.uid;
       final reqRef = FirebaseFirestore.instance
           .collection('decryption_requests')
           .doc(requestId);
 
-      final reqSnap = await reqRef.get();
+      final reqSnap = await reqRef.get(); // haal het verzoek op
       if (!reqSnap.exists)
-        throw Exception(AppLocalizations.of(context)!.requestNotFound);
+        throw Exception(AppLocalizations.of(context)!.requestNotFound); // niet gevonden
 
       final data = reqSnap.data() as Map<String, dynamic>;
       final requesterUid = data['requesterUid'] as String;
       final targetUid = data['targetUid'] as String;
 
-      if (requesterUid == approverUid) {
+      if (requesterUid == approverUid) { // controleer of de goedkeurder niet de aanvrager is
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -3044,7 +3100,7 @@ class _DecryptViewState extends State<DecryptView> {
       if (dek == null)
         throw Exception(AppLocalizations.of(context)!.dekNotFoundForUser);
 
-      final decryptedValue = await decryptValue(encryptedJson, dek);
+      final decryptedValue = await decryptValue(encryptedJson, dek); // decryptie
 
       await reqRef.update({
         'status': 'approved',
@@ -3071,7 +3127,7 @@ class _DecryptViewState extends State<DecryptView> {
     }
   }
 
-  Future<void> _rejectRequest(String requestId) async {
+  Future<void> _rejectRequest(String requestId) async { // afwijsverzoek
     try {
       final approverUid = FirebaseAuth.instance.currentUser!.uid;
       final reqRef = FirebaseFirestore.instance
@@ -3079,7 +3135,7 @@ class _DecryptViewState extends State<DecryptView> {
           .doc(requestId);
 
       final reqSnap = await reqRef.get();
-      if (!reqSnap.exists)
+      if (!reqSnap.exists) // controleer of het verzoek bestaat
         throw Exception(AppLocalizations.of(context)!.requestNotFound);
 
       final data = reqSnap.data() as Map<String, dynamic>;
@@ -3092,7 +3148,7 @@ class _DecryptViewState extends State<DecryptView> {
         return;
       }
 
-      await reqRef.update({
+      await reqRef.update({ // werk het verzoek bij naar afgewezen
         'status': 'rejected',
         'rejectedBy': approverUid,
         'rejectedAt': FieldValue.serverTimestamp(),
@@ -3182,7 +3238,7 @@ class _DecryptViewState extends State<DecryptView> {
                       cursorColor: isDark ? Colors.white : cs.primary,
                       decoration: InputDecoration(
                         labelText: AppLocalizations.of(context)!.encryptedJson,
-                        hintText: '{"nonce":"...","cipher":"...","tag":"..."}',
+                        hintText: '{"nonce":"...","cipher":"...","tag":"..."}', // voorbeeld hint
                         hintStyle: TextStyle(
                           color: isDark ? Colors.white54 : Colors.black54,
                         ),
@@ -3249,7 +3305,7 @@ class _DecryptViewState extends State<DecryptView> {
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('decryption_requests')
-                    .orderBy('requestedAt', descending: true)
+                    .orderBy('requestedAt', descending: true) // sorteer op datum
                     .snapshots(),
                 builder: (context, snap) {
                   if (!snap.hasData)
@@ -3418,36 +3474,39 @@ class SourcesPage extends StatelessWidget {
     final isDark = cs.brightness == Brightness.dark;
 
     final loc = AppLocalizations.of(context)!;
-    final List<Map<String, String>> items = [
+    final List<Map<String, String>> items = [ // bronvermeldingen
       {
         'name': loc.sourcesName1,
         'explain': loc.sourcesExplain1,
         'source': loc.sourcesAttribution1,
-        'url': 'https://www.healthcarechain.nl/caloriebehoefte-calculator'
+        'url': 'https://www.healthcarechain.nl/caloriebehoefte-calculator',
       },
       {
         'name': loc.sourcesName2,
         'explain': loc.sourcesExplain2,
         'source': loc.sourcesAttribution2,
-        'url': 'https://www.ru.nl/sites/default/files/2023-05/1a_basisvoeding_hoofddocument_mei_2021%20%282%29.pdf'
+        'url':
+            'https://www.ru.nl/sites/default/files/2023-05/1a_basisvoeding_hoofddocument_mei_2021%20%282%29.pdf',
       },
       {
         'name': loc.sourcesName3,
         'explain': loc.sourcesExplain3,
         'source': loc.sourcesAttribution3,
-        'url': 'https://apps.who.int/nutrition/landscape/help.aspx?helpid=420&menu=0'
+        'url':
+            'https://apps.who.int/nutrition/landscape/help.aspx?helpid=420&menu=0',
       },
       {
         'name': loc.sourcesName4,
         'explain': loc.sourcesExplain4,
         'source': loc.sourcesAttribution4,
-        'url': 'https://en.wikipedia.org/wiki/Body_shape_index'
+        'url': 'https://en.wikipedia.org/wiki/Body_shape_index',
       },
-            {
+      {
         'name': loc.sourcesName5,
         'explain': loc.sourcesExplain5,
         'source': loc.sourcesAttribution5,
-        'url': 'https://intuitionlabs.ai/software/cardiac-pulmonary-rehabilitation/metabolic-equivalent-met-calculation/mets-calculator'
+        'url':
+            'https://intuitionlabs.ai/software/cardiac-pulmonary-rehabilitation/metabolic-equivalent-met-calculation/mets-calculator',
       },
     ];
 
@@ -3464,7 +3523,7 @@ class SourcesPage extends StatelessWidget {
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, idx) {
             final it = items[idx];
-            final uri = Uri.tryParse(it['url'] ?? '') ;
+            final uri = Uri.tryParse(it['url'] ?? '');
             return Card(
               color: isDark ? Colors.grey.shade900 : theme.cardColor,
               shape: RoundedRectangleBorder(
@@ -3511,21 +3570,32 @@ class SourcesPage extends StatelessWidget {
                               : () async {
                                   try {
                                     if (await canLaunchUrl(uri)) {
-                                      await launchUrl(uri,
-                                          mode: LaunchMode.externalApplication);
+                                      await launchUrl(
+                                        uri,
+                                        mode: LaunchMode.externalApplication, // open in externe browser
+                                      );
                                     } else {
                                       if (!context.mounted) return;
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                              AppLocalizations.of(context)!.cannotOpenLink),
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.cannotOpenLink,
+                                          ),
                                         ),
                                       );
                                     }
                                   } catch (e) {
                                     if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('${AppLocalizations.of(context)!.cannotOpenLink}: $e')),
+                                      SnackBar(
+                                        content: Text(
+                                          '${AppLocalizations.of(context)!.cannotOpenLink}: $e',
+                                        ),
+                                      ),
                                     );
                                   }
                                 },

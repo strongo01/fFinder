@@ -8,7 +8,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async { // achtergrond handler
   await Firebase.initializeApp();
   if (message.notification != null) {}
 }
@@ -16,10 +16,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class NotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
-      FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin(); // instantie van lokale notificaties
 
   final AndroidNotificationChannel _androidChannel =
-      const AndroidNotificationChannel(
+      const AndroidNotificationChannel( // kanaal voor hoge prioriteit
         'high_importance_channel',
         'High Importance Notifications',
         description: 'Dagelijkse herinneringen voor maaltijden.',
@@ -27,7 +27,7 @@ class NotificationService {
       );
 
   final AndroidNotificationChannel _mealChannel =
-      const AndroidNotificationChannel(
+      const AndroidNotificationChannel( // kanaal voor maaltijd herinneringen
         'meal_reminders_channel_v2',
         'Maaltijdherinneringen',
         description: 'Dagelijkse herinneringen voor maaltijden.',
@@ -41,9 +41,9 @@ class NotificationService {
       return;
     }
 
-    await _firebaseMessaging.requestPermission();
+    await _firebaseMessaging.requestPermission(); // vraag permissies
 
-    // --- 1. TIJDZONE CORRECTIE ---
+   // Tijdzone instellen
     try {
       // We halen eerst het object op
       final timezoneInfo = await FlutterTimezone.getLocalTimezone();
@@ -57,34 +57,34 @@ class NotificationService {
       // Fallback
       tz.setLocalLocation(tz.getLocation('UTC'));
     }
-    // -----------------------------
 
-    await _firebaseMessaging.setForegroundNotificationPresentationOptions(
+
+    await _firebaseMessaging.setForegroundNotificationPresentationOptions( // iOS opties
       alert: true,
       badge: true,
       sound: true,
     );
 
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/launcher_icon');
+        AndroidInitializationSettings('@mipmap/launcher_icon'); // app icoon
 
     const DarwinInitializationSettings initializationSettingsDarwin =
-        DarwinInitializationSettings();
+        DarwinInitializationSettings(); // iOS instellingen
 
     const InitializationSettings initializationSettings =
-        InitializationSettings(
+        InitializationSettings( // algemene instellingen
           android: initializationSettingsAndroid,
           iOS: initializationSettingsDarwin,
           macOS: initializationSettingsDarwin,
         );
 
-    await _localNotifications.initialize(initializationSettings);
+    await _localNotifications.initialize(initializationSettings); // initialiseer lokale notificaties
 
     // Haal de Android implementatie op
     final androidImplementation = _localNotifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
-        >();
+        >(); // typecast naar Android implementatie
 
     // Maak beide kanalen expliciet aan
     await androidImplementation?.createNotificationChannel(_androidChannel);
@@ -94,19 +94,19 @@ class NotificationService {
     await androidImplementation?.requestNotificationsPermission();
     //await androidImplementation?.requestExactAlarmsPermission();
 
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-    _setupForegroundMessageHandler();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler); // achtergrond handler instellen
+    _setupForegroundMessageHandler(); // setup foreground handler
     debugPrint('NotificationService: initialize() voltooid');
   }
 
   void _setupForegroundMessageHandler() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      RemoteNotification? notification = message.notification;
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) { // luister naar inkomende berichten
+      RemoteNotification? notification = message.notification; // haal notificatie op
       if (notification != null) {}
 
       if (notification != null &&
           (message.notification?.android != null ||
-              message.notification?.apple != null)) {
+              message.notification?.apple != null)) { // als android of ios notificatie
         _localNotifications.show(
           notification.hashCode,
           notification.title,
@@ -120,7 +120,7 @@ class NotificationService {
               importance: Importance.high,
               priority: Priority.high,
             ),
-            iOS: const DarwinNotificationDetails(
+            iOS: const DarwinNotificationDetails( // iOS details darwin is voor iOS en macOS
               presentAlert: true,
               presentBadge: true,
               presentSound: true,
@@ -131,13 +131,13 @@ class NotificationService {
     });
   }
 
-  Future<void> _maybeAskExactAlarmsPermission(BuildContext context) async {
+  Future<void> _maybeAskExactAlarmsPermission(BuildContext context) async { // vraag om exacte alarm permissie
     if (kIsWeb) return;
 
     final androidImpl = _localNotifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
-        >();
+        >(); /// typecast naar Android implementatie
 
     if (androidImpl == null) return;
 
@@ -146,29 +146,25 @@ class NotificationService {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title:  Text(AppLocalizations.of(context)!
-              .exactAlarmsTitle),
-          content:  Text(
-            AppLocalizations.of(context)!
-                .exactAlarmsMessage,
-          ),
+          title: Text(AppLocalizations.of(context)!.exactAlarmsTitle),
+          content: Text(AppLocalizations.of(context)!.exactAlarmsMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child:  Text(AppLocalizations.of(context)!
-                  .exactAlarmsNotNow),
+              child: Text(AppLocalizations.of(context)!.exactAlarmsNotNow),
             ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child:  Text(AppLocalizations.of(context)!
-                  .exactAlarmsOpenSettings),
+              child: Text(
+                AppLocalizations.of(context)!.exactAlarmsOpenSettings,
+              ),
             ),
           ],
         );
       },
     );
 
-    if (shouldOpen == true) {
+    if (shouldOpen == true) { // als gebruiker akkoord gaat
       try {
         await androidImpl.requestExactAlarmsPermission();
         debugPrint('NotificationService: Exact alarms permission requested');
@@ -184,7 +180,7 @@ class NotificationService {
     }
   }
 
-  Future<void> scheduleMealReminders({
+  Future<void> scheduleMealReminders({ // plan maaltijd herinneringen
     required BuildContext context,
     required bool areEnabled,
     required TimeOfDay breakfastTime,
@@ -215,19 +211,19 @@ class NotificationService {
       final dinnerTitle = loc.notificationDinnerTitle;
       final dinnerBody = loc.notificationDinnerBody;
 
-      await _scheduleDailyNotification(
+      await _scheduleDailyNotification( // plan ontbijt notificatie
         id: 1,
         title: breakfastTitle,
         body: breakfastBody,
         time: breakfastTime,
       );
-      await _scheduleDailyNotification(
+      await _scheduleDailyNotification( // plan lunch notificatie
         id: 2,
         title: lunchTitle,
         body: lunchBody,
         time: lunchTime,
       );
-      await _scheduleDailyNotification(
+      await _scheduleDailyNotification( // plan diner notificatie
         id: 3,
         title: dinnerTitle,
         body: dinnerBody,
@@ -238,7 +234,7 @@ class NotificationService {
     }
   }
 
-  Future<void> _scheduleDailyNotification({
+  Future<void> _scheduleDailyNotification({ // plan dagelijkse notificatie
     required int id,
     required String title,
     required String body,
@@ -249,7 +245,7 @@ class NotificationService {
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >()
-          ?.areNotificationsEnabled();
+          ?.areNotificationsEnabled(); // controleer of notificaties zijn toegestaan
 
       debugPrint(
         'NotificationService: Permissies status voor Android: $granted',
@@ -277,15 +273,14 @@ class NotificationService {
         );
       }
 
-      await _localNotifications.zonedSchedule(
+      await _localNotifications.zonedSchedule( // plan de notificatie
         id,
         title,
         body,
         scheduledDate,
         NotificationDetails(
-          // Let op: 'const' weggehaald hier
           android: AndroidNotificationDetails(
-            _mealChannel.id, // Gebruik het nieuwe v2 kanaal
+            _mealChannel.id, 
             _mealChannel.name,
             channelDescription: _mealChannel.description,
             importance: Importance.high,
@@ -298,9 +293,9 @@ class NotificationService {
             presentBadge: true,
           ),
         ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle, // exacte tijd
 
-        matchDateTimeComponents: DateTimeComponents.time,
+        matchDateTimeComponents: DateTimeComponents.time, // herhaal dagelijks op hetzelfde tijdstip
       );
       debugPrint('NotificationService: Succesvol gepland (ID: $id)');
     } catch (e, stackTrace) {

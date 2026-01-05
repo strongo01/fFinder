@@ -19,7 +19,7 @@ import 'barcode_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 
-enum SourceStatus { idle, loading, success, error }
+enum SourceStatus { idle, loading, success, error } // status van zoekbron
 
 SourceStatus _ffinderStatus = SourceStatus.idle;
 SourceStatus _offStatus = SourceStatus.idle;
@@ -64,7 +64,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   bool _isSheetShown =
       false; // Vlag om te controleren of de sheet al is getoond
 
-  late TutorialCoachMark tutorialCoachMark;
+  late TutorialCoachMark tutorialCoachMark; // TutorialCoachMark instantie
   int _searchToken = 0;
 
   bool _hasLoadedMore = false;
@@ -78,8 +78,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
   @override
   void didChangeDependencies() {
+    // wordt aangeroepen nadat initState is voltooid en context beschikbaar is
     super.didChangeDependencies();
-    // Verplaatst naar initState om meervoudige aanroepen te voorkomen
   }
 
   void _handleInitialAction() async {
@@ -114,7 +114,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
       _isSheetShown = true; // voorkom herhaling
 
       // Als er geen initialProductData is, probeer OFF te fetchen voordat sheet opent
-      Map<String, dynamic>? productData = widget.initialProductData;
+      Map<String, dynamic>? productData = widget
+          .initialProductData; // de data van het product als die al bekend is (barcode)
       if (productData == null) {
         try {
           final offUrl = Uri.parse(
@@ -122,24 +123,41 @@ class _AddFoodPageState extends State<AddFoodPage> {
           );
           final resp = await http.get(offUrl);
           if (resp.statusCode == 200) {
-            final j = jsonDecode(resp.body) as Map<String, dynamic>;
+            // succesvolle respons
+            final j =
+                jsonDecode(resp.body)
+                    as Map<
+                      String,
+                      dynamic
+                    >; // decode JSON omdat http.get raw string teruggeeft
             if (j['status'] == 1 && j['product'] is Map) {
-              final fetched = Map<String, dynamic>.from(j['product'] as Map);
+              // product gevonden
+              final fetched = Map<String, dynamic>.from(
+                j['product'] as Map,
+              ); // product data
 
               // helper: parse numeric-ish values
               double _asDouble(dynamic v) {
-                if (v == null) return 0.0;
-                if (v is num) return v.toDouble();
+                // converteer naar double. v is dynamic omdat het verschillende types kan zijn
+                if (v == null) return 0.0; // null check
+                if (v is num)
+                  return v
+                      .toDouble(); // als het al een nummer is, converteer naar double
                 if (v is String)
-                  return double.tryParse(v.replaceAll(',', '.')) ?? 0.0;
+                  return double.tryParse(v.replaceAll(',', '.')) ??
+                      0.0; // probeer te parsen, vervang komma met punt
                 return 0.0;
               }
 
               // normaliseer nutriments indien nodig
               if (fetched['nutriments_per_100g'] == null &&
                   fetched['nutriments'] is Map) {
-                final n = fetched['nutriments'] as Map<String, dynamic>;
+                // als nutriments_per_100g ontbreekt maar nutriments bestaat
+                final n =
+                    fetched['nutriments']
+                        as Map<String, dynamic>; // originele nutriments map
                 fetched['nutriments_per_100g'] = {
+                  // maak nieuwe map aan
                   'energy-kcal': _asDouble(
                     n['energy-kcal_100g'] ?? n['energy-kcal'],
                   ),
@@ -156,10 +174,15 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   'salt': _asDouble(n['salt_100g'] ?? n['salt']),
                 };
               } else if (fetched['nutriments_per_100g'] is Map) {
+                // als nutriments_per_100g bestaat
                 final mp = Map<String, dynamic>.from(
                   fetched['nutriments_per_100g'] as Map,
                 );
-                final fixed = <String, dynamic>{};
+                final fixed =
+                    <
+                      String,
+                      dynamic
+                    >{}; // nieuwe map voor genormaliseerde waarden
                 for (final k in mp.keys) {
                   fixed[k] = _asDouble(mp[k]);
                 }
@@ -182,6 +205,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
               fetched['brands'] = fetched['brands'] ?? '';
               fetched['quantity'] = fetched['quantity'] ?? '';
               fetched['serving_size'] = _extractServingSize(
+                // probeer serving size te extraheren
                 fetched['serving_size'] ??
                     fetched['serving-size'] ??
                     fetched['servingSize'] ??
@@ -202,7 +226,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
       // Open sheet met (mogelijk) gefetchte data
       if (mounted) {
-        _showProductDetails(widget.scannedBarcode!, productData: productData);
+        // controleer of widget nog in boom zit
+        _showProductDetails(
+          widget.scannedBarcode!,
+          productData: productData,
+        ); // toon product details met barcode en data
       }
     } else if (!tutorialCompleted) {
       // Start tutorial alleen als geen barcode
@@ -249,8 +277,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
       onClickTarget: (target) {
         // wanneer een target wordt aangeklikt
         debugPrint('Target geklikt: $target');
-        final String? identify = target.identify;
-        int? targetIndex;
+        final String? identify = target.identify; // identificeer welke target
+        int? targetIndex; // index van tab indien van toepassing
 
         switch (identify) {
           case 'recent-key':
@@ -281,8 +309,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   List<TargetFocus> _createTargets(BuildContext context) {
+    // maak lijst met tutorial targets
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    List<TargetFocus> targets = [];
+    List<TargetFocus> targets = []; // lijst om targets in op te slaan
 
     //Zoekbalk
     targets.add(
@@ -433,6 +462,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   Widget _buildTutorialContent(String title, String text, bool isDarkMode) {
+    // bouw de inhoud van een tutorial target
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -466,6 +496,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   String _normalize(String? s) {
+    // normaliseer string voor matching
     if (s == null || s.isEmpty) return '';
     var v = s.toLowerCase();
     v = v.replaceAll(RegExp(r'[-–—/,&+]'), ' ');
@@ -474,6 +505,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   List<String> _tokensWithCompounds(String? s) {
+    // genereer tokens inclusief samengestelde vormen
     final base = _normalize(s);
     if (base.isEmpty) return [];
 
@@ -493,18 +525,17 @@ class _AddFoodPageState extends State<AddFoodPage> {
       out.add(parts.join());
     }
 
-    // optioneel: voeg trigram concats (beperkt) — comment uit als je dat te ver vindt
-    // if (parts.length >= 3) out.add(parts[0] + parts[1] + parts[2]);
-
-    // dedupe and return
+    // verwijder duplicaten
     return out.toSet().toList();
   }
 
   bool _isSingleWordQuery(String q) {
+    // controleer of query uit één woord bestaat
     return q.trim().split(' ').length == 1;
   }
 
   String _stem(String token) {
+    // stem token naar basisvorm
     // eenvoudige singularisatie: appels -> appel, bananen -> banaan
     if (token.length <= 3) return token;
     if (token.endsWith('en')) return token.substring(0, token.length - 2);
@@ -513,11 +544,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   int scoreProduct(Map p, String query) {
+    // bereken score van product op basis van query
     final rawName = (p['product_name'] ?? p['generic_name'] ?? '').toString();
     if (rawName.isEmpty) return 0;
 
-    final name = _normalize(rawName);
+    final name = _normalize(rawName); // genormaliseerde naam
     final nameTokensRaw = _tokensWithCompounds(
+      // tokens uit
       rawName,
     ); // tokens from raw name, normalized
     final nameTokens = nameTokensRaw
@@ -541,15 +574,18 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
     // 1) token-based matching (gestemd)
     for (final qt in queryTokens) {
+      // voor elk query token
       if (nameTokens.contains(qt)) {
+        // exacte token match
         score += 900; // sterke match op gestemd token
-        reasons.add('+900 token match (stemmed) [$qt]');
+        reasons.add('+900 token match (stemmed) [$qt]'); // log reden
       } else if (nameTokensRaw.any((t) => t.startsWith(qt))) {
         score += 250; // token startsWith query (appelmoes, appel-limoen)
-        reasons.add('+250 token startsWith [$qt]');
+        reasons.add('+250 token startsWith [$qt]'); // log reden
       } else if (name.contains(qt)) {
+        // substring match
         score += 150; // substring fallback
-        reasons.add('+150 substring match [$qt]');
+        reasons.add('+150 substring match [$qt]'); // log reden
       }
       // category boost per token
       if (categories.contains(qt) || catTags.contains(qt)) {
@@ -558,13 +594,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
       }
     }
 
-    // 2) exact normalized full-string match
+    // exacte naam match boost
     if (name == _normalize(query)) {
       score += 1400;
       reasons.add('+1400 exact name == query');
     }
 
-    // 3) commodity boost for single-word queries when product looks "simple"
+    // single-word commodity boost
     final isSingle = _isSingleWordQuery(query);
     if (isSingle) {
       final qt = queryTokens.isNotEmpty ? queryTokens.first : '';
@@ -582,7 +618,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       }
     }
 
-    // 4) processed-word penalty (detect ook in compounds)
+    // brand boost
     const processedWords = [
       'stroop',
       'sap',
@@ -601,22 +637,23 @@ class _AddFoodPageState extends State<AddFoodPage> {
       'chips',
     ];
     for (final w in processedWords) {
-      // check stemmed tokens and raw tokens contains
+      // voor elk verwerkt woord
+      // als naam het woord bevat
       if (nameTokens.any((t) => t.contains(w)) ||
           nameTokensRaw.any((t) => t.contains(w))) {
-        score -= 800; // milder dan eerst, maar merkbaar
+        score -= 800; // penalty voor bewerkte producten
         reasons.add('-800 processed contains ($w)');
-        // break; // optional: break after first processed word found
+        // maar milde bonus als merknaam
       }
     }
 
-    // 5) length penalty (mild)
+    // penalty voor lange namen
     if (nameTokensRaw.length >= 6) {
       score -= 250;
       reasons.add('-250 long name');
     }
 
-    // tie-breaker prefer filled product_name
+    // lichte boost als er een merknaam is
     if (name.isNotEmpty) {
       score += 5;
     }
@@ -626,8 +663,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   bool isPrimaryProduct(Map p, String query) {
+    // controleer of product primaire match is voor query
     final categories = _normalize(p['categories']);
-    final tags = _normalize((p['categories_tags'] ?? '').toString());
+    final tags = _normalize(
+      (p['categories_tags'] ?? '').toString(),
+    ); // genormaliseerde tags
 
     // exacte productcategorie (meest betrouwbaar)
     if (categories.contains(query) || tags.contains(query)) {
@@ -648,14 +688,18 @@ class _AddFoodPageState extends State<AddFoodPage> {
     String query, {
     int take = 50,
   }) {
+    // rangschik producten op basis van score
     final q = _normalize(query);
     final ranked = products.map((p) {
+      // voor elk product
       final map = p as Map<String, dynamic>;
       final score = scoreProduct(map, q);
       return {'product': map, 'score': score};
     }).toList();
 
-    ranked.sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
+    ranked.sort(
+      (a, b) => (b['score'] as int).compareTo(a['score'] as int),
+    ); // sorteer op score (hoog naar laag)
     return ranked
         .take(take)
         .map((e) => Map<String, dynamic>.from(e['product'] as Map))
@@ -663,6 +707,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   Future<void> _searchProducts(String query, {bool loadMore = false}) async {
+    // zoek producten op basis van query
     // zoek producten via openfoodfacts api
     if (query.isEmpty) {
       setState(() {
@@ -690,16 +735,20 @@ class _AddFoodPageState extends State<AddFoodPage> {
       _ffinderStatus = SourceStatus.loading;
       _offStatus = SourceStatus.loading;
     });
-    final int currentToken = ++_searchToken;
+    final int currentToken =
+        ++_searchToken; // verhoog token voor deze zoekactie
 
-    _searchOffParallel(trimmed)
+    _searchOffParallel(
+          trimmed,
+        ) // zoek OFF parallel. parallel zodat UI sneller reageert
         .then((offProducts) {
-          // check token first (voorkom oude async resultaten)
+          // check token eerst (voorkom oude async resultaten)
           if (currentToken != _searchToken) return;
           if (!mounted) return;
 
           if (offProducts.isNotEmpty) {
             final merged = _mergeProductsPreserveLogic(
+              // merge OFF resultaten met bestaande
               _searchResults ?? [],
               offProducts,
             );
@@ -773,7 +822,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 final barcode = code?.toString();
                 if (barcode == null || barcode.isEmpty) continue;
 
-                // Fire-and-forget fetch per product — kleine timeout en foutafhandeling
+                // Asynchroon ophalen van afbeelding
                 () async {
                   try {
                     final offUrl = Uri.parse(
@@ -795,7 +844,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         offProd['image_front_thumb_url'] ??
                         offProd['image_front_url'];
                     if (img is String && img.isNotEmpty) {
-                      // Update local copy
+                      // Update lokale kopie
                       raw['image_front_small_url'] = img;
 
                       // Zoek en update in de getoonde lijst (indien nog zichtbaar)
@@ -803,7 +852,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         setState(() {
                           if (_searchResults != null &&
                               _searchResults!.isNotEmpty) {
-                            // replace matching product by id/code if present, anders by identity
+                            // vervang overeenkomend product op id/code indien aanwezig, anders op identiteit
                             for (int j = 0; j < _searchResults!.length; j++) {
                               final p =
                                   _searchResults![j] as Map<String, dynamic>;
@@ -822,7 +871,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 return;
                               }
                             }
-                            // fallback: update first occurrence of same product_name
+                            // fallback: vergelijk op productnaam
                             for (int j = 0; j < _searchResults!.length; j++) {
                               final p =
                                   _searchResults![j] as Map<String, dynamic>;
@@ -876,6 +925,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
       // Fallback naar Open Food Facts
       if (all.isEmpty || loadMore) {
+        // alleen als er nog geen resultaten zijn of bij loadMore
         debugPrint("\n--- Poging 2: Open Food Facts (Fallback) ---");
         final openFoodFactsUrl = Uri.parse(
           "https://nl.openfoodfacts.org/cgi/search.pl"
@@ -921,7 +971,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
       }
 
       final Map<String, Map<String, dynamic>> seen = {};
-      int _anonCounter = 0;
+      int _anonCounter = 0; // teller voor anonieme producten
       for (final item in all) {
         if (item is! Map) continue;
         final Map<String, dynamic> m = Map<String, dynamic>.from(item);
@@ -937,6 +987,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
           // Merge: vul ontbrekende nuttige velden in (image/url/brands/quantity)
           final existing = seen[key]!;
           void copyIfMissing(String k) {
+            // helper om veld te kopiëren indien ontbreekt
             final vNew = m[k];
             if ((existing[k] == null || existing[k].toString().isEmpty) &&
                 vNew != null &&
@@ -974,6 +1025,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   Future<List<Map<String, dynamic>>> _searchOffParallel(String query) async {
+    // zoek producten via OFF in parallel
     try {
       final url = Uri.parse(
         "https://nl.openfoodfacts.org/cgi/search.pl"
@@ -999,6 +1051,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   List<Map<String, dynamic>> _mergeProductsPreserveLogic(
+    // merge twee lijsten producten met behoud van bestaande logica
     List existing,
     List incoming,
   ) {
@@ -1006,6 +1059,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     int anonCounter = 0;
 
     void add(Map<String, dynamic> m) {
+      // helper om product toe te voegen met merge logica
       final id = (m['_id'] ?? m['code'] ?? m['barcode'] ?? m['gtin'])
           ?.toString();
       final key = (id != null && id.isNotEmpty)
@@ -1333,6 +1387,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
                     // merge (preserve logic de-dup + fill missing fields)
                     final merged = _mergeProductsPreserveLogic(
+                      //  merge ffinder + OFF
                       ffinderProducts,
                       offProducts,
                     );
@@ -1340,6 +1395,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     // als loadMore: voeg bij bestaande, anders vervang
                     final ranked = _rankProducts(merged, trimmed, take: 50);
                     setModalState(() {
+                      // update UI met resultaten
                       if (loadMore) {
                         ingredientEntries[index]['searchResults'] = [
                           ...existingResults,
@@ -1354,6 +1410,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
                     // asynchrone extra OFF-image verrijking voor items zonder afbeelding (fire-and-forget)
                     for (final raw in ffinderProducts) {
+                      // alleen ffinder items hebben mogelijk geen afbeelding
                       final code =
                           raw['barcode'] ??
                           raw['code'] ??
@@ -1419,7 +1476,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             }
                           }
                         } catch (_) {
-                          // ignore per-item image errors
+                          // negeer fouten
                         }
                       }();
                     }
@@ -1802,7 +1859,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                       },
                                     ),
                                   ),
-                                if (selectedProduct == null)
+                                if (selectedProduct ==
+                                    null) // alleen tonen als nog geen product geselecteerd is
                                   Padding(
                                     padding: const EdgeInsets.only(top: 8.0),
                                     child: TextField(
@@ -2083,7 +2141,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   normalized['additives_tags'],
                 );
 
-                // ensure nutriments_per_100g numeric
+                // normalize nutriments_per_100g
                 double _asDouble(dynamic v) {
                   if (v == null) return 0.0;
                   if (v is num) return v.toDouble();
@@ -2192,7 +2250,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   _selectedTabIndex ==
                       3)) // alleen tonen bij mijn producten of maaltijden
             IconButton(
-              key: _selectedTabIndex == 2
+              key: _selectedTabIndex == 2 // mijn producten tab
                   ? _myproductsAddKey
                   : _maaltijdenAddKey,
               icon: const Icon(Icons.add),
@@ -2247,7 +2305,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     );
                   },
                 );
-
+// handel de keuze van de gebruiker
                 if (choice == 'product') {
                   // toon sheet om eigen product toe te voegen
                   setState(() {
@@ -2370,7 +2428,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     return Column(
       children: [
         sourceStatusRow,
-        Expanded(child: _buildResultsListOrPlaceholder(isDarkMode)),
+        Expanded(child: _buildResultsListOrPlaceholder(isDarkMode)), // lijst of placeholder
       ],
     );
   }
@@ -2527,7 +2585,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
 
     // "Meer laden" knop
-    if (!_hasLoadedMore) {
+    if (!_hasLoadedMore) { // alleen tonen als er meer geladen kan worden
       resultWidgets.add(
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -2570,7 +2628,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     return ListView(children: resultWidgets);
   }
 
-  Widget _statusBadge(SourceStatus status, String label) {
+  Widget _statusBadge(SourceStatus status, String label) { // bouw status badge
     return _AnimatedStatusBadge(status: status, label: label);
   }
 
@@ -2953,20 +3011,20 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  List<dynamic> _normalizeTags(dynamic v) {
+  List<dynamic> _normalizeTags(dynamic v) { // normaliseer tags naar lijst
     if (v == null) return <dynamic>[];
     if (v is List) return v;
     if (v is String) {
       final s = v.trim();
       if (s.isEmpty) return <dynamic>[];
 
-      // 1) Probeer expliciete OFF-tags zoals "en:milk" te vinden
+      // Probeer eerst te matchen op 'en:...' patronen
       final matches = RegExp(
         r'en:[^,;\/\s]+',
       ).allMatches(s).map((m) => m.group(0)!).toList();
       if (matches.isNotEmpty) return matches;
 
-      // 2) Fallback: split op komma/semicolon/slash/whitespace
+      // Fallback: split op komma/semicolon/slash/whitespace
       final parts = s
           .split(RegExp(r'[,\;\/\s]+'))
           .map((e) => e.trim())
@@ -2979,7 +3037,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     return <dynamic>[];
   }
 
-  String? _extractServingSize(dynamic v) {
+  String? _extractServingSize(dynamic v) { // extraheer portiegrootte als string met eenheid
     if (v == null) return null;
     if (v is num) return "${v.toString()} g";
     if (v is String) {
@@ -3061,7 +3119,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
               normalized['servingSize'] ??
               normalized['serving_quantity'],
         );
-        // Parse num or numeric string to double
+       // helper om waarden naar double te converteren
         double _asDouble(dynamic v) {
           if (v == null) return 0.0;
           if (v is num) return v.toDouble();
@@ -3082,7 +3140,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             normalized['additives_tags'],
           );
 
-          // Ensure nutriments_per_100g contains numeric doubles
+          // normalize nutriments_per_100g
           if (normalized['nutriments_per_100g'] == null) {
             if (normalized['nutriments'] is Map) {
               final n = normalized['nutriments'] as Map<String, dynamic>;
@@ -3103,7 +3161,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                 'salt': _asDouble(n['salt_100g'] ?? n['salt']),
               };
             } else {
-              // if already present but values might be strings, normalize them
+              // initialize empty map
               final mp =
                   normalized['nutriments_per_100g'] as Map<String, dynamic>?;
               if (mp != null) {
@@ -3117,7 +3175,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
               }
             }
           } else {
-            // normalize existing map values
+          
             final mp =
                 normalized['nutriments_per_100g'] as Map<String, dynamic>?;
             if (mp != null) {
@@ -3134,7 +3192,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
           normalized['quantity'] = normalized['quantity'] ?? '';
         } catch (e) {
           debugPrint("[ADD_FOOD_VIEW] Normalization failed: $e");
-          // fall back to original productData if normalization fails
+         
         }
 
         // toon de product bewerk sheet met altijd genormaliseerde data
@@ -3149,7 +3207,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Widget _buildInfoRow(String label, String? value) {
+  Widget _buildInfoRow(String label, String? value) { // bouw info rij
     // bouw een rij met niet-bewerkbare info
     if (value == null || value.trim().isEmpty) {
       // geen waarde om te tonen
@@ -3182,7 +3240,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  String _displayString(dynamic v, {String? fallback}) {
+  String _displayString(dynamic v, {String? fallback}) { // helper om string weer te geven met fallback
     final fb = fallback ?? AppLocalizations.of(context)!.unknown;
     if (v == null) return fb;
     if (v is String && v.trim().isNotEmpty) return v.trim();
@@ -3433,7 +3491,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
                 final products = snapshot.data!.docs;
 
-                return ListView.builder(
+                return ListView.builder( // bouw lijst met favorieten
                   itemCount: products.length,
                   itemBuilder: (context, index) {
                     final productDoc = products[index];
@@ -3488,7 +3546,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         }
                         return decrypted;
                       }(),
-                      builder: (context, decryptedSnapshot) {
+                      builder: (context, decryptedSnapshot) { /// bouw lijst item
                         if (!decryptedSnapshot.hasData) {
                           return const SizedBox.shrink();
                         }
@@ -4034,7 +4092,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     };
     double totalAmount = 0;
 
-    for (final ingredient in ingredients) {
+    for (final ingredient in ingredients) { // loop door elk ingrediënt
       final amount = (ingredient['amount'] as num?)?.toDouble() ?? 0;
       final nutrimentsPer100g =
           (ingredient['nutriments_per_100g'] as Map<String, dynamic>?) ?? {};
@@ -4067,7 +4125,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         .collection('logs')
         .doc(todayDocId);
 
-    final encryptedLogEntry = {
+    final encryptedLogEntry = { // versleutel de log entry
       'product_name': await encryptValue(
         meal['name'] ?? AppLocalizations.of(context)!.unnamedMeal,
         userDEK,
@@ -4633,7 +4691,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                               selectedProduct,
                                             );
 
-                                        List<dynamic> toList(dynamic value) {
+                                        List<dynamic> toList(dynamic value) { // helper om tags te normaliseren
                                           if (value is List) return value;
                                           if (value is String &&
                                               value.isNotEmpty)
@@ -6267,14 +6325,11 @@ class _AILoadingDialogState extends State<_AILoadingDialog>
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
 
-    _scaleAnimation = Tween<double>(
+    _scaleAnimation = Tween<double>( // pulsatie animatie
       begin: 1.0,
       end: 1.2,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
-    // Do not start the text timer here because AppLocalizations requires a valid context;
-    // the timer (which references _messages) will be started in didChangeDependencies
-    // after _messages is initialized.
   }
 
   @override
@@ -6384,13 +6439,13 @@ class _AnimatedStatusBadge extends StatefulWidget {
 
 class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
     with SingleTickerProviderStateMixin {
-  late AnimationController _rotationController;
+  late AnimationController _rotationController; // controller voor rotatie animatie
 
   @override
   void initState() {
     super.initState();
     _rotationController = AnimationController(
-      vsync: this,
+      vsync: this, // ticker provider
       duration: const Duration(milliseconds: 900),
     );
     if (widget.status == SourceStatus.loading) {

@@ -31,19 +31,34 @@ class FeedbackButton extends StatelessWidget {
     final outerContext = context;
     final formKey = GlobalKey<FormState>();
     final Map<String, List<String>> categories = {
-      'functionality': ['features', 'functionality_item', 'usability', 'clarity', 'accuracy', 'navigation'],
+      // feedback categorieën en items
+      'functionality': [
+        'features',
+        'functionality_item',
+        'usability',
+        'clarity',
+        'accuracy',
+        'navigation',
+      ],
       'performance': ['speed', 'loading_times', 'stability'],
-      'interface_design': ['layout', 'colors_theme', 'icons_design', 'readability'],
+      'interface_design': [
+        'layout',
+        'colors_theme',
+        'icons_design',
+        'readability',
+      ],
       'communication': ['errors', 'explanation'],
       'app_parts': ['dashboard', 'login', 'weight', 'statistics', 'calendar'],
       'other': ['general_satisfaction'],
     };
     final Map<String, int> ratings = {
+      // initiële ratings
       for (var group in categories.values)
         for (var item in group) item: 0,
     };
 
     final Map<String, TextEditingController> comments = {
+      // commentaar controllers
       for (var group in categories.values)
         for (var item in group) item: TextEditingController(),
     };
@@ -69,6 +84,7 @@ class FeedbackButton extends StatelessWidget {
         final loc = AppLocalizations.of(ctx)!;
 
         Future<void> send() async {
+          // verzend feedback
           if (!formKey.currentState!.validate()) return;
           isSending = true;
           try {
@@ -86,15 +102,15 @@ class FeedbackButton extends StatelessWidget {
             );
             if (ctx.mounted) {
               Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(outerContext).showSnackBar(
-                SnackBar(content: Text(loc.reportThanks)),
-              );
+              ScaffoldMessenger.of(
+                outerContext,
+              ).showSnackBar(SnackBar(content: Text(loc.reportThanks)));
             }
           } catch (e) {
             if (ctx.mounted) {
-              ScaffoldMessenger.of(
-                outerContext,
-              ).showSnackBar(SnackBar(content: Text('${loc.errorSending}: $e')));
+              ScaffoldMessenger.of(outerContext).showSnackBar(
+                SnackBar(content: Text('${loc.errorSending}: $e')),
+              );
             }
           } finally {
             isSending = false;
@@ -102,9 +118,10 @@ class FeedbackButton extends StatelessWidget {
         }
 
         Widget buildRatingRow(
+          // bouw rij voor beoordeling
           String keyLabel,
           String displayLabel,
-          void Function(void Function()) setState,
+          void Function(void Function()) setState, // to update state
         ) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,7 +151,10 @@ class FeedbackButton extends StatelessWidget {
                 controller: comments[keyLabel],
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
-                  hintText: loc.commentOptional.replaceAll('{label}', displayLabel),
+                  hintText: loc.commentOptional.replaceAll(
+                    '{label}',
+                    displayLabel,
+                  ),
                   hintStyle: TextStyle(color: hintColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -195,7 +215,8 @@ class FeedbackButton extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         ...categories.entries.map((entry) {
-                          String catLabel;
+                          // voor elke categorie
+                          String catLabel; // categorielabel
                           List<String> itemDisplayLabels = [];
                           switch (entry.key) {
                             case 'functionality':
@@ -211,19 +232,37 @@ class FeedbackButton extends StatelessWidget {
                               break;
                             case 'performance':
                               catLabel = loc.categoryPerformance;
-                              itemDisplayLabels = [loc.itemSpeed, loc.itemLoadingTimes, loc.itemStability];
+                              itemDisplayLabels = [
+                                loc.itemSpeed,
+                                loc.itemLoadingTimes,
+                                loc.itemStability,
+                              ];
                               break;
                             case 'interface_design':
                               catLabel = loc.categoryInterfaceDesign;
-                              itemDisplayLabels = [loc.itemLayout, loc.itemColorsTheme, loc.itemIconsDesign, loc.itemReadability];
+                              itemDisplayLabels = [
+                                loc.itemLayout,
+                                loc.itemColorsTheme,
+                                loc.itemIconsDesign,
+                                loc.itemReadability,
+                              ];
                               break;
                             case 'communication':
                               catLabel = loc.categoryCommunication;
-                              itemDisplayLabels = [loc.itemErrors, loc.itemExplanation];
+                              itemDisplayLabels = [
+                                loc.itemErrors,
+                                loc.itemExplanation,
+                              ];
                               break;
                             case 'app_parts':
                               catLabel = loc.categoryAppParts;
-                              itemDisplayLabels = [loc.itemDashboard, loc.itemLogin, loc.itemWeight, loc.itemStatistics, loc.itemCalendar];
+                              itemDisplayLabels = [
+                                loc.itemDashboard,
+                                loc.itemLogin,
+                                loc.itemWeight,
+                                loc.itemStatistics,
+                                loc.itemCalendar,
+                              ];
                               break;
                             default:
                               catLabel = loc.categoryOther;
@@ -231,8 +270,9 @@ class FeedbackButton extends StatelessWidget {
                           }
 
                           return ExpansionTile(
+                            // uitklapbare categorie
                             title: Text(
-                              catLabel,
+                              catLabel, // categorienaam
                               style: TextStyle(
                                 color: textColor,
                                 fontWeight: FontWeight.bold,
@@ -243,15 +283,26 @@ class FeedbackButton extends StatelessWidget {
                             iconColor: textColor,
                             collapsedIconColor: textColor,
                             children: List.generate(entry.value.length, (i) {
+                              // voor elk item in de categorie
                               final internalKey = entry.value[i];
-                              final displayLabel = itemDisplayLabels.length > i ? itemDisplayLabels[i] : internalKey;
+                              final displayLabel = itemDisplayLabels.length > i
+                                  ? itemDisplayLabels[i]
+                                  : internalKey;
                               return Padding(
-                                padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
-                                child: buildRatingRow(internalKey, displayLabel, setState),
+                                padding: const EdgeInsets.only(
+                                  left: 12,
+                                  right: 12,
+                                  bottom: 12,
+                                ),
+                                child: buildRatingRow(
+                                  internalKey,
+                                  displayLabel,
+                                  setState,
+                                ),
                               );
                             }),
                           );
-                        }).toList(),
+                        }).toList(), // sluit map
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -269,6 +320,7 @@ class FeedbackButton extends StatelessWidget {
                                   : () {
                                       setState(() => isSending = true);
                                       send().whenComplete(
+                                        // na verzenden
                                         () => setState(() => isSending = false),
                                       );
                                     },
@@ -297,7 +349,7 @@ class FeedbackButton extends StatelessWidget {
     );
   }
 
-  void _openFeedbackSheet(BuildContext context) async {
+  void _openFeedbackSheet(BuildContext context) async { // open feedback formulier
     final outerContext = context;
     final formKey = GlobalKey<FormState>();
     final messageController = TextEditingController();
@@ -330,12 +382,12 @@ class FeedbackButton extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        return DraggableScrollableSheet(
+        return DraggableScrollableSheet( // Sleepbaar modaal blad
           initialChildSize: 0.7,
           minChildSize: 0.5,
           maxChildSize: 0.9,
-          expand: false,
-          builder: (sheetCtx, scrollController) {
+          expand: false, 
+          builder: (sheetCtx, scrollController) { // bouw inhoud
             final isDarkMode = Theme.of(sheetCtx).brightness == Brightness.dark;
             final sysBottomPadding = MediaQuery.of(sheetCtx).padding.bottom;
             final loc = AppLocalizations.of(sheetCtx)!;
@@ -351,7 +403,7 @@ class FeedbackButton extends StatelessWidget {
                     20,
               ),
               child: StatefulBuilder(
-                builder: (innerCtx, setState) {
+                builder: (innerCtx, setState) { // voor state updates
                   Future<void> send() async {
                     if (!formKey.currentState!.validate()) return;
 
@@ -384,9 +436,7 @@ class FeedbackButton extends StatelessWidget {
                       if (ctx.mounted) {
                         Navigator.of(ctx).pop();
                         ScaffoldMessenger.of(outerContext).showSnackBar(
-                          SnackBar(
-                            content: Text(loc.thanksFeedback),
-                          ),
+                          SnackBar(content: Text(loc.thanksFeedback)),
                         );
                       }
                     } catch (e) {
@@ -400,12 +450,12 @@ class FeedbackButton extends StatelessWidget {
                     }
                   }
 
-                  Widget buildTypeChip(String value, String label) {
+                  Widget buildTypeChip(String value, String label) { // bouw keuze chip
                     final bool selected = selectedType == value;
                     return ChoiceChip(
                       label: Text(label),
                       selected: selected,
-                      onSelected: (_) {
+                      onSelected: (_) { // update selectie
                         setState(() => selectedType = value);
                       },
                     );
@@ -475,7 +525,7 @@ class FeedbackButton extends StatelessWidget {
                               );
                             },
                             tileColor: Theme.of(
-                              ctx,
+                              ctx, // gebruik context van sheet
                             ).colorScheme.primary.withOpacity(0.1),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -513,7 +563,7 @@ class FeedbackButton extends StatelessWidget {
                         Row(
                           children: List.generate(5, (i) {
                             return IconButton(
-                              onPressed: () => setState(() => rating = i + 1),
+                              onPressed: () => setState(() => rating = i + 1), // update rating
                               icon: Icon(
                                 Icons.star,
                                 color: i < rating
@@ -660,7 +710,7 @@ class FeedbackButton extends StatelessWidget {
   }
 }
 
-class AllFeedbackView extends StatelessWidget {
+class AllFeedbackView extends StatelessWidget { // bekijk alle feedback (admin)
   const AllFeedbackView({super.key});
 
   @override
@@ -738,13 +788,17 @@ class AllFeedbackView extends StatelessWidget {
                           if (appLanguage != null && appLanguage.isNotEmpty)
                             Chip(
                               avatar: const Icon(Icons.language, size: 16),
-                              label: Text('${loc.appLanguagePrefix}$appLanguage'),
+                              label: Text(
+                                '${loc.appLanguagePrefix}$appLanguage',
+                              ),
                             ),
                           if (languageReported != null &&
                               languageReported.isNotEmpty)
                             Chip(
                               avatar: const Icon(Icons.translate, size: 16),
-                              label: Text('${loc.reportedLanguagePrefix}$languageReported'),
+                              label: Text(
+                                '${loc.reportedLanguagePrefix}$languageReported',
+                              ),
                             ),
                           if (uid != null) UserDetailChip(uid: uid),
                           if (data['email'] != null &&
@@ -797,7 +851,7 @@ class UserDetailChip extends StatefulWidget {
   State<UserDetailChip> createState() => _UserDetailChipState();
 }
 
-class _UserDetailChipState extends State<UserDetailChip> {
+class _UserDetailChipState extends State<UserDetailChip> { // haal user details op
   Future<DocumentSnapshot>? _userFuture;
 
   @override
@@ -809,7 +863,7 @@ class _UserDetailChipState extends State<UserDetailChip> {
         .get();
   }
 
-  Future<void> _launchEmail(String email) async {
+  Future<void> _launchEmail(String email) async { // open email app
     final loc = AppLocalizations.of(context)!;
     final String subject = 'Reactie op je feedback - fFinder';
     final String body = 'Hoi $email,\n\n\nGroetjes,\nHet fFinder team';
@@ -862,7 +916,7 @@ class _UserDetailChipState extends State<UserDetailChip> {
   }
 }
 
-class AllRapportFeedbackView extends StatelessWidget {
+class AllRapportFeedbackView extends StatelessWidget { // bekijk alle rapport feedback (admin)
   const AllRapportFeedbackView({super.key});
 
   @override

@@ -23,7 +23,7 @@ import 'locale_notifier.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // flutter engine inisializeren
 
-  tz.initializeTimeZones();
+  tz.initializeTimeZones(); // initialiseer timezone data
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -40,14 +40,14 @@ Future<void> main() async {
   if (!kIsWeb) {
     try {
       if (kReleaseMode) {
-        // In release: gebruik echte providers
         await FirebaseAppCheck.instance.activate(
+          //appcheck betekent dat alleen geverifieerde instanties van de app toegang krijgen tot firebase resources
           androidProvider: AndroidProvider.playIntegrity,
           appleProvider: AppleProvider.appAttest,
         );
         debugPrint('[DEBUG] Firebase App Check (release) activated.');
       } else {
-        // In debug: gebruik debug-provider (registreer dit token in Firebase Console)
+        // In debug: gebruik debug-provider
         await FirebaseAppCheck.instance.activate(
           androidProvider: AndroidProvider.debug,
           appleProvider: AppleProvider.debug,
@@ -84,12 +84,14 @@ Future<void> main() async {
   OpenFoodAPIConfiguration.globalCountry = OpenFoodFactsCountry.NETHERLANDS;
 
   await NotificationService().initialize(); //initialiseer notificatie service
-  await dotenv.load(fileName: "assets/env/.env");
+  await dotenv.load(fileName: "assets/env/.env"); //laad de .env file
 
-  final prefs = await SharedPreferences.getInstance();
-  final code = prefs.getString('locale');
+  final prefs =
+      await SharedPreferences.getInstance(); //haalt de gedeelde voorkeuren op
+  final code = prefs.getString('locale'); //haalt de opgeslagen taalcode op
   if (code != null && code.isNotEmpty) {
-    appLocale.value = Locale(code);
+    //als er een taalcode is opgeslagen
+    appLocale.value = Locale(code); //zet de app taal naar de opgeslagen taal
   }
 
   //start de app
@@ -103,6 +105,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<Locale?>(
+      //luistert naar veranderingen in de app taal
       valueListenable: appLocale,
       builder: (context, locale, _) {
         return MaterialApp(
@@ -111,19 +114,24 @@ class MyApp extends StatelessWidget {
 
             return MediaQuery(
               data: mediaQuery.copyWith(
-                textScaleFactor: mediaQuery.textScaleFactor.clamp(1.0, 1.3),
+                textScaleFactor: mediaQuery.textScaleFactor.clamp(
+                  1.0,
+                  1.3,
+                ), //beperkt de tekst schaal factor tussen 1.0 en 1.3 voor grootte tekst
               ),
               child: child!,
             );
           },
-          locale: locale,
+          locale: locale, //zet de app taal
           localizationsDelegates: const [
+            //lokalisatie delegaten voor de app
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: AppLocalizations.supportedLocales,
+          supportedLocales:
+              AppLocalizations.supportedLocales, //ondersteunde talen
 
           debugShowCheckedModeBanner: false, //verbergt de debug banner
           themeMode:
@@ -190,7 +198,9 @@ class MyApp extends StatelessWidget {
                     if (userDocSnapshot.connectionState ==
                         ConnectionState.waiting) {
                       return const Scaffold(
-                        body: Center(child: CircularProgressIndicator()),
+                        body: Center(
+                          child: CircularProgressIndicator(),
+                        ), //laadscherm terwijl hij wacht
                       );
                     }
 

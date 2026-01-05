@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 
-enum _SwipeDirection { left, right }
+enum _SwipeDirection { left, right } // Veegrichting
 
 class RecipesScreen extends StatefulWidget {
   const RecipesScreen({super.key});
@@ -13,7 +13,9 @@ class RecipesScreen extends StatefulWidget {
 
 class _RecipesScreenState extends State<RecipesScreen>
     with SingleTickerProviderStateMixin {
+  // voor animaties
   final List<Map<String, dynamic>> _recipes = [
+    // voorbeeld recepten
     {
       'id': 'r1',
       'title': 'Thaise kokos-curry',
@@ -61,18 +63,19 @@ class _RecipesScreenState extends State<RecipesScreen>
       'tags': ['Vegetarian', 'Quick'],
       'image_link': 'https://via.placeholder.com/600x350.png?text=Panzanella',
     },
-    // Voeg hier meer recepten toe met dezelfde structuur
   ];
 
-  Offset _dragOffset = Offset.zero;
-  double _dragRotation = 0.0;
+  Offset _dragOffset =
+      Offset.zero; // huidige sleep offset. offset betekent verplaatsing
+  double _dragRotation = 0.0; // huidige rotatie tijdens slepen
   late AnimationController _animController;
-  Animation<Offset>? _animOffset;
+  Animation<Offset>? _animOffset; // animatie voor offset
   Animation<double>? _animRotation;
   bool _isAnimating = false;
 
-  static const double _swipeThreshold = 120.0;
-  static const double _rotationMultiplier = 0.003;
+  static const double _swipeThreshold = 120.0; // drempel voor vegen
+  static const double _rotationMultiplier =
+      0.003; // rotatie factor tijdens slepen
 
   @override
   void initState() {
@@ -82,6 +85,7 @@ class _RecipesScreenState extends State<RecipesScreen>
           vsync: this,
           duration: const Duration(milliseconds: 300),
         )..addListener(() {
+          // bij elke frame
           setState(() {
             _dragOffset = _animOffset?.value ?? _dragOffset;
             _dragRotation = _animRotation?.value ?? _dragRotation;
@@ -89,6 +93,7 @@ class _RecipesScreenState extends State<RecipesScreen>
         });
 
     _animController.addStatusListener((status) {
+      // bij status verandering
       if (status == AnimationStatus.completed) {
         if (_isAnimating) {
           final dir = _dragOffset.dx > 0
@@ -113,22 +118,23 @@ class _RecipesScreenState extends State<RecipesScreen>
     super.dispose();
   }
 
-  bool get _hasCards => _recipes.isNotEmpty;
+  bool get _hasCards => _recipes.isNotEmpty; // of er nog kaarten zijn
 
   void _animateCardTo(Offset targetOffset, double targetRotation) {
+    // animatie naar doelpositie
     _isAnimating = true;
-    _animOffset = Tween<Offset>(
-      begin: _dragOffset,
-      end: targetOffset,
-    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
-    _animRotation = Tween<double>(
-      begin: _dragRotation,
-      end: targetRotation,
-    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+    _animOffset = Tween<Offset>(begin: _dragOffset, end: targetOffset).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+    ); // animatie voor offset
+    _animRotation = Tween<double>(begin: _dragRotation, end: targetRotation)
+        .animate(
+          CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+        ); // animatie voor rotatie
     _animController.forward(from: 0.0);
   }
 
   void _onPanEnd() {
+    // bij loslaten na slepen
     if (_dragOffset.dx.abs() > _swipeThreshold) {
       final sign = _dragOffset.dx.sign;
       final screenWidth = MediaQuery.of(context).size.width;
@@ -147,6 +153,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   void _handleSwipeComplete(_SwipeDirection direction) {
+    // na voltooien vegen
     if (!_hasCards) return;
     final top = _recipes.first;
     final title = top['title'] ?? '';
@@ -156,9 +163,11 @@ class _RecipesScreenState extends State<RecipesScreen>
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(liked
-            ? '${loc.recipesSavedPrefix}$title'
-            : '${loc.recipesSkippedPrefix}$title'),
+        content: Text(
+          liked
+              ? '${loc.recipesSavedPrefix}$title'
+              : '${loc.recipesSkippedPrefix}$title',
+        ),
         duration: const Duration(milliseconds: 700),
       ),
     );
@@ -169,17 +178,21 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   void _swipeProgrammatically(_SwipeDirection direction) {
+    // veeg kaart programatisch
     if (!_hasCards || _isAnimating) return;
     final screenWidth = MediaQuery.of(context).size.width;
     final target = Offset(
       (direction == _SwipeDirection.right ? 1 : -1) * (screenWidth + 200),
       0,
     );
-    final targetRotation = (direction == _SwipeDirection.right ? 0.6 : -0.6);
+    final targetRotation = (direction == _SwipeDirection.right
+        ? 0.6
+        : -0.6); // rotatie bij vegen
     _animateCardTo(target, targetRotation);
   }
 
   Widget _buildCard(Map<String, dynamic> recipe, int positionFromTop) {
+    // bouw kaart met schaal en vertaling
     final scale = 1.0 - positionFromTop * 0.04;
     final translateY = positionFromTop * 12.0;
     return Transform.translate(
@@ -214,30 +227,41 @@ class _RecipesScreenState extends State<RecipesScreen>
                 child: _hasCards
                     ? LayoutBuilder(
                         builder: (context, constraints) {
-                          final visibleCount = math.min(3, _recipes.length);
+                          final visibleCount = math.min(
+                            3,
+                            _recipes.length,
+                          ); // max 3 kaarten zichtbaar
                           final cards = <Widget>[];
 
                           for (int i = visibleCount - 1; i >= 0; i--) {
+                            // van onder naar boven
                             final recipeIndex = i;
                             final recipe = _recipes[recipeIndex];
 
                             if (i == 0) {
+                              // bovenste kaart
                               Widget topCard = GestureDetector(
+                                // bovenste kaart
                                 onPanStart: (_) {},
                                 onPanUpdate: (details) {
                                   if (_isAnimating) return;
                                   setState(() {
-                                    _dragOffset += details.delta;
+                                    _dragOffset +=
+                                        details.delta; // update offset
                                     _dragRotation =
-                                        _dragOffset.dx * _rotationMultiplier;
+                                        _dragOffset.dx *
+                                        _rotationMultiplier; // update rotatie
                                   });
                                 },
                                 onPanEnd: (_) {
                                   if (_isAnimating) return;
                                   _onPanEnd();
                                 },
-                                onTap: () => _showRecipeDetails(recipe),
+                                onTap: () => _showRecipeDetails(
+                                  recipe,
+                                ), // toon details bij tikken
                                 child: Transform.translate(
+                                  // verplaats kaart
                                   offset: _dragOffset,
                                   child: Transform.rotate(
                                     angle: _dragRotation,
@@ -245,11 +269,16 @@ class _RecipesScreenState extends State<RecipesScreen>
                                   ),
                                 ),
                               );
-                              cards.add(Positioned.fill(child: topCard));
+                              cards.add(
+                                Positioned.fill(child: topCard),
+                              ); // vul de beschikbare ruimte
                             } else {
                               final lower = Positioned.fill(
                                 child: Center(
-                                  child: _buildCard(_recipes[i], i),
+                                  child: _buildCard(
+                                    _recipes[i],
+                                    i,
+                                  ), // bouw lagere kaart
                                 ),
                               );
                               cards.add(lower);
@@ -257,8 +286,14 @@ class _RecipesScreenState extends State<RecipesScreen>
                           }
 
                           return SizedBox(
-                            width: math.min(480, constraints.maxWidth * 0.95),
-                            height: math.min(640, constraints.maxHeight * 0.9),
+                            width: math.min(
+                              480,
+                              constraints.maxWidth * 0.95,
+                            ), // max breedte
+                            height: math.min(
+                              640,
+                              constraints.maxHeight * 0.9,
+                            ), // max hoogte
                             child: Stack(
                               alignment: Alignment.center,
                               clipBehavior: Clip.none,
@@ -297,6 +332,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Widget _actionButton(IconData icon, Color color, VoidCallback onTap) {
+    // actie knop
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -316,6 +352,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Widget _recipeCard(Map<String, dynamic> recipe) {
+    // bouw recept kaart
     return Card(
       elevation: 10,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -379,6 +416,7 @@ class _RecipesScreenState extends State<RecipesScreen>
                   ),
                   const SizedBox(height: 4),
                   Text(
+                    // ondertitel met tijd, personen, kcal
                     '⏱ ${recipe['preparation_time'] ?? '?'} min | 🍽 ${recipe['persons'] ?? '?'} | 🔥 ${recipe['kcal'] ?? '?'} kcal',
                     style: const TextStyle(fontSize: 12, color: Colors.white70),
                   ),
@@ -460,33 +498,63 @@ class _RecipesScreenState extends State<RecipesScreen>
                       loc.recipesDetailTotalTime,
                       '${recipe['total_time']} min',
                     ),
-                    _buildDetailRow(loc.recipesDetailKcal, recipe['kcal']?.toString()),
+                    _buildDetailRow(
+                      loc.recipesDetailKcal,
+                      recipe['kcal']?.toString(),
+                    ),
                     _buildDetailRow(loc.recipesDetailFat, '${recipe['fat']} g'),
                     _buildDetailRow(
                       loc.recipesDetailSaturatedFat,
                       '${recipe['saturated_fat']} g',
                     ),
-                    _buildDetailRow(loc.recipesDetailCarbs, '${recipe['carbs']} g'),
-                    _buildDetailRow(loc.recipesDetailProtein, '${recipe['protein']} g'),
-                    _buildDetailRow(loc.recipesDetailFibers, '${recipe['fibers']} g'),
-                    _buildDetailRow(loc.recipesDetailSalt, '${recipe['salt']} g'),
-                    _buildDetailRow(loc.recipesDetailPersons, recipe['persons'].toString()),
-                    _buildDetailRow(loc.recipesDetailDifficulty, recipe['difficulty']),
+                    _buildDetailRow(
+                      loc.recipesDetailCarbs,
+                      '${recipe['carbs']} g',
+                    ),
+                    _buildDetailRow(
+                      loc.recipesDetailProtein,
+                      '${recipe['protein']} g',
+                    ),
+                    _buildDetailRow(
+                      loc.recipesDetailFibers,
+                      '${recipe['fibers']} g',
+                    ),
+                    _buildDetailRow(
+                      loc.recipesDetailSalt,
+                      '${recipe['salt']} g',
+                    ),
+                    _buildDetailRow(
+                      loc.recipesDetailPersons,
+                      recipe['persons'].toString(),
+                    ),
+                    _buildDetailRow(
+                      loc.recipesDetailDifficulty,
+                      recipe['difficulty'],
+                    ),
                     if (recipe['prepreparation'] != null)
                       _buildDetailSection(
                         loc.recipesPrepreparation,
                         recipe['prepreparation'],
                       ),
                     if (recipe['ingredients'] != null)
-                      _buildListSection(loc.recipesIngredients, recipe['ingredients']),
+                      _buildListSection(
+                        loc.recipesIngredients,
+                        recipe['ingredients'],
+                      ),
                     if (recipe['steps'] != null)
                       _buildListSection(loc.recipesSteps, recipe['steps']),
                     if (recipe['kitchens'] != null)
-                      _buildListSection(loc.recipesKitchens, recipe['kitchens']),
+                      _buildListSection(
+                        loc.recipesKitchens,
+                        recipe['kitchens'],
+                      ),
                     if (recipe['courses'] != null)
                       _buildListSection(loc.recipesCourses, recipe['courses']),
                     if (recipe['requirements'] != null)
-                      _buildListSection(loc.recipesRequirements, recipe['requirements']),
+                      _buildListSection(
+                        loc.recipesRequirements,
+                        recipe['requirements'],
+                      ),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -503,7 +571,7 @@ class _RecipesScreenState extends State<RecipesScreen>
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Text('$title: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text('$title: ', style: const TextStyle(fontWeight: FontWeight.bold)), // titel
           Expanded(
             child: Text(
               value ?? '',
@@ -521,9 +589,9 @@ class _RecipesScreenState extends State<RecipesScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), // sectietitel
           const SizedBox(height: 4),
-          Text(content),
+          Text(content), // inhoud
         ],
       ),
     );

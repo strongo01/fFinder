@@ -8,7 +8,7 @@ import 'package:fFinder/l10n/app_localizations.dart';
 
 class ProductEditSheet extends StatefulWidget {
   final String barcode;
-  final Map<String, dynamic>? productData;
+  final Map<String, dynamic>? productData; // Lokale productdata indien beschikbaar
   final bool isForMeal;
   final double? initialAmount;
   final DateTime? selectedDate;
@@ -20,7 +20,7 @@ class ProductEditSheet extends StatefulWidget {
     this.isForMeal = false,
     this.initialAmount,
     this.selectedDate,
-  }) : super(key: key);
+  }) : super(key: key); // super(key: key); betekent dat de key wordt doorgegeven aan de superklasse (StatefulWidget)
 
   @override
   State<ProductEditSheet> createState() => _ProductEditSheetState();
@@ -89,20 +89,20 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     super.dispose();
   }
 
-  List<String> _normalizeTags(dynamic v) {
+  List<String> _normalizeTags(dynamic v) { // normaliseer tags zoals additieven/allergenen
     if (v == null) return <String>[];
     if (v is List) return v.map((e) => e.toString()).toList();
     if (v is String) {
       final s = v.trim();
       if (s.isEmpty) return <String>[];
 
-      // 1) Probeer expliciete OFF-tags zoals "en:milk"
+      //Probeer expliciete OFF-tags zoals "en:milk"
       final matches = RegExp(
         r'en:[^,;\/\s]+',
       ).allMatches(s).map((m) => m.group(0)!).toList();
       if (matches.isNotEmpty) return matches;
 
-      // 2) Fallback: split op comma/semicolon/slash/whitespace
+      // Fallback: split op komma, puntkomma, schuine streep of spatie
       final parts = s
           .split(RegExp(r'[,\;\/\s]+'))
           .map((e) => e.trim())
@@ -116,7 +116,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     return <String>[v.toString()];
   }
 
-  String? _extractServingSize(dynamic v) {
+  String? _extractServingSize(dynamic v) { // extraheer en normaliseer portiegrootte  
     debugPrint('[_extractServingSize] input: $v');
     if (v == null) {
       debugPrint('[_extractServingSize] result: null (input null)');
@@ -127,8 +127,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       debugPrint('[_extractServingSize] result (num): $res');
       return res;
     }
-    if (v is String) {
-      final s = v.trim();
+    if (v is String) { // probeer te parsen
+      final s = v.trim(); 
       if (s.isEmpty) {
         debugPrint('[_extractServingSize] result: null (empty string)');
         return null;
@@ -166,13 +166,13 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     return res;
   }
 
-  Map<String, dynamic> _mergeAndNormalizeNutriments(
+  Map<String, dynamic> _mergeAndNormalizeNutriments( // merge en normaliseer voedingswaarden
     Map<String, dynamic>? per100g,
     Map<String, dynamic>? nutriments,
   ) {
     final out = <String, dynamic>{};
 
-    String normalizeKey(String k) {
+    String normalizeKey(String k) { // normaliseer sleutelnaam
       return k
           .replaceAll('_', '-')
           .replaceAll(RegExp(r'(-|_)100g$'), '')
@@ -213,7 +213,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       try {
         final isFav = await _isFavorite(
           widget.barcode,
-        ); // Zorg dat _isFavorite bereikbaar is of pas dit aan
+        ); // Controleer of favoriet
         /* final nutriments =
             widget.productData!['nutriments_per_100g']
                 as Map<String, dynamic>? ??
@@ -372,9 +372,9 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
 
   Future<void> _saveEditedName() async {
     final newName = productNameController.text.trim();
-    final effectiveBarcode = product?.barcode ?? widget.barcode;
+    final effectiveBarcode = product?.barcode ?? widget.barcode; // fallback naar widget barcode
 
-    final updatedProduct = Product(
+    final updatedProduct = Product( // Maak een nieuw Product object met de bijgewerkte naam
       barcode: effectiveBarcode,
       productName: newName.isEmpty ? null : newName,
       brands: product!.brands,
@@ -392,7 +392,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       product = updatedProduct;
       isEditingName = false;
     });
-    FocusScope.of(context).unfocus();
+    FocusScope.of(context).unfocus(); // Verberg toetsenbord
 
     try {
       final nutrimentsData = _getNutrimentsFromControllers();
@@ -455,7 +455,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     final textColor = isDarkMode ? Colors.white : Colors.black;
     final loc = AppLocalizations.of(context)!;
 
-    return DraggableScrollableSheet(
+    return DraggableScrollableSheet( // Sleepbaar modaal blad
       expand: false,
       initialChildSize: 0.7,
       minChildSize: 0.5,
@@ -715,7 +715,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                         if (_formKey.currentState!.validate()) {
                           final nutrimentsData =
                               _getNutrimentsFromControllers();
-                          final productForMeal = {
+                          final productForMeal = { // Maak een kaart met productgegevens voor maaltijdlog
                             '_id': product!.barcode,
                             'product_name': product!.productName,
                             'brands': product!.brands,
@@ -744,7 +744,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     );
   }
 
-  Map<String, double?> _getNutrimentsFromControllers() {
+  Map<String, double?> _getNutrimentsFromControllers() { 
     // haal bewerkte voedingswaarden op
     double? parse(TextEditingController c) =>
         double.tryParse(c.text.replaceAll(',', '.'));
@@ -902,14 +902,14 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
         };
 
     final encryptedNutriments = <String, dynamic>{};
-    for (final key in nutriments.keys) {
+    for (final key in nutriments.keys) { // versleutel elke voedingswaarde
       encryptedNutriments[key] = await encryptDouble(
         nutriments[key] ?? 0,
         userDEK,
       );
     }
 
-    final productData = {
+    final productData = { // bouw productgegevens kaart
       'product_name': await encryptValue(product.productName ?? '', userDEK),
       'brands': await encryptValue(product.brands ?? '', userDEK),
       'image_front_url': product.imageFrontUrl,
@@ -938,7 +938,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     await docRef.set(productData, SetOptions(merge: true));
   }
 
-  Future<void> _addFavoriteProduct(
+  Future<void> _addFavoriteProduct( // voeg product toe aan favorieten
     Product product, {
     Map<String, dynamic>? editedNutriments,
   }) async {
