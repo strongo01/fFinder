@@ -849,6 +849,8 @@ class _HomeScreenState extends State<HomeScreen> {
         'onboardingaf': data['onboardingaf'],
         'activityLevel': await decryptValue(data['activityLevel'], userDEK),
         'goal': await decryptValue(data['goal'], userDEK),
+        'role': data['role'] ?? data['rol'] ?? 'user', 
+
       };
 
       _userData = decryptedData;
