@@ -7,7 +7,8 @@ import 'crypto_class.dart';
 import 'package:fFinder/l10n/app_localizations.dart';
 
 // MET-waardes per sport
-const Map<String, double> _metValues = { // MET-waardes voor verschillende sporten
+const Map<String, double> _metValues = {
+  // MET-waardes voor verschillende sporten
   'running': 9.8,
   'cycling': 7.5,
   'swimming': 8.0,
@@ -52,39 +53,41 @@ class _AddSportPageState extends State<AddSportPage> {
     'other',
   ];
 
-  Future<void> _updateCaloriesLive() async { // live bijwerken van calorieën
-  if (_caloriesManuallyEdited) return;
-  if (_selectedSport == null) return;
-  if (_durationController.text.isEmpty) return;
+  Future<void> _updateCaloriesLive() async {
+    // live bijwerken van calorieën
+    if (_caloriesManuallyEdited) return;
+    if (_selectedSport == null) return;
+    if (_durationController.text.isEmpty) return;
 
-  final duration = double.tryParse(_durationController.text);
-  if (duration == null || duration <= 0) return;
+    final duration = double.tryParse(_durationController.text);
+    if (duration == null || duration <= 0) return;
 
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  final userDEK = await getUserDEKFromRemoteConfig(user.uid);
-  if (userDEK == null) return;
+    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    if (userDEK == null) return;
 
-  try {
-    final weightKg = await _getDecryptedWeight(user.uid, userDEK);
+    try {
+      final weightKg = await _getDecryptedWeight(user.uid, userDEK);
 
-    final met = (_selectedSport == 'Overig' || _selectedSport == 'Other')
-        ? _overigIntensityMET
-        : (_metValues[_selectedSport] ?? _defaultOverigMET);
+      final met = (_selectedSport == 'Overig' || _selectedSport == 'Other')
+          ? _overigIntensityMET
+          : (_metValues[_selectedSport] ?? _defaultOverigMET);
 
-    final calories = ((met * 3.5 * weightKg) / 200) * duration; // formule voor calorieverbranding
+      final calories =
+          ((met * 3.5 * weightKg) / 200) *
+          duration; // formule voor calorieverbranding
 
-    //  live invullen
-    setState(() {
-      _caloriesController.text = calories.toStringAsFixed(0);
-    });
-  } catch (_) {
+      //  live invullen
+      setState(() {
+        _caloriesController.text = calories.toStringAsFixed(0);
+      });
+    } catch (_) {}
   }
-}
 
-
-  Future<double> _getDecryptedWeight(String uid, SecretKey userDEK) async { // haal en ontsleutel gewicht
+  Future<double> _getDecryptedWeight(String uid, SecretKey userDEK) async {
+    // haal en ontsleutel gewicht
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -95,7 +98,8 @@ class _AddSportPageState extends State<AddSportPage> {
     return await decryptDouble(encryptedWeight, userDEK);
   }
 
-  Future<void> _saveSport() async { // sla sportactiviteit op
+  Future<void> _saveSport() async {
+    // sla sportactiviteit op
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
 
@@ -164,7 +168,8 @@ class _AddSportPageState extends State<AddSportPage> {
   }
 
   @override
-  void dispose() { // controllers opruimen om geheugenlekken te voorkomen
+  void dispose() {
+    // controllers opruimen om geheugenlekken te voorkomen
     _durationController.dispose();
     _caloriesController.dispose();
     _customSportController.dispose();
@@ -176,8 +181,9 @@ class _AddSportPageState extends State<AddSportPage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final user = FirebaseAuth.instance.currentUser;
     final loc = AppLocalizations.of(context)!;
- 
-    String sportLabel(String id) { // vertaal sport ID naar label
+
+    String sportLabel(String id) {
+      // vertaal sport ID naar label
       switch (id) {
         case 'running':
           return loc.sportRunning;
@@ -251,7 +257,8 @@ class _AddSportPageState extends State<AddSportPage> {
                           ).textTheme.titleLarge?.copyWith(color: textColor),
                         ),
                         const SizedBox(height: 24),
-                        DropdownButtonFormField<String>( // dropdown voor sportselectie
+                        DropdownButtonFormField<String>(
+                          // dropdown voor sportselectie
                           value: _selectedSport,
                           items: _sports
                               .map(
@@ -291,7 +298,8 @@ class _AddSportPageState extends State<AddSportPage> {
                           ),
                           dropdownColor: cardColor,
                           onChanged: (value) {
-                            setState(() { // bijwerken geselecteerde sport
+                            setState(() {
+                              // bijwerken geselecteerde sport
                               _selectedSport = value;
                               _caloriesManuallyEdited = false;
                             });
@@ -301,7 +309,8 @@ class _AddSportPageState extends State<AddSportPage> {
                           validator: (value) =>
                               value == null ? loc.chooseSport : null,
                         ),
-                        if (_selectedSport == 'other') ...[ //  extra veld voor aangepaste sportnaam
+                        if (_selectedSport == 'other') ...[
+                          //  extra veld voor aangepaste sportnaam
                           const SizedBox(height: 18),
                           TextFormField(
                             controller: _customSportController,
@@ -325,7 +334,8 @@ class _AddSportPageState extends State<AddSportPage> {
                             },
                           ),
                           const SizedBox(height: 18),
-                          DropdownButtonFormField<double>( // intensiteit dropdown voor 'Overig'
+                          DropdownButtonFormField<double>(
+                            // intensiteit dropdown voor 'Overig'
                             value: _overigIntensityMET,
                             items: [
                               DropdownMenuItem(
@@ -507,7 +517,8 @@ class _AddSportPageState extends State<AddSportPage> {
   }
 }
 
-class SportsOverviewList extends StatelessWidget { // lijst met sportactiviteiten
+class SportsOverviewList extends StatelessWidget {
+  // lijst met sportactiviteiten
   final String userId;
   final bool isDarkMode;
   const SportsOverviewList({
@@ -520,7 +531,8 @@ class SportsOverviewList extends StatelessWidget { // lijst met sportactiviteite
     return await getUserDEKFromRemoteConfig(userId);
   }
 
-  String _localizedSportLabel(BuildContext context, String raw) { // vertaal sportnaam naar gelokaliseerde string
+  String _localizedSportLabel(BuildContext context, String raw) {
+    // vertaal sportnaam naar gelokaliseerde string
     final loc = AppLocalizations.of(context)!;
     final s = (raw).toString().toLowerCase();
     switch (s) {
@@ -605,7 +617,8 @@ class SportsOverviewList extends StatelessWidget { // lijst met sportactiviteite
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.only(top: 8, bottom: 32),
               itemCount: docs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10), // ruimte tussen kaarten
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: 10), // ruimte tussen kaarten
               itemBuilder: (context, i) {
                 final data = docs[i].data() as Map<String, dynamic>;
                 final timestamp = data['timestamp'] as Timestamp?;
@@ -626,9 +639,7 @@ class SportsOverviewList extends StatelessWidget { // lijst met sportactiviteite
                         elevation: 2,
                         child: ListTile(
                           leading: CircularProgressIndicator(),
-                          title: Text(
-                            loc.loading,
-                          ),
+                          title: Text(loc.loading),
                         ),
                       );
                     }
@@ -649,7 +660,10 @@ class SportsOverviewList extends StatelessWidget { // lijst met sportactiviteite
                           color: Theme.of(context).colorScheme.primary,
                         ),
                         title: Text(
-                          _localizedSportLabel(context, sport), // gelokaliseerde sportnaam
+                          _localizedSportLabel(
+                            context,
+                            sport,
+                          ), // gelokaliseerde sportnaam
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: textColor,
