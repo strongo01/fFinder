@@ -16,7 +16,8 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fFinder/l10n/app_localizations.dart';
 
-class AbsiReference { // referentie data voor ABSI
+class AbsiReference {
+  // referentie data voor ABSI
   final double mean;
   final double sd;
   AbsiReference(this.mean, this.sd);
@@ -55,6 +56,11 @@ class _OnboardingViewState extends State<OnboardingView> {
   bool _waistUnknown = false;
   final int _totalQuestions = 11;
   bool _localeDefaultsApplied = false; // of locale defaults al toegepast
+
+bool _signedInWithApple = false;
+  bool get _isIosApp => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+int get _effectiveTotalQuestions =>
+      _signedInWithApple ? _totalQuestions - 1 : _totalQuestions;
 
   String _rangeText = '';
   bool _rangeLoading = false;
@@ -117,7 +123,8 @@ class _OnboardingViewState extends State<OnboardingView> {
     _maybeSkipFirstNameIfApple();
   }
 
-  Future<void> _maybeSkipFirstNameIfApple() async { // probeer voor Apple ID gebruikers
+  Future<void> _maybeSkipFirstNameIfApple() async {
+    // probeer voor Apple ID gebruikers
     try {
       final initialUser = FirebaseAuth.instance.currentUser;
       if (initialUser == null) return;
@@ -125,6 +132,9 @@ class _OnboardingViewState extends State<OnboardingView> {
       final isApple = initialUser.providerData.any(
         (p) => p.providerId == 'apple.com',
       );
+      _signedInWithApple = isApple;
+
+
       if (!isApple) return;
 
       String? name;
@@ -223,8 +233,9 @@ class _OnboardingViewState extends State<OnboardingView> {
         _firstNameController.text = name;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          _pageController.jumpToPage(1);
-          setState(() => _currentIndex = 1);
+         final dest = _signedInWithApple ? 0 : 1;
+          _pageController.jumpToPage(dest);
+          setState(() => _currentIndex = dest);
         });
       }
     } catch (e) {
@@ -254,7 +265,9 @@ class _OnboardingViewState extends State<OnboardingView> {
   }
 
   bool _validateCurrentPage() {
-    switch (_currentIndex) {
+    final logicalIndex = _signedInWithApple ? _currentIndex + 1 : _currentIndex;
+
+    switch (logicalIndex) {
       case 0: // Voornaam
         if (_firstNameController.text.trim().isEmpty) {
           _showError(AppLocalizations.of(context)!.onboardingEnterFirstName);
@@ -365,7 +378,7 @@ class _OnboardingViewState extends State<OnboardingView> {
 
     FocusScope.of(context).unfocus();
 
-    if (_currentIndex < _totalQuestions - 1) {
+    if (_currentIndex < _effectiveTotalQuestions - 1) {
       // Als er nog vragen over zijn
       _pageController.nextPage(
         // Ga naar de volgende pagina
@@ -399,8 +412,9 @@ class _OnboardingViewState extends State<OnboardingView> {
     return local.absiHigh; // "hoog"
   }
 
-  AbsiReference getAbsiReference(int age, String gender) { // haal ABSI referentie data op
-    if (_absiReferenceTable.isEmpty) { 
+  AbsiReference getAbsiReference(int age, String gender) {
+    // haal ABSI referentie data op
+    if (_absiReferenceTable.isEmpty) {
       throw Exception('ABSI reference table not loaded');
     }
 
@@ -414,7 +428,9 @@ class _OnboardingViewState extends State<OnboardingView> {
 
     final clampedAge = ages.contains(age) ? age : ages.last;
 
-    final entry = _absiReferenceTable.firstWhere((e) => e["age"] == clampedAge); // vind entry voor leeftijd
+    final entry = _absiReferenceTable.firstWhere(
+      (e) => e["age"] == clampedAge,
+    ); // vind entry voor leeftijd
 
     // bepaal vrouw/man op basis van gelokaliseerde labels, met fallback
     final g = gender.trim().toLowerCase();
@@ -446,7 +462,8 @@ class _OnboardingViewState extends State<OnboardingView> {
     );
   }
 
-  double _activityFactorFromLocalized(String activity) { // bepaal activiteitsfactor uit gelokaliseerde string
+  double _activityFactorFromLocalized(String activity) {
+    // bepaal activiteitsfactor uit gelokaliseerde string
     final local = AppLocalizations.of(context)!;
     final a = activity.trim();
     if (a == local.activityLow) return 1.2;
@@ -480,7 +497,7 @@ class _OnboardingViewState extends State<OnboardingView> {
     final g = goal.trim();
     if (g == local.goalLose) return -500;
     if (g == local.goalGainMuscle || g == local.goalGainGeneral) return 300;
-   // veilige fallback
+    // veilige fallback
     return 0;
   }
 
@@ -521,7 +538,8 @@ class _OnboardingViewState extends State<OnboardingView> {
       // 1️⃣ Global DEK ophalen (Remote Config)
       final remoteConfig = FirebaseRemoteConfig.instance;
       // Zorg ervoor dat we de laatste versie hebben, negeer de cache voor deze belangrijke stap.
-      await remoteConfig.setConfigSettings( // configuratie-instellingen
+      await remoteConfig.setConfigSettings(
+        // configuratie-instellingen
         RemoteConfigSettings(
           fetchTimeout: const Duration(minutes: 1),
           minimumFetchInterval: Duration.zero,
@@ -572,7 +590,8 @@ class _OnboardingViewState extends State<OnboardingView> {
         final age = DateTime.now().year - birthDate.year;
 
         double bmr;
-        if (_isGenderLocalizedFemale(gender)) { // vrouw
+        if (_isGenderLocalizedFemale(gender)) {
+          // vrouw
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
         } else {
           bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
@@ -583,7 +602,9 @@ class _OnboardingViewState extends State<OnboardingView> {
         double calories = bmr * activityFactor; // TDEE berekening
 
         // pas calories aan volgens het gelokaliseerde doel
-        final delta = _goalCaloriesDeltaFromLocalized(goal); // calorie aanpassing
+        final delta = _goalCaloriesDeltaFromLocalized(
+          goal,
+        ); // calorie aanpassing
         calories += delta;
 
         calorieGoal = calories; // uiteindelijke calorie doel
@@ -593,7 +614,10 @@ class _OnboardingViewState extends State<OnboardingView> {
         fatGoal = fatCalories / 9; // 1 gram per 9 kcal vet
 
         final proteinCalories = proteinGoal * 4; // 1 gram per 4 eiwitten eiwit
-        final carbCalories = calorieGoal - fatCalories - proteinCalories; // resterende kcal naar koolhydraten
+        final carbCalories =
+            calorieGoal -
+            fatCalories -
+            proteinCalories; // resterende kcal naar koolhydraten
         carbGoal = carbCalories / 4; // 1 gram per 4 kcal koolhydraten
       }
 
@@ -603,7 +627,8 @@ class _OnboardingViewState extends State<OnboardingView> {
           heightM != null &&
           heightM > 0) {
         final waistM = waistCm / 100.0;
-        absi = waistM / (pow(bmi, 2.0 / 3.0) * pow(heightM, 0.5)); // ABSI formule
+        absi =
+            waistM / (pow(bmi, 2.0 / 3.0) * pow(heightM, 0.5)); // ABSI formule
       }
 
       double? absiZ;
@@ -612,9 +637,8 @@ class _OnboardingViewState extends State<OnboardingView> {
       if (absi != null && birthDate != null) {
         final age = DateTime.now().year - birthDate.year;
 
-// haal referentie data voor ABSI
+        // haal referentie data voor ABSI
         final ref = getAbsiReference(age, gender);
-
 
         absiZ = (absi - ref.mean) / ref.sd;
         absiRange = absiCategory(absiZ);
@@ -675,7 +699,8 @@ class _OnboardingViewState extends State<OnboardingView> {
     return Row(
       // Horizontale rij
       mainAxisAlignment: MainAxisAlignment.center, // midden uitlijnen
-      children: List.generate(_totalQuestions, (index) { // voor elke vraag
+      children: List.generate(_effectiveTotalQuestions, (index) {
+        // voor elke vraag
         // Maak voor elk vraag een bolletje
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -850,12 +875,16 @@ class _OnboardingViewState extends State<OnboardingView> {
     final lines = const LineSplitter().convert(csvString);
     if (lines.isEmpty) throw Exception('Leeg CSV bestand');
 
-    final header = lines.first // header rij
+    final header = lines
+        .first // header rij
         .split(',')
         .map((s) => s.trim().toLowerCase())
         .toList();
-    final idxSex = header.indexWhere((h) => h.contains('sex')); // vind kolom indexen
-    final idxAge = header.indexWhere( //  leeftijd kolom
+    final idxSex = header.indexWhere(
+      (h) => h.contains('sex'),
+    ); // vind kolom indexen
+    final idxAge = header.indexWhere(
+      //  leeftijd kolom
       (h) => h.contains('agemos') || h.contains('age'),
     );
     final idxL = header.indexWhere(
@@ -879,9 +908,14 @@ class _OnboardingViewState extends State<OnboardingView> {
     _lmsCache['1']?.clear();
     _lmsCache['2']?.clear();
 
-    for (var i = 1; i < lines.length; i++) { // verwerk elke rij
+    for (var i = 1; i < lines.length; i++) {
+      // verwerk elke rij
       final row = _splitCsvLine(lines[i]);
-      if (row.length <= max(idxSex, max(idxAge, max(idxL, max(idxM, idxS))))) //  onverwachte rij
+      if (row.length <=
+          max(
+            idxSex,
+            max(idxAge, max(idxL, max(idxM, idxS))),
+          )) //  onverwachte rij
         continue;
 
       final sexRaw = row[idxSex].trim();
@@ -896,7 +930,8 @@ class _OnboardingViewState extends State<OnboardingView> {
       final M = double.tryParse(mRaw);
       final S = double.tryParse(sRaw);
 
-      if (agemos == null || L == null || M == null || S == null) continue; // ongeldige data
+      if (agemos == null || L == null || M == null || S == null)
+        continue; // ongeldige data
 
       _lmsCache[sex]?[agemos] = {'L': L, 'M': M, 'S': S};
     }
@@ -908,11 +943,12 @@ class _OnboardingViewState extends State<OnboardingView> {
   }
 
   // eenvoudige CSV-splitter die rekening houdt met aanhalingstekens
-  List<String> _splitCsvLine(String line) { 
+  List<String> _splitCsvLine(String line) {
     final List<String> result = []; //  resultaat lijst
     final buffer = StringBuffer(); // buffer voor huidige veld
     bool inQuotes = false; // of we in aanhalingstekens zitten
-    for (int i = 0; i < line.length; i++) { // voor elk karakter
+    for (int i = 0; i < line.length; i++) {
+      // voor elk karakter
       final ch = line[i];
       if (ch == '"') {
         inQuotes = !inQuotes;
@@ -955,7 +991,8 @@ class _OnboardingViewState extends State<OnboardingView> {
     final inputTextStyle = TextStyle(
       color: isDarkMode ? Colors.white : Colors.black,
     );
-    final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0; // toetsenbord zichtbaar
+    final isKeyboardVisible =
+        MediaQuery.of(context).viewInsets.bottom > 0; // toetsenbord zichtbaar
 
     return Scaffold(
       body: SafeArea(
@@ -963,7 +1000,8 @@ class _OnboardingViewState extends State<OnboardingView> {
           focusNode: _focusNode,
           autofocus: true,
           onKey: (node, event) {
-            if (event.isKeyPressed(LogicalKeyboardKey.enter)) { // Enter toets
+            if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
+              // Enter toets
               _nextPage();
               return KeyEventResult.handled;
             }
@@ -994,20 +1032,21 @@ class _OnboardingViewState extends State<OnboardingView> {
                   },
                   children: [
                     // Vraag 1: Voornaam
-                    _buildQuestionPage(
-                      title: local.onboarding_firstNameTitle,
-                      content: TextField(
-                        controller: _firstNameController,
-                        textInputAction: TextInputAction.next,
-                        textCapitalization: TextCapitalization.words,
-                        onSubmitted: (_) => _nextPage(),
-                        style: inputTextStyle,
-                        decoration: InputDecoration(
-                          labelText: local.onboarding_labelFirstName,
-                          border: const OutlineInputBorder(),
+                    if (!_signedInWithApple)
+                      _buildQuestionPage(
+                        title: local.onboarding_firstNameTitle,
+                        content: TextField(
+                          controller: _firstNameController,
+                          textInputAction: TextInputAction.next,
+                          textCapitalization: TextCapitalization.words,
+                          onSubmitted: (_) => _nextPage(),
+                          style: inputTextStyle,
+                          decoration: InputDecoration(
+                            labelText: local.onboarding_labelFirstName,
+                            border: const OutlineInputBorder(),
+                          ),
                         ),
                       ),
-                    ),
                     // Vraag 2: Geslacht
                     _buildQuestionPage(
                       title: local.onboarding_genderTitle,
@@ -1170,7 +1209,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                         ),
                       ),
                     ),
-                    //taille
+                    //vraag 6 taille
                     _buildQuestionPage(
                       title: local.onboarding_waistTitle,
                       content: Column(
@@ -1215,7 +1254,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                         ],
                       ),
                     ),
-                    // Vraag 6: Slaap
+                    // Vraag 7: Slaap
                     _buildQuestionPage(
                       title: local.onboarding_sleepTitle,
                       content: Column(
@@ -1240,7 +1279,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                         ],
                       ),
                     ),
-                    // Vraag 7: Actief
+                    // Vraag 8: Actief
                     _buildQuestionPage(
                       title: local.onboarding_activityTitle,
                       content: Column(
@@ -1257,7 +1296,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                         }).toList(),
                       ),
                     ),
-                    // Vraag 8: Streefgewicht
+                    // Vraag 9: Streefgewicht
                     _buildQuestionPage(
                       title: local.onboarding_targetWeightTitle,
                       content: Column(
@@ -1316,7 +1355,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                       ),
                     ),
 
-                    // Vraag9: Wat is je doel?
+                    // Vraag 10: Wat is je doel?
                     _buildQuestionPage(
                       title: local.onboarding_goalTitle,
                       content: Column(
@@ -1333,7 +1372,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                       ),
                     ),
 
-                    // Vraag 10: Meldingen
+                    // Vraag 11: Meldingen
                     _buildQuestionPage(
                       title: local.onboarding_notificationsTitle,
                       content: Column(
@@ -1490,7 +1529,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                         ),
                       ),
                       child: Text(
-                        _currentIndex == _totalQuestions - 1
+                        _currentIndex == _effectiveTotalQuestions - 1
                             ? local.finish
                             : local.next,
                       ),
