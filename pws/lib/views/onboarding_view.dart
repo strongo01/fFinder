@@ -57,9 +57,9 @@ class _OnboardingViewState extends State<OnboardingView> {
   final int _totalQuestions = 11;
   bool _localeDefaultsApplied = false; // of locale defaults al toegepast
 
-bool _signedInWithApple = false;
+  bool _signedInWithApple = false;
   bool get _isIosApp => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
-int get _effectiveTotalQuestions =>
+  int get _effectiveTotalQuestions =>
       _signedInWithApple ? _totalQuestions - 1 : _totalQuestions;
 
   String _rangeText = '';
@@ -132,8 +132,11 @@ int get _effectiveTotalQuestions =>
       final isApple = initialUser.providerData.any(
         (p) => p.providerId == 'apple.com',
       );
-      _signedInWithApple = isApple;
-
+      if (mounted) {
+        setState(() {
+          _signedInWithApple = isApple;
+        });
+      }
 
       if (!isApple) return;
 
@@ -233,7 +236,7 @@ int get _effectiveTotalQuestions =>
         _firstNameController.text = name;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-         final dest = _signedInWithApple ? 0 : 1;
+          final dest = _signedInWithApple ? 0 : 1;
           _pageController.jumpToPage(dest);
           setState(() => _currentIndex = dest);
         });
