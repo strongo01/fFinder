@@ -58,7 +58,6 @@ class _OnboardingViewState extends State<OnboardingView> {
   bool _localeDefaultsApplied = false; // of locale defaults al toegepast
 
   bool _signedInWithApple = false;
-  bool get _isIosApp => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
   int get _effectiveTotalQuestions =>
       _signedInWithApple ? _totalQuestions - 1 : _totalQuestions;
 

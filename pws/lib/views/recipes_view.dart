@@ -17,9 +17,9 @@ class RecipesScreen extends StatefulWidget {
 
 class _RecipesScreenState extends State<RecipesScreen>
     with SingleTickerProviderStateMixin {
-  // ================= CONFIG =================
-  final String apiBase = dotenv.env['API_BASE']!;
-  final String apiKey = dotenv.env['API_KEY']!;
+  final String apiBase = 'https://ffinder.nl';
+  final String apiKey = dotenv.env['APP_KEY']!;
+  Offset _panStart = Offset.zero;
 
   String get userId {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -30,9 +30,9 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'x-app-key': apiKey,
-      };
+    'Content-Type': 'application/json',
+    'x-app-key': apiKey,
+  };
 
   // ================= STATE =================
   final List<Map<String, dynamic>> _recipes = [];
@@ -54,20 +54,22 @@ class _RecipesScreenState extends State<RecipesScreen>
   void initState() {
     super.initState();
 
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    )..addListener(() {
-        setState(() {
-          _dragOffset = _animOffset?.value ?? _dragOffset;
-          _dragRotation = _animRotation?.value ?? _dragRotation;
+    _animController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 300),
+        )..addListener(() {
+          setState(() {
+            _dragOffset = _animOffset?.value ?? _dragOffset;
+            _dragRotation = _animRotation?.value ?? _dragRotation;
+          });
         });
-      });
 
     _animController.addStatusListener((status) {
       if (status == AnimationStatus.completed && _isAnimating) {
-        final dir =
-            _dragOffset.dx > 0 ? _SwipeDirection.right : _SwipeDirection.left;
+        final dir = _dragOffset.dx > 0
+            ? _SwipeDirection.right
+            : _SwipeDirection.left;
         _handleSwipeComplete(dir);
         _resetAnimation();
       }
@@ -77,6 +79,8 @@ class _RecipesScreenState extends State<RecipesScreen>
       _loadInitialRecipes();
     });
   }
+
+  String? _loadError;
 
   @override
   void dispose() {
@@ -91,24 +95,91 @@ class _RecipesScreenState extends State<RecipesScreen>
     _animController.reset();
   }
 
-  // ================= API =================
-
   Future<List<Map<String, dynamic>>> _searchRecipes(String query) async {
-    final res = await http.get(
-      Uri.parse('$apiBase/recipes/search?query=$query'),
-      headers: _headers,
-    );
-    if (res.statusCode != 200) throw Exception('Search failed');
-    return List<Map<String, dynamic>>.from(json.decode(res.body));
+    try {
+      final res = await http.get(
+        Uri.parse(
+          '$apiBase/recipes/search?query=${Uri.encodeComponent(query)}',
+        ),
+        headers: _headers,
+      );
+      debugPrint('SEARCH status=${res.statusCode} body=${res.body}');
+      if (res.statusCode != 200) {
+        throw Exception('Search failed: ${res.statusCode}');
+      }
+
+      final decoded = json.decode(res.body);
+      if (decoded is List) {
+        return List<Map<String, dynamic>>.from(decoded);
+      }
+      if (decoded is Map && decoded['recipes'] is List) {
+        return List<Map<String, dynamic>>.from(decoded['recipes']);
+      }
+      // some APIs return { "foods": { "food": [...] } } (example your product endpoint uses that)
+      if (decoded is Map &&
+          decoded['foods'] is Map &&
+          decoded['foods']['food'] is List) {
+        return List<Map<String, dynamic>>.from(decoded['foods']['food']);
+      }
+
+      debugPrint('SEARCH unknown format: ${decoded.runtimeType}');
+      return [];
+    } catch (e, st) {
+      debugPrint('SEARCH error: $e\n$st');
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> _getRecommendations() async {
-    final res = await http.get(
-      Uri.parse('$apiBase/recipes/recommendations/$userId?limit=6'),
-      headers: _headers,
-    );
-    if (res.statusCode != 200) return [];
-    return List<Map<String, dynamic>>.from(json.decode(res.body));
+    try {
+      final res = await http.get(
+        Uri.parse('$apiBase/recipes/recommendations/$userId?limit=6'),
+        headers: _headers,
+      );
+      debugPrint('RECS status=${res.statusCode} body=${res.body}');
+      if (res.statusCode != 200) return [];
+
+      final decoded = json.decode(res.body);
+      if (decoded is List) {
+        return List<Map<String, dynamic>>.from(decoded);
+      }
+      if (decoded is Map && decoded['recipes'] is List) {
+        return List<Map<String, dynamic>>.from(decoded['recipes']);
+      }
+      if (decoded is Map && decoded['results'] is List) {
+        return List<Map<String, dynamic>>.from(decoded['results']);
+      }
+      debugPrint('RECS unknown format: ${decoded.runtimeType}');
+      return [];
+    } catch (e, st) {
+      debugPrint('RECS error: $e\n$st');
+      return [];
+    }
+  }
+
+  Future<void> _loadInitialRecipes() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+
+    try {
+      final recs = await _getRecommendations();
+      if (recs.isNotEmpty) {
+        _recipes.addAll(recs);
+      } else {
+        // fallback
+        final popular = await _searchRecipes('popular');
+        _recipes.addAll(popular);
+      }
+    } catch (e, st) {
+      debugPrint('Load recipes failed: $e\n$st');
+      setState(() {
+        _loadError = e.toString();
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<Map<String, dynamic>?> _getRecipeDetail(String id) async {
@@ -132,21 +203,6 @@ class _RecipesScreenState extends State<RecipesScreen>
     );
   }
 
-  // ================= FLOW =================
-
-  Future<void> _loadInitialRecipes() async {
-    setState(() => _isLoading = true);
-
-    final recs = await _getRecommendations();
-    if (recs.isNotEmpty) {
-      _recipes.addAll(recs);
-    } else {
-      _recipes.addAll(await _searchRecipes('popular'));
-    }
-
-    setState(() => _isLoading = false);
-  }
-
   void _handleSwipeComplete(_SwipeDirection dir) async {
     if (_recipes.isEmpty) return;
 
@@ -156,14 +212,33 @@ class _RecipesScreenState extends State<RecipesScreen>
     final liked = dir == _SwipeDirection.right;
     await _rateRecipe(recipe['id'].toString(), liked ? 5 : 1);
 
-    final newRecs = await _getRecommendations();
-    _recipes.addAll(newRecs);
+    if (_recipes.length > 3) {
+      setState(() {});
+      return;
+    }
+
+    List<Map<String, dynamic>> newRecs = await _getRecommendations();
+    if (newRecs.isEmpty) {
+      newRecs = await _searchRecipes('popular');
+    }
+
+    for (final r in newRecs) {
+      final id = r['id']?.toString();
+      if (id != null && !_containsRecipe(id)) {
+        _recipes.add(r);
+      }
+    }
+
     setState(() {});
   }
 
-  // ================= SWIPE =================
+  bool _containsRecipe(String id) {
+    return _recipes.any((r) => r['id'].toString() == id);
+  }
 
   void _onPanEnd() {
+    if (_isAnimating) return;
+
     if (_dragOffset.dx.abs() > _swipeThreshold) {
       final sign = _dragOffset.dx.sign;
       final width = MediaQuery.of(context).size.width;
@@ -178,15 +253,41 @@ class _RecipesScreenState extends State<RecipesScreen>
       ).animate(_animController);
       _animController.forward(from: 0);
     } else {
-      _animOffset =
-          Tween(begin: _dragOffset, end: Offset.zero).animate(_animController);
-      _animRotation =
-          Tween(begin: _dragRotation, end: 0.0).animate(_animController);
+      _animOffset = Tween(
+        begin: _dragOffset,
+        end: Offset.zero,
+      ).animate(_animController);
+      _animRotation = Tween(
+        begin: _dragRotation,
+        end: 0.0,
+      ).animate(_animController);
       _animController.forward(from: 0);
     }
   }
 
-  // ================= UI =================
+  void _triggerSwipe(_SwipeDirection dir) {
+    _dragOffset = Offset.zero;
+    _dragRotation = 0.0;
+
+    if (_isAnimating || _recipes.isEmpty) return;
+
+    final sign = dir == _SwipeDirection.right ? 1 : -1;
+    final width = MediaQuery.of(context).size.width;
+
+    _isAnimating = true;
+
+    _animOffset = Tween(
+      begin: _dragOffset,
+      end: Offset(sign * (width + 200), 0),
+    ).animate(_animController);
+
+    _animRotation = Tween(
+      begin: _dragRotation,
+      end: sign * 0.6,
+    ).animate(_animController);
+
+    _animController.forward(from: 0);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -195,52 +296,85 @@ class _RecipesScreenState extends State<RecipesScreen>
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+    if (_loadError != null) {
+      return Center(child: Text('Load error: $_loadError'));
+    }
 
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: _recipes.isEmpty
-              ? Text(loc.recipesNoMore)
-              : LayoutBuilder(
-                  builder: (context, c) {
-                    final visible = math.min(3, _recipes.length);
-                    return SizedBox(
-                      width: math.min(480, c.maxWidth * 0.95),
-                      height: math.min(640, c.maxHeight * 0.9),
-                      child: Stack(
-                        children: List.generate(visible, (i) {
-                          final recipe = _recipes[i];
-                          final isTop = i == 0;
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: _recipes.isEmpty
+                    ? Text(loc.recipesNoMore)
+                    : LayoutBuilder(
+                        builder: (context, c) {
+                          final visible = math.min(3, _recipes.length);
+                          return SizedBox(
+                            width: math.min(480, c.maxWidth * 0.95),
+                            height: math.min(640, c.maxHeight * 0.9),
+                            child: Stack(
+                              children: List.generate(visible, (i) {
+                                final recipe = _recipes[i];
+                                final isTop = i == 0;
 
-                          Widget card = _recipeCard(recipe);
+                                Widget card = _recipeCard(recipe);
 
-                          if (isTop) {
-                            card = GestureDetector(
-                              onPanUpdate: (d) {
-                                setState(() {
-                                  _dragOffset += d.delta;
-                                  _dragRotation =
-                                      _dragOffset.dx * _rotationMultiplier;
-                                });
-                              },
-                              onPanEnd: (_) => _onPanEnd(),
-                              onTap: () => _showDetails(recipe),
-                              child: Transform.translate(
-                                offset: _dragOffset,
-                                child: Transform.rotate(
-                                  angle: _dragRotation,
-                                  child: card,
-                                ),
-                              ),
-                            );
-                          }
+                                if (isTop) {
+                                  card = GestureDetector(
+                                    onPanStart: (d) {
+                                      _panStart = _dragOffset;
+                                    },
+                                    onPanUpdate: (d) {
+                                      setState(() {
+                                        _dragOffset = _panStart + d.delta;
+                                        _dragRotation =
+                                            _dragOffset.dx *
+                                            _rotationMultiplier;
+                                      });
+                                    },
 
-                          return Positioned.fill(child: card);
-                        }).reversed.toList(),
+                                    onPanEnd: (_) => _onPanEnd(),
+                                    onTap: () => _showDetails(recipe),
+                                    child: Transform.translate(
+                                      offset: _dragOffset,
+                                      child: Transform.rotate(
+                                        angle: _dragRotation,
+                                        child: card,
+                                      ),
+                                    ),
+                                  );
+                                }
+
+                                return Positioned.fill(child: card);
+                              }).reversed.toList(),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'dislike',
+                  backgroundColor: Colors.red,
+                  onPressed: () => _triggerSwipe(_SwipeDirection.left),
+                  child: const Icon(Icons.close),
                 ),
+                FloatingActionButton(
+                  heroTag: 'like',
+                  backgroundColor: Colors.green,
+                  onPressed: () => _triggerSwipe(_SwipeDirection.right),
+                  child: const Icon(Icons.check),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
         ),
       ),
     );
@@ -255,7 +389,8 @@ class _RecipesScreenState extends State<RecipesScreen>
         children: [
           Positioned.fill(
             child: Image.network(
-              r['image_link'] ?? '',
+              r['image_url'] ?? r['image'] ?? '',
+
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) =>
                   const Icon(Icons.image_not_supported),
@@ -283,7 +418,7 @@ class _RecipesScreenState extends State<RecipesScreen>
                 ),
               ),
             ),
-          )
+          ),
         ],
       ),
     );
