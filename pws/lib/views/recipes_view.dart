@@ -30,11 +30,10 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'x-app-key': apiKey,
-      };
+    'Content-Type': 'application/json',
+    'x-app-key': apiKey,
+  };
 
-  // ================= STATE =================
   final List<Map<String, dynamic>> _recipes = [];
   bool _isLoading = false;
   bool _isAnimating = false;
@@ -49,25 +48,26 @@ class _RecipesScreenState extends State<RecipesScreen>
   static const double _swipeThreshold = 120;
   static const double _rotationMultiplier = 0.003;
 
-  // ================= INIT =================
   @override
   void initState() {
     super.initState();
 
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    )..addListener(() {
-        setState(() {
-          _dragOffset = _animOffset?.value ?? _dragOffset;
-          _dragRotation = _animRotation?.value ?? _dragRotation;
+    _animController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 300),
+        )..addListener(() {
+          setState(() {
+            _dragOffset = _animOffset?.value ?? _dragOffset;
+            _dragRotation = _animRotation?.value ?? _dragRotation;
+          });
         });
-      });
 
     _animController.addStatusListener((status) {
       if (status == AnimationStatus.completed && _isAnimating) {
-        final dir =
-            _dragOffset.dx > 0 ? _SwipeDirection.right : _SwipeDirection.left;
+        final dir = _dragOffset.dx > 0
+            ? _SwipeDirection.right
+            : _SwipeDirection.left;
         _handleSwipeComplete(dir);
         _resetAnimation();
       }
@@ -94,7 +94,6 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Future<List<Map<String, dynamic>>> _searchRecipes(String query) async {
-    // Deze functie blijft beschikbaar maar wordt niet meer gebruikt als fallback.
     try {
       final res = await http.get(
         Uri.parse(
@@ -131,11 +130,13 @@ class _RecipesScreenState extends State<RecipesScreen>
   Future<List<Map<String, dynamic>>> _getRecommendations() async {
     try {
       final res = await http.get(
-        Uri.parse('$apiBase/recipes/recommendations/$userId?limit=6'),
+        Uri.parse('$apiBase/recipes/recommendations/$userId?limit=3'),
         headers: _headers,
       );
       debugPrint('RECS status=${res.statusCode} body=${res.body}');
-      if (res.statusCode != 200) return [];
+      if (res.statusCode != 200) {
+        throw Exception('Recommendations failed: ${res.statusCode}');
+      }
 
       final decoded = json.decode(res.body);
       if (decoded is List) {
@@ -166,11 +167,12 @@ class _RecipesScreenState extends State<RecipesScreen>
       if (recs.isNotEmpty) {
         _recipes.addAll(recs);
       } else {
-        // Geen fallback meer: we gebruiken alleen recommendations
         setState(() {
           _loadError = 'Geen aanbevelingen gevonden';
         });
       }
+      debugPrint('Loaded recs: ${recs.length}');
+      debugPrint('First rec: ${recs.isNotEmpty ? recs.first : 'none'}');
     } catch (e, st) {
       debugPrint('Load recipes failed: $e\n$st');
       setState(() {
@@ -190,7 +192,7 @@ class _RecipesScreenState extends State<RecipesScreen>
     return json.decode(res.body);
   }
 
-  Future<void> _rateRecipe(String recipeId, int rating) async {
+  Future<void> _rateRecipe(int recipeId, int rating) async {
     await http.post(
       Uri.parse('$apiBase/recipes/rate'),
       headers: _headers,
@@ -209,19 +211,20 @@ class _RecipesScreenState extends State<RecipesScreen>
     setState(() {});
 
     final liked = dir == _SwipeDirection.right;
-    await _rateRecipe(recipe['id'].toString(), liked ? 5 : 1);
+    await _rateRecipe(int.parse(recipe['id'].toString()), liked ? 5 : 1);
 
     if (_recipes.length > 3) {
       setState(() {});
       return;
     }
 
-    // Altijd recommendations ophalen (geen fallback meer)
     List<Map<String, dynamic>> newRecs = await _getRecommendations();
 
     for (final r in newRecs) {
       final id = r['id']?.toString();
-      if (id != null && !_containsRecipe(id)) {
+      if (id != null &&
+          !_containsRecipe(id) &&
+          !_recipes.any((e) => e['id'].toString() == id)) {
         _recipes.add(r);
       }
     }
@@ -377,6 +380,9 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Widget _recipeCard(Map<String, dynamic> r) {
+    final imageUrl = (r['image_link'] ?? r['image_url'] ?? r['image'] ?? '')
+        .toString();
+
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -384,11 +390,38 @@ class _RecipesScreenState extends State<RecipesScreen>
       child: Stack(
         children: [
           Positioned.fill(
-            child: Image.network(
-              r['image_url'] ?? r['image'] ?? '',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported),
-            ),
+            child: imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                    errorBuilder: (_, __, ___) => Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Icon(
+                          Icons.image_not_supported,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  )
+                : Container(
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: Icon(
+                        Icons.image_not_supported,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
           ),
           Positioned(
             bottom: 0,
