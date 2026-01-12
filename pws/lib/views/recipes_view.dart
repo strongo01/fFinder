@@ -30,9 +30,9 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    'x-app-key': apiKey,
-  };
+        'Content-Type': 'application/json',
+        'x-app-key': apiKey,
+      };
 
   // ================= STATE =================
   final List<Map<String, dynamic>> _recipes = [];
@@ -54,22 +54,20 @@ class _RecipesScreenState extends State<RecipesScreen>
   void initState() {
     super.initState();
 
-    _animController =
-        AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 300),
-        )..addListener(() {
-          setState(() {
-            _dragOffset = _animOffset?.value ?? _dragOffset;
-            _dragRotation = _animRotation?.value ?? _dragRotation;
-          });
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..addListener(() {
+        setState(() {
+          _dragOffset = _animOffset?.value ?? _dragOffset;
+          _dragRotation = _animRotation?.value ?? _dragRotation;
         });
+      });
 
     _animController.addStatusListener((status) {
       if (status == AnimationStatus.completed && _isAnimating) {
-        final dir = _dragOffset.dx > 0
-            ? _SwipeDirection.right
-            : _SwipeDirection.left;
+        final dir =
+            _dragOffset.dx > 0 ? _SwipeDirection.right : _SwipeDirection.left;
         _handleSwipeComplete(dir);
         _resetAnimation();
       }
@@ -96,6 +94,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Future<List<Map<String, dynamic>>> _searchRecipes(String query) async {
+    // Deze functie blijft beschikbaar maar wordt niet meer gebruikt als fallback.
     try {
       final res = await http.get(
         Uri.parse(
@@ -115,7 +114,6 @@ class _RecipesScreenState extends State<RecipesScreen>
       if (decoded is Map && decoded['recipes'] is List) {
         return List<Map<String, dynamic>>.from(decoded['recipes']);
       }
-      // some APIs return { "foods": { "food": [...] } } (example your product endpoint uses that)
       if (decoded is Map &&
           decoded['foods'] is Map &&
           decoded['foods']['food'] is List) {
@@ -168,9 +166,10 @@ class _RecipesScreenState extends State<RecipesScreen>
       if (recs.isNotEmpty) {
         _recipes.addAll(recs);
       } else {
-        // fallback
-        final popular = await _searchRecipes('popular');
-        _recipes.addAll(popular);
+        // Geen fallback meer: we gebruiken alleen recommendations
+        setState(() {
+          _loadError = 'Geen aanbevelingen gevonden';
+        });
       }
     } catch (e, st) {
       debugPrint('Load recipes failed: $e\n$st');
@@ -217,10 +216,8 @@ class _RecipesScreenState extends State<RecipesScreen>
       return;
     }
 
+    // Altijd recommendations ophalen (geen fallback meer)
     List<Map<String, dynamic>> newRecs = await _getRecommendations();
-    if (newRecs.isEmpty) {
-      newRecs = await _searchRecipes('popular');
-    }
 
     for (final r in newRecs) {
       final id = r['id']?.toString();
@@ -334,7 +331,6 @@ class _RecipesScreenState extends State<RecipesScreen>
                                             _rotationMultiplier;
                                       });
                                     },
-
                                     onPanEnd: (_) => _onPanEnd(),
                                     onTap: () => _showDetails(recipe),
                                     child: Transform.translate(
@@ -390,10 +386,8 @@ class _RecipesScreenState extends State<RecipesScreen>
           Positioned.fill(
             child: Image.network(
               r['image_url'] ?? r['image'] ?? '',
-
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.image_not_supported),
+              errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported),
             ),
           ),
           Positioned(
