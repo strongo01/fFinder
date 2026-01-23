@@ -312,6 +312,33 @@
     "recipesPrepreparation": "Vorbereitung",
     "recipesIngredients": "Zutaten",
     "recipesSteps": "Zubereitungsschritte",
+    "recipesSearchHint": "Nach Zutat oder Gericht suchen...",
+    "recipesErrorNoRecommendations": "Serverfehler: Keine Empfehlungen erhalten",
+    "recipesError502": "Server aktuell nicht erreichbar (502). Später erneut versuchen.",
+    "recipesErrorLoading": "Fehler beim Laden: ",
+    "recipesNoResultsFound": "Keine Rezepte für \"{query}\" gefunden",
+    "@recipesNoResultsFound": {
+      "placeholders": {
+        "query": {
+          "type": "String"
+        }
+      }
+    },
+    "recipesErrorLoadingDetails": "Details der gefundenen Rezepte konnten nicht geladen werden",
+    "recipesErrorSearchFailed": "Suche fehlgeschlagen: ",
+    "recipesErrorNoMoreRecipes": "Serverfehler: Keine weiteren Rezepte verfügbar",
+    "recipesNoMoreSearchResults": "Du hast alle Ergebnisse für diese Suche angesehen.",
+    "recipesRetry": "Erneut versuchen",
+    "recipesDetailCharacteristics": "Merkmale",
+    "recipesDetailRequirements": "Anforderungen",
+    "recipesErrorServer": "Serverfehler ({status})",
+    "@recipesErrorServer": {
+      "placeholders": {
+        "status": {
+          "type": "String"
+        }
+      }
+    },
     "recipesKitchens": "Küchen",
     "recipesCourses": "Gang",
     "recipesRequirements": "Benötigte Utensilien",

@@ -262,6 +262,33 @@
     "recipesPrepreparation": "Pre-preparation",
     "recipesIngredients": "Ingredients",
     "recipesSteps": "Steps",
+    "recipesSearchHint": "Search by ingredient or dish...",
+    "recipesErrorNoRecommendations": "Server error: no recommendations received",
+    "recipesError502": "The server is currently unreachable (502). Please try again later.",
+    "recipesErrorLoading": "Error loading: ",
+    "recipesNoResultsFound": "No recipes found for \"{query}\"",
+    "@recipesNoResultsFound": {
+      "placeholders": {
+        "query": {
+          "type": "String"
+        }
+      }
+    },
+    "recipesErrorLoadingDetails": "Could not load details for found recipes",
+    "recipesErrorSearchFailed": "Search failed: ",
+    "recipesErrorNoMoreRecipes": "Server error: no more recipes available",
+    "recipesNoMoreSearchResults": "You have viewed all results for this search.",
+    "recipesRetry": "Retry",
+    "recipesDetailCharacteristics": "Characteristics",
+    "recipesDetailRequirements": "Requirements",
+    "recipesErrorServer": "Server error ({status})",
+    "@recipesErrorServer": {
+      "placeholders": {
+        "status": {
+          "type": "String"
+        }
+      }
+    },
     "recipesKitchens": "Kitchens",
     "recipesCourses": "Course",
     "recipesRequirements": "Requirements",

@@ -1671,6 +1671,84 @@ abstract class AppLocalizations {
   /// **'Steps'**
   String get recipesSteps;
 
+  /// No description provided for @recipesSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by ingredient or dish...'**
+  String get recipesSearchHint;
+
+  /// No description provided for @recipesErrorNoRecommendations.
+  ///
+  /// In en, this message translates to:
+  /// **'Server error: no recommendations received'**
+  String get recipesErrorNoRecommendations;
+
+  /// No description provided for @recipesError502.
+  ///
+  /// In en, this message translates to:
+  /// **'The server is currently unreachable (502). Please try again later.'**
+  String get recipesError502;
+
+  /// No description provided for @recipesErrorLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading: '**
+  String get recipesErrorLoading;
+
+  /// No description provided for @recipesNoResultsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No recipes found for \"{query}\"'**
+  String recipesNoResultsFound(String query);
+
+  /// No description provided for @recipesErrorLoadingDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load details for found recipes'**
+  String get recipesErrorLoadingDetails;
+
+  /// No description provided for @recipesErrorSearchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Search failed: '**
+  String get recipesErrorSearchFailed;
+
+  /// No description provided for @recipesErrorNoMoreRecipes.
+  ///
+  /// In en, this message translates to:
+  /// **'Server error: no more recipes available'**
+  String get recipesErrorNoMoreRecipes;
+
+  /// No description provided for @recipesNoMoreSearchResults.
+  ///
+  /// In en, this message translates to:
+  /// **'You have viewed all results for this search.'**
+  String get recipesNoMoreSearchResults;
+
+  /// No description provided for @recipesRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get recipesRetry;
+
+  /// No description provided for @recipesDetailCharacteristics.
+  ///
+  /// In en, this message translates to:
+  /// **'Characteristics'**
+  String get recipesDetailCharacteristics;
+
+  /// No description provided for @recipesDetailRequirements.
+  ///
+  /// In en, this message translates to:
+  /// **'Requirements'**
+  String get recipesDetailRequirements;
+
+  /// No description provided for @recipesErrorServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server error ({status})'**
+  String recipesErrorServer(String status);
+
   /// No description provided for @recipesKitchens.
   ///
   /// In en, this message translates to:

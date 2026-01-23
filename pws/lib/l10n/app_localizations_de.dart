@@ -795,6 +795,49 @@ class AppLocalizationsDe extends AppLocalizations {
   String get recipesSteps => 'Zubereitungsschritte';
 
   @override
+  String get recipesSearchHint => 'Nach Zutat oder Gericht suchen...';
+
+  @override
+  String get recipesErrorNoRecommendations => 'Serverfehler: Keine Empfehlungen erhalten';
+
+  @override
+  String get recipesError502 => 'Server aktuell nicht erreichbar (502). Später erneut versuchen.';
+
+  @override
+  String get recipesErrorLoading => 'Fehler beim Laden: ';
+
+  @override
+  String recipesNoResultsFound(String query) {
+    return 'Keine Rezepte für \"$query\" gefunden';
+  }
+
+  @override
+  String get recipesErrorLoadingDetails => 'Details der gefundenen Rezepte konnten nicht geladen werden';
+
+  @override
+  String get recipesErrorSearchFailed => 'Suche fehlgeschlagen: ';
+
+  @override
+  String get recipesErrorNoMoreRecipes => 'Serverfehler: Keine weiteren Rezepte verfügbar';
+
+  @override
+  String get recipesNoMoreSearchResults => 'Du hast alle Ergebnisse für diese Suche angesehen.';
+
+  @override
+  String get recipesRetry => 'Erneut versuchen';
+
+  @override
+  String get recipesDetailCharacteristics => 'Merkmale';
+
+  @override
+  String get recipesDetailRequirements => 'Anforderungen';
+
+  @override
+  String recipesErrorServer(String status) {
+    return 'Serverfehler ($status)';
+  }
+
+  @override
   String get recipesKitchens => 'Küchen';
 
   @override

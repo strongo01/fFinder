@@ -795,6 +795,49 @@ class AppLocalizationsFr extends AppLocalizations {
   String get recipesSteps => 'Étapes de préparation';
 
   @override
+  String get recipesSearchHint => 'Rechercher par ingrédient ou plat...';
+
+  @override
+  String get recipesErrorNoRecommendations => 'Erreur serveur : aucune recommandation reçue';
+
+  @override
+  String get recipesError502 => 'Serveur actuellement inaccessible (502). Veuillez réessayer plus tard.';
+
+  @override
+  String get recipesErrorLoading => 'Erreur lors du chargement : ';
+
+  @override
+  String recipesNoResultsFound(String query) {
+    return 'Aucune recette trouvée pour \"$query\"';
+  }
+
+  @override
+  String get recipesErrorLoadingDetails => 'Impossible de charger les détails des recettes trouvées';
+
+  @override
+  String get recipesErrorSearchFailed => 'La recherche a échoué : ';
+
+  @override
+  String get recipesErrorNoMoreRecipes => 'Erreur serveur : plus de recettes disponibles';
+
+  @override
+  String get recipesNoMoreSearchResults => 'Vous avez vu tous les résultats pour cette recherche.';
+
+  @override
+  String get recipesRetry => 'Réessayer';
+
+  @override
+  String get recipesDetailCharacteristics => 'Caractéristiques';
+
+  @override
+  String get recipesDetailRequirements => 'Équipements';
+
+  @override
+  String recipesErrorServer(String status) {
+    return 'Erreur serveur ($status)';
+  }
+
+  @override
   String get recipesKitchens => 'Cuisines';
 
   @override

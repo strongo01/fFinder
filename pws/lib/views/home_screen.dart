@@ -1111,19 +1111,17 @@ class _HomeScreenState extends State<HomeScreen> {
   // iOS layout
   Widget _buildIOSLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final bool isAdmin = (_userData?['role'] ?? '') == 'admin';
 
     final items = <BottomNavigationBarItem>[
       BottomNavigationBarItem(
         icon: const Icon(CupertinoIcons.home),
         label: AppLocalizations.of(context)!.logs,
       ),
-      if (isAdmin)
-        BottomNavigationBarItem(
-          key: _recipesKey,
-          icon: const Icon(CupertinoIcons.book),
-          label: AppLocalizations.of(context)!.recipesTitle,
-        ),
+      BottomNavigationBarItem(
+        key: _recipesKey,
+        icon: const Icon(CupertinoIcons.book),
+        label: AppLocalizations.of(context)!.recipesTitle,
+      ),
       BottomNavigationBarItem(
         key: _weightKey,
         icon: const Icon(CupertinoIcons.chart_bar),
@@ -1134,179 +1132,93 @@ class _HomeScreenState extends State<HomeScreen> {
     return CupertinoTabScaffold(
       tabBar: CupertinoTabBar(items: items),
       tabBuilder: (context, index) {
-        // Admin: index 0 = home, index 1 = recipes, index 2 = weight
-        if (isAdmin) {
-          if (index == 0) {
-            return CupertinoPageScaffold(
-              navigationBar: CupertinoNavigationBar(
-                middle: GestureDetector(
-                  key: _dateKey,
-                  onTap: () => _selectDate(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDarkMode
-                          ? Colors.white.withOpacity(0.1)
-                          : Colors.black.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_formatDate(context, _selectedDate)),
-                        const SizedBox(width: 8),
-                        const Icon(CupertinoIcons.calendar, size: 22),
-                      ],
-                    ),
+        if (index == 0) {
+          return CupertinoPageScaffold(
+            navigationBar: CupertinoNavigationBar(
+              middle: GestureDetector(
+                key: _dateKey,
+                onTap: () => _selectDate(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.black.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_formatDate(context, _selectedDate)),
+                      const SizedBox(width: 8),
+                      const Icon(CupertinoIcons.calendar, size: 22),
+                    ],
                   ),
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      key: _barcodeKey,
-                      child: const Icon(
-                        CupertinoIcons.barcode_viewfinder,
-                        size: 28,
-                      ),
-                      onPressed: _scanBarcode,
-                    ),
-                    CupertinoButton(
-                      padding: const EdgeInsets.only(left: 8),
-                      key: _settingsKey,
-                      child: const Icon(CupertinoIcons.settings, size: 26),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
               ),
-              child: SafeArea(
-                child: Material(
-                  child: Scaffold(
-                    body: Stack(
-                      children: [
-                        _buildHomeContent(),
-                        Positioned(
-                          right: 16,
-                          bottom: 120,
-                          key: _feedbackKey,
-                          child: const FeedbackButton(),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    key: _barcodeKey,
+                    child: const Icon(
+                      CupertinoIcons.barcode_viewfinder,
+                      size: 28,
+                    ),
+                    onPressed: _scanBarcode,
+                  ),
+                  CupertinoButton(
+                    padding: const EdgeInsets.only(left: 8),
+                    key: _settingsKey,
+                    child: const Icon(CupertinoIcons.settings, size: 26),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
                         ),
-                      ],
-                    ),
-                    floatingActionButton: _buildSpeedDial(),
+                      );
+                    },
                   ),
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: Material(
+                child: Scaffold(
+                  body: Stack(
+                    children: [
+                      _buildHomeContent(),
+                      Positioned(
+                        right: 16,
+                        bottom: 120,
+                        key: _feedbackKey,
+                        child: const FeedbackButton(),
+                      ),
+                    ],
+                  ),
+                  floatingActionButton: _buildSpeedDial(),
                 ),
               ),
-            );
-          } else if (index == 1) {
-            return CupertinoPageScaffold(
-              navigationBar: CupertinoNavigationBar(
-                middle: Text(AppLocalizations.of(context)!.recipesTitle),
-              ),
-              child: const RecipesScreen(),
-            );
-          } else {
-            return CupertinoPageScaffold(
-              navigationBar: CupertinoNavigationBar(
-                middle: Text(AppLocalizations.of(context)!.weightTitle),
-              ),
-              child: const WeightView(),
-            );
-          }
+            ),
+          );
+        } else if (index == 1) {
+          return CupertinoPageScaffold(
+            navigationBar: CupertinoNavigationBar(
+              middle: Text(AppLocalizations.of(context)!.recipesTitle),
+            ),
+            child: const RecipesScreen(),
+          );
         } else {
-          // Niet-admin: index 0 = home, index 1 = weight
-          if (index == 0) {
-            return CupertinoPageScaffold(
-              navigationBar: CupertinoNavigationBar(
-                middle: GestureDetector(
-                  key: _dateKey,
-                  onTap: () => _selectDate(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDarkMode
-                          ? Colors.white.withOpacity(0.1)
-                          : Colors.black.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_formatDate(context, _selectedDate)),
-                        const SizedBox(width: 8),
-                        const Icon(CupertinoIcons.calendar, size: 22),
-                      ],
-                    ),
-                  ),
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      key: _barcodeKey,
-                      child: const Icon(
-                        CupertinoIcons.barcode_viewfinder,
-                        size: 28,
-                      ),
-                      onPressed: _scanBarcode,
-                    ),
-                    CupertinoButton(
-                      padding: const EdgeInsets.only(left: 8),
-                      key: _settingsKey,
-                      child: const Icon(CupertinoIcons.settings, size: 26),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              child: SafeArea(
-                child: Material(
-                  child: Scaffold(
-                    body: Stack(
-                      children: [
-                        _buildHomeContent(),
-                        Positioned(
-                          right: 16,
-                          bottom: 120,
-                          key: _feedbackKey,
-                          child: const FeedbackButton(),
-                        ),
-                      ],
-                    ),
-                    floatingActionButton: _buildSpeedDial(),
-                  ),
-                ),
-              ),
-            );
-          } else {
-            return CupertinoPageScaffold(
-              navigationBar: CupertinoNavigationBar(
-                middle: Text(AppLocalizations.of(context)!.weightTitle),
-              ),
-              child: const WeightView(),
-            );
-          }
+          return CupertinoPageScaffold(
+            navigationBar: CupertinoNavigationBar(
+              middle: Text(AppLocalizations.of(context)!.weightTitle),
+            ),
+            child: const WeightView(),
+          );
         }
       },
     );
@@ -1316,9 +1228,7 @@ class _HomeScreenState extends State<HomeScreen> {
 Widget _buildAndroidLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-// bepaal of gebruiker admin is
-    final bool isAdmin = (_userData?['role'] ?? '') == 'admin';
-    final int itemsCount = isAdmin ? 3 : 2;
+    const int itemsCount = 3;
     final int effectiveIndex =
         _selectedIndex >= itemsCount ? itemsCount - 1 : _selectedIndex;
 
@@ -1341,15 +1251,9 @@ Widget _buildAndroidLayout() {
       );
       fab = _buildSpeedDial();
     } else if (effectiveIndex == 1) {
-// effectiveIndex == 1
-      if (isAdmin) {
-        body = const RecipesScreen();
-      } else {
-        body = const WeightView();
-      }
+      body = const RecipesScreen();
       fab = null;
     } else {
-// effectiveIndex == 2
       body = const WeightView();
       fab = null;
     }
@@ -1403,7 +1307,7 @@ Widget _buildAndroidLayout() {
             )
           : AppBar(
               title: Text(
-                effectiveIndex == 1 && isAdmin
+                effectiveIndex == 1
                     ? AppLocalizations.of(context)!.recipesTitle
                     : AppLocalizations.of(context)!.weightTitle,
               ),
@@ -1428,12 +1332,11 @@ Widget _buildAndroidLayout() {
             icon: const Icon(Icons.home),
             label: AppLocalizations.of(context)!.logs,
           ),
-          if (isAdmin)
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.menu_book),
-              label: AppLocalizations.of(context)!.recipesTitle,
-              key: _recipesKey,
-            ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.menu_book),
+            label: AppLocalizations.of(context)!.recipesTitle,
+            key: _recipesKey,
+          ),
           BottomNavigationBarItem(
             key: _weightKey,
             icon: const Icon(Icons.monitor_weight),

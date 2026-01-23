@@ -795,6 +795,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recipesSteps => 'Steps';
 
   @override
+  String get recipesSearchHint => 'Search by ingredient or dish...';
+
+  @override
+  String get recipesErrorNoRecommendations => 'Server error: no recommendations received';
+
+  @override
+  String get recipesError502 => 'The server is currently unreachable (502). Please try again later.';
+
+  @override
+  String get recipesErrorLoading => 'Error loading: ';
+
+  @override
+  String recipesNoResultsFound(String query) {
+    return 'No recipes found for \"$query\"';
+  }
+
+  @override
+  String get recipesErrorLoadingDetails => 'Could not load details for found recipes';
+
+  @override
+  String get recipesErrorSearchFailed => 'Search failed: ';
+
+  @override
+  String get recipesErrorNoMoreRecipes => 'Server error: no more recipes available';
+
+  @override
+  String get recipesNoMoreSearchResults => 'You have viewed all results for this search.';
+
+  @override
+  String get recipesRetry => 'Retry';
+
+  @override
+  String get recipesDetailCharacteristics => 'Characteristics';
+
+  @override
+  String get recipesDetailRequirements => 'Requirements';
+
+  @override
+  String recipesErrorServer(String status) {
+    return 'Server error ($status)';
+  }
+
+  @override
   String get recipesKitchens => 'Kitchens';
 
   @override

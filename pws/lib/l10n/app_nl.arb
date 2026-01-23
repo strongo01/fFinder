@@ -312,6 +312,33 @@
   "recipesPrepreparation": "Voorbereiding",
   "recipesIngredients": "Ingrediënten",
   "recipesSteps": "Bereidingsstappen",
+  "recipesSearchHint": "Zoek op ingrediënt of gerecht...",
+  "recipesErrorNoRecommendations": "Server fout: geen aanbevelingen ontvangen",
+  "recipesError502": "De server is momenteel niet bereikbaar (502). Probeer het later opnieuw.",
+  "recipesErrorLoading": "Fout bij laden: ",
+  "recipesNoResultsFound": "Geen recepten gevonden voor \"{query}\"",
+  "@recipesNoResultsFound": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "recipesErrorLoadingDetails": "Kon details van gevonden recepten niet laden",
+  "recipesErrorSearchFailed": "Zoeken mislukt: ",
+  "recipesErrorNoMoreRecipes": "Server fout: geen recepten meer beschikbaar",
+  "recipesNoMoreSearchResults": "Je hebt alle resultaten voor deze zoekopdracht bekeken.",
+  "recipesRetry": "Opnieuw proberen",
+  "recipesDetailCharacteristics": "Kenmerken",
+  "recipesDetailRequirements": "Benodigdheden",
+  "recipesErrorServer": "Server fout ({status})",
+  "@recipesErrorServer": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
   "recipesKitchens": "Keukens",
   "recipesCourses": "Gang",
   "recipesRequirements": "Benodigdheden",
