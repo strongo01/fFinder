@@ -325,10 +325,6 @@ class _RecipesScreenState extends State<RecipesScreen>
     }
   }
 
-  bool _containsRecipe(String id) {
-    return _recipes.any((r) => r['id'].toString() == id);
-  }
-
   void _onPanEnd(DragEndDetails details) {
     if (_isAnimating) return;
 
