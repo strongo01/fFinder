@@ -8,6 +8,32 @@ import '../l10n/app_localizations.dart';
 
 enum _SwipeDirection { left, right }
 
+class RecipeFilters {
+  List<String> kitchens = [];
+  List<String> courses = [];
+  List<String> tags = [];
+  List<String> difficulties = [];
+  int? maxKcal;
+  int? maxPrepTime;
+
+  bool get isEmpty =>
+      kitchens.isEmpty &&
+      courses.isEmpty &&
+      tags.isEmpty &&
+      difficulties.isEmpty &&
+      maxKcal == null &&
+      maxPrepTime == null;
+
+  void reset() {
+    kitchens.clear();
+    courses.clear();
+    tags.clear();
+    difficulties.clear();
+    maxKcal = null;
+    maxPrepTime = null;
+  }
+}
+
 class RecipesScreen extends StatefulWidget {
   const RecipesScreen({super.key});
 
@@ -40,6 +66,8 @@ class _RecipesScreenState extends State<RecipesScreen>
   bool _isAnimating = false;
   bool _isSearchMode = false;
   final TextEditingController _searchController = TextEditingController();
+  final RecipeFilters _currentFilters = RecipeFilters();
+  Map<String, dynamic>? _filterOptions;
 
   Offset _dragOffset = Offset.zero;
   double _dragRotation = 0.0;
@@ -78,7 +106,288 @@ class _RecipesScreenState extends State<RecipesScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialRecipes();
+      _fetchFilterOptions();
     });
+  }
+
+  Future<void> _fetchFilterOptions() async {
+    try {
+      final res = await http.get(
+        Uri.parse('$apiBase/recipes/filters'),
+        headers: _headers,
+      );
+      if (res.statusCode == 200) {
+        if (mounted) {
+          setState(() {
+            _filterOptions = json.decode(res.body);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch filters: $e');
+    }
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final loc = AppLocalizations.of(context)!;
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
+            if (_filterOptions == null) {
+              return Container(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    const Text('Filters laden...'),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () {
+                        _fetchFilterOptions().then((_) {
+                          if (mounted) setSheetState(() {});
+                        });
+                      },
+                      child: const Text('Opnieuw proberen'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final Map<String, String> cats = {
+              'kitchens': loc.recipesKitchens,
+              'courses': loc.recipesCourses,
+              'tags': 'Tags',
+              'difficulties': loc.recipesDetailDifficulty,
+              'kcal': loc.recipesDetailKcal,
+              'prepTime': loc.recipesDetailPreparationTime,
+            };
+
+            Widget buildMultiSelect(
+              String categoryKey,
+              List<String> currentValues,
+              List<dynamic>? options,
+              Function(String) onToggle,
+            ) {
+              if (options == null || options.isEmpty) return const SizedBox.shrink();
+              return Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: options.map((opt) {
+                  final val = opt.toString();
+                  final isSelected = currentValues.contains(val);
+                  return FilterChip(
+                    label: Text(val),
+                    selected: isSelected,
+                    onSelected: (_) => onToggle(val),
+                    selectedColor: Colors.orange.withOpacity(0.3),
+                    checkmarkColor: Colors.orange,
+                  );
+                }).toList(),
+              );
+            }
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                top: 10,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[700] : Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Filter op categorie(ën):',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    children: cats.entries.map((entry) {
+                      bool isActive = false;
+                      if (entry.key == 'kitchens') isActive = _currentFilters.kitchens.isNotEmpty;
+                      if (entry.key == 'courses') isActive = _currentFilters.courses.isNotEmpty;
+                      if (entry.key == 'tags') isActive = _currentFilters.tags.isNotEmpty;
+                      if (entry.key == 'difficulties') isActive = _currentFilters.difficulties.isNotEmpty;
+                      if (entry.key == 'kcal') isActive = _currentFilters.maxKcal != null;
+                      if (entry.key == 'prepTime') isActive = _currentFilters.maxPrepTime != null;
+
+                      return ChoiceChip(
+                        label: Text(entry.value),
+                        selected: isActive,
+                        onSelected: (val) {
+                          setSheetState(() {
+                            if (!val) {
+                              if (entry.key == 'kitchens') _currentFilters.kitchens.clear();
+                              if (entry.key == 'courses') _currentFilters.courses.clear();
+                              if (entry.key == 'tags') _currentFilters.tags.clear();
+                              if (entry.key == 'difficulties') _currentFilters.difficulties.clear();
+                              if (entry.key == 'kcal') _currentFilters.maxKcal = null;
+                              if (entry.key == 'prepTime') _currentFilters.maxPrepTime = null;
+                                } else {
+                              if (entry.key == 'kcal') _currentFilters.maxKcal = _filterOptions!['max_kcal'] ?? 1500;
+                              if (entry.key == 'prepTime') _currentFilters.maxPrepTime = _filterOptions!['max_prep_time'] ?? 120;
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const Divider(height: 32),
+                  
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_currentFilters.kitchens.isNotEmpty || cats.keys.first == 'kitchens' && _currentFilters.kitchens.isEmpty && false) 
+                          ...[
+                             if (_currentFilters.kitchens.isNotEmpty || _currentFilters.isEmpty && false) Container(), 
+                          ],
+                          
+                          if (_currentFilters.kitchens.isNotEmpty || _currentFilters.kitchens.isEmpty && false)
+                          ...[],
+
+                          if (_currentFilters.kitchens.isNotEmpty || cats.keys.toList().indexWhere((k)=>k=='kitchens') != -1 ) 
+                             _buildFilterSection(loc.recipesKitchens, _currentFilters.kitchens.isNotEmpty, 
+                             buildMultiSelect('kitchens', _currentFilters.kitchens, _filterOptions!['kitchens'], (v){
+                               setSheetState((){
+                                 if(_currentFilters.kitchens.contains(v)) _currentFilters.kitchens.remove(v);
+                                 else _currentFilters.kitchens.add(v);
+                               });
+                             })),
+                          
+                          _buildFilterSection(loc.recipesCourses, _currentFilters.courses.isNotEmpty, 
+                             buildMultiSelect('courses', _currentFilters.courses, _filterOptions!['courses'], (v){
+                               setSheetState((){
+                                 if(_currentFilters.courses.contains(v)) _currentFilters.courses.remove(v);
+                                 else _currentFilters.courses.add(v);
+                               });
+                             })),
+
+                          _buildFilterSection('Tags', _currentFilters.tags.isNotEmpty, 
+                             buildMultiSelect('tags', _currentFilters.tags, _filterOptions!['tags'], (v){
+                               setSheetState((){
+                                 if(_currentFilters.tags.contains(v)) _currentFilters.tags.remove(v);
+                                 else _currentFilters.tags.add(v);
+                               });
+                             })),
+
+                          _buildFilterSection(loc.recipesDetailDifficulty, _currentFilters.difficulties.isNotEmpty, 
+                             buildMultiSelect('difficulties', _currentFilters.difficulties, _filterOptions!['difficulties'], (v){
+                               setSheetState((){
+                                 if(_currentFilters.difficulties.contains(v)) _currentFilters.difficulties.remove(v);
+                                 else _currentFilters.difficulties.add(v);
+                               });
+                             })),
+
+                          _buildFilterSection(loc.recipesDetailKcal, _currentFilters.maxKcal != null, 
+                             Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Text('Max: ${_currentFilters.maxKcal} kcal'),
+                                 Slider(
+                                   value: (_currentFilters.maxKcal ?? 1500).toDouble(),
+                                   min: 0,
+                                   max: (_filterOptions!['max_kcal'] ?? 1500).toDouble(),
+                                   divisions: 20,
+                                   activeColor: Colors.orange,
+                                   onChanged: (v) => setSheetState(() => _currentFilters.maxKcal = v.round()),
+                                 ),
+                               ],
+                             )),
+
+                          _buildFilterSection(loc.recipesDetailPreparationTime, _currentFilters.maxPrepTime != null, 
+                             Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Text('Max: ${_currentFilters.maxPrepTime} min'),
+                                 Slider(
+                                   value: (_currentFilters.maxPrepTime ?? 120).toDouble(),
+                                   min: 0,
+                                   max: (_filterOptions!['max_prep_time'] ?? 120).toDouble(),
+                                   divisions: 12,
+                                   activeColor: Colors.orange,
+                                   onChanged: (v) => setSheetState(() => _currentFilters.maxPrepTime = v.round()),
+                                 ),
+                               ],
+                             )),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _performSearch(_searchController.text);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Toepassen', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setSheetState(() => _currentFilters.reset());
+                    },
+                    child: Text('Filters wissen', style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey)),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterSection(String title, bool isVisible, Widget child) {
+    if (!isVisible) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
   }
 
   String? _loadError;
@@ -175,7 +484,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) return;
+    if (query.trim().isEmpty && _currentFilters.isEmpty) return;
     FocusScope.of(context).unfocus();
 
     setState(() {
@@ -187,12 +496,34 @@ class _RecipesScreenState extends State<RecipesScreen>
     });
 
     try {
-      final res = await http.get(
-        Uri.parse(
-          '$apiBase/recipes/search?query=${Uri.encodeComponent(query)}',
-        ),
-        headers: _headers,
+      final queryParams = <String, dynamic>{
+        'query': query,
+      };
+
+      if (_currentFilters.kitchens.isNotEmpty) {
+        queryParams['kitchen'] = _currentFilters.kitchens;
+      }
+      if (_currentFilters.courses.isNotEmpty) {
+        queryParams['course'] = _currentFilters.courses;
+      }
+      if (_currentFilters.tags.isNotEmpty) {
+        queryParams['tag'] = _currentFilters.tags;
+      }
+      if (_currentFilters.difficulties.isNotEmpty) {
+        queryParams['difficulty'] = _currentFilters.difficulties;
+      }
+      if (_currentFilters.maxKcal != null) {
+        queryParams['max_kcal'] = _currentFilters.maxKcal.toString();
+      }
+      if (_currentFilters.maxPrepTime != null) {
+        queryParams['max_prep_time'] = _currentFilters.maxPrepTime.toString();
+      }
+
+      final uri = Uri.parse('$apiBase/recipes/search').replace(
+        queryParameters: queryParams,
       );
+
+      final res = await http.get(uri, headers: _headers);
       debugPrint('SEARCH status=${res.statusCode} body=${res.body}');
 
       if (res.statusCode != 200) {
@@ -386,6 +717,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
@@ -400,17 +732,33 @@ class _RecipesScreenState extends State<RecipesScreen>
                 decoration: InputDecoration(
                   hintText: loc.recipesSearchHint,
                   prefixIcon: const Icon(Icons.search, color: Colors.orange),
-                  suffixIcon: _searchController.text.isNotEmpty || _isSearchMode
-                      ? IconButton(
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_searchController.text.isNotEmpty ||
+                          _isSearchMode ||
+                          !_currentFilters.isEmpty)
+                        IconButton(
                           icon: const Icon(Icons.clear),
                           onPressed: () {
                             _searchController.clear();
+                            _currentFilters.reset();
                             _loadInitialRecipes();
                           },
-                        )
-                      : null,
+                        ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.filter_list,
+                          color: _currentFilters.isEmpty
+                              ? Colors.grey
+                              : Colors.orange,
+                        ),
+                        onPressed: _showFilterSheet,
+                      ),
+                    ],
+                  ),
                   filled: true,
-                  fillColor: Colors.grey[100],
+                  fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30),
                     borderSide: BorderSide.none,
@@ -435,7 +783,7 @@ class _RecipesScreenState extends State<RecipesScreen>
                             Icon(
                               Icons.restaurant_menu_outlined,
                               size: 80,
-                              color: Colors.grey[300],
+                              color: isDark ? Colors.grey[700] : Colors.grey[300],
                             ),
                             const SizedBox(height: 24),
                             Text(
@@ -443,7 +791,7 @@ class _RecipesScreenState extends State<RecipesScreen>
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 18,
-                                color: Colors.grey[700],
+                                color: isDark ? Colors.grey[300] : Colors.grey[700],
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -476,14 +824,14 @@ class _RecipesScreenState extends State<RecipesScreen>
                                   Icon(
                                   _isSearchMode ? Icons.check_circle_outline : Icons.error_outline,
                                   size: 64,
-                                  color: Colors.grey[300],
+                                  color: isDark ? Colors.grey[700] : Colors.grey[300],
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
                                   _isSearchMode ? loc.recipesNoMoreSearchResults : loc.recipesErrorNoMoreRecipes,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: Colors.grey[600],
+                                    color: isDark ? Colors.grey[400] : Colors.grey[600],
                                     fontSize: 16,
                                   ),
                                 ),
@@ -665,6 +1013,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Widget _buildNetworkImage(String url, String title, {double? height}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Image.network(
       url,
       height: height,
@@ -672,7 +1021,7 @@ class _RecipesScreenState extends State<RecipesScreen>
       loadingBuilder: (context, child, progress) {
         if (progress == null) return child;
         return Container(
-          color: Colors.grey[200],
+          color: isDark ? Colors.grey[900] : Colors.grey[200],
           child: const Center(child: CircularProgressIndicator()),
         );
       },
@@ -694,11 +1043,16 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Widget _buildImageErrorPlaceholder(double? height) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: height,
-      color: Colors.grey[200],
-      child: const Center(
-        child: Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
+      color: isDark ? Colors.grey[900] : Colors.grey[200],
+      child: Center(
+        child: Icon(
+          Icons.image_not_supported,
+          size: 64,
+          color: isDark ? Colors.grey[700] : Colors.grey,
+        ),
       ),
     );
   }
@@ -766,10 +1120,11 @@ class _RecipeDetailImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _buildImage(imageUrl);
+    return _buildImage(context, imageUrl);
   }
 
-  Widget _buildImage(String url) {
+  Widget _buildImage(BuildContext context, String url) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Image.network(
       url,
       width: double.infinity,
@@ -780,7 +1135,7 @@ class _RecipeDetailImage extends StatelessWidget {
         return Container(
           width: double.infinity,
           height: 220,
-          color: Colors.grey[200],
+          color: isDark ? Colors.grey[900] : Colors.grey[200],
           child: const Center(child: CircularProgressIndicator()),
         );
       },
@@ -789,23 +1144,28 @@ class _RecipeDetailImage extends StatelessWidget {
         final pUrl = _getPlaceholderUrl(title);
 
         if (url != bUrl && !url.contains('placehold.co')) {
-          return _buildImage(bUrl);
+          return _buildImage(context, bUrl);
         }
         if (url != pUrl) {
-          return _buildImage(pUrl);
+          return _buildImage(context, pUrl);
         }
-        return _buildErrorIcon();
+        return _buildErrorIcon(context);
       },
     );
   }
 
-  Widget _buildErrorIcon() {
+  Widget _buildErrorIcon(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       height: 220,
-      color: Colors.grey[200],
-      child: const Center(
-        child: Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
+      color: isDark ? Colors.grey[900] : Colors.grey[200],
+      child: Center(
+        child: Icon(
+          Icons.image_not_supported,
+          size: 64,
+          color: isDark ? Colors.grey[700] : Colors.grey,
+        ),
       ),
     );
   }
@@ -819,6 +1179,7 @@ class _RecipeDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final title = detail['title'] ?? '';
     String imageUrl =
         (detail['image_link'] ?? detail['image_url'] ?? detail['image'] ?? '')
@@ -839,9 +1200,9 @@ class _RecipeDetailSheet extends StatelessWidget {
       maxChildSize: 0.95,
       builder: (_, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: SingleChildScrollView(
             controller: scrollController,
@@ -854,7 +1215,7 @@ class _RecipeDetailSheet extends StatelessWidget {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: isDark ? Colors.grey[700] : Colors.grey[300],
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -939,17 +1300,20 @@ class _RecipeDetailSheet extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _infoItem(
+                            context,
                             Icons.timer_outlined,
                             '${detail['preparation_time'] ?? '?'}\'',
                             loc.recipesDetailPreparationTime,
                           ),
                           _infoItem(
+                            context,
                             Icons.local_fire_department_outlined,
                             '${detail['kcal'] ?? '?'}',
                             loc.recipesDetailKcal,
                           ),
                           if (detail['difficulty'] != null)
                             _infoItem(
+                              context,
                               Icons.speed_outlined,
                               detail['difficulty']['name'] ?? '?',
                               loc.recipesDetailDifficulty,
@@ -961,23 +1325,26 @@ class _RecipeDetailSheet extends StatelessWidget {
                       const Divider(),
                       const SizedBox(height: 24),
 
-                      _sectionTitle(loc.personalInfo),
+                      _sectionTitle(context, loc.personalInfo),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 20,
                         runSpacing: 12,
                         children: [
-                          _nutriSmall(loc.recipesDetailFat, detail['fat']),
-                          _nutriSmall(loc.recipesDetailCarbs, detail['carbs']),
+                          _nutriSmall(context, loc.recipesDetailFat, detail['fat']),
+                          _nutriSmall(context, loc.recipesDetailCarbs, detail['carbs']),
                           _nutriSmall(
+                            context,
                             loc.recipesDetailProtein,
                             detail['protein'],
                           ),
                           _nutriSmall(
+                            context,
                             loc.recipesDetailFibers,
                             detail['fibers'],
                           ),
                           _nutriSmall(
+                            context,
                             loc.recipesDetailSalt,
                             detail['salt'],
                             unit: 'mg',
@@ -990,7 +1357,7 @@ class _RecipeDetailSheet extends StatelessWidget {
                       if (detail['kitchens'] != null ||
                           detail['courses'] != null ||
                           detail['tags'] != null) ...[
-                        _sectionTitle(loc.recipesDetailCharacteristics),
+                        _sectionTitle(context, loc.recipesDetailCharacteristics),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
@@ -1000,24 +1367,24 @@ class _RecipeDetailSheet extends StatelessWidget {
                               ...(detail['kitchens'] as List).map(
                                 (k) => _chipTag(
                                   k['name'] ?? '',
-                                  Colors.blue[50]!,
-                                  Colors.blue,
+                                  isDark ? Colors.blue.withOpacity(0.2) : Colors.blue[50]!,
+                                  isDark ? Colors.blue[200]! : Colors.blue,
                                 ),
                               ),
                             if (detail['courses'] is List)
                               ...(detail['courses'] as List).map(
                                 (c) => _chipTag(
                                   c['main'] ?? '',
-                                  Colors.green[50]!,
-                                  Colors.green,
+                                  isDark ? Colors.green.withOpacity(0.2) : Colors.green[50]!,
+                                  isDark ? Colors.green[200]! : Colors.green,
                                 ),
                               ),
                             if (detail['tags'] is List)
                               ...(detail['tags'] as List).map(
                                 (t) => _chipTag(
                                   t['sub'] ?? t['name'] ?? '',
-                                  Colors.orange[50]!,
-                                  Colors.orange,
+                                  isDark ? Colors.orange.withOpacity(0.2) : Colors.orange[50]!,
+                                  isDark ? Colors.orange[200]! : Colors.orange,
                                 ),
                               ),
                           ],
@@ -1027,21 +1394,21 @@ class _RecipeDetailSheet extends StatelessWidget {
 
                       if (detail['requirements'] != null &&
                           (detail['requirements'] as List).isNotEmpty) ...[
-                        _sectionTitle(loc.recipesDetailRequirements),
+                        _sectionTitle(context, loc.recipesDetailRequirements),
                         const SizedBox(height: 12),
-                        ...?_buildRequirements(detail['requirements']),
+                        ...?_buildRequirements(context, detail['requirements']),
                         const SizedBox(height: 32),
                       ],
 
-                      _sectionTitle(loc.recipesIngredients),
+                      _sectionTitle(context, loc.recipesIngredients),
                       const SizedBox(height: 12),
                       ...?_buildIngredients(detail['ingredients']),
 
                       const SizedBox(height: 32),
 
-                      _sectionTitle(loc.recipesSteps),
+                      _sectionTitle(context, loc.recipesSteps),
                       const SizedBox(height: 12),
-                      ...?_buildSteps(detail['steps']),
+                      ...?_buildSteps(context, detail['steps']),
 
                       const SizedBox(height: 40),
                     ],
@@ -1100,18 +1467,21 @@ class _RecipeDetailSheet extends StatelessWidget {
     );
   }
 
-  List<Widget>? _buildRequirements(dynamic reqs) {
+  List<Widget>? _buildRequirements(BuildContext context, dynamic reqs) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (reqs is! List) return null;
     return reqs.map((r) {
       final name = r['name_singular'] ?? r['name_plural'] ?? '';
-      final variant = r['variant_name'] != null
-          ? ' (${r['variant_name']})'
-          : '';
+      final variant = r['variant_name'] != null ? ' (${r['variant_name']})' : '';
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
-            const Icon(Icons.handyman_outlined, size: 18, color: Colors.grey),
+            Icon(
+              Icons.handyman_outlined,
+              size: 18,
+              color: isDark ? Colors.grey[400] : Colors.grey,
+            ),
             const SizedBox(width: 8),
             Text('$name$variant', style: const TextStyle(fontSize: 16)),
           ],
@@ -1120,14 +1490,19 @@ class _RecipeDetailSheet extends StatelessWidget {
     }).toList();
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _sectionTitle(BuildContext context, String title) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      style: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: Theme.of(context).textTheme.titleLarge?.color,
+      ),
     );
   }
 
-  Widget _infoItem(IconData icon, String value, String label) {
+  Widget _infoItem(BuildContext context, IconData icon, String value, String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
         Icon(icon, color: Colors.orange, size: 28),
@@ -1136,17 +1511,30 @@ class _RecipeDetailSheet extends StatelessWidget {
           value,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        Text(
+          label,
+          style: TextStyle(
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+            fontSize: 12,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _nutriSmall(String label, dynamic value, {String unit = 'g'}) {
+  Widget _nutriSmall(BuildContext context, String label, dynamic value, {String unit = 'g'}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (value == null) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+        Text(
+          label,
+          style: TextStyle(
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+            fontSize: 13,
+          ),
+        ),
         Text(
           '$value $unit',
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
@@ -1179,7 +1567,8 @@ class _RecipeDetailSheet extends StatelessWidget {
     }).toList();
   }
 
-  List<Widget>? _buildSteps(dynamic steps) {
+  List<Widget>? _buildSteps(BuildContext context, dynamic steps) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (steps is! List) return null;
     int i = 1;
     return steps.map((step) {
@@ -1191,7 +1580,7 @@ class _RecipeDetailSheet extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 12,
-              backgroundColor: Colors.orange[100],
+              backgroundColor: isDark ? Colors.orange.withOpacity(0.2) : Colors.orange[100],
               child: Text(
                 '${i++}',
                 style: const TextStyle(
