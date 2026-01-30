@@ -1119,7 +1119,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       BottomNavigationBarItem(
         key: _recipesKey,
-        icon: const Icon(CupertinoIcons.book),
+        icon: const Icon(Icons.soup_kitchen_outlined),
         label: AppLocalizations.of(context)!.recipesTitle,
       ),
       BottomNavigationBarItem(
@@ -1333,7 +1333,7 @@ Widget _buildAndroidLayout() {
             label: AppLocalizations.of(context)!.logs,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.menu_book),
+            icon: const Icon(Icons.soup_kitchen_outlined),
             label: AppLocalizations.of(context)!.recipesTitle,
             key: _recipesKey,
           ),

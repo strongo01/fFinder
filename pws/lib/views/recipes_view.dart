@@ -179,7 +179,8 @@ class _RecipesScreenState extends State<RecipesScreen>
               List<dynamic>? options,
               Function(String) onToggle,
             ) {
-              if (options == null || options.isEmpty) return const SizedBox.shrink();
+              if (options == null || options.isEmpty)
+                return const SizedBox.shrink();
               return Wrap(
                 spacing: 8,
                 runSpacing: 4,
@@ -233,12 +234,18 @@ class _RecipesScreenState extends State<RecipesScreen>
                     spacing: 8,
                     children: cats.entries.map((entry) {
                       bool isActive = false;
-                      if (entry.key == 'kitchens') isActive = _currentFilters.kitchens.isNotEmpty;
-                      if (entry.key == 'courses') isActive = _currentFilters.courses.isNotEmpty;
-                      if (entry.key == 'tags') isActive = _currentFilters.tags.isNotEmpty;
-                      if (entry.key == 'difficulties') isActive = _currentFilters.difficulties.isNotEmpty;
-                      if (entry.key == 'kcal') isActive = _currentFilters.maxKcal != null;
-                      if (entry.key == 'prepTime') isActive = _currentFilters.maxPrepTime != null;
+                      if (entry.key == 'kitchens')
+                        isActive = _currentFilters.kitchens.isNotEmpty;
+                      if (entry.key == 'courses')
+                        isActive = _currentFilters.courses.isNotEmpty;
+                      if (entry.key == 'tags')
+                        isActive = _currentFilters.tags.isNotEmpty;
+                      if (entry.key == 'difficulties')
+                        isActive = _currentFilters.difficulties.isNotEmpty;
+                      if (entry.key == 'kcal')
+                        isActive = _currentFilters.maxKcal != null;
+                      if (entry.key == 'prepTime')
+                        isActive = _currentFilters.maxPrepTime != null;
 
                       return ChoiceChip(
                         label: Text(entry.value),
@@ -246,15 +253,25 @@ class _RecipesScreenState extends State<RecipesScreen>
                         onSelected: (val) {
                           setSheetState(() {
                             if (!val) {
-                              if (entry.key == 'kitchens') _currentFilters.kitchens.clear();
-                              if (entry.key == 'courses') _currentFilters.courses.clear();
-                              if (entry.key == 'tags') _currentFilters.tags.clear();
-                              if (entry.key == 'difficulties') _currentFilters.difficulties.clear();
-                              if (entry.key == 'kcal') _currentFilters.maxKcal = null;
-                              if (entry.key == 'prepTime') _currentFilters.maxPrepTime = null;
-                                } else {
-                              if (entry.key == 'kcal') _currentFilters.maxKcal = _filterOptions!['max_kcal'] ?? 1500;
-                              if (entry.key == 'prepTime') _currentFilters.maxPrepTime = _filterOptions!['max_prep_time'] ?? 120;
+                              if (entry.key == 'kitchens')
+                                _currentFilters.kitchens.clear();
+                              if (entry.key == 'courses')
+                                _currentFilters.courses.clear();
+                              if (entry.key == 'tags')
+                                _currentFilters.tags.clear();
+                              if (entry.key == 'difficulties')
+                                _currentFilters.difficulties.clear();
+                              if (entry.key == 'kcal')
+                                _currentFilters.maxKcal = null;
+                              if (entry.key == 'prepTime')
+                                _currentFilters.maxPrepTime = null;
+                            } else {
+                              if (entry.key == 'kcal')
+                                _currentFilters.maxKcal =
+                                    _filterOptions!['max_kcal'] ?? 1500;
+                              if (entry.key == 'prepTime')
+                                _currentFilters.maxPrepTime =
+                                    _filterOptions!['max_prep_time'] ?? 120;
                             }
                           });
                         },
@@ -262,84 +279,148 @@ class _RecipesScreenState extends State<RecipesScreen>
                     }).toList(),
                   ),
                   const Divider(height: 32),
-                  
+
                   Expanded(
                     child: SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_currentFilters.kitchens.isNotEmpty || cats.keys.first == 'kitchens' && _currentFilters.kitchens.isEmpty && false) 
-                          ...[
-                             if (_currentFilters.kitchens.isNotEmpty || _currentFilters.isEmpty && false) Container(), 
+                          if (_currentFilters.kitchens.isNotEmpty ||
+                              cats.keys.first == 'kitchens' &&
+                                  _currentFilters.kitchens.isEmpty &&
+                                  false) ...[
+                            if (_currentFilters.kitchens.isNotEmpty ||
+                                _currentFilters.isEmpty && false)
+                              Container(),
                           ],
-                          
-                          if (_currentFilters.kitchens.isNotEmpty || _currentFilters.kitchens.isEmpty && false)
-                          ...[],
 
-                          if (_currentFilters.kitchens.isNotEmpty || cats.keys.toList().indexWhere((k)=>k=='kitchens') != -1 ) 
-                             _buildFilterSection(loc.recipesKitchens, _currentFilters.kitchens.isNotEmpty, 
-                             buildMultiSelect('kitchens', _currentFilters.kitchens, _filterOptions!['kitchens'], (v){
-                               setSheetState((){
-                                 if(_currentFilters.kitchens.contains(v)) _currentFilters.kitchens.remove(v);
-                                 else _currentFilters.kitchens.add(v);
-                               });
-                             })),
-                          
-                          _buildFilterSection(loc.recipesCourses, _currentFilters.courses.isNotEmpty, 
-                             buildMultiSelect('courses', _currentFilters.courses, _filterOptions!['courses'], (v){
-                               setSheetState((){
-                                 if(_currentFilters.courses.contains(v)) _currentFilters.courses.remove(v);
-                                 else _currentFilters.courses.add(v);
-                               });
-                             })),
+                          if (_currentFilters.kitchens.isNotEmpty ||
+                              _currentFilters.kitchens.isEmpty && false)
+                            ...[],
 
-                          _buildFilterSection('Tags', _currentFilters.tags.isNotEmpty, 
-                             buildMultiSelect('tags', _currentFilters.tags, _filterOptions!['tags'], (v){
-                               setSheetState((){
-                                 if(_currentFilters.tags.contains(v)) _currentFilters.tags.remove(v);
-                                 else _currentFilters.tags.add(v);
-                               });
-                             })),
+                          if (_currentFilters.kitchens.isNotEmpty ||
+                              cats.keys.toList().indexWhere(
+                                    (k) => k == 'kitchens',
+                                  ) !=
+                                  -1)
+                            _buildFilterSection(
+                              loc.recipesKitchens,
+                              _currentFilters.kitchens.isNotEmpty,
+                              buildMultiSelect(
+                                'kitchens',
+                                _currentFilters.kitchens,
+                                _filterOptions!['kitchens'],
+                                (v) {
+                                  setSheetState(() {
+                                    if (_currentFilters.kitchens.contains(v))
+                                      _currentFilters.kitchens.remove(v);
+                                    else
+                                      _currentFilters.kitchens.add(v);
+                                  });
+                                },
+                              ),
+                            ),
 
-                          _buildFilterSection(loc.recipesDetailDifficulty, _currentFilters.difficulties.isNotEmpty, 
-                             buildMultiSelect('difficulties', _currentFilters.difficulties, _filterOptions!['difficulties'], (v){
-                               setSheetState((){
-                                 if(_currentFilters.difficulties.contains(v)) _currentFilters.difficulties.remove(v);
-                                 else _currentFilters.difficulties.add(v);
-                               });
-                             })),
+                          _buildFilterSection(
+                            loc.recipesCourses,
+                            _currentFilters.courses.isNotEmpty,
+                            buildMultiSelect(
+                              'courses',
+                              _currentFilters.courses,
+                              _filterOptions!['courses'],
+                              (v) {
+                                setSheetState(() {
+                                  if (_currentFilters.courses.contains(v))
+                                    _currentFilters.courses.remove(v);
+                                  else
+                                    _currentFilters.courses.add(v);
+                                });
+                              },
+                            ),
+                          ),
 
-                          _buildFilterSection(loc.recipesDetailKcal, _currentFilters.maxKcal != null, 
-                             Column(
-                               crossAxisAlignment: CrossAxisAlignment.start,
-                               children: [
-                                 Text('Max: ${_currentFilters.maxKcal} kcal'),
-                                 Slider(
-                                   value: (_currentFilters.maxKcal ?? 1500).toDouble(),
-                                   min: 0,
-                                   max: (_filterOptions!['max_kcal'] ?? 1500).toDouble(),
-                                   divisions: 20,
-                                   activeColor: Colors.orange,
-                                   onChanged: (v) => setSheetState(() => _currentFilters.maxKcal = v.round()),
-                                 ),
-                               ],
-                             )),
+                          _buildFilterSection(
+                            'Tags',
+                            _currentFilters.tags.isNotEmpty,
+                            buildMultiSelect(
+                              'tags',
+                              _currentFilters.tags,
+                              _filterOptions!['tags'],
+                              (v) {
+                                setSheetState(() {
+                                  if (_currentFilters.tags.contains(v))
+                                    _currentFilters.tags.remove(v);
+                                  else
+                                    _currentFilters.tags.add(v);
+                                });
+                              },
+                            ),
+                          ),
 
-                          _buildFilterSection(loc.recipesDetailPreparationTime, _currentFilters.maxPrepTime != null, 
-                             Column(
-                               crossAxisAlignment: CrossAxisAlignment.start,
-                               children: [
-                                 Text('Max: ${_currentFilters.maxPrepTime} min'),
-                                 Slider(
-                                   value: (_currentFilters.maxPrepTime ?? 120).toDouble(),
-                                   min: 0,
-                                   max: (_filterOptions!['max_prep_time'] ?? 120).toDouble(),
-                                   divisions: 12,
-                                   activeColor: Colors.orange,
-                                   onChanged: (v) => setSheetState(() => _currentFilters.maxPrepTime = v.round()),
-                                 ),
-                               ],
-                             )),
+                          _buildFilterSection(
+                            loc.recipesDetailDifficulty,
+                            _currentFilters.difficulties.isNotEmpty,
+                            buildMultiSelect(
+                              'difficulties',
+                              _currentFilters.difficulties,
+                              _filterOptions!['difficulties'],
+                              (v) {
+                                setSheetState(() {
+                                  if (_currentFilters.difficulties.contains(v))
+                                    _currentFilters.difficulties.remove(v);
+                                  else
+                                    _currentFilters.difficulties.add(v);
+                                });
+                              },
+                            ),
+                          ),
+
+                          _buildFilterSection(
+                            loc.recipesDetailKcal,
+                            _currentFilters.maxKcal != null,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Max: ${_currentFilters.maxKcal} kcal'),
+                                Slider(
+                                  value: (_currentFilters.maxKcal ?? 1500)
+                                      .toDouble(),
+                                  min: 0,
+                                  max: (_filterOptions!['max_kcal'] ?? 1500)
+                                      .toDouble(),
+                                  divisions: 20,
+                                  activeColor: Colors.orange,
+                                  onChanged: (v) => setSheetState(
+                                    () => _currentFilters.maxKcal = v.round(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          _buildFilterSection(
+                            loc.recipesDetailPreparationTime,
+                            _currentFilters.maxPrepTime != null,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Max: ${_currentFilters.maxPrepTime} min'),
+                                Slider(
+                                  value: (_currentFilters.maxPrepTime ?? 120)
+                                      .toDouble(),
+                                  min: 0,
+                                  max: (_filterOptions!['max_prep_time'] ?? 120)
+                                      .toDouble(),
+                                  divisions: 12,
+                                  activeColor: Colors.orange,
+                                  onChanged: (v) => setSheetState(
+                                    () =>
+                                        _currentFilters.maxPrepTime = v.round(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -358,13 +439,25 @@ class _RecipesScreenState extends State<RecipesScreen>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Toepassen', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Toepassen',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   TextButton(
                     onPressed: () {
                       setSheetState(() => _currentFilters.reset());
                     },
-                    child: Text('Filters wissen', style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey)),
+                    child: Text(
+                      'Filters wissen',
+                      style: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.grey,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -382,7 +475,10 @@ class _RecipesScreenState extends State<RecipesScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           child,
         ],
@@ -496,9 +592,7 @@ class _RecipesScreenState extends State<RecipesScreen>
     });
 
     try {
-      final queryParams = <String, dynamic>{
-        'query': query,
-      };
+      final queryParams = <String, dynamic>{'query': query};
 
       if (_currentFilters.kitchens.isNotEmpty) {
         queryParams['kitchen'] = _currentFilters.kitchens;
@@ -519,9 +613,9 @@ class _RecipesScreenState extends State<RecipesScreen>
         queryParams['max_prep_time'] = _currentFilters.maxPrepTime.toString();
       }
 
-      final uri = Uri.parse('$apiBase/recipes/search').replace(
-        queryParameters: queryParams,
-      );
+      final uri = Uri.parse(
+        '$apiBase/recipes/search',
+      ).replace(queryParameters: queryParams);
 
       final res = await http.get(uri, headers: _headers);
       debugPrint('SEARCH status=${res.statusCode} body=${res.body}');
@@ -725,203 +819,216 @@ class _RecipesScreenState extends State<RecipesScreen>
         body: SafeArea(
           child: Column(
             children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: loc.recipesSearchHint,
-                  prefixIcon: const Icon(Icons.search, color: Colors.orange),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_searchController.text.isNotEmpty ||
-                          _isSearchMode ||
-                          !_currentFilters.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: loc.recipesSearchHint,
+                    prefixIcon: const Icon(Icons.search, color: Colors.orange),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_searchController.text.isNotEmpty ||
+                            _isSearchMode ||
+                            !_currentFilters.isEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              _currentFilters.reset();
+                              _loadInitialRecipes();
+                            },
+                          ),
                         IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            _currentFilters.reset();
-                            _loadInitialRecipes();
+                          icon: Icon(
+                            Icons.filter_list,
+                            color: _currentFilters.isEmpty
+                                ? Colors.grey
+                                : Colors.orange,
+                          ),
+                          onPressed: _showFilterSheet,
+                        ),
+                      ],
+                    ),
+                    filled: true,
+                    fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  ),
+                  onSubmitted: (val) => _performSearch(val),
+                  onChanged: (val) => setState(() {}),
+                ),
+              ),
+
+              Expanded(
+                child: Center(
+                  child: _isLoading
+                      ? const CircularProgressIndicator()
+                      : _loadError != null
+                      ? Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.restaurant_menu_outlined,
+                                size: 80,
+                                color: isDark
+                                    ? Colors.grey[700]
+                                    : Colors.grey[300],
+                              ),
+                              const SizedBox(height: 24),
+                              Text(
+                                _loadError!,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: isDark
+                                      ? Colors.grey[300]
+                                      : Colors.grey[700],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              ElevatedButton.icon(
+                                onPressed: _loadInitialRecipes,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.refresh),
+                                label: Text(loc.recipesRetry),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _recipes.isEmpty
+                      ? (_isFetchingMore
+                            ? const CircularProgressIndicator()
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _isSearchMode
+                                        ? Icons.check_circle_outline
+                                        : Icons.error_outline,
+                                    size: 64,
+                                    color: isDark
+                                        ? Colors.grey[700]
+                                        : Colors.grey[300],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _isSearchMode
+                                        ? loc.recipesNoMoreSearchResults
+                                        : loc.recipesErrorNoMoreRecipes,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.grey[400]
+                                          : Colors.grey[600],
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  ElevatedButton.icon(
+                                    onPressed: _loadInitialRecipes,
+                                    icon: const Icon(Icons.refresh),
+                                    label: Text(loc.recipesRetry),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ))
+                      : LayoutBuilder(
+                          builder: (context, c) {
+                            final visible = math.min(3, _recipes.length);
+                            return SizedBox(
+                              width: math.min(380, c.maxWidth * 0.85),
+                              height: math.min(580, c.maxHeight * 0.8),
+                              child: Stack(
+                                children: List.generate(visible, (i) {
+                                  final recipe = _recipes[i];
+                                  final isTop = i == 0;
+
+                                  Widget card = _recipeCard(recipe);
+
+                                  if (isTop) {
+                                    card = GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onPanUpdate: (d) {
+                                        setState(() {
+                                          _dragOffset += d.delta;
+                                          _dragRotation =
+                                              _dragOffset.dx *
+                                              _rotationMultiplier;
+                                        });
+                                      },
+                                      onPanEnd: (d) => _onPanEnd(d),
+                                      onTap: () {
+                                        debugPrint(
+                                          'Tapped recipe: ${recipe['id']}',
+                                        );
+                                        _showDetails(recipe);
+                                      },
+                                      child: Transform.translate(
+                                        offset: _dragOffset,
+                                        child: Transform.rotate(
+                                          angle: _dragRotation,
+                                          child: card,
+                                        ),
+                                      ),
+                                    );
+                                  }
+
+                                  return Positioned.fill(child: card);
+                                }).reversed.toList(),
+                              ),
+                            );
                           },
                         ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.filter_list,
-                          color: _currentFilters.isEmpty
-                              ? Colors.grey
-                              : Colors.orange,
-                        ),
-                        onPressed: _showFilterSheet,
-                      ),
-                    ],
-                  ),
-                  filled: true,
-                  fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 ),
-                onSubmitted: (val) => _performSearch(val),
-                onChanged: (val) => setState(() {}),
               ),
-            ),
 
-            Expanded(
-              child: Center(
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : _loadError != null
-                    ? Padding(
-                        padding: const EdgeInsets.all(32.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.restaurant_menu_outlined,
-                              size: 80,
-                              color: isDark ? Colors.grey[700] : Colors.grey[300],
-                            ),
-                            const SizedBox(height: 24),
-                            Text(
-                              _loadError!,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: isDark ? Colors.grey[300] : Colors.grey[700],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 32),
-                            ElevatedButton.icon(
-                              onPressed: _loadInitialRecipes,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              icon: const Icon(Icons.refresh),
-                              label: Text(loc.recipesRetry),
-                            ),
-                          ],
-                        ),
-                      )
-                    : _recipes.isEmpty
-                    ? (_isFetchingMore
-                          ? const CircularProgressIndicator()
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                  Icon(
-                                  _isSearchMode ? Icons.check_circle_outline : Icons.error_outline,
-                                  size: 64,
-                                  color: isDark ? Colors.grey[700] : Colors.grey[300],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  _isSearchMode ? loc.recipesNoMoreSearchResults : loc.recipesErrorNoMoreRecipes,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                ElevatedButton.icon(
-                                  onPressed: _loadInitialRecipes,
-                                  icon: const Icon(Icons.refresh),
-                                  label: Text(loc.recipesRetry),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.orange,
-                                    foregroundColor: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ))
-                    : LayoutBuilder(
-                        builder: (context, c) {
-                          final visible = math.min(3, _recipes.length);
-                          return SizedBox(
-                            width: math.min(380, c.maxWidth * 0.85),
-                            height: math.min(580, c.maxHeight * 0.8),
-                            child: Stack(
-                              children: List.generate(visible, (i) {
-                                final recipe = _recipes[i];
-                                final isTop = i == 0;
-
-                                Widget card = _recipeCard(recipe);
-
-                                if (isTop) {
-                                  card = GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onPanUpdate: (d) {
-                                      setState(() {
-                                        _dragOffset += d.delta;
-                                        _dragRotation =
-                                            _dragOffset.dx *
-                                            _rotationMultiplier;
-                                      });
-                                    },
-                                    onPanEnd: (d) => _onPanEnd(d),
-                                    onTap: () {
-                                      debugPrint(
-                                        'Tapped recipe: ${recipe['id']}',
-                                      );
-                                      _showDetails(recipe);
-                                    },
-                                    child: Transform.translate(
-                                      offset: _dragOffset,
-                                      child: Transform.rotate(
-                                        angle: _dragRotation,
-                                        child: card,
-                                      ),
-                                    ),
-                                  );
-                                }
-
-                                return Positioned.fill(child: card);
-                              }).reversed.toList(),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ),
-
-            if (_recipes.isNotEmpty && !_isLoading) ...[
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  FloatingActionButton(
-                    heroTag: 'dislike',
-                    backgroundColor: Colors.red,
-                    onPressed: () => _triggerSwipe(_SwipeDirection.left),
-                    child: const Icon(Icons.close),
-                  ),
-                  FloatingActionButton(
-                    heroTag: 'like',
-                    backgroundColor: Colors.green,
-                    onPressed: () => _triggerSwipe(_SwipeDirection.right),
-                    child: const Icon(Icons.check),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
+              if (_recipes.isNotEmpty && !_isLoading) ...[
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    FloatingActionButton(
+                      heroTag: 'dislike',
+                      backgroundColor: Colors.red,
+                      onPressed: () => _triggerSwipe(_SwipeDirection.left),
+                      child: const Icon(Icons.close),
+                    ),
+                    FloatingActionButton(
+                      heroTag: 'like',
+                      backgroundColor: Colors.green,
+                      onPressed: () => _triggerSwipe(_SwipeDirection.right),
+                      child: const Icon(Icons.check),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
             ],
-          ],
+          ),
         ),
       ),
-    ));
+    );
   }
 
   Widget _recipeCard(Map<String, dynamic> r) {
@@ -1185,13 +1292,16 @@ class _RecipeDetailSheet extends StatelessWidget {
         (detail['image_link'] ?? detail['image_url'] ?? detail['image'] ?? '')
             .toString();
 
-    if (imageUrl.isEmpty || imageUrl == 'null' || imageUrl.contains('placehold.co')) {
+    if (imageUrl.isEmpty ||
+        imageUrl == 'null' ||
+        imageUrl.contains('placehold.co')) {
       final slug = title
           .toLowerCase()
           .trim()
           .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
           .replaceAll(RegExp(r'\s+'), '-');
-      imageUrl = 'https://www.boodschappen.nl/app/uploads/recipe_images/4by3_header@2x/$slug.jpg';
+      imageUrl =
+          'https://www.boodschappen.nl/app/uploads/recipe_images/4by3_header@2x/$slug.jpg';
     }
 
     return DraggableScrollableSheet(
@@ -1331,8 +1441,16 @@ class _RecipeDetailSheet extends StatelessWidget {
                         spacing: 20,
                         runSpacing: 12,
                         children: [
-                          _nutriSmall(context, loc.recipesDetailFat, detail['fat']),
-                          _nutriSmall(context, loc.recipesDetailCarbs, detail['carbs']),
+                          _nutriSmall(
+                            context,
+                            loc.recipesDetailFat,
+                            detail['fat'],
+                          ),
+                          _nutriSmall(
+                            context,
+                            loc.recipesDetailCarbs,
+                            detail['carbs'],
+                          ),
                           _nutriSmall(
                             context,
                             loc.recipesDetailProtein,
@@ -1357,7 +1475,10 @@ class _RecipeDetailSheet extends StatelessWidget {
                       if (detail['kitchens'] != null ||
                           detail['courses'] != null ||
                           detail['tags'] != null) ...[
-                        _sectionTitle(context, loc.recipesDetailCharacteristics),
+                        _sectionTitle(
+                          context,
+                          loc.recipesDetailCharacteristics,
+                        ),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
@@ -1367,7 +1488,9 @@ class _RecipeDetailSheet extends StatelessWidget {
                               ...(detail['kitchens'] as List).map(
                                 (k) => _chipTag(
                                   k['name'] ?? '',
-                                  isDark ? Colors.blue.withOpacity(0.2) : Colors.blue[50]!,
+                                  isDark
+                                      ? Colors.blue.withOpacity(0.2)
+                                      : Colors.blue[50]!,
                                   isDark ? Colors.blue[200]! : Colors.blue,
                                 ),
                               ),
@@ -1375,7 +1498,9 @@ class _RecipeDetailSheet extends StatelessWidget {
                               ...(detail['courses'] as List).map(
                                 (c) => _chipTag(
                                   c['main'] ?? '',
-                                  isDark ? Colors.green.withOpacity(0.2) : Colors.green[50]!,
+                                  isDark
+                                      ? Colors.green.withOpacity(0.2)
+                                      : Colors.green[50]!,
                                   isDark ? Colors.green[200]! : Colors.green,
                                 ),
                               ),
@@ -1383,7 +1508,9 @@ class _RecipeDetailSheet extends StatelessWidget {
                               ...(detail['tags'] as List).map(
                                 (t) => _chipTag(
                                   t['sub'] ?? t['name'] ?? '',
-                                  isDark ? Colors.orange.withOpacity(0.2) : Colors.orange[50]!,
+                                  isDark
+                                      ? Colors.orange.withOpacity(0.2)
+                                      : Colors.orange[50]!,
                                   isDark ? Colors.orange[200]! : Colors.orange,
                                 ),
                               ),
@@ -1472,7 +1599,9 @@ class _RecipeDetailSheet extends StatelessWidget {
     if (reqs is! List) return null;
     return reqs.map((r) {
       final name = r['name_singular'] ?? r['name_plural'] ?? '';
-      final variant = r['variant_name'] != null ? ' (${r['variant_name']})' : '';
+      final variant = r['variant_name'] != null
+          ? ' (${r['variant_name']})'
+          : '';
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
@@ -1501,7 +1630,12 @@ class _RecipeDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _infoItem(BuildContext context, IconData icon, String value, String label) {
+  Widget _infoItem(
+    BuildContext context,
+    IconData icon,
+    String value,
+    String label,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
@@ -1522,7 +1656,12 @@ class _RecipeDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _nutriSmall(BuildContext context, String label, dynamic value, {String unit = 'g'}) {
+  Widget _nutriSmall(
+    BuildContext context,
+    String label,
+    dynamic value, {
+    String unit = 'g',
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     if (value == null) return const SizedBox.shrink();
     return Column(
@@ -1580,7 +1719,9 @@ class _RecipeDetailSheet extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 12,
-              backgroundColor: isDark ? Colors.orange.withOpacity(0.2) : Colors.orange[100],
+              backgroundColor: isDark
+                  ? Colors.orange.withOpacity(0.2)
+                  : Colors.orange[100],
               child: Text(
                 '${i++}',
                 style: const TextStyle(
