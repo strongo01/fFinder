@@ -68,6 +68,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   final TextEditingController _searchController = TextEditingController();
   final RecipeFilters _currentFilters = RecipeFilters();
   Map<String, dynamic>? _filterOptions;
+  final Set<String> _expandedFilterSections = {};
 
   Offset _dragOffset = Offset.zero;
   double _dragRotation = 0.0;
@@ -246,12 +247,20 @@ class _RecipesScreenState extends State<RecipesScreen>
                         isActive = _currentFilters.maxKcal != null;
                       if (entry.key == 'prepTime')
                         isActive = _currentFilters.maxPrepTime != null;
-
+                      if (!isActive &&
+                          _expandedFilterSections.contains(entry.key)) {
+                        isActive = true;
+                      }
                       return ChoiceChip(
                         label: Text(entry.value),
                         selected: isActive,
                         onSelected: (val) {
                           setSheetState(() {
+                            if (val)
+                              _expandedFilterSections.add(entry.key);
+                            else
+                              _expandedFilterSections.remove(entry.key);
+
                             if (!val) {
                               if (entry.key == 'kitchens')
                                 _currentFilters.kitchens.clear();
@@ -298,14 +307,12 @@ class _RecipesScreenState extends State<RecipesScreen>
                               _currentFilters.kitchens.isEmpty && false)
                             ...[],
 
-                          if (_currentFilters.kitchens.isNotEmpty ||
-                              cats.keys.toList().indexWhere(
-                                    (k) => k == 'kitchens',
-                                  ) !=
-                                  -1)
+                          if (_filterOptions != null &&
+                              (_filterOptions!['kitchens'] != null))
                             _buildFilterSection(
                               loc.recipesKitchens,
-                              _currentFilters.kitchens.isNotEmpty,
+                              _expandedFilterSections.contains('kitchens') ||
+                                  _currentFilters.kitchens.isNotEmpty,
                               buildMultiSelect(
                                 'kitchens',
                                 _currentFilters.kitchens,
@@ -323,7 +330,9 @@ class _RecipesScreenState extends State<RecipesScreen>
 
                           _buildFilterSection(
                             loc.recipesCourses,
-                            _currentFilters.courses.isNotEmpty,
+                            _expandedFilterSections.contains('courses') ||
+                                _currentFilters.courses.isNotEmpty,
+
                             buildMultiSelect(
                               'courses',
                               _currentFilters.courses,
@@ -341,7 +350,8 @@ class _RecipesScreenState extends State<RecipesScreen>
 
                           _buildFilterSection(
                             'Tags',
-                            _currentFilters.tags.isNotEmpty,
+                            _expandedFilterSections.contains('tags') ||
+                                _currentFilters.tags.isNotEmpty,
                             buildMultiSelect(
                               'tags',
                               _currentFilters.tags,
@@ -359,7 +369,9 @@ class _RecipesScreenState extends State<RecipesScreen>
 
                           _buildFilterSection(
                             loc.recipesDetailDifficulty,
-                            _currentFilters.difficulties.isNotEmpty,
+                            _expandedFilterSections.contains('difficulties') ||
+                                _currentFilters.difficulties.isNotEmpty,
+
                             buildMultiSelect(
                               'difficulties',
                               _currentFilters.difficulties,
@@ -377,7 +389,9 @@ class _RecipesScreenState extends State<RecipesScreen>
 
                           _buildFilterSection(
                             loc.recipesDetailKcal,
-                            _currentFilters.maxKcal != null,
+                            _expandedFilterSections.contains('kcal') ||
+                                _currentFilters.maxKcal != null,
+
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -400,7 +414,9 @@ class _RecipesScreenState extends State<RecipesScreen>
 
                           _buildFilterSection(
                             loc.recipesDetailPreparationTime,
-                            _currentFilters.maxPrepTime != null,
+                            _expandedFilterSections.contains('prepTime') ||
+                                _currentFilters.maxPrepTime != null,
+
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -450,7 +466,10 @@ class _RecipesScreenState extends State<RecipesScreen>
                   ),
                   TextButton(
                     onPressed: () {
-                      setSheetState(() => _currentFilters.reset());
+                      setSheetState(() {
+                        _currentFilters.reset();
+                        _expandedFilterSections.clear();
+                      });
                     },
                     child: Text(
                       'Filters wissen',
@@ -636,24 +655,52 @@ class _RecipesScreenState extends State<RecipesScreen>
       }
 
       final limitedResults = results.take(30).toList();
-      final detailFutures = limitedResults.map((r) {
+      final detailFutures = limitedResults.map<Future<Map<String, dynamic>>>((
+        r,
+      ) {
         final id = r['id']?.toString();
-        if (id == null) return Future.value(null);
-        return _getRecipeDetail(id);
+        if (id == null) return Future.value(r);
+        return _getRecipeDetail(id).then((d) => d ?? r);
       }).toList();
-
       final details = await Future.wait(detailFutures);
       final List<Map<String, dynamic>> detailedRecipes = [];
       for (var d in details) {
-        if (d != null) detailedRecipes.add(d);
+        detailedRecipes.add(d);
       }
+      if (_currentFilters.maxKcal != null) {
+        final maxKcal = _currentFilters.maxKcal!;
+        detailedRecipes.removeWhere((r) {
+          final kcalRaw = r['kcal'];
+          if (kcalRaw == null) return true; // exclude unknown kcal
+          try {
+            final kcal = kcalRaw is num
+                ? kcalRaw
+                : num.parse(kcalRaw.toString());
+            return kcal > maxKcal;
+          } catch (_) {
+            return true;
+          }
+        });
+      }
+      debugPrint(
+        'SEARCH results=${results.length} details=${detailedRecipes.length}',
+      );
 
       final loc = AppLocalizations.of(context)!;
       setState(() {
         if (detailedRecipes.isEmpty) {
-          _loadError = results.isEmpty
-              ? loc.recipesNoResultsFound(query)
-              : loc.recipesErrorLoadingDetails;
+          if (results.isEmpty) {
+            _loadError = loc.recipesNoResultsFound(query);
+          } else {
+            // fallback: use search results when details are unavailable
+            for (final r in results) {
+              final id = r['id']?.toString();
+              if (id != null) {
+                _recipes.add(r);
+                _shownIds.add(id);
+              }
+            }
+          }
         } else {
           for (final r in detailedRecipes) {
             final id = r['id']?.toString();
@@ -678,11 +725,12 @@ class _RecipesScreenState extends State<RecipesScreen>
 
   Future<Map<String, dynamic>?> _getRecipeDetail(String id) async {
     final res = await http.get(
-      Uri.parse('$apiBase/recipes/$id'),
+      Uri.parse('$apiBase/recipes/get/$id'),
       headers: _headers,
     );
+    debugPrint('DETAIL $id status=${res.statusCode} body=${res.body}');
     if (res.statusCode != 200) return null;
-    return json.decode(res.body);
+    return json.decode(res.body) as Map<String, dynamic>;
   }
 
   Future<void> _rateRecipe(int recipeId, int rating) async {
