@@ -313,10 +313,10 @@
     "recipesIngredients": "Ingrédients",
     "recipesSteps": "Étapes de préparation",
     "recipesSearchHint": "Rechercher par ingrédient ou plat...",
-    "recipesErrorNoRecommendations": "Erreur serveur : aucune recommandation reçue",
-    "recipesError502": "Serveur actuellement inaccessible (502). Veuillez réessayer plus tard.",
-    "recipesErrorLoading": "Erreur lors du chargement : ",
-    "recipesNoResultsFound": "Aucune recette trouvée pour \"{query}\"",
+    "recipesErrorNoRecommendations": "Erreur serveur : aucune recommandation reçue. Veuillez réessayer plus tard.",
+    "recipesError502": "Le serveur est actuellement indisponible (502). Veuillez réessayer plus tard.",
+    "recipesErrorLoading": "Erreur de chargement (veuillez réessayer plus tard) : ",
+    "recipesNoResultsFound": "Aucun résultat trouvé pour \"{query}\"",
     "@recipesNoResultsFound": {
       "placeholders": {
         "query": {
@@ -324,14 +324,14 @@
         }
       }
     },
-    "recipesErrorLoadingDetails": "Impossible de charger les détails des recettes trouvées",
-    "recipesErrorSearchFailed": "La recherche a échoué : ",
-    "recipesErrorNoMoreRecipes": "Erreur serveur : plus de recettes disponibles",
+    "recipesErrorLoadingDetails": "Impossible de charger les détails des recettes trouvées. Veuillez réessayer plus tard.",
+    "recipesErrorSearchFailed": "Échec de la recherche (veuillez réessayer plus tard) : ",
+    "recipesErrorNoMoreRecipes": "Erreur serveur : plus de recettes disponibles. Veuillez réessayer plus tard.",
     "recipesNoMoreSearchResults": "Vous avez vu tous les résultats pour cette recherche.",
     "recipesRetry": "Réessayer",
     "recipesDetailCharacteristics": "Caractéristiques",
     "recipesDetailRequirements": "Équipements",
-    "recipesErrorServer": "Erreur serveur ({status})",
+    "recipesErrorServer": "Erreur serveur ({status}). Veuillez réessayer plus tard.",
     "@recipesErrorServer": {
       "placeholders": {
         "status": {
@@ -785,6 +785,11 @@
 "setAppVersionSubtitle": "Modifier le champ version dans Firestore",
 "versionLabel": "Version",
 "versionUpdated": "Version mise à jour :",
+"maintenanceTitle": "Mode maintenance",
+"maintenanceSubtitle": "Mettre l'application en maintenance (sauf pour les administrateurs)",
+"maintenanceModeTitle": "Mode maintenance",
+"maintenanceScreenTitle": "Maintenance en cours",
+"maintenanceDescription": "Nous travaillons actuellement à l'amélioration de fFinder. L'application est temporairement indisponible. Veuillez réessayer plus tard.",
 "bmiForChildrenTitle": "Info IMC enfants",
 "bmiForChildrenExplanation": "L'IMC des enfants est calculé en fonction de l'âge, du sexe, de la taille et du poids. Au lieu de limites fixes, cette application utilise des percentiles d'IMC, ce qui rend l'évaluation mieux adaptée à la croissance des enfants. De petites différences avec d'autres tableaux d'IMC sont normales.",
 "privacyPolicy": "Cliquez pour consulter la politique de confidentialité",
@@ -825,7 +830,52 @@
   "disclaimerText": "Cette application fournit des informations générales sur la nutrition, l’hydratation, l’activité physique et le poids, basées sur des sources scientifiques et des recommandations publiques. Les informations et calculs fournis par cette application sont uniquement destinés à des fins informatives et ne constituent pas un avis médical. Cette application ne remplace en aucun cas un avis médical professionnel, un diagnostic ou un traitement. En cas de questions ou de préoccupations concernant votre santé, consultez toujours un médecin ou un professionnel de santé qualifié. L’utilisation de cette application et l’interprétation des données affichées relèvent entièrement de la responsabilité de l’utilisateur.",
   "disclaimer": "Clause de non-responsabilité",
   "cannotOpenLink": "Impossible d’ouvrir le lien",
-  "bronnen": "Sources"
+  "bronnen": "Sources",
+  "playWaitingGame": "Jouer au jeu d'attente",
+  "sessionExpiresIn": "La session expire dans : {seconds}s",
+  "@sessionExpiresIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "fetching": "Récupération...",
+  "sessionExpired": "Session expirée en raison de l'inactivité.",
+  "loadingFilters": "Chargement des filtres...",
+  "filterByCategory": "Filtrer par catégorie :",
+  "apply": "Appliquer",
+  "clearFilters": "Effacer les filtres",
+  "waitingForTurn": "En attente de votre tour...",
+  "queuePosition": "Vous êtes en position {pos} dans la file d'attente",
+  "@queuePosition": {
+    "placeholders": {
+      "pos": {
+        "type": "int"
+      }
+    }
+  },
+  "inactivityCheck": "Contrôle d'inactivité : {seconds}s",
+  "@inactivityCheck": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "imStillHere": "Je suis toujours là !",
+  "playGameOrWait": "Jouez au jeu ou appuyez sur le bouton pour continuer à attendre",
+  "gameScore": "Score : {score}",
+  "gameHighScore": "Record : {score}",
+  "@gameHighScore": {
+    "placeholders": {
+      "score": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "tapTheFood": "Appuyez sur la nourriture !"
 
 
 }

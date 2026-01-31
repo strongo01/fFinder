@@ -63,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey _feedbackKey = GlobalKey();
   final GlobalKey _settingsKey = GlobalKey();
   final GlobalKey _weightKey = GlobalKey();
+  final ValueNotifier<int> _tabNotifier = ValueNotifier(0);
   bool _tutorialInitialized = false;
   bool _tutorialHomeAf = false;
 
@@ -737,8 +738,15 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       await remoteConfig.fetchAndActivate(); // haal nieuwste config op
-      if (!mounted) return;
+    } catch (e) {
+      debugPrint('Remote Config fetch error (safe to ignore if cancelled): $e');
+      // We gaan door als het geannuleerd is of faalt, zodat de app niet vastloopt
+    }
 
+    if (!mounted) return;
+
+    try {
+      final remoteConfig = FirebaseRemoteConfig.instance;
       /// controleer of widget nog bestaat
       final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
 
@@ -1130,7 +1138,15 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return CupertinoTabScaffold(
-      tabBar: CupertinoTabBar(items: items),
+      tabBar: CupertinoTabBar(
+        items: items,
+        onTap: (index) {
+          _tabNotifier.value = index;
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+      ),
       tabBuilder: (context, index) {
         if (index == 0) {
           return CupertinoPageScaffold(
@@ -1210,7 +1226,10 @@ class _HomeScreenState extends State<HomeScreen> {
             navigationBar: CupertinoNavigationBar(
               middle: Text(AppLocalizations.of(context)!.recipesTitle),
             ),
-            child: const RecipesScreen(),
+            child: RecipesScreen(
+              isActive: index == 1,
+              tabNotifier: _tabNotifier,
+            ),
           );
         } else {
           return CupertinoPageScaffold(
@@ -1251,7 +1270,10 @@ Widget _buildAndroidLayout() {
       );
       fab = _buildSpeedDial();
     } else if (effectiveIndex == 1) {
-      body = const RecipesScreen();
+      body = RecipesScreen(
+        isActive: effectiveIndex == 1,
+        tabNotifier: _tabNotifier,
+      );
       fab = null;
     } else {
       body = const WeightView();
@@ -1323,6 +1345,7 @@ Widget _buildAndroidLayout() {
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
         showUnselectedLabels: true,
         onTap: (index) {
+          _tabNotifier.value = index;
           setState(() {
             _selectedIndex = index;
           });

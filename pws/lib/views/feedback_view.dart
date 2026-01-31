@@ -16,11 +16,12 @@ class FeedbackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDarkMode ? Colors.teal[700]! : Colors.teal;
+    // In dark mode, lighter teal is more visible. In light mode, default teal is fine.
+    final baseColor = isDarkMode ? Colors.tealAccent.shade700 : Colors.teal;
 
     return FloatingActionButton(
       heroTag: 'feedback_btn',
-      backgroundColor: baseColor.withOpacity(0.7),
+      backgroundColor: baseColor.withOpacity(0.8),
       mini: true,
       onPressed: () => _openFeedbackSheet(context),
       child: Icon(Icons.feedback, color: Colors.white),
@@ -156,6 +157,12 @@ class FeedbackButton extends StatelessWidget {
                     displayLabel,
                   ),
                   hintStyle: TextStyle(color: hintColor),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: isDarkMode ? Colors.grey[700]! : Colors.grey,
+                    ),
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -453,8 +460,17 @@ class FeedbackButton extends StatelessWidget {
                   Widget buildTypeChip(String value, String label) { // bouw keuze chip
                     final bool selected = selectedType == value;
                     return ChoiceChip(
-                      label: Text(label),
+                      label: Text(
+                        label,
+                        style: TextStyle(
+                          color: selected
+                              ? (isDarkMode ? Colors.black : Colors.white)
+                              : (isDarkMode ? Colors.grey[300] : Colors.black),
+                        ),
+                      ),
                       selected: selected,
+                      selectedColor: isDarkMode ? Colors.tealAccent : Colors.teal,
+                      backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
                       onSelected: (_) { // update selectie
                         setState(() => selectedType = value);
                       },
@@ -598,6 +614,11 @@ class FeedbackButton extends StatelessWidget {
                           const SizedBox(height: 16),
                           DropdownButtonFormField<String>(
                             value: languageReported,
+                            dropdownColor: isDarkMode ? Colors.grey[800] : Colors.white,
+                            style: TextStyle(
+                                color: isDarkMode ? Colors.white : Colors.black,
+                                fontSize: 16,
+                            ),
                             items: const [
                               DropdownMenuItem(
                                 value: 'nl',
@@ -612,7 +633,7 @@ class FeedbackButton extends StatelessWidget {
                                 child: Text('Français (fr)'),
                               ),
                               DropdownMenuItem(
-                                value: 'en',
+                                value: 'de',
                                 child: Text('Deutsch (de)'),
                               ),
                             ],
@@ -621,6 +642,15 @@ class FeedbackButton extends StatelessWidget {
                             }),
                             decoration: InputDecoration(
                               labelText: loc.dropdownLabelLanguage,
+                              labelStyle: TextStyle(
+                                color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                  color: isDarkMode ? Colors.grey[600]! : Colors.grey,
+                                ),
+                              ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -644,6 +674,15 @@ class FeedbackButton extends StatelessWidget {
                                 ),
                                 decoration: InputDecoration(
                                   hintText: loc.messageHint,
+                                  hintStyle: TextStyle(
+                                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(
+                                      color: isDarkMode ? Colors.grey[600]! : Colors.grey,
+                                    ),
+                                  ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -664,6 +703,15 @@ class FeedbackButton extends StatelessWidget {
                                 ),
                                 decoration: InputDecoration(
                                   hintText: loc.emailHintOptional,
+                                  hintStyle: TextStyle(
+                                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(
+                                      color: isDarkMode ? Colors.grey[600]! : Colors.grey,
+                                    ),
+                                  ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -750,6 +798,7 @@ class AllFeedbackView extends StatelessWidget { // bekijk alle feedback (admin)
                   : loc.unknownDate;
 
               return Card(
+                color: Theme.of(context).cardColor,
                 margin: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Padding(
                   padding: const EdgeInsets.all(12.0),
@@ -956,6 +1005,7 @@ class AllRapportFeedbackView extends StatelessWidget { // bekijk alle rapport fe
               final comments = data['comments'] as Map<String, dynamic>? ?? {};
 
               return Card(
+                color: Theme.of(context).cardColor,
                 margin: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Padding(
                   padding: const EdgeInsets.all(12.0),
@@ -986,8 +1036,12 @@ class AllRapportFeedbackView extends StatelessWidget { // bekijk alle rapport fe
                                 flex: 2,
                                 child: Text(
                                   label,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.w500,
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Colors.white
+                                        : Colors.black,
                                   ),
                                 ),
                               ),

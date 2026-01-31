@@ -17,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../locale_notifier.dart';
 import '../l10n/app_localizations.dart';
+import 'waiting_game.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -54,6 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _saving = false;
   bool _deletingAccount = false;
   bool _isAdmin = false;
+  bool _maintenanceMode = false;
 
   final List<String> _activityOptionKeys = [
     'weinig_actief',
@@ -223,6 +225,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
     _loadProfile();
     _loadLocaleFromPrefs();
+    _loadMaintenanceMode();
+  }
+
+  Future<void> _loadMaintenanceMode() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('config')
+          .doc('general')
+          .get();
+      if (doc.exists) {
+        if (mounted) {
+          setState(() {
+            _maintenanceMode = doc.data()?['maintenance_mode'] ?? false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading maintenance mode: $e');
+    }
+  }
+
+  Future<void> _toggleMaintenanceMode(bool value) async {
+    try {
+      await FirebaseFirestore.instance.collection('config').doc('general').set({
+        'maintenance_mode': value,
+      }, SetOptions(merge: true));
+      if (mounted) {
+        setState(() {
+          _maintenanceMode = value;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fout bij opslaan: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _loadLocaleFromPrefs() async {
@@ -2128,32 +2168,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 ListTile(
-                                  leading: const Icon(Icons.campaign),
+                                  leading: Icon(
+                                    Icons.campaign,
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black54,
+                                  ),
                                   title: Text(
                                     AppLocalizations.of(
                                       context,
                                     )!.createAnnouncement,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
                                   ),
                                   subtitle: Text(
                                     AppLocalizations.of(
                                       context,
                                     )!.createAnnouncementSubtitle,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
                                   ),
-                                  onTap:
-                                      _showCreateAnnouncementDialog, // toon dialoog voor nieuwe aankondiging
+                                  onTap: _showCreateAnnouncementDialog,
                                 ),
                                 const Divider(),
                                 ListTile(
-                                  leading: const Icon(Icons.edit_note),
+                                  leading: Icon(
+                                    Icons.edit_note,
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black54,
+                                  ),
                                   title: Text(
                                     AppLocalizations.of(
                                       context,
                                     )!.manageAnnouncements,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
                                   ),
                                   subtitle: Text(
                                     AppLocalizations.of(
                                       context,
                                     )!.manageAnnouncementsSubtitle,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
                                   ),
                                   onTap: () {
                                     Navigator.of(context).push(
@@ -2172,7 +2241,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         ? Colors.white
                                         : Colors.black54,
                                   ),
-                                  tileColor: isDark ? Colors.grey[900] : null,
                                   title: Text(
                                     AppLocalizations.of(
                                       context,
@@ -2201,7 +2269,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           .instance
                                           .collection('version')
                                           .doc('version')
-                                          .get(); // haal huidige versie op
+                                          .get();
                                       if (snap.exists) {
                                         final data = snap.data();
                                         final current =
@@ -2309,7 +2377,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     );
 
                                     if (confirmed == true) {
-                                      // gebruiker heeft bevestigd
                                       final ver = versionController.text.trim();
                                       if (ver.isNotEmpty) {
                                         await FirebaseFirestore.instance
@@ -2334,17 +2401,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     }
                                   },
                                 ),
-
                                 const Divider(),
                                 ListTile(
-                                  leading: const Icon(Icons.edit_note),
+                                  leading: Icon(
+                                    Icons.key,
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black54,
+                                  ),
                                   title: Text(
                                     AppLocalizations.of(context)!.decryptValues,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
                                   ),
                                   subtitle: Text(
                                     AppLocalizations.of(
                                       context,
                                     )!.decryptValuesSubtitle,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
                                   ),
                                   onTap: () {
                                     Navigator.of(context).push(
@@ -2354,6 +2435,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                     );
                                   },
+                                ),
+                                const Divider(),
+                                SwitchListTile(
+                                  secondary: Icon(
+                                    Icons.handyman,
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black54,
+                                  ),
+                                  title: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.maintenanceTitle,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.maintenanceSubtitle,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                  value: _maintenanceMode,
+                                  onChanged: _toggleMaintenanceMode,
+                                  activeColor: theme.colorScheme.primary,
                                 ),
                               ],
                             ),
@@ -2415,6 +2528,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onPressed: _deletingAccount
                             ? null
                             : _confirmDeleteAccount,
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      OutlinedButton.icon(
+                        icon: Icon(
+                          Icons.games,
+                          color: colorScheme.primary,
+                        ),
+                        label: Text(
+                          AppLocalizations.of(context)!.playWaitingGame,
+                          style: TextStyle(color: colorScheme.primary),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: colorScheme.primary),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          foregroundColor: colorScheme.primary,
+                        ),
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+                              content: SizedBox(
+                                width: double.maxFinite,
+                                child: WaitingGame(onInteraction: () {}),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(),
+                                  child: Text(AppLocalizations.of(context)!.close),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 12),

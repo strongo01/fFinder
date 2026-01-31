@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode, kReleaseMode;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
 import 'locale_notifier.dart';
+import 'views/maintenance_view.dart';
 
 //start van de app
 Future<void> main() async {
@@ -171,83 +172,119 @@ class MyApp extends StatelessWidget {
             textTheme: GoogleFonts.nunitoTextTheme(Theme.of(context).textTheme),
           ),
           //controleert of de gebruiker al is ingelogd en of onboarding af is, ja: dan homescreen, nee: dan loginregisterscherm of onboardingview
-          home: StreamBuilder<User?>(
-            //luistert naar de authenticatie status
-            stream: FirebaseAuth.instance
-                .authStateChanges(), //stream van authenticatie veranderingen
-            builder: (context, snapshot) {
-              //builder functie die reageert op veranderingen in de stream
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                //wacht op de verbinding
-                return const Scaffold(
-                  //laat een laadscherm zien terwijl hij wacht
-                  body: Center(child: CircularProgressIndicator()),
-                );
-              }
+          home: const AuthWrapper(),
+        );
+      },
+    );
+  }
+}
 
-              if (snapshot.hasData) {
-                //als er een gebruiker is ingelogd
-                // Gebruiker is ingelogd, check nu Firestore voor onboardingaf
-                return FutureBuilder<DocumentSnapshot>(
-                  //haalt het document van de gebruiker op
-                  future: FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(snapshot.data!.uid)
-                      .get(),
-                  builder: (context, userDocSnapshot) {
-                    if (userDocSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Scaffold(
-                        body: Center(
-                          child: CircularProgressIndicator(),
-                        ), //laadscherm terwijl hij wacht
-                      );
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot>(
+      // Luister naar onderhoudsmodus configuratie
+      stream:
+          FirebaseFirestore.instance
+              .collection('config')
+              .doc('general')
+              .snapshots(),
+      builder: (context, maintenanceSnapshot) {
+        bool isMaintenance = false;
+        if (maintenanceSnapshot.hasData && maintenanceSnapshot.data!.exists) {
+          final data = maintenanceSnapshot.data!.data() as Map<String, dynamic>;
+          isMaintenance = data['maintenance_mode'] ?? false;
+        }
+
+        return StreamBuilder<User?>(
+          //luistert naar de authenticatie status
+          stream: FirebaseAuth.instance
+              .authStateChanges(), //stream van authenticatie veranderingen
+          builder: (context, snapshot) {
+            //builder functie die reageert op veranderingen in de stream
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              //wacht op de verbinding
+              return const Scaffold(
+                //laat een laadscherm zien terwijl hij wacht
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (snapshot.hasData) {
+              //als er een gebruiker is ingelogd
+              // Gebruiker is ingelogd, check nu Firestore voor onboardingaf en admin status
+              return FutureBuilder<DocumentSnapshot>(
+                //haalt het document van de gebruiker op
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(snapshot.data!.uid)
+                    .get(),
+                builder: (context, userDocSnapshot) {
+                  if (userDocSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Scaffold(
+                      body: Center(
+                        child: CircularProgressIndicator(),
+                      ), //laadscherm terwijl hij wacht
+                    );
+                  }
+
+                  if (userDocSnapshot.hasData && userDocSnapshot.data!.exists) {
+                    final data =
+                        userDocSnapshot.data!.data() as Map<String, dynamic>;
+
+                    // Check onderhoudsmodus
+                    final bool isAdmin = data['admin'] ?? false;
+                    if (isMaintenance && !isAdmin) {
+                      return const MaintenanceView();
                     }
 
-                    if (userDocSnapshot.hasData &&
-                        userDocSnapshot.data!.exists) {
-                      final data =
-                          userDocSnapshot.data!.data() as Map<String, dynamic>;
-                      final bool onboardingAf = data['onboardingaf'] == true;
+                    final bool onboardingAf = data['onboardingaf'] == true;
 
-                      // Lijst met alle velden die verplicht zijn na de onboarding.
-                      const requiredFields = [
-                        'firstName',
-                        'gender',
-                        'birthDate',
-                        'height',
-                        'weight',
-                        'calorieGoal',
-                        'proteinGoal',
-                        'fatGoal',
-                        'carbGoal',
-                        'bmi',
-                        'sleepHours',
-                        'targetWeight',
-                        'notificationsEnabled',
-                        'activityLevel',
-                        'goal',
-                      ];
+                    // Lijst met alle velden die verplicht zijn na de onboarding.
+                    const requiredFields = [
+                      'firstName',
+                      'gender',
+                      'birthDate',
+                      'height',
+                      'weight',
+                      'calorieGoal',
+                      'proteinGoal',
+                      'fatGoal',
+                      'carbGoal',
+                      'bmi',
+                      'sleepHours',
+                      'targetWeight',
+                      'notificationsEnabled',
+                      'activityLevel',
+                      'goal',
+                    ];
 
-                      // Controleer of alle verplichte velden bestaan in het document.
-                      final allFieldsPresent = requiredFields.every(
-                        (field) => data.containsKey(field),
-                      );
+                    // Controleer of alle verplichte velden bestaan in het document.
+                    final allFieldsPresent = requiredFields.every(
+                      (field) => data.containsKey(field),
+                    );
 
-                      if (onboardingAf && allFieldsPresent) {
-                        return const HomeScreen();
-                      }
+                    if (onboardingAf && allFieldsPresent) {
+                      return const HomeScreen();
                     }
+                  }
 
-                    return const OnboardingView();
-                  },
-                );
-              }
+                  return const OnboardingView();
+                },
+              );
+            }
 
-              // Niet ingelogd
-              return const LoginRegisterView();
-            },
-          ),
+             // Als niet ingelogd en onderhoudsmodus is aan -> toon onderhoud
+            if (isMaintenance) {
+               return const MaintenanceView();
+            }
+
+            // Niet ingelogd
+            return const LoginRegisterView();
+          },
         );
       },
     );

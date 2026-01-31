@@ -18,6 +18,7 @@ import 'edit_product_view.dart';
 import 'barcode_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_ai/firebase_ai.dart';
+import 'waiting_game.dart';
 
 enum SourceStatus { idle, loading, success, error } // status van zoekbron
 
@@ -117,6 +118,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
       Map<String, dynamic>? productData = widget
           .initialProductData; // de data van het product als die al bekend is (barcode)
       if (productData == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = true;
+          });
+        }
         try {
           final offUrl = Uri.parse(
             'https://nl.openfoodfacts.org/api/v0/product/${widget.scannedBarcode}.json',
@@ -221,6 +227,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
           debugPrint(
             "[ADD_FOOD_VIEW] OFF fetch failed in _handleInitialAction: $e",
           );
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
         }
       }
 
@@ -755,6 +767,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
             setState(() {
               _offStatus = SourceStatus.success;
               _searchResults = _rankProducts(merged, trimmed, take: 50);
+              // Als we al resultaten hebben van OFF, tonen we die vast (stop loading)
+              // Zelfs als fFinder nog bezig is.
+              _isLoading = false;
             });
           } else {
             // lege lijst => expliciet error zodat UI niet groen blijft
@@ -2190,17 +2205,20 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
         _showProductDetails(barcode, productData: productData);
       }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } else {
       debugPrint(
         "[ADD_FOOD_VIEW] Barcode scan cancelled or failed. Result: $res",
       );
-    }
-
-    // Verberg de laadindicator
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -2337,7 +2355,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
       ),
       body: Column(
         children: [
-          if (_isLoading) const LinearProgressIndicator(),
           if (_errorMessage != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -2396,6 +2413,30 @@ class _AddFoodPageState extends State<AddFoodPage> {
     if (_searchController.text.isNotEmpty) {
       return _buildSearchResults();
     } else {
+      if (_isLoading) {
+        return Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 32),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                        child: WaitingGame(onInteraction: () {}),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      }
       return _buildProductList();
     }
   }
@@ -2420,7 +2461,24 @@ class _AddFoodPageState extends State<AddFoodPage> {
       return Column(
         children: [
           sourceStatusRow,
-          const Expanded(child: Center(child: CircularProgressIndicator())),
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 32),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                      child: WaitingGame(onInteraction: () {}),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       );
     }

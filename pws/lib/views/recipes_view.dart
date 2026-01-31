@@ -1,10 +1,14 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../main.dart';
 import '../l10n/app_localizations.dart';
+import 'waiting_game.dart';
 
 enum _SwipeDirection { left, right }
 
@@ -35,14 +39,16 @@ class RecipeFilters {
 }
 
 class RecipesScreen extends StatefulWidget {
-  const RecipesScreen({super.key});
+  final bool? isActive;
+  final ValueNotifier<int>? tabNotifier;
+  const RecipesScreen({super.key, this.isActive, this.tabNotifier});
 
   @override
   State<RecipesScreen> createState() => _RecipesScreenState();
 }
 
 class _RecipesScreenState extends State<RecipesScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final String apiBase = 'https://ffinder.nl';
   final String apiKey = dotenv.env['APP_KEY']!;
 
@@ -70,6 +76,72 @@ class _RecipesScreenState extends State<RecipesScreen>
   Map<String, dynamic>? _filterOptions;
   final Set<String> _expandedFilterSections = {};
 
+// dit doet de wachtrij functionaliteit
+  bool _isMyTurn = false;
+  StreamSubscription? _queueSubscription;
+  String? _queueDocId;
+  int _queuePosition = 0;
+
+// dit is voor de inactivity timeout
+  DateTime _lastInteraction = DateTime.now();
+  Timer? _inactivityTimer;
+
+  void _updateInteraction() {
+    if (mounted) {
+      setState(() {
+        _lastInteraction = DateTime.now();
+      });
+    }
+  }
+
+  void _startInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      // Als we aan het laden zijn EN aan de beurt, reset de interactie
+      if (_isLoading && _isMyTurn) {
+        _lastInteraction = DateTime.now();
+      }
+
+      final secondsInactive =
+          DateTime.now().difference(_lastInteraction).inSeconds;
+
+      final limit = 60;
+
+      if (secondsInactive >= limit) {
+        timer.cancel();
+        _handleTimeout();
+      } else {
+        // update UI elke seconde
+        setState(() {});
+      }
+    });
+  }
+
+  void _handleTimeout() {
+    _leaveQueue();
+    if (mounted) {
+      // Dit herbouwt de app-logica vanaf het begin.
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const AuthWrapper()),
+        (route) => false,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.sessionExpired,
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Offset _dragOffset = Offset.zero;
   double _dragRotation = 0.0;
 
@@ -83,6 +155,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _animController =
         AnimationController(
@@ -106,12 +179,143 @@ class _RecipesScreenState extends State<RecipesScreen>
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadInitialRecipes();
-      _fetchFilterOptions();
+      if (widget.isActive != false) {
+        _joinQueue();
+      }
     });
+
+    widget.tabNotifier?.addListener(_handleTabChange);
+  }
+
+  @override
+  void didUpdateWidget(RecipesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    if (oldWidget.tabNotifier != widget.tabNotifier) {
+      oldWidget.tabNotifier?.removeListener(_handleTabChange);
+      widget.tabNotifier?.addListener(_handleTabChange);
+    }
+    
+    // Als de actieve status verandert van true naar false (we verlaten de tab)
+    if (widget.isActive == false && oldWidget.isActive != false) {
+      _leaveQueue();
+    } 
+    // Als de actieve status verandert van false naar true (we komen terug op de tab)
+    else if (widget.isActive == true && oldWidget.isActive != true) {
+      // Alleen joinen als we ook echt op de recepten tab zitten (index 1)
+      if (widget.tabNotifier == null || widget.tabNotifier!.value == 1) {
+        _joinQueue();
+      }
+    }
+  }
+
+  void _handleTabChange() {
+    final newIndex = widget.tabNotifier?.value;
+    // Recepten tab is index 1
+    if (newIndex == 1) {
+      if (_queueDocId == null) {
+        _joinQueue();
+      }
+    } else {
+      _leaveQueue();
+    }
+  }
+
+  Future<void> _joinQueue() async {
+    if (_queueDocId != null) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      // Opschonen van eventuele oude sessies van deze gebruiker
+      final oldSessies = await FirebaseFirestore.instance
+          .collection('queue')
+          .where('uid', isEqualTo: uid)
+          .get();
+      for (var doc in oldSessies.docs) {
+        try {
+          await doc.reference.delete();
+        } catch (_) {}
+      }
+
+      final docRef = await FirebaseFirestore.instance
+          .collection('queue')
+          .add({
+            'uid': uid,
+            'entered_at': FieldValue.serverTimestamp(),
+          });
+      
+      if (!mounted) {
+        // Gebruiker is al weggegaan terwijl we de document aanmaakten
+        await docRef.delete();
+        return;
+      }
+
+      _queueDocId = docRef.id;
+      _updateInteraction();
+      _startInactivityTimer();
+
+      _queueSubscription = FirebaseFirestore.instance
+          .collection('queue')
+          .orderBy('entered_at')
+          .snapshots()
+          .listen((snapshot) {
+            if (_queueDocId == null) return;
+            
+            final docs = snapshot.docs;
+            int pos = 0;
+            bool turn = false;
+
+            for (var i = 0; i < docs.length; i++) {
+              if (docs[i].id == _queueDocId) {
+                // Als pos 0 is, ben je aan de beurt.
+                // Pos 1 betekent dat er 1 iemand voor je is (die nu aan de beurt is).
+                pos = i;
+                if (i == 0) turn = true;
+                break;
+              }
+            }
+
+            if (mounted) {
+              final becameMyTurn = !_isMyTurn && turn;
+              setState(() {
+                _queuePosition = pos;
+                _isMyTurn = turn;
+              });
+
+              if (becameMyTurn && _recipes.isEmpty && !_isLoading) {
+                _loadInitialRecipes();
+                _fetchFilterOptions();
+              }
+            }
+          });
+    } catch (e) {
+      debugPrint('Failed to join queue: $e');
+    }
+  }
+
+  Future<void> _leaveQueue() async {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = null;
+    _queueSubscription?.cancel();
+    _queueSubscription = null;
+    if (_queueDocId != null) {
+      final id = _queueDocId!;
+      _queueDocId = null;
+      try {
+        await FirebaseFirestore.instance
+            .collection('queue')
+            .doc(id)
+            .delete();
+      } catch (e) {
+        debugPrint('Failed to leave queue: $e');
+      }
+    }
   }
 
   Future<void> _fetchFilterOptions() async {
+    if (!_isMyTurn) return; // Dubbele check: geen API calls als je niet aan de beurt bent
+    _updateInteraction();
     try {
       final res = await http.get(
         Uri.parse('$apiBase/recipes/filters'),
@@ -150,7 +354,9 @@ class _RecipesScreenState extends State<RecipesScreen>
                   children: [
                     const CircularProgressIndicator(),
                     const SizedBox(height: 16),
-                    const Text('Filters laden...'),
+                    Text(loc.loadingFilters),
+                    const SizedBox(height: 16),
+                    WaitingGame(onInteraction: _updateInteraction),
                     const SizedBox(height: 16),
                     TextButton(
                       onPressed: () {
@@ -158,7 +364,7 @@ class _RecipesScreenState extends State<RecipesScreen>
                           if (mounted) setSheetState(() {});
                         });
                       },
-                      child: const Text('Opnieuw proberen'),
+                      child: Text(loc.recipesRetry),
                     ),
                   ],
                 ),
@@ -225,7 +431,7 @@ class _RecipesScreenState extends State<RecipesScreen>
                     ),
                   ),
                   Text(
-                    'Filter op categorie(ën):',
+                    loc.filterByCategory,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -455,9 +661,9 @@ class _RecipesScreenState extends State<RecipesScreen>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'Toepassen',
-                      style: TextStyle(
+                    child: Text(
+                      loc.apply,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -472,7 +678,7 @@ class _RecipesScreenState extends State<RecipesScreen>
                       });
                     },
                     child: Text(
-                      'Filters wissen',
+                      loc.clearFilters,
                       style: TextStyle(
                         color: isDark ? Colors.grey[400] : Colors.grey,
                       ),
@@ -509,9 +715,24 @@ class _RecipesScreenState extends State<RecipesScreen>
 
   @override
   void dispose() {
+    widget.tabNotifier?.removeListener(_handleTabChange);
+    WidgetsBinding.instance.removeObserver(this);
+    _inactivityTimer?.cancel();
+    _leaveQueue();
     _animController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Als de app naar de achtergrond gaat of wordt afgesloten
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      _leaveQueue();
+    } else if (state == AppLifecycleState.resumed) {
+      // Als we weer terugkomen in de app, probeer opnieuw de wachtrij in te gaan
+      _joinQueue();
+    }
   }
 
   void _resetAnimation() {
@@ -528,6 +749,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   Future<List<Map<String, dynamic>>> _getRecommendations({
     int limit = 5,
   }) async {
+    if (!_isMyTurn) return []; // Dubbele check
     final res = await http.get(
       Uri.parse('$apiBase/recipes/recommendations/$userId?limit=$limit'),
       headers: _headers,
@@ -554,6 +776,8 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Future<void> _loadInitialRecipes() async {
+    if (!_isMyTurn) return; // Dubbele check
+    _updateInteraction();
     setState(() {
       _isLoading = true;
       _loadError = null;
@@ -599,6 +823,8 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Future<void> _performSearch(String query) async {
+    if (!_isMyTurn) return; // Dubbele check
+    _updateInteraction();
     if (query.trim().isEmpty && _currentFilters.isEmpty) return;
     FocusScope.of(context).unfocus();
 
@@ -671,7 +897,7 @@ class _RecipesScreenState extends State<RecipesScreen>
         final maxKcal = _currentFilters.maxKcal!;
         detailedRecipes.removeWhere((r) {
           final kcalRaw = r['kcal'];
-          if (kcalRaw == null) return true; // exclude unknown kcal
+          if (kcalRaw == null) return true; // dit doet verwijderen als er geen kcal info is
           try {
             final kcal = kcalRaw is num
                 ? kcalRaw
@@ -692,7 +918,7 @@ class _RecipesScreenState extends State<RecipesScreen>
           if (results.isEmpty) {
             _loadError = loc.recipesNoResultsFound(query);
           } else {
-            // fallback: use search results when details are unavailable
+            // fallback: gebruik de ongedetailleerde resultaten
             for (final r in results) {
               final id = r['id']?.toString();
               if (id != null) {
@@ -724,6 +950,8 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Future<Map<String, dynamic>?> _getRecipeDetail(String id) async {
+    if (!_isMyTurn) return null; // Dubbele check
+    _updateInteraction();
     final res = await http.get(
       Uri.parse('$apiBase/recipes/get/$id'),
       headers: _headers,
@@ -734,6 +962,8 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Future<void> _rateRecipe(int recipeId, int rating) async {
+    if (!_isMyTurn) return; // Dubbele check
+    _updateInteraction();
     debugPrint('rateRecipe: id=$recipeId rating=$rating');
     try {
       final response = await http.post(
@@ -861,16 +1091,43 @@ class _RecipesScreenState extends State<RecipesScreen>
     final loc = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GestureDetector(
-      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      child: Scaffold(
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) {
+        _leaveQueue();
+      },
+      child: GestureDetector(
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: Scaffold(
         body: SafeArea(
           child: Column(
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: TextField(
-                  controller: _searchController,
+                child: Column(
+                  children: [
+                    if (_isMyTurn)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Text(
+                          _isLoading
+                              ? loc.fetching
+                              : loc.sessionExpiresIn((60 - DateTime.now().difference(_lastInteraction).inSeconds)),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: !_isLoading &&
+                                    DateTime.now()
+                                            .difference(_lastInteraction)
+                                            .inSeconds >
+                                        45
+                                ? Colors.red
+                                : Colors.grey,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    TextField(
+                      controller: _searchController,
+                  enabled: _isMyTurn,
                   decoration: InputDecoration(
                     hintText: loc.recipesSearchHint,
                     prefixIcon: const Icon(Icons.search, color: Colors.orange),
@@ -882,20 +1139,24 @@ class _RecipesScreenState extends State<RecipesScreen>
                             !_currentFilters.isEmpty)
                           IconButton(
                             icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              _currentFilters.reset();
-                              _loadInitialRecipes();
-                            },
+                            onPressed: _isMyTurn
+                                ? () {
+                                    _searchController.clear();
+                                    _currentFilters.reset();
+                                    _loadInitialRecipes();
+                                  }
+                                : null,
                           ),
                         IconButton(
                           icon: Icon(
                             Icons.filter_list,
-                            color: _currentFilters.isEmpty
+                            color: !_isMyTurn
+                                ? Colors.grey[800]
+                                : _currentFilters.isEmpty
                                 ? Colors.grey
                                 : Colors.orange,
                           ),
-                          onPressed: _showFilterSheet,
+                          onPressed: _isMyTurn ? _showFilterSheet : null,
                         ),
                       ],
                     ),
@@ -907,15 +1168,92 @@ class _RecipesScreenState extends State<RecipesScreen>
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   ),
-                  onSubmitted: (val) => _performSearch(val),
+                  onSubmitted: (val) => _isMyTurn ? _performSearch(val) : null,
                   onChanged: (val) => setState(() {}),
                 ),
-              ),
+              ],
+            ),
+          ),
 
-              Expanded(
+          Expanded(
                 child: Center(
-                  child: _isLoading
-                      ? const CircularProgressIndicator()
+                  child: !_isMyTurn
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CircularProgressIndicator(
+                              color: Colors.orange,
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              loc.waitingForTurn,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              loc.queuePosition(_queuePosition),
+                              style: TextStyle(
+                                color:
+                                    isDark ? Colors.grey[400] : Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              margin: const EdgeInsets.symmetric(horizontal: 24),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.orange),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    loc.inactivityCheck((60 - DateTime.now().difference(_lastInteraction).inSeconds)),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  WaitingGame(onInteraction: _updateInteraction),
+                                  const SizedBox(height: 12),
+                                  ElevatedButton(
+                                    onPressed: _updateInteraction,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: Text(loc.imStillHere),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    loc.playGameOrWait,
+                                    style: const TextStyle(fontSize: 11),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : _isLoading
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 24),
+                            Text(loc.fetching, style: const TextStyle(fontSize: 16)),
+                            const SizedBox(height: 24),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                              child: WaitingGame(onInteraction: _updateInteraction),
+                            ),
+                          ],
+                        )
                       : _loadError != null
                       ? Padding(
                           padding: const EdgeInsets.all(32.0),
@@ -963,7 +1301,19 @@ class _RecipesScreenState extends State<RecipesScreen>
                         )
                       : _recipes.isEmpty
                       ? (_isFetchingMore
-                            ? const CircularProgressIndicator()
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 24),
+                                  Text(loc.fetching, style: const TextStyle(fontSize: 16)),
+                                  const SizedBox(height: 24),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                                    child: WaitingGame(onInteraction: _updateInteraction),
+                                  ),
+                                ],
+                              )
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -1076,7 +1426,7 @@ class _RecipesScreenState extends State<RecipesScreen>
           ),
         ),
       ),
-    );
+    ),);
   }
 
   Widget _recipeCard(Map<String, dynamic> r) {

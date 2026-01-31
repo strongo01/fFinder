@@ -313,10 +313,10 @@
   "recipesIngredients": "Ingrediënten",
   "recipesSteps": "Bereidingsstappen",
   "recipesSearchHint": "Zoek op ingrediënt of gerecht...",
-  "recipesErrorNoRecommendations": "Server fout: geen aanbevelingen ontvangen",
+  "recipesErrorNoRecommendations": "Server fout: geen aanbevelingen ontvangen. Probeer het later nog eens.",
   "recipesError502": "De server is momenteel niet bereikbaar (502). Probeer het later opnieuw.",
-  "recipesErrorLoading": "Fout bij laden: ",
-  "recipesNoResultsFound": "Geen recepten gevonden voor \"{query}\"",
+  "recipesErrorLoading": "Fout bij laden (probeer het later nog eens): ",
+  "recipesNoResultsFound": "Geen resultaten gevonden voor \"{query}\"",
   "@recipesNoResultsFound": {
     "placeholders": {
       "query": {
@@ -324,14 +324,14 @@
       }
     }
   },
-  "recipesErrorLoadingDetails": "Kon details van gevonden recepten niet laden",
-  "recipesErrorSearchFailed": "Zoeken mislukt: ",
-  "recipesErrorNoMoreRecipes": "Server fout: geen recepten meer beschikbaar",
+  "recipesErrorLoadingDetails": "Kon details van gevonden recepten niet laden. Probeer het later nog eens.",
+  "recipesErrorSearchFailed": "Zoeken mislukt (probeer het later nog eens): ",
+  "recipesErrorNoMoreRecipes": "Server fout: geen recepten meer beschikbaar. Probeer het later nog eens.",
   "recipesNoMoreSearchResults": "Je hebt alle resultaten voor deze zoekopdracht bekeken.",
   "recipesRetry": "Opnieuw proberen",
   "recipesDetailCharacteristics": "Kenmerken",
   "recipesDetailRequirements": "Benodigdheden",
-  "recipesErrorServer": "Server fout ({status})",
+  "recipesErrorServer": "Server fout ({status}). Probeer het later nog eens.",
   "@recipesErrorServer": {
     "placeholders": {
       "status": {
@@ -783,8 +783,11 @@
 "setAppVersionTitle": "Wijzig versie",
 "setAppVersionSubtitle": "Wijzig het versie veld in Firestore",
 "versionLabel": "Versie",
-"versionUpdated": "Versie bijgewerkt:",
-"bmiForChildrenTitle": "Kinder-BMI uitleg",
+"versionUpdated": "Versie bijgewerkt:",  "maintenanceTitle": "Onderhoudszodus",
+  "maintenanceSubtitle": "Zet app in onderhoud (behalve voor admins)",
+  "maintenanceModeTitle": "Onderhoudssmodus",
+  "maintenanceScreenTitle": "Onderhoud aan de gang",
+  "maintenanceDescription": "We zijn momenteel bezig met verbeteringen aan fFinder. De app is tijdelijk niet beschikbaar. Probeer het later opnieuw.","bmiForChildrenTitle": "Kinder-BMI uitleg",
 "bmiForChildrenExplanation": "De BMI voor kinderen wordt berekend op basis van leeftijd, geslacht, lengte en gewicht. In plaats van vaste grenzen gebruikt deze app BMI-percentielen, zodat de beoordeling beter aansluit bij de groei van kinderen. Kleine verschillen met andere BMI-tabellen zijn normaal.",
 "privacyPolicy": "Klik voor het privacybeleid",
 "privacyAgreement": "Ik ga akkoord met het privacybeleid",
@@ -823,7 +826,61 @@
   "disclaimerText": "Deze app biedt algemene informatie over voeding, hydratatie, lichaamsbeweging en gewicht, gebaseerd op publiek beschikbare richtlijnen en wetenschappelijke bronnen. De informatie en berekeningen in deze app zijn uitsluitend bedoeld voor informatieve doeleinden en vormen geen medisch advies. Deze app is niet bedoeld om professioneel medisch advies, diagnose of behandeling te vervangen. Raadpleeg bij gezondheidsklachten, vragen of twijfels altijd een arts of andere gekwalificeerde zorgverlener. Het gebruik van deze app en de interpretatie van de weergegeven gegevens is volledig de verantwoordelijkheid van de gebruiker.",
   "disclaimer": "Disclaimer",
   "cannotOpenLink": "Kan link niet openen.",
-  "bronnen": "Bronnen"
+  "bronnen": "Bronnen",
+  "playWaitingGame": "Speel wachtspelletje",
+  "sessionExpiresIn": "Sessie verloopt over: {seconds}s",
+  "@sessionExpiresIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "fetching": "Bezig met ophalen...",
+  "sessionExpired": "Sessie verlopen wegens inactiviteit.",
+  "loadingFilters": "Filters laden...",
+  "filterByCategory": "Filter op categorie(ën):",
+  "apply": "Toepassen",
+  "clearFilters": "Filters wissen",
+  "waitingForTurn": "Wachten op je beurt...",
+  "queuePosition": "Je bent positie {pos} in de wachtrij",
+  "@queuePosition": {
+    "placeholders": {
+      "pos": {
+        "type": "int"
+      }
+    }
+  },
+  "inactivityCheck": "Inactiviteit check: {seconds}s",
+  "@inactivityCheck": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "imStillHere": "Ik ben er nog!",
+  "playGameOrWait": "Speel het spelletje of tik de knop om te blijven wachten",
+  "gameScore": "Score: {score}",
+  "gameHighScore": "High Score: {score}",
+  "@gameHighScore": {
+    "description": "High Score text for the minigame",
+    "placeholders": {
+      "score": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "@gameScore": {
+    "description": "Score text for the minigame",
+    "placeholders": {
+      "score": {
+         "type": "int"
+      }
+    }
+  },
+  "tapTheFood": "Tik op het eten!"
 
 
 }

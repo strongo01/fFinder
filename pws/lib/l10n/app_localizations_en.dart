@@ -798,27 +798,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recipesSearchHint => 'Search by ingredient or dish...';
 
   @override
-  String get recipesErrorNoRecommendations => 'Server error: no recommendations received';
+  String get recipesErrorNoRecommendations => 'Server error: no recommendations received. Please try again later.';
 
   @override
-  String get recipesError502 => 'The server is currently unreachable (502). Please try again later.';
+  String get recipesError502 => 'The server is currently unavailable (502). Please try again later.';
 
   @override
-  String get recipesErrorLoading => 'Error loading: ';
+  String get recipesErrorLoading => 'Error loading (please try again later): ';
 
   @override
   String recipesNoResultsFound(String query) {
-    return 'No recipes found for \"$query\"';
+    return 'No results found for \"$query\"';
   }
 
   @override
-  String get recipesErrorLoadingDetails => 'Could not load details for found recipes';
+  String get recipesErrorLoadingDetails => 'Could not load details of found recipes. Please try again later.';
 
   @override
-  String get recipesErrorSearchFailed => 'Search failed: ';
+  String get recipesErrorSearchFailed => 'Search failed (please try again later): ';
 
   @override
-  String get recipesErrorNoMoreRecipes => 'Server error: no more recipes available';
+  String get recipesErrorNoMoreRecipes => 'Server error: no more recipes available. Please try again later.';
 
   @override
   String get recipesNoMoreSearchResults => 'You have viewed all results for this search.';
@@ -834,7 +834,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String recipesErrorServer(String status) {
-    return 'Server error ($status)';
+    return 'Server error ($status). Please try again later.';
   }
 
   @override
@@ -2316,6 +2316,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get versionUpdated => 'Version updated:';
 
   @override
+  String get maintenanceTitle => 'Maintenance Mode';
+
+  @override
+  String get maintenanceSubtitle => 'Put app in maintenance (except for admins)';
+
+  @override
+  String get maintenanceModeTitle => 'Maintenance Mode';
+
+  @override
+  String get maintenanceScreenTitle => 'Under Maintenance';
+
+  @override
+  String get maintenanceDescription => 'We are currently improving fFinder. The app is temporarily unavailable. Please try again later.';
+
+  @override
   String get bmiForChildrenTitle => 'Child BMI Info';
 
   @override
@@ -2410,4 +2425,62 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bronnen => 'Sources';
+
+  @override
+  String get playWaitingGame => 'Play waiting game';
+
+  @override
+  String sessionExpiresIn(int seconds) {
+    return 'Session expires in: ${seconds}s';
+  }
+
+  @override
+  String get fetching => 'Fetching...';
+
+  @override
+  String get sessionExpired => 'Session expired due to inactivity.';
+
+  @override
+  String get loadingFilters => 'Loading filters...';
+
+  @override
+  String get filterByCategory => 'Filter by category:';
+
+  @override
+  String get apply => 'Apply';
+
+  @override
+  String get clearFilters => 'Clear filters';
+
+  @override
+  String get waitingForTurn => 'Waiting for your turn...';
+
+  @override
+  String queuePosition(int pos) {
+    return 'You are at position $pos in the queue';
+  }
+
+  @override
+  String inactivityCheck(int seconds) {
+    return 'Inactivity check: ${seconds}s';
+  }
+
+  @override
+  String get imStillHere => 'I\'m still here!';
+
+  @override
+  String get playGameOrWait => 'Play the game or tap the button to keep waiting';
+
+  @override
+  String gameScore(int score) {
+    return 'Score: $score';
+  }
+
+  @override
+  String gameHighScore(int score) {
+    return 'High Score: $score';
+  }
+
+  @override
+  String get tapTheFood => 'Tap the food!';
 }

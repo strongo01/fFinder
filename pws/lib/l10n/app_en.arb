@@ -263,10 +263,10 @@
     "recipesIngredients": "Ingredients",
     "recipesSteps": "Steps",
     "recipesSearchHint": "Search by ingredient or dish...",
-    "recipesErrorNoRecommendations": "Server error: no recommendations received",
-    "recipesError502": "The server is currently unreachable (502). Please try again later.",
-    "recipesErrorLoading": "Error loading: ",
-    "recipesNoResultsFound": "No recipes found for \"{query}\"",
+    "recipesErrorNoRecommendations": "Server error: no recommendations received. Please try again later.",
+    "recipesError502": "The server is currently unavailable (502). Please try again later.",
+    "recipesErrorLoading": "Error loading (please try again later): ",
+    "recipesNoResultsFound": "No results found for \"{query}\"",
     "@recipesNoResultsFound": {
       "placeholders": {
         "query": {
@@ -274,14 +274,14 @@
         }
       }
     },
-    "recipesErrorLoadingDetails": "Could not load details for found recipes",
-    "recipesErrorSearchFailed": "Search failed: ",
-    "recipesErrorNoMoreRecipes": "Server error: no more recipes available",
+    "recipesErrorLoadingDetails": "Could not load details of found recipes. Please try again later.",
+    "recipesErrorSearchFailed": "Search failed (please try again later): ",
+    "recipesErrorNoMoreRecipes": "Server error: no more recipes available. Please try again later.",
     "recipesNoMoreSearchResults": "You have viewed all results for this search.",
     "recipesRetry": "Retry",
     "recipesDetailCharacteristics": "Characteristics",
     "recipesDetailRequirements": "Requirements",
-    "recipesErrorServer": "Server error ({status})",
+    "recipesErrorServer": "Server error ({status}). Please try again later.",
     "@recipesErrorServer": {
       "placeholders": {
         "status": {
@@ -784,6 +784,11 @@
 "setAppVersionSubtitle": "Modify the version field in Firestore",
 "versionLabel": "Version",
 "versionUpdated": "Version updated:",
+"maintenanceTitle": "Maintenance Mode",
+"maintenanceSubtitle": "Put app in maintenance (except for admins)",
+"maintenanceModeTitle": "Maintenance Mode",
+"maintenanceScreenTitle": "Under Maintenance",
+"maintenanceDescription": "We are currently improving fFinder. The app is temporarily unavailable. Please try again later.",
 "bmiForChildrenTitle": "Child BMI Info",
 "bmiForChildrenExplanation": "The BMI for children is calculated based on age, sex, height, and weight. Instead of fixed cutoffs, this app uses BMI percentiles, making the assessment better suited to children's growth. Small differences with other BMI charts are normal.",
 "privacyPolicy": "Click to view the privacy policy",
@@ -823,7 +828,60 @@
   "disclaimerText": "This app provides general information about nutrition, hydration, physical activity, and weight based on publicly available guidelines and scientific sources. The information and calculations in this app are for informational purposes only and do not constitute medical advice. This app is not intended to replace professional medical advice, diagnosis, or treatment. Always consult a physician or other qualified healthcare provider if you have health concerns, questions, or doubts. Use of this app and interpretation of the displayed data are entirely the responsibility of the user.",
   "disclaimer": "Disclaimer",
   "cannotOpenLink": "Cannot open link.",
-  "bronnen": "Sources"
+  "bronnen": "Sources",
+  "playWaitingGame": "Play waiting game",
+  "sessionExpiresIn": "Session expires in: {seconds}s",
+  "@sessionExpiresIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "fetching": "Fetching...",
+  "sessionExpired": "Session expired due to inactivity.",
+  "loadingFilters": "Loading filters...",
+  "filterByCategory": "Filter by category:",
+  "apply": "Apply",
+  "clearFilters": "Clear filters",
+  "waitingForTurn": "Waiting for your turn...",
+  "queuePosition": "You are at position {pos} in the queue",
+  "@queuePosition": {
+    "placeholders": {
+      "pos": {
+        "type": "int"
+      }
+    }
+  },
+  "inactivityCheck": "Inactivity check: {seconds}s",
+  "@inactivityCheck": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "imStillHere": "I'm still here!",
+  "playGameOrWait": "Play the game or tap the button to keep waiting",
+  "gameScore": "Score: {score}",
+  "gameHighScore": "High Score: {score}",
+  "@gameHighScore": {
+    "description": "High Score text for the minigame",
+    "placeholders": {
+      "score": {
+         "type": "int"
+      }
+    }
+  },
+  "@gameScore": {
+    "description": "Score text for the minigame",
+    "placeholders": {
+      "score": {
+         "type": "int"
+      }
+    }
+  },
+  "tapTheFood": "Tap the food!"
 
 
 

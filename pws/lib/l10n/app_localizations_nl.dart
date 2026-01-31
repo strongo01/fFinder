@@ -798,27 +798,27 @@ class AppLocalizationsNl extends AppLocalizations {
   String get recipesSearchHint => 'Zoek op ingrediënt of gerecht...';
 
   @override
-  String get recipesErrorNoRecommendations => 'Server fout: geen aanbevelingen ontvangen';
+  String get recipesErrorNoRecommendations => 'Server fout: geen aanbevelingen ontvangen. Probeer het later nog eens.';
 
   @override
   String get recipesError502 => 'De server is momenteel niet bereikbaar (502). Probeer het later opnieuw.';
 
   @override
-  String get recipesErrorLoading => 'Fout bij laden: ';
+  String get recipesErrorLoading => 'Fout bij laden (probeer het later nog eens): ';
 
   @override
   String recipesNoResultsFound(String query) {
-    return 'Geen recepten gevonden voor \"$query\"';
+    return 'Geen resultaten gevonden voor \"$query\"';
   }
 
   @override
-  String get recipesErrorLoadingDetails => 'Kon details van gevonden recepten niet laden';
+  String get recipesErrorLoadingDetails => 'Kon details van gevonden recepten niet laden. Probeer het later nog eens.';
 
   @override
-  String get recipesErrorSearchFailed => 'Zoeken mislukt: ';
+  String get recipesErrorSearchFailed => 'Zoeken mislukt (probeer het later nog eens): ';
 
   @override
-  String get recipesErrorNoMoreRecipes => 'Server fout: geen recepten meer beschikbaar';
+  String get recipesErrorNoMoreRecipes => 'Server fout: geen recepten meer beschikbaar. Probeer het later nog eens.';
 
   @override
   String get recipesNoMoreSearchResults => 'Je hebt alle resultaten voor deze zoekopdracht bekeken.';
@@ -834,7 +834,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String recipesErrorServer(String status) {
-    return 'Server fout ($status)';
+    return 'Server fout ($status). Probeer het later nog eens.';
   }
 
   @override
@@ -2316,6 +2316,21 @@ class AppLocalizationsNl extends AppLocalizations {
   String get versionUpdated => 'Versie bijgewerkt:';
 
   @override
+  String get maintenanceTitle => 'Onderhoudszodus';
+
+  @override
+  String get maintenanceSubtitle => 'Zet app in onderhoud (behalve voor admins)';
+
+  @override
+  String get maintenanceModeTitle => 'Onderhoudssmodus';
+
+  @override
+  String get maintenanceScreenTitle => 'Onderhoud aan de gang';
+
+  @override
+  String get maintenanceDescription => 'We zijn momenteel bezig met verbeteringen aan fFinder. De app is tijdelijk niet beschikbaar. Probeer het later opnieuw.';
+
+  @override
   String get bmiForChildrenTitle => 'Kinder-BMI uitleg';
 
   @override
@@ -2410,4 +2425,65 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get bronnen => 'Bronnen';
+
+  @override
+  String get playWaitingGame => 'Speel wachtspelletje';
+
+  @override
+  String sessionExpiresIn(int seconds) {
+    return 'Sessie verloopt over: ${seconds}s';
+  }
+
+  @override
+  String get fetching => 'Bezig met ophalen...';
+
+  @override
+  String get sessionExpired => 'Sessie verlopen wegens inactiviteit.';
+
+  @override
+  String get loadingFilters => 'Filters laden...';
+
+  @override
+  String get filterByCategory => 'Filter op categorie(ën):';
+
+  @override
+  String get apply => 'Toepassen';
+
+  @override
+  String get clearFilters => 'Filters wissen';
+
+  @override
+  String get waitingForTurn => 'Wachten op je beurt...';
+
+  @override
+  String queuePosition(int pos) {
+    return 'Je bent positie $pos in de wachtrij';
+  }
+
+  @override
+  String inactivityCheck(int seconds) {
+    return 'Inactiviteit check: ${seconds}s';
+  }
+
+  @override
+  String get imStillHere => 'Ik ben er nog!';
+
+  @override
+  String get playGameOrWait => 'Speel het spelletje of tik de knop om te blijven wachten';
+
+  @override
+  String gameScore(int score) {
+    return 'Score: $score';
+  }
+
+  @override
+  String gameHighScore(int score) {
+    final intl.NumberFormat scoreNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String scoreString = scoreNumberFormat.format(score);
+
+    return 'High Score: $scoreString';
+  }
+
+  @override
+  String get tapTheFood => 'Tik op het eten!';
 }

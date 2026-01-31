@@ -798,13 +798,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get recipesSearchHint => 'Nach Zutat oder Gericht suchen...';
 
   @override
-  String get recipesErrorNoRecommendations => 'Serverfehler: Keine Empfehlungen erhalten';
+  String get recipesErrorNoRecommendations => 'Serverfehler: Keine Empfehlungen erhalten. Bitte versuchen Sie es später noch einmal.';
 
   @override
   String get recipesError502 => 'Server aktuell nicht erreichbar (502). Später erneut versuchen.';
 
   @override
-  String get recipesErrorLoading => 'Fehler beim Laden: ';
+  String get recipesErrorLoading => 'Fehler beim Laden (bitte versuchen Sie es später noch einmal): ';
 
   @override
   String recipesNoResultsFound(String query) {
@@ -812,13 +812,13 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get recipesErrorLoadingDetails => 'Details der gefundenen Rezepte konnten nicht geladen werden';
+  String get recipesErrorLoadingDetails => 'Details der gefundenen Rezepte konnten nicht geladen werden. Bitte versuchen Sie es später noch einmal.';
 
   @override
-  String get recipesErrorSearchFailed => 'Suche fehlgeschlagen: ';
+  String get recipesErrorSearchFailed => 'Suche fehlgeschlagen (bitte versuchen Sie es später noch einmal): ';
 
   @override
-  String get recipesErrorNoMoreRecipes => 'Serverfehler: Keine weiteren Rezepte verfügbar';
+  String get recipesErrorNoMoreRecipes => 'Serverfehler: Keine weiteren Rezepte verfügbar. Bitte versuchen Sie es später noch einmal.';
 
   @override
   String get recipesNoMoreSearchResults => 'Du hast alle Ergebnisse für diese Suche angesehen.';
@@ -834,7 +834,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String recipesErrorServer(String status) {
-    return 'Serverfehler ($status)';
+    return 'Serverfehler ($status). Bitte versuchen Sie es später noch einmal.';
   }
 
   @override
@@ -2316,6 +2316,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get versionUpdated => 'Version aktualisiert:';
 
   @override
+  String get maintenanceTitle => 'Wartungsmodus';
+
+  @override
+  String get maintenanceSubtitle => 'App in Wartungsmodus versetzen (außer für Admins)';
+
+  @override
+  String get maintenanceModeTitle => 'Wartungsmodus';
+
+  @override
+  String get maintenanceScreenTitle => 'Wartungsarbeiten im Gange';
+
+  @override
+  String get maintenanceDescription => 'Wir arbeiten derzeit an Verbesserungen für fFinder. Die App ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.';
+
+  @override
   String get bmiForChildrenTitle => 'Kinder-BMI Info';
 
   @override
@@ -2410,4 +2425,65 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bronnen => 'Quellen';
+
+  @override
+  String get playWaitingGame => 'Wartespiel spielen';
+
+  @override
+  String sessionExpiresIn(int seconds) {
+    return 'Sitzung läuft ab in: ${seconds}s';
+  }
+
+  @override
+  String get fetching => 'Wird abgerufen...';
+
+  @override
+  String get sessionExpired => 'Sitzung aufgrund von Inaktivität abgelaufen.';
+
+  @override
+  String get loadingFilters => 'Filter laden...';
+
+  @override
+  String get filterByCategory => 'Nach Kategorie filtern:';
+
+  @override
+  String get apply => 'Anwenden';
+
+  @override
+  String get clearFilters => 'Filter löschen';
+
+  @override
+  String get waitingForTurn => 'Warten auf Ihren Zug...';
+
+  @override
+  String queuePosition(int pos) {
+    return 'Sie sind an Position $pos in der Warteschlange';
+  }
+
+  @override
+  String inactivityCheck(int seconds) {
+    return 'Inaktivitätsprüfung: ${seconds}s';
+  }
+
+  @override
+  String get imStillHere => 'Ich bin noch da!';
+
+  @override
+  String get playGameOrWait => 'Spielen Sie das Spiel oder tippen Sie auf den Knopf, um weiter zu warten';
+
+  @override
+  String gameScore(int score) {
+    return 'Punktzahl: $score';
+  }
+
+  @override
+  String gameHighScore(int score) {
+    final intl.NumberFormat scoreNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String scoreString = scoreNumberFormat.format(score);
+
+    return 'Highscore: $scoreString';
+  }
+
+  @override
+  String get tapTheFood => 'Tippe auf das Essen!';
 }

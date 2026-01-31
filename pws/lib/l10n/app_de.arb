@@ -313,9 +313,9 @@
     "recipesIngredients": "Zutaten",
     "recipesSteps": "Zubereitungsschritte",
     "recipesSearchHint": "Nach Zutat oder Gericht suchen...",
-    "recipesErrorNoRecommendations": "Serverfehler: Keine Empfehlungen erhalten",
+    "recipesErrorNoRecommendations": "Serverfehler: Keine Empfehlungen erhalten. Bitte versuchen Sie es später noch einmal.",
     "recipesError502": "Server aktuell nicht erreichbar (502). Später erneut versuchen.",
-    "recipesErrorLoading": "Fehler beim Laden: ",
+    "recipesErrorLoading": "Fehler beim Laden (bitte versuchen Sie es später noch einmal): ",
     "recipesNoResultsFound": "Keine Rezepte für \"{query}\" gefunden",
     "@recipesNoResultsFound": {
       "placeholders": {
@@ -324,14 +324,14 @@
         }
       }
     },
-    "recipesErrorLoadingDetails": "Details der gefundenen Rezepte konnten nicht geladen werden",
-    "recipesErrorSearchFailed": "Suche fehlgeschlagen: ",
-    "recipesErrorNoMoreRecipes": "Serverfehler: Keine weiteren Rezepte verfügbar",
+    "recipesErrorLoadingDetails": "Details der gefundenen Rezepte konnten nicht geladen werden. Bitte versuchen Sie es später noch einmal.",
+    "recipesErrorSearchFailed": "Suche fehlgeschlagen (bitte versuchen Sie es später noch einmal): ",
+    "recipesErrorNoMoreRecipes": "Serverfehler: Keine weiteren Rezepte verfügbar. Bitte versuchen Sie es später noch einmal.",
     "recipesNoMoreSearchResults": "Du hast alle Ergebnisse für diese Suche angesehen.",
     "recipesRetry": "Erneut versuchen",
     "recipesDetailCharacteristics": "Merkmale",
     "recipesDetailRequirements": "Anforderungen",
-    "recipesErrorServer": "Serverfehler ({status})",
+    "recipesErrorServer": "Serverfehler ({status}). Bitte versuchen Sie es später noch einmal.",
     "@recipesErrorServer": {
       "placeholders": {
         "status": {
@@ -785,6 +785,11 @@
 "setAppVersionSubtitle": "Ändern Sie das Versionsfeld in Firestore",
 "versionLabel": "Version",
 "versionUpdated": "Version aktualisiert:",
+"maintenanceTitle": "Wartungsmodus",
+"maintenanceSubtitle": "App in Wartungsmodus versetzen (außer für Admins)",
+"maintenanceModeTitle": "Wartungsmodus",
+"maintenanceScreenTitle": "Wartungsarbeiten im Gange",
+"maintenanceDescription": "Wir arbeiten derzeit an Verbesserungen für fFinder. Die App ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.",
 "bmiForChildrenTitle": "Kinder-BMI Info",
 "bmiForChildrenExplanation": "Der BMI von Kindern wird basierend auf Alter, Geschlecht, Größe und Gewicht berechnet. Anstelle fester Grenzen verwendet diese App BMI-Perzentile, sodass die Bewertung besser zum Wachstum der Kinder passt. Kleine Unterschiede zu anderen BMI-Tabellen sind normal.",
 "privacyPolicy": "Klicken Sie hier, um die Datenschutzerklärung anzusehen",
@@ -824,7 +829,52 @@
   "disclaimerText": "Diese App stellt allgemeine Informationen zu Ernährung, Flüssigkeitszufuhr, körperlicher Aktivität und Gewicht auf Grundlage öffentlich zugänglicher Richtlinien und wissenschaftlicher Quellen bereit. Die in dieser App enthaltenen Informationen und Berechnungen dienen ausschließlich zu Informationszwecken und stellen keine medizinische Beratung dar. Diese App ist nicht dazu bestimmt, eine professionelle medizinische Beratung, Diagnose oder Behandlung zu ersetzen. Bei gesundheitlichen Fragen oder Bedenken wenden Sie sich bitte immer an einen Arzt oder eine andere qualifizierte medizinische Fachkraft. Die Nutzung dieser App sowie die Interpretation der dargestellten Daten erfolgen vollständig auf eigene Verantwortung des Nutzers.",
   "disclaimer": "Haftungsausschluss",
   "cannotOpenLink": "Link kann nicht geöffnet werden",
-  "bronnen": "Quellen"
+  "bronnen": "Quellen",
+  "playWaitingGame": "Wartespiel spielen",
+  "sessionExpiresIn": "Sitzung läuft ab in: {seconds}s",
+  "@sessionExpiresIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "fetching": "Wird abgerufen...",
+  "sessionExpired": "Sitzung aufgrund von Inaktivität abgelaufen.",
+  "loadingFilters": "Filter laden...",
+  "filterByCategory": "Nach Kategorie filtern:",
+  "apply": "Anwenden",
+  "clearFilters": "Filter löschen",
+  "waitingForTurn": "Warten auf Ihren Zug...",
+  "queuePosition": "Sie sind an Position {pos} in der Warteschlange",
+  "@queuePosition": {
+    "placeholders": {
+      "pos": {
+        "type": "int"
+      }
+    }
+  },
+  "inactivityCheck": "Inaktivitätsprüfung: {seconds}s",
+  "@inactivityCheck": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "imStillHere": "Ich bin noch da!",
+  "playGameOrWait": "Spielen Sie das Spiel oder tippen Sie auf den Knopf, um weiter zu warten",
+  "gameScore": "Punktzahl: {score}",
+  "gameHighScore": "Highscore: {score}",
+  "@gameHighScore": {
+    "placeholders": {
+      "score": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "tapTheFood": "Tippe auf das Essen!"
 
 
 

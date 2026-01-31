@@ -1680,43 +1680,43 @@ abstract class AppLocalizations {
   /// No description provided for @recipesErrorNoRecommendations.
   ///
   /// In en, this message translates to:
-  /// **'Server error: no recommendations received'**
+  /// **'Server error: no recommendations received. Please try again later.'**
   String get recipesErrorNoRecommendations;
 
   /// No description provided for @recipesError502.
   ///
   /// In en, this message translates to:
-  /// **'The server is currently unreachable (502). Please try again later.'**
+  /// **'The server is currently unavailable (502). Please try again later.'**
   String get recipesError502;
 
   /// No description provided for @recipesErrorLoading.
   ///
   /// In en, this message translates to:
-  /// **'Error loading: '**
+  /// **'Error loading (please try again later): '**
   String get recipesErrorLoading;
 
   /// No description provided for @recipesNoResultsFound.
   ///
   /// In en, this message translates to:
-  /// **'No recipes found for \"{query}\"'**
+  /// **'No results found for \"{query}\"'**
   String recipesNoResultsFound(String query);
 
   /// No description provided for @recipesErrorLoadingDetails.
   ///
   /// In en, this message translates to:
-  /// **'Could not load details for found recipes'**
+  /// **'Could not load details of found recipes. Please try again later.'**
   String get recipesErrorLoadingDetails;
 
   /// No description provided for @recipesErrorSearchFailed.
   ///
   /// In en, this message translates to:
-  /// **'Search failed: '**
+  /// **'Search failed (please try again later): '**
   String get recipesErrorSearchFailed;
 
   /// No description provided for @recipesErrorNoMoreRecipes.
   ///
   /// In en, this message translates to:
-  /// **'Server error: no more recipes available'**
+  /// **'Server error: no more recipes available. Please try again later.'**
   String get recipesErrorNoMoreRecipes;
 
   /// No description provided for @recipesNoMoreSearchResults.
@@ -1746,7 +1746,7 @@ abstract class AppLocalizations {
   /// No description provided for @recipesErrorServer.
   ///
   /// In en, this message translates to:
-  /// **'Server error ({status})'**
+  /// **'Server error ({status}). Please try again later.'**
   String recipesErrorServer(String status);
 
   /// No description provided for @recipesKitchens.
@@ -4701,6 +4701,36 @@ abstract class AppLocalizations {
   /// **'Version updated:'**
   String get versionUpdated;
 
+  /// No description provided for @maintenanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance Mode'**
+  String get maintenanceTitle;
+
+  /// No description provided for @maintenanceSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Put app in maintenance (except for admins)'**
+  String get maintenanceSubtitle;
+
+  /// No description provided for @maintenanceModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance Mode'**
+  String get maintenanceModeTitle;
+
+  /// No description provided for @maintenanceScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Under Maintenance'**
+  String get maintenanceScreenTitle;
+
+  /// No description provided for @maintenanceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'We are currently improving fFinder. The app is temporarily unavailable. Please try again later.'**
+  String get maintenanceDescription;
+
   /// No description provided for @bmiForChildrenTitle.
   ///
   /// In en, this message translates to:
@@ -4892,6 +4922,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sources'**
   String get bronnen;
+
+  /// No description provided for @playWaitingGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Play waiting game'**
+  String get playWaitingGame;
+
+  /// No description provided for @sessionExpiresIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Session expires in: {seconds}s'**
+  String sessionExpiresIn(int seconds);
+
+  /// No description provided for @fetching.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetching...'**
+  String get fetching;
+
+  /// No description provided for @sessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Session expired due to inactivity.'**
+  String get sessionExpired;
+
+  /// No description provided for @loadingFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading filters...'**
+  String get loadingFilters;
+
+  /// No description provided for @filterByCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by category:'**
+  String get filterByCategory;
+
+  /// No description provided for @apply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get apply;
+
+  /// No description provided for @clearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get clearFilters;
+
+  /// No description provided for @waitingForTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for your turn...'**
+  String get waitingForTurn;
+
+  /// No description provided for @queuePosition.
+  ///
+  /// In en, this message translates to:
+  /// **'You are at position {pos} in the queue'**
+  String queuePosition(int pos);
+
+  /// No description provided for @inactivityCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactivity check: {seconds}s'**
+  String inactivityCheck(int seconds);
+
+  /// No description provided for @imStillHere.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m still here!'**
+  String get imStillHere;
+
+  /// No description provided for @playGameOrWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Play the game or tap the button to keep waiting'**
+  String get playGameOrWait;
+
+  /// Score text for the minigame
+  ///
+  /// In en, this message translates to:
+  /// **'Score: {score}'**
+  String gameScore(int score);
+
+  /// High Score text for the minigame
+  ///
+  /// In en, this message translates to:
+  /// **'High Score: {score}'**
+  String gameHighScore(int score);
+
+  /// No description provided for @tapTheFood.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the food!'**
+  String get tapTheFood;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
