@@ -2331,6 +2331,49 @@ class AppLocalizationsFr extends AppLocalizations {
   String get maintenanceDescription => 'Nous travaillons actuellement à l\'amélioration de fFinder. L\'application est temporairement indisponible. Veuillez réessayer plus tard.';
 
   @override
+  String get apiBaseTitle => 'Base API';
+
+  @override
+  String apiBaseActive(String base) {
+    return 'Actif : $base';
+  }
+
+  @override
+  String get apiBaseSelect => 'Sélectionner la base';
+
+  @override
+  String get apiBaseAddNewHint => 'Ajouter une nouvelle base (ex. api.example.com)';
+
+  @override
+  String get apiBaseAdd => 'Ajouter';
+
+  @override
+  String get apiBaseClear => 'Effacer';
+
+  @override
+  String get apiBaseSave => 'Enregistrer';
+
+  @override
+  String apiBaseSavedMessage(String base) {
+    return 'Base API définie : $base';
+  }
+
+  @override
+  String apiBaseAddedMessage(String base) {
+    return 'Ajouté : $base';
+  }
+
+  @override
+  String apiBaseAddErrorMessage(String error) {
+    return 'Erreur lors de l\'ajout : $error';
+  }
+
+  @override
+  String apiBaseSaveErrorMessage(String error) {
+    return 'Erreur lors de l\'enregistrement de la base API : $error';
+  }
+
+  @override
   String get bmiForChildrenTitle => 'Info IMC enfants';
 
   @override

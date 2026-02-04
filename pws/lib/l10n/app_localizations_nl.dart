@@ -2316,19 +2316,62 @@ class AppLocalizationsNl extends AppLocalizations {
   String get versionUpdated => 'Versie bijgewerkt:';
 
   @override
-  String get maintenanceTitle => 'Onderhoudszodus';
+  String get maintenanceTitle => 'Onderhoudsmodus';
 
   @override
   String get maintenanceSubtitle => 'Zet app in onderhoud (behalve voor admins)';
 
   @override
-  String get maintenanceModeTitle => 'Onderhoudssmodus';
+  String get maintenanceModeTitle => 'Onderhoudsmodus';
 
   @override
   String get maintenanceScreenTitle => 'Onderhoud aan de gang';
 
   @override
   String get maintenanceDescription => 'We zijn momenteel bezig met verbeteringen aan fFinder. De app is tijdelijk niet beschikbaar. Probeer het later opnieuw.';
+
+  @override
+  String get apiBaseTitle => 'API-base';
+
+  @override
+  String apiBaseActive(String base) {
+    return 'Actief: $base';
+  }
+
+  @override
+  String get apiBaseSelect => 'Kies base';
+
+  @override
+  String get apiBaseAddNewHint => 'Voeg nieuwe base toe (bijv. api.example.com)';
+
+  @override
+  String get apiBaseAdd => 'Toevoegen';
+
+  @override
+  String get apiBaseClear => 'Wissen';
+
+  @override
+  String get apiBaseSave => 'Opslaan';
+
+  @override
+  String apiBaseSavedMessage(String base) {
+    return 'API-base ingesteld: $base';
+  }
+
+  @override
+  String apiBaseAddedMessage(String base) {
+    return 'Toegevoegd: $base';
+  }
+
+  @override
+  String apiBaseAddErrorMessage(String error) {
+    return 'Fout bij toevoegen: $error';
+  }
+
+  @override
+  String apiBaseSaveErrorMessage(String error) {
+    return 'Fout bij opslaan API base: $error';
+  }
 
   @override
   String get bmiForChildrenTitle => 'Kinder-BMI uitleg';

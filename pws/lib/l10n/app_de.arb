@@ -790,6 +790,32 @@
 "maintenanceModeTitle": "Wartungsmodus",
 "maintenanceScreenTitle": "Wartungsarbeiten im Gange",
 "maintenanceDescription": "Wir arbeiten derzeit an Verbesserungen für fFinder. Die App ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.",
+"apiBaseTitle": "API-Basis",
+"apiBaseActive": "Aktiv: {base}",
+"@apiBaseActive": {
+  "placeholders": { "base": { "type": "String" } }
+},
+"apiBaseSelect": "Basis wählen",
+"apiBaseAddNewHint": "Neue Basis hinzufügen (z. B. api.example.com)",
+"apiBaseAdd": "Hinzufügen",
+"apiBaseClear": "Leeren",
+"apiBaseSave": "Speichern",
+"apiBaseSavedMessage": "API-Basis eingestellt: {base}",
+"@apiBaseSavedMessage": {
+  "placeholders": { "base": { "type": "String" } }
+},
+"apiBaseAddedMessage": "Hinzugefügt: {base}",
+"@apiBaseAddedMessage": {
+  "placeholders": { "base": { "type": "String" } }
+},
+"apiBaseAddErrorMessage": "Fehler beim Hinzufügen: {error}",
+"@apiBaseAddErrorMessage": {
+  "placeholders": { "error": { "type": "String" } }
+},
+"apiBaseSaveErrorMessage": "Fehler beim Speichern der API-Basis: {error}",
+"@apiBaseSaveErrorMessage": {
+  "placeholders": { "error": { "type": "String" } }
+},
 "bmiForChildrenTitle": "Kinder-BMI Info",
 "bmiForChildrenExplanation": "Der BMI von Kindern wird basierend auf Alter, Geschlecht, Größe und Gewicht berechnet. Anstelle fester Grenzen verwendet diese App BMI-Perzentile, sodass die Bewertung besser zum Wachstum der Kinder passt. Kleine Unterschiede zu anderen BMI-Tabellen sind normal.",
 "privacyPolicy": "Klicken Sie hier, um die Datenschutzerklärung anzusehen",

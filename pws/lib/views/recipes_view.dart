@@ -49,7 +49,8 @@ class RecipesScreen extends StatefulWidget {
 
 class _RecipesScreenState extends State<RecipesScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  final String apiBase = 'https://ffinder.nl';
+  String _apiBaseUrl = 'https://ffinder.nl';
+
   final String apiKey = dotenv.env['APP_KEY']!;
 
   String get userId {
@@ -76,13 +77,13 @@ class _RecipesScreenState extends State<RecipesScreen>
   Map<String, dynamic>? _filterOptions;
   final Set<String> _expandedFilterSections = {};
 
-// dit doet de wachtrij functionaliteit
+  // dit doet de wachtrij functionaliteit
   bool _isMyTurn = false;
   StreamSubscription? _queueSubscription;
   String? _queueDocId;
   int _queuePosition = 0;
 
-// dit is voor de inactivity timeout
+  // dit is voor de inactivity timeout
   DateTime _lastInteraction = DateTime.now();
   Timer? _inactivityTimer;
 
@@ -91,6 +92,69 @@ class _RecipesScreenState extends State<RecipesScreen>
       setState(() {
         _lastInteraction = DateTime.now();
       });
+    }
+  }
+
+  Future<String?> _getApiBaseIfAdmin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return null;
+    }
+    try {
+      final userSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final userData = userSnap.data() as Map<String, dynamic>?;
+      final isAdmin = userData?['admin'] == true;
+      if (!isAdmin) {
+        return null;
+      }
+      final genSnap = await FirebaseFirestore.instance
+          .collection('config')
+          .doc('general')
+          .get();
+      final genData = genSnap.data() as Map<String, dynamic>?;
+      final base = genData?['apiBase']?.toString();
+      if (base == null || base.isEmpty) {
+        return null;
+      }
+      debugPrint(
+        '[_getApiBaseIfAdmin] admin user=${user.uid} -> using firebase apiBase: $base',
+      );
+      return base;
+    } catch (e, st) {
+      debugPrint('[_getApiBaseIfAdmin] error reading firestore: $e\n$st');
+      return null;
+    }
+  }
+
+  Future<void> _resolveApiBase() async {
+    try {
+      final base = await _getApiBaseIfAdmin();
+      final String url;
+      if (base != null && base.isNotEmpty) {
+        url = base;
+        debugPrint(
+          '[_resolveApiBase] admin base used exactly as in firebase -> $url',
+        );
+      } else {
+        url = 'https://ffinder.nl';
+        debugPrint('[_resolveApiBase] using default base -> $url');
+      }
+
+      if (mounted) {
+        setState(() => _apiBaseUrl = url);
+      } else {
+        _apiBaseUrl = url;
+      }
+    } catch (e, st) {
+      debugPrint('[_resolveApiBase] error resolving api base: $e\n$st');
+      if (mounted) {
+        setState(() => _apiBaseUrl = 'https://ffinder.nl');
+      } else {
+        _apiBaseUrl = 'https://ffinder.nl';
+      }
     }
   }
 
@@ -107,8 +171,9 @@ class _RecipesScreenState extends State<RecipesScreen>
         _lastInteraction = DateTime.now();
       }
 
-      final secondsInactive =
-          DateTime.now().difference(_lastInteraction).inSeconds;
+      final secondsInactive = DateTime.now()
+          .difference(_lastInteraction)
+          .inSeconds;
 
       final limit = 60;
 
@@ -133,9 +198,7 @@ class _RecipesScreenState extends State<RecipesScreen>
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            AppLocalizations.of(context)!.sessionExpired,
-          ),
+          content: Text(AppLocalizations.of(context)!.sessionExpired),
           backgroundColor: Colors.red,
         ),
       );
@@ -156,7 +219,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
+    _resolveApiBase();
     _animController =
         AnimationController(
           vsync: this,
@@ -190,16 +253,16 @@ class _RecipesScreenState extends State<RecipesScreen>
   @override
   void didUpdateWidget(RecipesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     if (oldWidget.tabNotifier != widget.tabNotifier) {
       oldWidget.tabNotifier?.removeListener(_handleTabChange);
       widget.tabNotifier?.addListener(_handleTabChange);
     }
-    
+
     // Als de actieve status verandert van true naar false (we verlaten de tab)
     if (widget.isActive == false && oldWidget.isActive != false) {
       _leaveQueue();
-    } 
+    }
     // Als de actieve status verandert van false naar true (we komen terug op de tab)
     else if (widget.isActive == true && oldWidget.isActive != true) {
       // Alleen joinen als we ook echt op de recepten tab zitten (index 1)
@@ -238,13 +301,11 @@ class _RecipesScreenState extends State<RecipesScreen>
         } catch (_) {}
       }
 
-      final docRef = await FirebaseFirestore.instance
-          .collection('queue')
-          .add({
-            'uid': uid,
-            'entered_at': FieldValue.serverTimestamp(),
-          });
-      
+      final docRef = await FirebaseFirestore.instance.collection('queue').add({
+        'uid': uid,
+        'entered_at': FieldValue.serverTimestamp(),
+      });
+
       if (!mounted) {
         // Gebruiker is al weggegaan terwijl we de document aanmaakten
         await docRef.delete();
@@ -261,7 +322,7 @@ class _RecipesScreenState extends State<RecipesScreen>
           .snapshots()
           .listen((snapshot) {
             if (_queueDocId == null) return;
-            
+
             final docs = snapshot.docs;
             int pos = 0;
             bool turn = false;
@@ -303,10 +364,7 @@ class _RecipesScreenState extends State<RecipesScreen>
       final id = _queueDocId!;
       _queueDocId = null;
       try {
-        await FirebaseFirestore.instance
-            .collection('queue')
-            .doc(id)
-            .delete();
+        await FirebaseFirestore.instance.collection('queue').doc(id).delete();
       } catch (e) {
         debugPrint('Failed to leave queue: $e');
       }
@@ -314,11 +372,12 @@ class _RecipesScreenState extends State<RecipesScreen>
   }
 
   Future<void> _fetchFilterOptions() async {
-    if (!_isMyTurn) return; // Dubbele check: geen API calls als je niet aan de beurt bent
+    if (!_isMyTurn)
+      return; // Dubbele check: geen API calls als je niet aan de beurt bent
     _updateInteraction();
     try {
       final res = await http.get(
-        Uri.parse('$apiBase/recipes/filters'),
+        Uri.parse('$_apiBaseUrl/recipes/filters'),
         headers: _headers,
       );
       if (res.statusCode == 200) {
@@ -337,6 +396,7 @@ class _RecipesScreenState extends State<RecipesScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -348,13 +408,24 @@ class _RecipesScreenState extends State<RecipesScreen>
 
             if (_filterOptions == null) {
               return Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF121212) : Colors.white,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                ),
                 padding: const EdgeInsets.all(32),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const CircularProgressIndicator(),
                     const SizedBox(height: 16),
-                    Text(loc.loadingFilters),
+                    Text(
+                      loc.loadingFilters,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     WaitingGame(onInteraction: _updateInteraction),
                     const SizedBox(height: 16),
@@ -408,6 +479,12 @@ class _RecipesScreenState extends State<RecipesScreen>
             return Container(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF121212) : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
               ),
               padding: EdgeInsets.only(
                 left: 20,
@@ -601,7 +678,14 @@ class _RecipesScreenState extends State<RecipesScreen>
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Max: ${_currentFilters.maxKcal} kcal'),
+                                Text(
+                                  'Max: ${_currentFilters.maxKcal} kcal',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black87,
+                                  ),
+                                ),
                                 Slider(
                                   value: (_currentFilters.maxKcal ?? 1500)
                                       .toDouble(),
@@ -626,7 +710,14 @@ class _RecipesScreenState extends State<RecipesScreen>
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Max: ${_currentFilters.maxPrepTime} min'),
+                                Text(
+                                  'Max: ${_currentFilters.maxPrepTime} min',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black87,
+                                  ),
+                                ),
                                 Slider(
                                   value: (_currentFilters.maxPrepTime ?? 120)
                                       .toDouble(),
@@ -695,6 +786,7 @@ class _RecipesScreenState extends State<RecipesScreen>
 
   Widget _buildFilterSection(String title, bool isVisible, Widget child) {
     if (!isVisible) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
       child: Column(
@@ -702,7 +794,11 @@ class _RecipesScreenState extends State<RecipesScreen>
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
           ),
           const SizedBox(height: 8),
           child,
@@ -727,7 +823,11 @@ class _RecipesScreenState extends State<RecipesScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Als de app naar de achtergrond gaat of wordt afgesloten
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+    // We voegen 'inactive' toe voor Android: dit gebeurt zodra je op het vierkantje drukt (app switcher).
+    // Hierdoor begint het verwijderen al voordat je de app echt wegveegt (killed), wat de kans op succes vergroot.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.inactive) {
       _leaveQueue();
     } else if (state == AppLifecycleState.resumed) {
       // Als we weer terugkomen in de app, probeer opnieuw de wachtrij in te gaan
@@ -751,7 +851,7 @@ class _RecipesScreenState extends State<RecipesScreen>
   }) async {
     if (!_isMyTurn) return []; // Dubbele check
     final res = await http.get(
-      Uri.parse('$apiBase/recipes/recommendations/$userId?limit=$limit'),
+      Uri.parse('$_apiBaseUrl/recipes/recommendations/$userId?limit=$limit'),
       headers: _headers,
     );
     debugPrint('RECS status=${res.statusCode} body=${res.body}');
@@ -859,7 +959,7 @@ class _RecipesScreenState extends State<RecipesScreen>
       }
 
       final uri = Uri.parse(
-        '$apiBase/recipes/search',
+        '$_apiBaseUrl/recipes/search',
       ).replace(queryParameters: queryParams);
 
       final res = await http.get(uri, headers: _headers);
@@ -897,7 +997,8 @@ class _RecipesScreenState extends State<RecipesScreen>
         final maxKcal = _currentFilters.maxKcal!;
         detailedRecipes.removeWhere((r) {
           final kcalRaw = r['kcal'];
-          if (kcalRaw == null) return true; // dit doet verwijderen als er geen kcal info is
+          if (kcalRaw == null)
+            return true; // dit doet verwijderen als er geen kcal info is
           try {
             final kcal = kcalRaw is num
                 ? kcalRaw
@@ -953,7 +1054,7 @@ class _RecipesScreenState extends State<RecipesScreen>
     if (!_isMyTurn) return null; // Dubbele check
     _updateInteraction();
     final res = await http.get(
-      Uri.parse('$apiBase/recipes/get/$id'),
+      Uri.parse('$_apiBaseUrl/recipes/get/$id'),
       headers: _headers,
     );
     debugPrint('DETAIL $id status=${res.statusCode} body=${res.body}');
@@ -967,7 +1068,7 @@ class _RecipesScreenState extends State<RecipesScreen>
     debugPrint('rateRecipe: id=$recipeId rating=$rating');
     try {
       final response = await http.post(
-        Uri.parse('$apiBase/recipes/rate'),
+        Uri.parse('$_apiBaseUrl/recipes/rate'),
         headers: _headers,
         body: json.encode({
           'user_id': userId,
@@ -1091,6 +1192,9 @@ class _RecipesScreenState extends State<RecipesScreen>
     final loc = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final primaryTextColor = isDark ? Colors.white : Colors.black;
+    final secondaryTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
         _leaveQueue();
@@ -1098,343 +1202,410 @@ class _RecipesScreenState extends State<RecipesScreen>
       child: GestureDetector(
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Column(
-                  children: [
-                    if (_isMyTurn)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Text(
-                          _isLoading
-                              ? loc.fetching
-                              : loc.sessionExpiresIn((60 - DateTime.now().difference(_lastInteraction).inSeconds)),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: !_isLoading &&
-                                    DateTime.now()
+          backgroundColor: isDark ? Colors.black : Colors.white,
+          body: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Column(
+                    children: [
+                      if (_isMyTurn)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Text(
+                            _isLoading
+                                ? loc.fetching
+                                : loc.sessionExpiresIn(
+                                    (60 -
+                                        DateTime.now()
                                             .difference(_lastInteraction)
-                                            .inSeconds >
-                                        45
-                                ? Colors.red
-                                : Colors.grey,
-                            fontWeight: FontWeight.bold,
+                                            .inSeconds),
+                                  ),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  !_isLoading &&
+                                      DateTime.now()
+                                              .difference(_lastInteraction)
+                                              .inSeconds >
+                                          45
+                                  ? Colors.red
+                                  : Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                    TextField(
-                      controller: _searchController,
-                  enabled: _isMyTurn,
-                  decoration: InputDecoration(
-                    hintText: loc.recipesSearchHint,
-                    prefixIcon: const Icon(Icons.search, color: Colors.orange),
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_searchController.text.isNotEmpty ||
-                            _isSearchMode ||
-                            !_currentFilters.isEmpty)
-                          IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: _isMyTurn
-                                ? () {
-                                    _searchController.clear();
-                                    _currentFilters.reset();
-                                    _loadInitialRecipes();
-                                  }
-                                : null,
+                      TextField(
+                        controller: _searchController,
+                        style: TextStyle(color: primaryTextColor),
+                        enabled: _isMyTurn,
+                        decoration: InputDecoration(
+                          hintText: loc.recipesSearchHint,
+                          hintStyle: TextStyle(color: secondaryTextColor),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.orange,
                           ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.filter_list,
-                            color: !_isMyTurn
-                                ? Colors.grey[800]
-                                : _currentFilters.isEmpty
-                                ? Colors.grey
-                                : Colors.orange,
-                          ),
-                          onPressed: _isMyTurn ? _showFilterSheet : null,
-                        ),
-                      ],
-                    ),
-                    filled: true,
-                    fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                  ),
-                  onSubmitted: (val) => _isMyTurn ? _performSearch(val) : null,
-                  onChanged: (val) => setState(() {}),
-                ),
-              ],
-            ),
-          ),
-
-          Expanded(
-                child: Center(
-                  child: !_isMyTurn
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const CircularProgressIndicator(
-                              color: Colors.orange,
-                            ),
-                            const SizedBox(height: 24),
-                            Text(
-                              loc.waitingForTurn,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              loc.queuePosition(_queuePosition),
-                              style: TextStyle(
-                                color:
-                                    isDark ? Colors.grey[400] : Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 32),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              margin: const EdgeInsets.symmetric(horizontal: 24),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.orange),
-                              ),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    loc.inactivityCheck((60 - DateTime.now().difference(_lastInteraction).inSeconds)),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.orange,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  WaitingGame(onInteraction: _updateInteraction),
-                                  const SizedBox(height: 12),
-                                  ElevatedButton(
-                                    onPressed: _updateInteraction,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.orange,
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    child: Text(loc.imStillHere),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    loc.playGameOrWait,
-                                    style: const TextStyle(fontSize: 11),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        )
-                      : _isLoading
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const CircularProgressIndicator(),
-                            const SizedBox(height: 24),
-                            Text(loc.fetching, style: const TextStyle(fontSize: 16)),
-                            const SizedBox(height: 24),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                              child: WaitingGame(onInteraction: _updateInteraction),
-                            ),
-                          ],
-                        )
-                      : _loadError != null
-                      ? Padding(
-                          padding: const EdgeInsets.all(32.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.restaurant_menu_outlined,
-                                size: 80,
-                                color: isDark
-                                    ? Colors.grey[700]
-                                    : Colors.grey[300],
-                              ),
-                              const SizedBox(height: 24),
-                              Text(
-                                _loadError!,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: isDark
-                                      ? Colors.grey[300]
-                                      : Colors.grey[700],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 32),
-                              ElevatedButton.icon(
-                                onPressed: _loadInitialRecipes,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 12,
+                              if (_searchController.text.isNotEmpty ||
+                                  _isSearchMode ||
+                                  !_currentFilters.isEmpty)
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.clear,
+                                    color: secondaryTextColor,
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                  onPressed: _isMyTurn
+                                      ? () {
+                                          _searchController.clear();
+                                          _currentFilters.reset();
+                                          _loadInitialRecipes();
+                                        }
+                                      : null,
                                 ),
-                                icon: const Icon(Icons.refresh),
-                                label: Text(loc.recipesRetry),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.filter_list,
+                                  color: !_isMyTurn
+                                      ? (isDark
+                                            ? Colors.grey[800]
+                                            : Colors.grey[300])
+                                      : _currentFilters.isEmpty
+                                      ? secondaryTextColor
+                                      : Colors.orange,
+                                ),
+                                onPressed: _isMyTurn ? _showFilterSheet : null,
                               ),
                             ],
                           ),
-                        )
-                      : _recipes.isEmpty
-                      ? (_isFetchingMore
-                            ? Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const CircularProgressIndicator(),
-                                  const SizedBox(height: 24),
-                                  Text(loc.fetching, style: const TextStyle(fontSize: 16)),
-                                  const SizedBox(height: 24),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                                    child: WaitingGame(onInteraction: _updateInteraction),
-                                  ),
-                                ],
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    _isSearchMode
-                                        ? Icons.check_circle_outline
-                                        : Icons.error_outline,
-                                    size: 64,
-                                    color: isDark
-                                        ? Colors.grey[700]
-                                        : Colors.grey[300],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    _isSearchMode
-                                        ? loc.recipesNoMoreSearchResults
-                                        : loc.recipesErrorNoMoreRecipes,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: isDark
-                                          ? Colors.grey[400]
-                                          : Colors.grey[600],
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  ElevatedButton.icon(
-                                    onPressed: _loadInitialRecipes,
-                                    icon: const Icon(Icons.refresh),
-                                    label: Text(loc.recipesRetry),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.orange,
-                                      foregroundColor: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ))
-                      : LayoutBuilder(
-                          builder: (context, c) {
-                            final visible = math.min(3, _recipes.length);
-                            return SizedBox(
-                              width: math.min(380, c.maxWidth * 0.85),
-                              height: math.min(580, c.maxHeight * 0.8),
-                              child: Stack(
-                                children: List.generate(visible, (i) {
-                                  final recipe = _recipes[i];
-                                  final isTop = i == 0;
-
-                                  Widget card = _recipeCard(recipe);
-
-                                  if (isTop) {
-                                    card = GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onPanUpdate: (d) {
-                                        setState(() {
-                                          _dragOffset += d.delta;
-                                          _dragRotation =
-                                              _dragOffset.dx *
-                                              _rotationMultiplier;
-                                        });
-                                      },
-                                      onPanEnd: (d) => _onPanEnd(d),
-                                      onTap: () {
-                                        debugPrint(
-                                          'Tapped recipe: ${recipe['id']}',
-                                        );
-                                        _showDetails(recipe);
-                                      },
-                                      child: Transform.translate(
-                                        offset: _dragOffset,
-                                        child: Transform.rotate(
-                                          angle: _dragRotation,
-                                          child: card,
-                                        ),
-                                      ),
-                                    );
-                                  }
-
-                                  return Positioned.fill(child: card);
-                                }).reversed.toList(),
-                              ),
-                            );
-                          },
+                          filled: true,
+                          fillColor: isDark
+                              ? Colors.grey[900]
+                              : Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 0,
+                          ),
                         ),
+                        onSubmitted: (val) =>
+                            _isMyTurn ? _performSearch(val) : null,
+                        onChanged: (val) => setState(() {}),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              if (_recipes.isNotEmpty && !_isLoading) ...[
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    FloatingActionButton(
-                      heroTag: 'dislike',
-                      backgroundColor: Colors.red,
-                      onPressed: () => _triggerSwipe(_SwipeDirection.left),
-                      child: const Icon(Icons.close),
-                    ),
-                    FloatingActionButton(
-                      heroTag: 'like',
-                      backgroundColor: Colors.green,
-                      onPressed: () => _triggerSwipe(_SwipeDirection.right),
-                      child: const Icon(Icons.check),
-                    ),
-                  ],
+                Expanded(
+                  child: Center(
+                    child: !_isMyTurn
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const CircularProgressIndicator(
+                                color: Colors.orange,
+                              ),
+                              const SizedBox(height: 24),
+                              Text(
+                                loc.waitingForTurn,
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryTextColor,
+                                ) ??
+                                TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryTextColor,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                loc.queuePosition(_queuePosition),
+                                style: TextStyle(color: secondaryTextColor),
+                              ),
+                              const SizedBox(height: 32),
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.orange),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      loc.inactivityCheck(
+                                        (60 -
+                                            DateTime.now()
+                                                .difference(_lastInteraction)
+                                                .inSeconds),
+                                      ),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: (60 -
+                                                    DateTime.now()
+                                                        .difference(
+                                                            _lastInteraction)
+                                                        .inSeconds) <=
+                                                15
+                                            ? Colors.red
+                                            : Colors.orange,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    WaitingGame(
+                                      onInteraction: _updateInteraction,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ElevatedButton(
+                                      onPressed: _updateInteraction,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.orange,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: Text(loc.imStillHere),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      loc.playGameOrWait,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: secondaryTextColor,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        : _isLoading
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 24),
+                              Text(
+                                loc.fetching,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: primaryTextColor,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 32.0,
+                                ),
+                                child: WaitingGame(
+                                  onInteraction: _updateInteraction,
+                                ),
+                              ),
+                            ],
+                          )
+                        : _loadError != null
+                        ? Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.restaurant_menu_outlined,
+                                  size: 80,
+                                  color: isDark
+                                      ? Colors.grey[700]
+                                      : Colors.grey[300],
+                                ),
+                                const SizedBox(height: 24),
+                                Text(
+                                  _loadError!,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: isDark
+                                        ? Colors.grey[300]
+                                        : Colors.grey[700],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 32),
+                                ElevatedButton.icon(
+                                  onPressed: _loadInitialRecipes,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.refresh),
+                                  label: Text(loc.recipesRetry),
+                                ),
+                              ],
+                            ),
+                          )
+                        : _recipes.isEmpty
+                        ? (_isFetchingMore
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const CircularProgressIndicator(),
+                                    const SizedBox(height: 24),
+                                    Text(
+                                      loc.fetching,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: primaryTextColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 32.0,
+                                      ),
+                                      child: WaitingGame(
+                                        onInteraction: _updateInteraction,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      _isSearchMode
+                                          ? Icons.check_circle_outline
+                                          : Icons.error_outline,
+                                      size: 64,
+                                      color: isDark
+                                          ? Colors.grey[700]
+                                          : Colors.grey[300],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      _isSearchMode
+                                          ? loc.recipesNoMoreSearchResults
+                                          : loc.recipesErrorNoMoreRecipes,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: isDark
+                                            ? Colors.grey[400]
+                                            : Colors.grey[600],
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    ElevatedButton.icon(
+                                      onPressed: _loadInitialRecipes,
+                                      icon: const Icon(Icons.refresh),
+                                      label: Text(loc.recipesRetry),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.orange,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ))
+                        : LayoutBuilder(
+                            builder: (context, c) {
+                              final visible = math.min(3, _recipes.length);
+                              return SizedBox(
+                                width: math.min(380, c.maxWidth * 0.85),
+                                height: math.min(580, c.maxHeight * 0.8),
+                                child: Stack(
+                                  children: List.generate(visible, (i) {
+                                    final recipe = _recipes[i];
+                                    final isTop = i == 0;
+
+                                    Widget card = _recipeCard(recipe);
+
+                                    if (isTop) {
+                                      card = GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onPanUpdate: (d) {
+                                          setState(() {
+                                            _dragOffset += d.delta;
+                                            _dragRotation =
+                                                _dragOffset.dx *
+                                                _rotationMultiplier;
+                                          });
+                                        },
+                                        onPanEnd: (d) => _onPanEnd(d),
+                                        onTap: () {
+                                          debugPrint(
+                                            'Tapped recipe: ${recipe['id']}',
+                                          );
+                                          _showDetails(recipe);
+                                        },
+                                        child: Transform.translate(
+                                          offset: _dragOffset,
+                                          child: Transform.rotate(
+                                            angle: _dragRotation,
+                                            child: card,
+                                          ),
+                                        ),
+                                      );
+                                    }
+
+                                    return Positioned.fill(child: card);
+                                  }).reversed.toList(),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
                 ),
-                const SizedBox(height: 24),
+
+                if (_recipes.isNotEmpty && !_isLoading) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      FloatingActionButton(
+                        heroTag: 'dislike',
+                        backgroundColor: Colors.red,
+                        onPressed: () => _triggerSwipe(_SwipeDirection.left),
+                        child: const Icon(Icons.close),
+                      ),
+                      FloatingActionButton(
+                        heroTag: 'like',
+                        backgroundColor: Colors.green,
+                        onPressed: () => _triggerSwipe(_SwipeDirection.right),
+                        child: const Icon(Icons.check),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
-    ),);
+    );
   }
 
   Widget _recipeCard(Map<String, dynamic> r) {
     final title = r['title']?.toString() ?? '';
     final imageUrl = _getSafeImageUrl(r);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
       elevation: 8,
+      color: isDark ? Colors.grey[900] : Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -1685,6 +1856,9 @@ class _RecipeDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : Colors.black87;
+    final secondaryTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+
     final title = detail['title'] ?? '';
     String imageUrl =
         (detail['image_link'] ?? detail['image_url'] ?? detail['image'] ?? '')
@@ -1709,7 +1883,7 @@ class _RecipeDetailSheet extends StatelessWidget {
       builder: (_, scrollController) {
         return Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
+            color: isDark ? const Color(0xFF121212) : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: SingleChildScrollView(
@@ -1830,7 +2004,9 @@ class _RecipeDetailSheet extends StatelessWidget {
                       ),
 
                       const SizedBox(height: 24),
-                      const Divider(),
+                      Divider(
+                        color: isDark ? Colors.grey[800] : Colors.grey[300],
+                      ),
                       const SizedBox(height: 24),
 
                       _sectionTitle(context, loc.personalInfo),
@@ -1887,7 +2063,7 @@ class _RecipeDetailSheet extends StatelessWidget {
                                 (k) => _chipTag(
                                   k['name'] ?? '',
                                   isDark
-                                      ? Colors.blue.withOpacity(0.2)
+                                      ? Colors.blue.withOpacity(0.3)
                                       : Colors.blue[50]!,
                                   isDark ? Colors.blue[200]! : Colors.blue,
                                 ),
@@ -1897,7 +2073,7 @@ class _RecipeDetailSheet extends StatelessWidget {
                                 (c) => _chipTag(
                                   c['main'] ?? '',
                                   isDark
-                                      ? Colors.green.withOpacity(0.2)
+                                      ? Colors.green.withOpacity(0.3)
                                       : Colors.green[50]!,
                                   isDark ? Colors.green[200]! : Colors.green,
                                 ),
@@ -1907,7 +2083,7 @@ class _RecipeDetailSheet extends StatelessWidget {
                                 (t) => _chipTag(
                                   t['sub'] ?? t['name'] ?? '',
                                   isDark
-                                      ? Colors.orange.withOpacity(0.2)
+                                      ? Colors.orange.withOpacity(0.3)
                                       : Colors.orange[50]!,
                                   isDark ? Colors.orange[200]! : Colors.orange,
                                 ),
@@ -1927,7 +2103,7 @@ class _RecipeDetailSheet extends StatelessWidget {
 
                       _sectionTitle(context, loc.recipesIngredients),
                       const SizedBox(height: 12),
-                      ...?_buildIngredients(detail['ingredients']),
+                      ...?_buildIngredients(context, detail['ingredients']),
 
                       const SizedBox(height: 32),
 
@@ -1994,6 +2170,8 @@ class _RecipeDetailSheet extends StatelessWidget {
 
   List<Widget>? _buildRequirements(BuildContext context, dynamic reqs) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : Colors.black87;
+
     if (reqs is! List) return null;
     return reqs.map((r) {
       final name = r['name_singular'] ?? r['name_plural'] ?? '';
@@ -2010,7 +2188,10 @@ class _RecipeDetailSheet extends StatelessWidget {
               color: isDark ? Colors.grey[400] : Colors.grey,
             ),
             const SizedBox(width: 8),
-            Text('$name$variant', style: const TextStyle(fontSize: 16)),
+            Text(
+              '$name$variant',
+              style: TextStyle(fontSize: 16, color: primaryTextColor),
+            ),
           ],
         ),
       );
@@ -2018,12 +2199,13 @@ class _RecipeDetailSheet extends StatelessWidget {
   }
 
   Widget _sectionTitle(BuildContext context, String title) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Text(
       title,
       style: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.bold,
-        color: Theme.of(context).textTheme.titleLarge?.color,
+        color: isDark ? Colors.white : Colors.black87,
       ),
     );
   }
@@ -2035,21 +2217,22 @@ class _RecipeDetailSheet extends StatelessWidget {
     String label,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : Colors.black87;
+    final secondaryTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+
     return Column(
       children: [
         Icon(icon, color: Colors.orange, size: 28),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        Text(
-          label,
           style: TextStyle(
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
-            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: primaryTextColor,
           ),
         ),
+        Text(label, style: TextStyle(color: secondaryTextColor, fontSize: 12)),
       ],
     );
   }
@@ -2061,26 +2244,30 @@ class _RecipeDetailSheet extends StatelessWidget {
     String unit = 'g',
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : Colors.black87;
+    final secondaryTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
+
     if (value == null) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
-            fontSize: 13,
-          ),
-        ),
+        Text(label, style: TextStyle(color: secondaryTextColor, fontSize: 13)),
         Text(
           '$value $unit',
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            color: primaryTextColor,
+          ),
         ),
       ],
     );
   }
 
-  List<Widget>? _buildIngredients(dynamic ingredients) {
+  List<Widget>? _buildIngredients(BuildContext context, dynamic ingredients) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : Colors.black87;
+
     if (ingredients is! List) return null;
     return ingredients.map((ing) {
       final amount = ing['amount'] ?? '';
@@ -2091,11 +2278,17 @@ class _RecipeDetailSheet extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              '• ',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: primaryTextColor,
+              ),
+            ),
             Expanded(
               child: Text(
                 '$amount $unit $name'.trim(),
-                style: const TextStyle(fontSize: 16),
+                style: TextStyle(fontSize: 16, color: primaryTextColor),
               ),
             ),
           ],
@@ -2106,6 +2299,8 @@ class _RecipeDetailSheet extends StatelessWidget {
 
   List<Widget>? _buildSteps(BuildContext context, dynamic steps) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : Colors.black87;
+
     if (steps is! List) return null;
     int i = 1;
     return steps.map((step) {
@@ -2133,7 +2328,11 @@ class _RecipeDetailSheet extends StatelessWidget {
             Expanded(
               child: Text(
                 text,
-                style: const TextStyle(fontSize: 16, height: 1.5),
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.5,
+                  color: primaryTextColor,
+                ),
               ),
             ),
           ],

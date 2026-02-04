@@ -790,6 +790,32 @@
 "maintenanceModeTitle": "Mode maintenance",
 "maintenanceScreenTitle": "Maintenance en cours",
 "maintenanceDescription": "Nous travaillons actuellement à l'amélioration de fFinder. L'application est temporairement indisponible. Veuillez réessayer plus tard.",
+"apiBaseTitle": "Base API",
+"apiBaseActive": "Actif : {base}",
+"@apiBaseActive": {
+  "placeholders": { "base": { "type": "String" } }
+},
+"apiBaseSelect": "Sélectionner la base",
+"apiBaseAddNewHint": "Ajouter une nouvelle base (ex. api.example.com)",
+"apiBaseAdd": "Ajouter",
+"apiBaseClear": "Effacer",
+"apiBaseSave": "Enregistrer",
+"apiBaseSavedMessage": "Base API définie : {base}",
+"@apiBaseSavedMessage": {
+  "placeholders": { "base": { "type": "String" } }
+},
+"apiBaseAddedMessage": "Ajouté : {base}",
+"@apiBaseAddedMessage": {
+  "placeholders": { "base": { "type": "String" } }
+},
+"apiBaseAddErrorMessage": "Erreur lors de l'ajout : {error}",
+"@apiBaseAddErrorMessage": {
+  "placeholders": { "error": { "type": "String" } }
+},
+"apiBaseSaveErrorMessage": "Erreur lors de l'enregistrement de la base API : {error}",
+"@apiBaseSaveErrorMessage": {
+  "placeholders": { "error": { "type": "String" } }
+},
 "bmiForChildrenTitle": "Info IMC enfants",
 "bmiForChildrenExplanation": "L'IMC des enfants est calculé en fonction de l'âge, du sexe, de la taille et du poids. Au lieu de limites fixes, cette application utilise des percentiles d'IMC, ce qui rend l'évaluation mieux adaptée à la croissance des enfants. De petites différences avec d'autres tableaux d'IMC sont normales.",
 "privacyPolicy": "Cliquez pour consulter la politique de confidentialité",

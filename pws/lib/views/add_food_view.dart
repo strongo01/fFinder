@@ -83,6 +83,53 @@ class _AddFoodPageState extends State<AddFoodPage> {
     super.didChangeDependencies();
   }
 
+  Future<String> _getApiBaseIfAdmin() async {
+    const defaultBase = 'https://ffinder.nl';
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      debugPrint(
+        '[_getApiBaseIfAdmin] no user -> using default base: $defaultBase',
+      );
+      return defaultBase;
+    }
+    try {
+      final userSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final userData = userSnap.data() as Map<String, dynamic>?;
+      final isAdmin = userData?['admin'] == true;
+      if (!isAdmin) {
+        debugPrint(
+          '[_getApiBaseIfAdmin] user=${user.uid} not admin -> using default base: $defaultBase',
+        );
+        return defaultBase;
+      }
+      final genSnap = await FirebaseFirestore.instance
+          .collection('config')
+          .doc('general')
+          .get();
+      final genData = genSnap.data() as Map<String, dynamic>?;
+      final base = genData?['apiBase']?.toString();
+      if (base == null || base.isEmpty) {
+        debugPrint(
+          '[_getApiBaseIfAdmin] admin user=${user.uid} but no apiBase in config -> using default base: $defaultBase',
+        );
+        return defaultBase;
+      }
+
+      debugPrint(
+        '[_getApiBaseIfAdmin] admin user=${user.uid} -> using firebase apiBase: $base',
+      );
+      return base;
+    } catch (e, st) {
+      debugPrint(
+        '[_getApiBaseIfAdmin] error reading firestore: $e\n$st -> using default base: $defaultBase',
+      );
+      return defaultBase;
+    }
+  }
+
   void _handleInitialAction() async {
     // Wacht kort om zeker te zijn dat context beschikbaar is.
     await Future.delayed(const Duration(milliseconds: 100));
@@ -789,8 +836,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
       try {
         debugPrint("--- Poging 1: ffinder.nl endpoint ---");
+        final base = await _getApiBaseIfAdmin();
         final ffinderUrl = Uri.parse(
-          "https://ffinder.nl/product?q=${Uri.encodeComponent(trimmed)}",
+          "${base}/product?q=${Uri.encodeComponent(trimmed)}",
         );
         debugPrint("URL: $ffinderUrl");
 
@@ -1362,8 +1410,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     // start beide requests parallel
                     final ffinderFuture = () async {
                       try {
+                        final base = await _getApiBaseIfAdmin();
                         final ffinderUrl = Uri.parse(
-                          "https://ffinder.nl/product?q=${Uri.encodeComponent(trimmed)}",
+                          "${base}/product?q=${Uri.encodeComponent(trimmed)}",
                         );
                         final resp = await http
                             .get(ffinderUrl, headers: {"x-app-key": appKey})
@@ -2268,7 +2317,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   _selectedTabIndex ==
                       3)) // alleen tonen bij mijn producten of maaltijden
             IconButton(
-              key: _selectedTabIndex == 2 // mijn producten tab
+              key:
+                  _selectedTabIndex ==
+                      2 // mijn producten tab
                   ? _myproductsAddKey
                   : _maaltijdenAddKey,
               icon: const Icon(Icons.add),
@@ -2323,7 +2374,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     );
                   },
                 );
-// handel de keuze van de gebruiker
+                // handel de keuze van de gebruiker
                 if (choice == 'product') {
                   // toon sheet om eigen product toe te voegen
                   setState(() {
@@ -2486,7 +2537,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     return Column(
       children: [
         sourceStatusRow,
-        Expanded(child: _buildResultsListOrPlaceholder(isDarkMode)), // lijst of placeholder
+        Expanded(
+          child: _buildResultsListOrPlaceholder(isDarkMode),
+        ), // lijst of placeholder
       ],
     );
   }
@@ -2643,7 +2696,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
 
     // "Meer laden" knop
-    if (!_hasLoadedMore) { // alleen tonen als er meer geladen kan worden
+    if (!_hasLoadedMore) {
+      // alleen tonen als er meer geladen kan worden
       resultWidgets.add(
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -2686,7 +2740,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     return ListView(children: resultWidgets);
   }
 
-  Widget _statusBadge(SourceStatus status, String label) { // bouw status badge
+  Widget _statusBadge(SourceStatus status, String label) {
+    // bouw status badge
     return _AnimatedStatusBadge(status: status, label: label);
   }
 
@@ -3069,7 +3124,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  List<dynamic> _normalizeTags(dynamic v) { // normaliseer tags naar lijst
+  List<dynamic> _normalizeTags(dynamic v) {
+    // normaliseer tags naar lijst
     if (v == null) return <dynamic>[];
     if (v is List) return v;
     if (v is String) {
@@ -3095,7 +3151,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     return <dynamic>[];
   }
 
-  String? _extractServingSize(dynamic v) { // extraheer portiegrootte als string met eenheid
+  String? _extractServingSize(dynamic v) {
+    // extraheer portiegrootte als string met eenheid
     if (v == null) return null;
     if (v is num) return "${v.toString()} g";
     if (v is String) {
@@ -3177,7 +3234,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
               normalized['servingSize'] ??
               normalized['serving_quantity'],
         );
-       // helper om waarden naar double te converteren
+        // helper om waarden naar double te converteren
         double _asDouble(dynamic v) {
           if (v == null) return 0.0;
           if (v is num) return v.toDouble();
@@ -3233,7 +3290,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
               }
             }
           } else {
-          
             final mp =
                 normalized['nutriments_per_100g'] as Map<String, dynamic>?;
             if (mp != null) {
@@ -3250,7 +3306,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
           normalized['quantity'] = normalized['quantity'] ?? '';
         } catch (e) {
           debugPrint("[ADD_FOOD_VIEW] Normalization failed: $e");
-         
         }
 
         // toon de product bewerk sheet met altijd genormaliseerde data
@@ -3265,7 +3320,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  Widget _buildInfoRow(String label, String? value) { // bouw info rij
+  Widget _buildInfoRow(String label, String? value) {
+    // bouw info rij
     // bouw een rij met niet-bewerkbare info
     if (value == null || value.trim().isEmpty) {
       // geen waarde om te tonen
@@ -3298,7 +3354,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
   }
 
-  String _displayString(dynamic v, {String? fallback}) { // helper om string weer te geven met fallback
+  String _displayString(dynamic v, {String? fallback}) {
+    // helper om string weer te geven met fallback
     final fb = fallback ?? AppLocalizations.of(context)!.unknown;
     if (v == null) return fb;
     if (v is String && v.trim().isNotEmpty) return v.trim();
@@ -3549,7 +3606,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
                 final products = snapshot.data!.docs;
 
-                return ListView.builder( // bouw lijst met favorieten
+                return ListView.builder(
+                  // bouw lijst met favorieten
                   itemCount: products.length,
                   itemBuilder: (context, index) {
                     final productDoc = products[index];
@@ -3604,7 +3662,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         }
                         return decrypted;
                       }(),
-                      builder: (context, decryptedSnapshot) { /// bouw lijst item
+                      builder: (context, decryptedSnapshot) {
+                        /// bouw lijst item
                         if (!decryptedSnapshot.hasData) {
                           return const SizedBox.shrink();
                         }
@@ -4150,7 +4209,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     };
     double totalAmount = 0;
 
-    for (final ingredient in ingredients) { // loop door elk ingrediënt
+    for (final ingredient in ingredients) {
+      // loop door elk ingrediënt
       final amount = (ingredient['amount'] as num?)?.toDouble() ?? 0;
       final nutrimentsPer100g =
           (ingredient['nutriments_per_100g'] as Map<String, dynamic>?) ?? {};
@@ -4183,7 +4243,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
         .collection('logs')
         .doc(todayDocId);
 
-    final encryptedLogEntry = { // versleutel de log entry
+    final encryptedLogEntry = {
+      // versleutel de log entry
       'product_name': await encryptValue(
         meal['name'] ?? AppLocalizations.of(context)!.unnamedMeal,
         userDEK,
@@ -4493,8 +4554,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     // start beide requests parallel (ffinder + OFF)
                     final ffinderFuture = () async {
                       try {
+                        final base = await _getApiBaseIfAdmin();
                         final ffinderUrl = Uri.parse(
-                          "https://ffinder.nl/product?q=${Uri.encodeComponent(trimmed)}",
+                          "${base}/product?q=${Uri.encodeComponent(trimmed)}",
                         );
                         final resp = await http
                             .get(ffinderUrl, headers: {"x-app-key": appKey})
@@ -4749,7 +4811,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                               selectedProduct,
                                             );
 
-                                        List<dynamic> toList(dynamic value) { // helper om tags te normaliseren
+                                        List<dynamic> toList(dynamic value) {
+                                          // helper om tags te normaliseren
                                           if (value is List) return value;
                                           if (value is String &&
                                               value.isNotEmpty)
@@ -6383,11 +6446,11 @@ class _AILoadingDialogState extends State<_AILoadingDialog>
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
 
-    _scaleAnimation = Tween<double>( // pulsatie animatie
+    _scaleAnimation = Tween<double>(
+      // pulsatie animatie
       begin: 1.0,
       end: 1.2,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-
   }
 
   @override
@@ -6497,7 +6560,8 @@ class _AnimatedStatusBadge extends StatefulWidget {
 
 class _AnimatedStatusBadgeState extends State<_AnimatedStatusBadge>
     with SingleTickerProviderStateMixin {
-  late AnimationController _rotationController; // controller voor rotatie animatie
+  late AnimationController
+  _rotationController; // controller voor rotatie animatie
 
   @override
   void initState() {

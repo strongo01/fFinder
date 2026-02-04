@@ -2331,6 +2331,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get maintenanceDescription => 'We are currently improving fFinder. The app is temporarily unavailable. Please try again later.';
 
   @override
+  String get apiBaseTitle => 'API base';
+
+  @override
+  String apiBaseActive(String base) {
+    return 'Active: $base';
+  }
+
+  @override
+  String get apiBaseSelect => 'Select base';
+
+  @override
+  String get apiBaseAddNewHint => 'Add new base (e.g. api.example.com)';
+
+  @override
+  String get apiBaseAdd => 'Add';
+
+  @override
+  String get apiBaseClear => 'Clear';
+
+  @override
+  String get apiBaseSave => 'Save';
+
+  @override
+  String apiBaseSavedMessage(String base) {
+    return 'API base set: $base';
+  }
+
+  @override
+  String apiBaseAddedMessage(String base) {
+    return 'Added: $base';
+  }
+
+  @override
+  String apiBaseAddErrorMessage(String error) {
+    return 'Error adding base: $error';
+  }
+
+  @override
+  String apiBaseSaveErrorMessage(String error) {
+    return 'Error saving API base: $error';
+  }
+
+  @override
   String get bmiForChildrenTitle => 'Child BMI Info';
 
   @override

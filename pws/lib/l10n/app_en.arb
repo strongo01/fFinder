@@ -789,6 +789,34 @@
 "maintenanceModeTitle": "Maintenance Mode",
 "maintenanceScreenTitle": "Under Maintenance",
 "maintenanceDescription": "We are currently improving fFinder. The app is temporarily unavailable. Please try again later.",
+"apiBaseTitle": "API base",
+"apiBaseActive": "Active: {base}",
+"@apiBaseActive": {
+  "placeholders": {
+    "base": { "type": "String" }
+  }
+},
+"apiBaseSelect": "Select base",
+"apiBaseAddNewHint": "Add new base (e.g. api.example.com)",
+"apiBaseAdd": "Add",
+"apiBaseClear": "Clear",
+"apiBaseSave": "Save",
+"apiBaseSavedMessage": "API base set: {base}",
+"@apiBaseSavedMessage": {
+  "placeholders": { "base": { "type": "String" } }
+},
+"apiBaseAddedMessage": "Added: {base}",
+"@apiBaseAddedMessage": {
+  "placeholders": { "base": { "type": "String" } }
+},
+"apiBaseAddErrorMessage": "Error adding base: {error}",
+"@apiBaseAddErrorMessage": {
+  "placeholders": { "error": { "type": "String" } }
+},
+"apiBaseSaveErrorMessage": "Error saving API base: {error}",
+"@apiBaseSaveErrorMessage": {
+  "placeholders": { "error": { "type": "String" } }
+},
 "bmiForChildrenTitle": "Child BMI Info",
 "bmiForChildrenExplanation": "The BMI for children is calculated based on age, sex, height, and weight. Instead of fixed cutoffs, this app uses BMI percentiles, making the assessment better suited to children's growth. Small differences with other BMI charts are normal.",
 "privacyPolicy": "Click to view the privacy policy",

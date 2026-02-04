@@ -1330,6 +1330,180 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+    Future<void> _showApiBaseDialog() async {
+    final docGeneral =
+        FirebaseFirestore.instance.collection('config').doc('general');
+    final docApiBases =
+        FirebaseFirestore.instance.collection('config').doc('apiBases');
+
+    String current = 'ffinder.nl';
+    List<String> options = ['ffinder.nl'];
+
+    try {
+      final genSnap = await docGeneral.get();
+      if (genSnap.exists) {
+        final data = genSnap.data();
+        if (data != null && data['apiBase'] != null) {
+          current = data['apiBase'].toString();
+        }
+      }
+      final apiSnap = await docApiBases.get();
+      if (apiSnap.exists) {
+        final d = apiSnap.data();
+        if (d != null && d['bases'] is List) {
+          options = List<String>.from((d['bases'] as List).map((e) => e.toString()));
+          if (options.isEmpty) options = ['ffinder.nl'];
+        }
+      }
+    } catch (e) {
+      // swallow - we keep defaults
+    }
+
+    String selected = current;
+    final newCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, setState) {
+          final theme = Theme.of(ctx);
+          final isDark = theme.colorScheme.brightness == Brightness.dark;
+          return AlertDialog(
+            backgroundColor: isDark ? Colors.black : null,
+            title: Text(AppLocalizations.of(ctx)!.apiBaseTitle,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selected,
+                  dropdownColor: isDark ? Colors.grey[900] : Colors.white,
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                  items: options
+                      .map((o) => DropdownMenuItem(
+                            value: o,
+                            child: Text(
+                              o,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setState(() => selected = v);
+                  },
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(ctx)!.apiBaseSelect,
+                    labelStyle: TextStyle(
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white24 : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: newCtrl,
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(ctx)!.apiBaseAddNewHint,
+                    labelStyle: TextStyle(
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white24 : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () async {
+                        final val = newCtrl.text.trim();
+                        if (val.isEmpty) return;
+                        try {
+                          await docApiBases.set({
+                            'bases': FieldValue.arrayUnion([val])
+                          }, SetOptions(merge: true));
+                          // update local list
+                          if (!options.contains(val)) {
+                            setState(() {
+                              options.add(val);
+                              selected = val;
+                              newCtrl.clear();
+                            });
+                          }
+                          if (mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text(AppLocalizations.of(ctx)!.apiBaseAddedMessage(val))),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text(AppLocalizations.of(ctx)!.apiBaseAddErrorMessage(e.toString()))),
+                            );
+                          }
+                        }
+                      },
+                      child: Text(AppLocalizations.of(ctx)!.apiBaseAdd),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () {
+                        newCtrl.clear();
+                      },
+                      child: Text(AppLocalizations.of(ctx)!.apiBaseClear),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(AppLocalizations.of(ctx)!.cancelButtonLabel),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(AppLocalizations.of(ctx)!.apiBaseSave),
+              ),
+            ],
+          );
+        });
+      },
+    );
+
+    if (confirmed == true) {
+      try {
+        await docGeneral.set({'apiBase': selected}, SetOptions(merge: true));
+        // ensure selected is in apiBases
+        await docApiBases.set({
+          'bases': FieldValue.arrayUnion([selected])
+        }, SetOptions(merge: true));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.apiBaseSavedMessage(selected))),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.apiBaseSaveErrorMessage(e.toString()))),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -2467,6 +2641,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   value: _maintenanceMode,
                                   onChanged: _toggleMaintenanceMode,
                                   activeColor: theme.colorScheme.primary,
+                                ),
+                                const SizedBox(height: 8),
+                              const Divider(),
+                                ListTile(
+                                  leading: Icon(
+                                    Icons.link,
+                                    color: isDark ? Colors.white : Colors.black54,
+                                  ),
+                                  title: Text(
+                                    AppLocalizations.of(context)!.apiBaseTitle,
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white : Colors.black,
+                                    ),
+                                  ),
+                                 subtitle: FutureBuilder<DocumentSnapshot>(
+                                   future: FirebaseFirestore.instance
+                                       .collection('config')
+                                       .doc('general')
+                                       .get(),
+                                   builder: (ctx, snap) {
+                                     String active = 'ffinder.nl';
+                                     if (snap.hasData && snap.data!.exists) {
+                                       final d = snap.data!.data() as Map<String, dynamic>?;
+                                      if (d != null && d['apiBase'] != null) {
+                                        active = d['apiBase'].toString();
+                                      }
+                                     }
+                                     return Text(
+                                       AppLocalizations.of(ctx)!.apiBaseActive(active),
+                                       style: TextStyle(
+                                         color: isDark ? Colors.white70 : Colors.black54,
+                                       ),
+                                     );
+                                   },
+                                 ),
+                                  onTap: _showApiBaseDialog,
                                 ),
                               ],
                             ),

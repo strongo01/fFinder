@@ -783,11 +783,40 @@
 "setAppVersionTitle": "Wijzig versie",
 "setAppVersionSubtitle": "Wijzig het versie veld in Firestore",
 "versionLabel": "Versie",
-"versionUpdated": "Versie bijgewerkt:",  "maintenanceTitle": "Onderhoudszodus",
+"versionUpdated": "Versie bijgewerkt:",  "maintenanceTitle": "Onderhoudsmodus",
   "maintenanceSubtitle": "Zet app in onderhoud (behalve voor admins)",
-  "maintenanceModeTitle": "Onderhoudssmodus",
+  "maintenanceModeTitle": "Onderhoudsmodus",
   "maintenanceScreenTitle": "Onderhoud aan de gang",
-  "maintenanceDescription": "We zijn momenteel bezig met verbeteringen aan fFinder. De app is tijdelijk niet beschikbaar. Probeer het later opnieuw.","bmiForChildrenTitle": "Kinder-BMI uitleg",
+  "maintenanceDescription": "We zijn momenteel bezig met verbeteringen aan fFinder. De app is tijdelijk niet beschikbaar. Probeer het later opnieuw.",
+  "apiBaseTitle": "API-base",
+  "apiBaseActive": "Actief: {base}",
+  "@apiBaseActive": {
+    "placeholders": {
+      "base": { "type": "String" }
+    }
+  },
+  "apiBaseSelect": "Kies base",
+  "apiBaseAddNewHint": "Voeg nieuwe base toe (bijv. api.example.com)",
+  "apiBaseAdd": "Toevoegen",
+  "apiBaseClear": "Wissen",
+  "apiBaseSave": "Opslaan",
+  "apiBaseSavedMessage": "API-base ingesteld: {base}",
+  "@apiBaseSavedMessage": {
+    "placeholders": { "base": { "type": "String" } }
+  },
+  "apiBaseAddedMessage": "Toegevoegd: {base}",
+  "@apiBaseAddedMessage": {
+    "placeholders": { "base": { "type": "String" } }
+  },
+  "apiBaseAddErrorMessage": "Fout bij toevoegen: {error}",
+  "@apiBaseAddErrorMessage": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "apiBaseSaveErrorMessage": "Fout bij opslaan API base: {error}",
+  "@apiBaseSaveErrorMessage": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "bmiForChildrenTitle": "Kinder-BMI uitleg",
 "bmiForChildrenExplanation": "De BMI voor kinderen wordt berekend op basis van leeftijd, geslacht, lengte en gewicht. In plaats van vaste grenzen gebruikt deze app BMI-percentielen, zodat de beoordeling beter aansluit bij de groei van kinderen. Kleine verschillen met andere BMI-tabellen zijn normaal.",
 "privacyPolicy": "Klik voor het privacybeleid",
 "privacyAgreement": "Ik ga akkoord met het privacybeleid",

@@ -4731,6 +4731,72 @@ abstract class AppLocalizations {
   /// **'We are currently improving fFinder. The app is temporarily unavailable. Please try again later.'**
   String get maintenanceDescription;
 
+  /// No description provided for @apiBaseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'API base'**
+  String get apiBaseTitle;
+
+  /// No description provided for @apiBaseActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active: {base}'**
+  String apiBaseActive(String base);
+
+  /// No description provided for @apiBaseSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select base'**
+  String get apiBaseSelect;
+
+  /// No description provided for @apiBaseAddNewHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add new base (e.g. api.example.com)'**
+  String get apiBaseAddNewHint;
+
+  /// No description provided for @apiBaseAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get apiBaseAdd;
+
+  /// No description provided for @apiBaseClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get apiBaseClear;
+
+  /// No description provided for @apiBaseSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get apiBaseSave;
+
+  /// No description provided for @apiBaseSavedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'API base set: {base}'**
+  String apiBaseSavedMessage(String base);
+
+  /// No description provided for @apiBaseAddedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Added: {base}'**
+  String apiBaseAddedMessage(String base);
+
+  /// No description provided for @apiBaseAddErrorMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Error adding base: {error}'**
+  String apiBaseAddErrorMessage(String error);
+
+  /// No description provided for @apiBaseSaveErrorMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Error saving API base: {error}'**
+  String apiBaseSaveErrorMessage(String error);
+
   /// No description provided for @bmiForChildrenTitle.
   ///
   /// In en, this message translates to:
