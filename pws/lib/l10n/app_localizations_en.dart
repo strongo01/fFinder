@@ -1219,9 +1219,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiNoIngredientsFound => 'No result from AI.';
 
   @override
-  String aiIngredientsPrompt(Object ingredient) {
-    return 'What ingredients do you see here? Answer in English. Ignore marketing terms, product names, and non-relevant words like \'zero\', \'light\', etc. Answer only with actual ingredients that are in the product. Answer only if the image shows a food product. Respond as: $ingredient, $ingredient, ...';
-  }
+  String get aiIngredientsPrompt => 'What ingredients do you see here? Answer in English. Ignore marketing terms, product names, and non-relevant words like \'zero\', \'light\', etc. Answer only with actual ingredients that are in the product. Answer only if the image shows a food product. Respond as: ingredient1, ingredient2, ...';
 
   @override
   String get aiIngredientsFound => 'Ingredients found:';
@@ -1744,6 +1742,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fats => 'Fats';
+
+  @override
+  String get macroLegendOther => 'Other';
+
+  @override
+  String get macroLegendSplitFallback => 'Split';
+
+  @override
+  String macroLegendConsumedGoal(int consumed, int goal) {
+    return '$consumed/${goal}g';
+  }
+
+  @override
+  String macroLegendBreakdown(String secondaryLabel, int secondaryValue, String otherLabel, int otherValue) {
+    return '$secondaryLabel: ${secondaryValue}g | $otherLabel: ${otherValue}g';
+  }
+
+  @override
+  String macroLegendBreakdownLine(String label, int value) {
+    return '$label: ${value}g';
+  }
 
   @override
   String get unit => 'Unit';

@@ -446,7 +446,7 @@
     "chooseFromGallery": "Aus Galerie wählen",
     "noImageSelected": "Kein Bild ausgewählt.",
     "aiNoIngredientsFound": "Kein Ergebnis von der KI.",
-    "aiIngredientsPrompt": "Welche Zutaten sehen Sie hier? Antworten Sie auf Niederländisch. Ignorieren Sie Marketingbegriffe, Produktnamen und nicht relevante Wörter wie 'zero', 'light' usw. Antworten Sie nur mit tatsächlichen Zutaten, die im Produkt enthalten sind. Antworten Sie nur, wenn das Bild ein Lebensmittelprodukt zeigt. Antworten Sie als: {ingredient}, {ingredient}, ...",
+    "aiIngredientsPrompt": "Welche Zutaten sehen Sie hier? Antworten Sie auf Niederländisch. Ignorieren Sie Marketingbegriffe, Produktnamen und nicht relevante Wörter wie 'zero', 'light' usw. Antworten Sie nur mit tatsächlichen Zutaten, die im Produkt enthalten sind. Antworten Sie nur, wenn das Bild ein Lebensmittelprodukt zeigt. Antworten Sie als: ingredient1, ingredient2, ...",
     "aiIngredientsFound": "Gefundene Zutaten:",
     "aiIngredientsDescription": "Die KI hat die folgenden Zutaten erkannt:",
     "addMeal": "Mahlzeit zusammenstellen",
@@ -621,6 +621,47 @@
     "calories_consumed": "kcal konsumiert",
     "carbs": "Kohlenhydrate",
     "fats": "Fette",
+    "macroLegendOther": "Andere",
+    "macroLegendSplitFallback": "Aufteilung",
+    "macroLegendConsumedGoal": "{consumed}/{goal}g",
+    "@macroLegendConsumedGoal": {
+      "placeholders": {
+        "consumed": {
+          "type": "int"
+        },
+        "goal": {
+          "type": "int"
+        }
+      }
+    },
+    "macroLegendBreakdown": "{secondaryLabel}: {secondaryValue}g | {otherLabel}: {otherValue}g",
+    "@macroLegendBreakdown": {
+      "placeholders": {
+        "secondaryLabel": {
+          "type": "String"
+        },
+        "secondaryValue": {
+          "type": "int"
+        },
+        "otherLabel": {
+          "type": "String"
+        },
+        "otherValue": {
+          "type": "int"
+        }
+      }
+    },
+    "macroLegendBreakdownLine": "{label}: {value}g",
+    "@macroLegendBreakdownLine": {
+      "placeholders": {
+        "label": {
+          "type": "String"
+        },
+        "value": {
+          "type": "int"
+        }
+      }
+    },
     "unit": "Einheit",
     "edit_amount_dialog_title_ml": "Menge anpassen (ml)",
     "edit_amount_dialog_title_g": "Menge anpassen (g)",

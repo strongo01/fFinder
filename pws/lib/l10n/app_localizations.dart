@@ -2514,8 +2514,8 @@ abstract class AppLocalizations {
   /// No description provided for @aiIngredientsPrompt.
   ///
   /// In en, this message translates to:
-  /// **'What ingredients do you see here? Answer in English. Ignore marketing terms, product names, and non-relevant words like \'zero\', \'light\', etc. Answer only with actual ingredients that are in the product. Answer only if the image shows a food product. Respond as: {ingredient}, {ingredient}, ...'**
-  String aiIngredientsPrompt(Object ingredient);
+  /// **'What ingredients do you see here? Answer in English. Ignore marketing terms, product names, and non-relevant words like \'zero\', \'light\', etc. Answer only with actual ingredients that are in the product. Answer only if the image shows a food product. Respond as: ingredient1, ingredient2, ...'**
+  String get aiIngredientsPrompt;
 
   /// No description provided for @aiIngredientsFound.
   ///
@@ -3560,6 +3560,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fats'**
   String get fats;
+
+  /// No description provided for @macroLegendOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get macroLegendOther;
+
+  /// No description provided for @macroLegendSplitFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Split'**
+  String get macroLegendSplitFallback;
+
+  /// No description provided for @macroLegendConsumedGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'{consumed}/{goal}g'**
+  String macroLegendConsumedGoal(int consumed, int goal);
+
+  /// No description provided for @macroLegendBreakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'{secondaryLabel}: {secondaryValue}g | {otherLabel}: {otherValue}g'**
+  String macroLegendBreakdown(String secondaryLabel, int secondaryValue, String otherLabel, int otherValue);
+
+  /// No description provided for @macroLegendBreakdownLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{label}: {value}g'**
+  String macroLegendBreakdownLine(String label, int value);
 
   /// No description provided for @unit.
   ///

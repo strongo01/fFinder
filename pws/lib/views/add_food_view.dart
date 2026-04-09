@@ -1207,7 +1207,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         appCheck: FirebaseAppCheck.instance,
       ).generativeModel(model: 'gemini-2.5-flash');
       final prompt = TextPart(
-        AppLocalizations.of(context)!.aiIngredientsPrompt(''),
+        AppLocalizations.of(context)!.aiIngredientsPrompt,
       );
       final imageBytes = await pickedFile.readAsBytes();
       final imagePart = InlineDataPart('image/jpeg', imageBytes);

@@ -416,7 +416,7 @@
     "chooseFromGallery": "Choose from gallery",
     "noImageSelected": "No image selected.",
     "aiNoIngredientsFound": "No result from AI.",
-    "aiIngredientsPrompt": "What ingredients do you see here? Answer in English. Ignore marketing terms, product names, and non-relevant words like 'zero', 'light', etc. Answer only with actual ingredients that are in the product. Answer only if the image shows a food product. Respond as: {ingredient}, {ingredient}, ...",
+    "aiIngredientsPrompt": "What ingredients do you see here? Answer in English. Ignore marketing terms, product names, and non-relevant words like 'zero', 'light', etc. Answer only with actual ingredients that are in the product. Answer only if the image shows a food product. Respond as: ingredient1, ingredient2, ...",
     "aiIngredientsFound": "Ingredients found:",
     "aiIngredientsDescription": "The AI recognized the following ingredients:",
     "addMeal": "Compose meal",
@@ -591,6 +591,47 @@
     "calories_consumed": "kcal consumed",
     "carbs": "Carbs",
     "fats": "Fats",
+    "macroLegendOther": "Other",
+    "macroLegendSplitFallback": "Split",
+    "macroLegendConsumedGoal": "{consumed}/{goal}g",
+    "@macroLegendConsumedGoal": {
+      "placeholders": {
+        "consumed": {
+          "type": "int"
+        },
+        "goal": {
+          "type": "int"
+        }
+      }
+    },
+    "macroLegendBreakdown": "{secondaryLabel}: {secondaryValue}g | {otherLabel}: {otherValue}g",
+    "@macroLegendBreakdown": {
+      "placeholders": {
+        "secondaryLabel": {
+          "type": "String"
+        },
+        "secondaryValue": {
+          "type": "int"
+        },
+        "otherLabel": {
+          "type": "String"
+        },
+        "otherValue": {
+          "type": "int"
+        }
+      }
+    },
+    "macroLegendBreakdownLine": "{label}: {value}g",
+    "@macroLegendBreakdownLine": {
+      "placeholders": {
+        "label": {
+          "type": "String"
+        },
+        "value": {
+          "type": "int"
+        }
+      }
+    },
     "unit": "Unit",
     "edit_amount_dialog_title_ml": "Edit amount (ml)",
     "edit_amount_dialog_title_g": "Edit amount (g)",

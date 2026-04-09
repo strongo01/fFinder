@@ -446,7 +446,7 @@
   "chooseFromGallery": "Kies uit galerij",
   "noImageSelected": "Geen afbeelding geselecteerd.",
   "aiNoIngredientsFound": "Geen resultaat van AI.",
-  "aiIngredientsPrompt": "Wat voor ingrediënten zie je hier? Antwoord in het Nederlands. Negeer marketingtermen, productnamen, en niet-relevante woorden zoals 'zero', 'light', etc. Antwoord alleen met daadwerkelijke ingrediënten die in het product zitten. Antwoord alleen als het plaatje een voedselproduct toont. Antwoord als: {ingredient}, {ingredient}, ...",
+  "aiIngredientsPrompt": "Wat voor ingrediënten zie je hier? Antwoord in het Nederlands. Negeer marketingtermen, productnamen, en niet-relevante woorden zoals 'zero', 'light', etc. Antwoord alleen met daadwerkelijke ingrediënten die in het product zitten. Antwoord alleen als het plaatje een voedselproduct toont. Antwoord als: ingredient1, ingredient2, ...",
   "aiIngredientsFound": "Gevonden ingrediënten:",
   "aiIngredientsDescription": "De AI heeft de volgende ingrediënten herkend:",
   "addMeal": "Maaltijd samenstellen",
@@ -621,6 +621,47 @@
   "calories_consumed": "kcal geconsumeerd",
   "carbs": "Koolhydraten",
   "fats": "Vetten",
+  "macroLegendOther": "Overig",
+  "macroLegendSplitFallback": "Split",
+  "macroLegendConsumedGoal": "{consumed}/{goal}g",
+  "@macroLegendConsumedGoal": {
+    "placeholders": {
+      "consumed": {
+        "type": "int"
+      },
+      "goal": {
+        "type": "int"
+      }
+    }
+  },
+  "macroLegendBreakdown": "{secondaryLabel}: {secondaryValue}g | {otherLabel}: {otherValue}g",
+  "@macroLegendBreakdown": {
+    "placeholders": {
+      "secondaryLabel": {
+        "type": "String"
+      },
+      "secondaryValue": {
+        "type": "int"
+      },
+      "otherLabel": {
+        "type": "String"
+      },
+      "otherValue": {
+        "type": "int"
+      }
+    }
+  },
+  "macroLegendBreakdownLine": "{label}: {value}g",
+  "@macroLegendBreakdownLine": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "value": {
+        "type": "int"
+      }
+    }
+  },
   "unit": "Eenheid",
   "edit_amount_dialog_title_ml": "Hoeveelheid aanpassen (ml)",
   "edit_amount_dialog_title_g": "Hoeveelheid aanpassen (g)",

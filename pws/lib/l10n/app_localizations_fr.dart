@@ -1219,9 +1219,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get aiNoIngredientsFound => 'Aucun résultat de l\'IA.';
 
   @override
-  String aiIngredientsPrompt(Object ingredient) {
-    return 'Quels ingrédients voyez-vous ici ? Répondez en français. Ignorez les termes marketing, les noms de produits et les mots non pertinents tels que « zero », « light », etc. Répondez uniquement avec les ingrédients réels contenus dans le produit. Répondez seulement si l\'image montre un produit alimentaire. Répondez sous la forme : $ingredient, $ingredient, ...';
-  }
+  String get aiIngredientsPrompt => 'Quels ingrédients voyez-vous ici ? Répondez en français. Ignorez les termes marketing, les noms de produits et les mots non pertinents tels que « zero », « light », etc. Répondez uniquement avec les ingrédients réels contenus dans le produit. Répondez seulement si l\'image montre un produit alimentaire. Répondez sous la forme : ingredient1, ingredient2, ...';
 
   @override
   String get aiIngredientsFound => 'Ingrédients trouvés :';
@@ -1744,6 +1742,27 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get fats => 'Lipides';
+
+  @override
+  String get macroLegendOther => 'Autres';
+
+  @override
+  String get macroLegendSplitFallback => 'Répartition';
+
+  @override
+  String macroLegendConsumedGoal(int consumed, int goal) {
+    return '$consumed/${goal}g';
+  }
+
+  @override
+  String macroLegendBreakdown(String secondaryLabel, int secondaryValue, String otherLabel, int otherValue) {
+    return '$secondaryLabel: ${secondaryValue}g | $otherLabel: ${otherValue}g';
+  }
+
+  @override
+  String macroLegendBreakdownLine(String label, int value) {
+    return '$label: ${value}g';
+  }
 
   @override
   String get unit => 'Unité';

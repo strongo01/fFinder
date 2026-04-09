@@ -1592,10 +1592,7 @@ class _WeightViewState extends State<WeightView> {
                 ),
               ),
             ),
-      floatingActionButton: Padding( // extra padding voor iOS bottom bar
-        padding: const EdgeInsets.only(bottom: 80.0),
-        child: const FeedbackButton(),
-      ),
+      
     );
   }
  

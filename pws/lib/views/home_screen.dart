@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _tutorialInitialized = false;
   bool _tutorialHomeAf = false;
 
-  static const String _appVersion = '1.2.4'; // huidige app versie
+  static const String _appVersion = '1.2.5'; // huidige app versie
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -747,6 +747,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final remoteConfig = FirebaseRemoteConfig.instance;
+
       /// controleer of widget nog bestaat
       final globalDEKString = remoteConfig.getString('GLOBAL_DEK');
 
@@ -857,8 +858,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'onboardingaf': data['onboardingaf'],
         'activityLevel': await decryptValue(data['activityLevel'], userDEK),
         'goal': await decryptValue(data['goal'], userDEK),
-        'role': data['role'] ?? data['rol'] ?? 'user', 
-
+        'role': data['role'] ?? data['rol'] ?? 'user',
       };
 
       _userData = decryptedData;
@@ -1244,12 +1244,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   //  Android layout
-Widget _buildAndroidLayout() {
+  Widget _buildAndroidLayout() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     const int itemsCount = 3;
-    final int effectiveIndex =
-        _selectedIndex >= itemsCount ? itemsCount - 1 : _selectedIndex;
+    final int effectiveIndex = _selectedIndex >= itemsCount
+        ? itemsCount - 1
+        : _selectedIndex;
 
     Widget body;
     Widget? fab;
@@ -1894,7 +1895,9 @@ Widget _buildAndroidLayout() {
                             double totalCalories = 0;
                             double totalProteins = 0;
                             double totalFats = 0;
+                            double totalSaturatedFats = 0;
                             double totalCarbs = 0;
+                            double totalSugars = 0;
                             for (var entry in entries) {
                               if (entry.containsKey('quantity')) {
                                 final kcal =
@@ -1910,9 +1913,14 @@ Widget _buildAndroidLayout() {
                                     (entry['nutrients']?['proteins'] ?? 0.0);
                                 totalFats +=
                                     (entry['nutrients']?['fat'] ?? 0.0);
+                                totalSaturatedFats +=
+                                    (entry['nutrients']?['saturated-fat'] ??
+                                    0.0);
                                 totalCarbs +=
                                     (entry['nutrients']?['carbohydrates'] ??
                                     0.0);
+                                totalSugars +=
+                                    (entry['nutrients']?['sugars'] ?? 0.0);
                               }
                             }
 
@@ -2160,44 +2168,93 @@ Widget _buildAndroidLayout() {
                                         ),
                                         const SizedBox(height: 20),
                                         Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceAround,
                                           children: [
-                                            _buildMacroCircle(
-                                              AppLocalizations.of(
-                                                context,
-                                              )!.carbs,
-                                              totalCarbs,
-                                              carbGoal.toDouble(),
-                                              isDarkMode,
-                                              Colors.orange,
-                                            ),
-                                            _buildMacroCircle(
-                                              AppLocalizations.of(
-                                                context,
-                                              )!.proteins,
-                                              totalProteins,
-                                              proteinGoal.toDouble(),
-                                              isDarkMode,
-                                              const Color.fromARGB(
-                                                255,
-                                                0,
-                                                140,
-                                                255,
+                                            Expanded(
+                                              child: _buildMacroCircle(
+                                                AppLocalizations.of(
+                                                  context,
+                                                )!.carbs,
+                                                totalCarbs,
+                                                carbGoal.toDouble(),
+                                                isDarkMode,
+                                                Colors.orange,
+                                                secondaryConsumed: totalSugars,
+                                                secondaryColor:
+                                                    Colors.pinkAccent,
+                                                secondaryLabel:
+                                                    AppLocalizations.of(
+                                                      context,
+                                                    )!.sugars,
+                                                onTap: () =>
+                                                    _showEditMacroGoalDialog(
+                                                      macroField: 'carbGoal',
+                                                      currentGoal: carbGoal
+                                                          .toDouble(),
+                                                      macroTitle:
+                                                          AppLocalizations.of(
+                                                            context,
+                                                          )!.carbs,
+                                                    ),
                                               ),
                                             ),
-                                            _buildMacroCircle(
-                                              AppLocalizations.of(
-                                                context,
-                                              )!.fats,
-                                              totalFats,
-                                              fatGoal.toDouble(),
-                                              isDarkMode,
-                                              const Color.fromARGB(
-                                                255,
-                                                0,
-                                                213,
-                                                255,
+                                            Expanded(
+                                              child: _buildMacroCircle(
+                                                AppLocalizations.of(
+                                                  context,
+                                                )!.proteins,
+                                                totalProteins,
+                                                proteinGoal.toDouble(),
+                                                isDarkMode,
+                                                const Color.fromARGB(
+                                                  255,
+                                                  0,
+                                                  140,
+                                                  255,
+                                                ),
+                                                onTap: () =>
+                                                    _showEditMacroGoalDialog(
+                                                      macroField: 'proteinGoal',
+                                                      currentGoal: proteinGoal
+                                                          .toDouble(),
+                                                      macroTitle:
+                                                          AppLocalizations.of(
+                                                            context,
+                                                          )!.proteins,
+                                                    ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: _buildMacroCircle(
+                                                AppLocalizations.of(
+                                                  context,
+                                                )!.fats,
+                                                totalFats,
+                                                fatGoal.toDouble(),
+                                                isDarkMode,
+                                                const Color.fromARGB(
+                                                  255,
+                                                  0,
+                                                  213,
+                                                  255,
+                                                ),
+                                                secondaryConsumed:
+                                                    totalSaturatedFats,
+                                                secondaryColor:
+                                                    Colors.redAccent,
+                                                secondaryLabel:
+                                                    AppLocalizations.of(
+                                                      context,
+                                                    )!.saturatedFat,
+                                                onTap: () =>
+                                                    _showEditMacroGoalDialog(
+                                                      macroField: 'fatGoal',
+                                                      currentGoal: fatGoal
+                                                          .toDouble(),
+                                                      macroTitle:
+                                                          AppLocalizations.of(
+                                                            context,
+                                                          )!.fats,
+                                                    ),
                                               ),
                                             ),
                                           ],
@@ -2874,6 +2931,109 @@ Widget _buildAndroidLayout() {
     }
   }
 
+  Future<void> _showEditMacroGoalDialog({
+    required String macroField,
+    required double currentGoal,
+    required String macroTitle,
+  }) async {
+    final amountController = TextEditingController(
+      text: currentGoal.round().toString(),
+    );
+    final formKey = GlobalKey<FormState>();
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final newGoal = await showDialog<double>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            '$macroTitle ${AppLocalizations.of(context)!.goal}',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+          ),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: amountController,
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: false,
+              ),
+              decoration: InputDecoration(
+                labelText: '${AppLocalizations.of(context)!.goal} (g)',
+              ),
+              validator: (value) {
+                if (value == null ||
+                    value.isEmpty ||
+                    double.tryParse(value) == null ||
+                    double.parse(value) <= 0) {
+                  return AppLocalizations.of(context)!.enter_valid_number;
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(AppLocalizations.of(context)!.cancel),
+            ),
+            TextButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.of(
+                    context,
+                  ).pop(double.parse(amountController.text));
+                }
+              },
+              child: Text(AppLocalizations.of(context)!.save),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (newGoal != null && newGoal != currentGoal) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final previousGoal =
+          (_userData?[macroField] as num?)?.toDouble() ?? currentGoal;
+
+      setState(() {
+        if (_userData == null) _userData = {};
+        _userData![macroField] = newGoal;
+      });
+
+      try {
+        final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+        if (userDEK == null) {
+          throw Exception(AppLocalizations.of(context)!.dekNotFoundForUser);
+        }
+
+        final encryptedGoal = await encryptValue(newGoal.toString(), userDEK);
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({macroField: encryptedGoal});
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.error_saving_prefix +
+                    e.toString(),
+              ),
+            ),
+          );
+          setState(() {
+            _userData![macroField] = previousGoal;
+          });
+        }
+      }
+    }
+  }
+
   String _getMotivationalMessage(
     // genereer motiverende boodschap
     BuildContext context,
@@ -3093,9 +3253,19 @@ Widget _buildAndroidLayout() {
     double consumed,
     double goal,
     bool isDarkMode,
-    Color color,
-  ) {
+    Color color, {
+    double? secondaryConsumed,
+    Color? secondaryColor,
+    String? secondaryLabel,
+    VoidCallback? onTap,
+  }) {
+    final loc = AppLocalizations.of(context)!;
     final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
+    final secondaryRaw = (secondaryConsumed ?? 0.0).clamp(0.0, consumed);
+    final primaryRaw = (consumed - secondaryRaw).clamp(0.0, consumed);
+    final cleanSecondaryLabel = secondaryLabel
+        ?.replaceFirst(RegExp(r'^\s*-\s*'), '')
+        .trim();
     //final percentage = (progress * 100).round();
 
     return TweenAnimationBuilder<double>(
@@ -3103,23 +3273,26 @@ Widget _buildAndroidLayout() {
       tween: Tween<double>(begin: 0.0, end: progress),
       duration: const Duration(milliseconds: 750),
       builder: (context, value, child) {
-        return Column(
-          children: [
-            SizedBox(
-              width: 70,
-              height: 70,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CircularProgressIndicator(
-                    value: value,
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Column(
+            children: [
+              SizedBox(
+                width: 70,
+                height: 70,
+                child: CustomPaint(
+                  painter: MacroSplitCirclePainter(
+                    progress: value,
+                    consumed: consumed,
+                    goal: goal,
+                    primaryColor: color,
+                    secondaryColor: secondaryColor,
+                    secondaryConsumed: secondaryRaw,
+                    isDarkMode: isDarkMode,
                     strokeWidth: 6,
-                    backgroundColor: isDarkMode
-                        ? Colors.grey[700]
-                        : Colors.grey[300],
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
                   ),
-                  Center(
+                  child: Center(
                     child: Text(
                       '${(value * 100).round()}%', // Animeeert percentage tekst
                       style: TextStyle(
@@ -3129,27 +3302,54 @@ Widget _buildAndroidLayout() {
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black,
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${consumed.round()}/${goal.round()}g',
-              style: TextStyle(
-                fontSize: 12,
-                color: isDarkMode ? Colors.white70 : Colors.black87,
+              const SizedBox(height: 4),
+              Text(
+                loc.macroLegendConsumedGoal(consumed.round(), goal.round()),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDarkMode ? Colors.white70 : Colors.black87,
+                ),
               ),
-            ),
-          ],
+              if ((secondaryConsumed ?? 0) > 0) ...[
+                const SizedBox(height: 2),
+                Column(
+                  children: [
+                    Text(
+                      loc.macroLegendBreakdownLine(
+                        cleanSecondaryLabel ?? loc.macroLegendSplitFallback,
+                        secondaryRaw.round(),
+                      ),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: secondaryColor ?? color,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    Text(
+                      loc.macroLegendBreakdownLine(
+                        loc.macroLegendOther,
+                        primaryRaw.round(),
+                      ),
+                      style: TextStyle(fontSize: 11, color: color),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
         );
       },
     );
@@ -3169,7 +3369,8 @@ Widget _buildAndroidLayout() {
     );
 
     if (title == AppLocalizations.of(context)!.goal) {
-      return GestureDetector( // maak doel aanpasbaar
+      return GestureDetector(
+        // maak doel aanpasbaar
         onTap: () => _showEditGoalDialog(value),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -3237,7 +3438,8 @@ Widget _buildAndroidLayout() {
     List<Map<String, dynamic>>? sports,
   }) {
     double totalMealCalories = 0;
-    for (var entry in entries) { // bereken totale kcal voor maaltijd
+    for (var entry in entries) {
+      // bereken totale kcal voor maaltijd
       if (entry.containsKey('quantity')) {
         // Drankje: gebruik kcal uit het veld 'kcal'
         final kcal = double.tryParse(entry['kcal']?.toString() ?? '0') ?? 0.0;
@@ -3293,7 +3495,8 @@ Widget _buildAndroidLayout() {
                   ),
                 ),
               ),
-              ...sports.map( // sport entries
+              ...sports.map(
+                // sport entries
                 (sport) => ListTile(
                   leading: const Icon(Icons.fitness_center, size: 24),
                   title: Text(
@@ -3316,7 +3519,8 @@ Widget _buildAndroidLayout() {
               ),
               const Divider(height: 20),
             ],
-            ...entries.asMap().entries.map((entryPair) { // doorloop maaltijd entries
+            ...entries.asMap().entries.map((entryPair) {
+              // doorloop maaltijd entries
               final i = entryPair.key; // index
               final entry = entryPair.value; // huidige entry
 
@@ -3344,7 +3548,8 @@ Widget _buildAndroidLayout() {
                 final kcalRaw = entry['kcal'];
                 final kcalNumber = kcalRaw is num
                     ? kcalRaw.toDouble()
-                    : double.tryParse(kcalRaw?.toString() ?? '') ?? 0.0; // parse kcal
+                    : double.tryParse(kcalRaw?.toString() ?? '') ??
+                          0.0; // parse kcal
                 final kcalValue = kcalNumber.round().toString();
 
                 rightSideText = '${amount.round()} ml | ${kcalValue} kcal';
@@ -3354,7 +3559,7 @@ Widget _buildAndroidLayout() {
                 rightSideText = '$calories kcal';
               }
 
-              return Dismissible( 
+              return Dismissible(
                 // veeg om te verwijderen
                 key: Key(
                   'entry-${timestamp?.millisecondsSinceEpoch ?? 'noTs'}-$i', // unieke key
@@ -3455,7 +3660,8 @@ Widget _buildAndroidLayout() {
         .doc(docId);
 
     // Normaliseer helper
-    dynamic _normalize(dynamic v) { // recursieve normalisatie
+    dynamic _normalize(dynamic v) {
+      // recursieve normalisatie
       if (v is Map) {
         final map = <String, dynamic>{};
         v.forEach((k, val) => map[k] = _normalize(val));
@@ -3483,7 +3689,8 @@ Widget _buildAndroidLayout() {
         }
       } else {}
 
-      await FirebaseFirestore.instance.runTransaction((tx) async { // transactie
+      await FirebaseFirestore.instance.runTransaction((tx) async {
+        // transactie
         final doc = await tx.get(docRef);
         if (!doc.exists) {
           return;
@@ -3495,7 +3702,8 @@ Widget _buildAndroidLayout() {
         int? foundIndex; // index van te verwijderen entry
         final eq = const DeepCollectionEquality(); // diepe vergelijking
 
-        for (var i = 0; i < entries.length; i++) { // zoek naar exacte match
+        for (var i = 0; i < entries.length; i++) {
+          // zoek naar exacte match
           final candidateNorm = _normalize(entries[i]); // normaliseer kandidaat
           if (eq.equals(candidateNorm, targetNormalized)) {
             foundIndex = i;
@@ -3581,6 +3789,12 @@ Widget _buildAndroidLayout() {
     final formKey = GlobalKey<FormState>();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     String unit = initialUnit;
+    final loc = AppLocalizations.of(context)!;
+    final mealTypes = [loc.breakfast, loc.lunch, loc.dinner, loc.snack];
+    String selectedMeal = _resolveLocalizedMealType(
+      context,
+      decryptedEntry['meal_type'] as String?,
+    );
 
     await showDialog<void>(
       context: context,
@@ -3678,6 +3892,49 @@ Widget _buildAndroidLayout() {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: selectedMeal,
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: loc.selectMealType,
+                        labelStyle: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: isDarkMode ? Colors.white12 : Colors.black12,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: isDarkMode ? Colors.white30 : Colors.black26,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                      ),
+                      items: mealTypes
+                          .map(
+                            (meal) => DropdownMenuItem<String>(
+                              value: meal,
+                              child: Text(meal),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (newValue) {
+                        if (newValue == null) return;
+                        setDialogState(() {
+                          selectedMeal = newValue;
+                        });
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -3696,6 +3953,7 @@ Widget _buildAndroidLayout() {
                       decryptedEntry,
                       encryptedEntry,
                       newAmount,
+                      mealType: selectedMeal,
                       unit: unit,
                     );
                     Navigator.of(context).pop();
@@ -3714,6 +3972,7 @@ Widget _buildAndroidLayout() {
     Map<String, dynamic> decryptedEntry,
     Map<String, dynamic> encryptedEntry,
     double newAmount, {
+    String? mealType,
     String unit = 'g',
   }) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -3741,7 +4000,8 @@ Widget _buildAndroidLayout() {
     }
 
     try {
-      if (decryptedEntry.containsKey('quantity')) { // drink entry
+      if (decryptedEntry.containsKey('quantity')) {
+        // drink entry
         // Drink: parse origineel amount & kcal en schaal beide
         final qtyString = decryptedEntry['quantity'] as String? ?? '100 ml';
         final origMatch = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(qtyString);
@@ -3762,6 +4022,9 @@ Widget _buildAndroidLayout() {
           userDEK,
         );
         updatedEntry['kcal'] = await encryptDouble(newKcal, userDEK);
+        if (mealType != null && mealType.trim().isNotEmpty) {
+          updatedEntry['meal_type'] = await encryptValue(mealType, userDEK);
+        }
 
         // update in firestore: verwijder oude en voeg nieuwe toe (atomiciteit via transaction eventueel)
         await docRef.update({
@@ -3804,6 +4067,9 @@ Widget _buildAndroidLayout() {
           'amount_g': encryptedAmount,
           'nutrients': newNutriments,
         };
+        if (mealType != null && mealType.trim().isNotEmpty) {
+          updatedEntry['meal_type'] = await encryptValue(mealType, userDEK);
+        }
 
         await docRef.update({
           'entries': FieldValue.arrayRemove([encryptedEntry]),
@@ -3830,6 +4096,53 @@ Widget _buildAndroidLayout() {
         );
       }
     }
+  }
+
+  String _resolveLocalizedMealType(BuildContext context, String? rawMealType) {
+    final loc = AppLocalizations.of(context)!;
+    final value = (rawMealType ?? '').trim().toLowerCase();
+
+    if ({
+      loc.breakfast.toLowerCase(),
+      'ontbijt',
+      'breakfast',
+      'petit-déjeuner',
+      'frühstück',
+    }.contains(value)) {
+      return loc.breakfast;
+    }
+    if ({
+      loc.lunch.toLowerCase(),
+      'lunch',
+      'déjeuner',
+      'mittagessen',
+    }.contains(value)) {
+      return loc.lunch;
+    }
+    if ({
+      loc.dinner.toLowerCase(),
+      'avondeten',
+      'dinner',
+      'dîner',
+      'abendessen',
+    }.contains(value)) {
+      return loc.dinner;
+    }
+    if ({
+      loc.snack.toLowerCase(),
+      'tussendoor',
+      'snack',
+      'en-cas',
+      'zwischenmahlzeit',
+    }.contains(value)) {
+      return loc.snack;
+    }
+
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 11) return loc.breakfast;
+    if (hour >= 11 && hour < 15) return loc.lunch;
+    if (hour >= 15 && hour < 22) return loc.dinner;
+    return loc.snack;
   }
 }
 
@@ -3972,5 +4285,99 @@ class SegmentedArcPainter extends CustomPainter {
     return isDarkMode
         ? {'background': Colors.green[600]!, 'foreground': Colors.white}
         : {'background': Colors.green[400]!, 'foreground': Colors.black};
+  }
+}
+
+class MacroSplitCirclePainter extends CustomPainter {
+  final double progress;
+  final double consumed;
+  final double goal;
+  final Color primaryColor;
+  final Color? secondaryColor;
+  final double secondaryConsumed;
+  final bool isDarkMode;
+  final double strokeWidth;
+
+  MacroSplitCirclePainter({
+    required this.progress,
+    required this.consumed,
+    required this.goal,
+    required this.primaryColor,
+    required this.secondaryColor,
+    required this.secondaryConsumed,
+    required this.isDarkMode,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+    const startAngle = -pi / 2;
+    const fullCircle = 2 * pi;
+
+    final backgroundPaint = Paint()
+      ..color = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, backgroundPaint);
+
+    if (goal <= 0 || consumed <= 0 || progress <= 0) {
+      return;
+    }
+
+    final consumedForArc = (goal * progress).clamp(0.0, goal);
+    final secondaryRatio = consumed > 0
+        ? (secondaryConsumed / consumed).clamp(0.0, 1.0)
+        : 0.0;
+    final secondaryArc = consumedForArc * secondaryRatio;
+    final primaryArc = (consumedForArc - secondaryArc).clamp(0.0, goal);
+
+    final primaryPaint = Paint()
+      ..color = primaryColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    if (primaryArc > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        (primaryArc / goal) * fullCircle,
+        false,
+        primaryPaint,
+      );
+    }
+
+    if (secondaryArc > 0 && secondaryColor != null) {
+      final secondaryPaint = Paint()
+        ..color = secondaryColor!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+
+      final secondaryStart = startAngle + (primaryArc / goal) * fullCircle;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        secondaryStart,
+        (secondaryArc / goal) * fullCircle,
+        false,
+        secondaryPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant MacroSplitCirclePainter oldDelegate) {
+    return progress != oldDelegate.progress ||
+        consumed != oldDelegate.consumed ||
+        goal != oldDelegate.goal ||
+        primaryColor != oldDelegate.primaryColor ||
+        secondaryColor != oldDelegate.secondaryColor ||
+        secondaryConsumed != oldDelegate.secondaryConsumed ||
+        isDarkMode != oldDelegate.isDarkMode ||
+        strokeWidth != oldDelegate.strokeWidth;
   }
 }

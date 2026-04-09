@@ -1219,9 +1219,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get aiNoIngredientsFound => 'Geen resultaat van AI.';
 
   @override
-  String aiIngredientsPrompt(Object ingredient) {
-    return 'Wat voor ingrediënten zie je hier? Antwoord in het Nederlands. Negeer marketingtermen, productnamen, en niet-relevante woorden zoals \'zero\', \'light\', etc. Antwoord alleen met daadwerkelijke ingrediënten die in het product zitten. Antwoord alleen als het plaatje een voedselproduct toont. Antwoord als: $ingredient, $ingredient, ...';
-  }
+  String get aiIngredientsPrompt => 'Wat voor ingrediënten zie je hier? Antwoord in het Nederlands. Negeer marketingtermen, productnamen, en niet-relevante woorden zoals \'zero\', \'light\', etc. Antwoord alleen met daadwerkelijke ingrediënten die in het product zitten. Antwoord alleen als het plaatje een voedselproduct toont. Antwoord als: ingredient1, ingredient2, ...';
 
   @override
   String get aiIngredientsFound => 'Gevonden ingrediënten:';
@@ -1744,6 +1742,27 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get fats => 'Vetten';
+
+  @override
+  String get macroLegendOther => 'Overig';
+
+  @override
+  String get macroLegendSplitFallback => 'Split';
+
+  @override
+  String macroLegendConsumedGoal(int consumed, int goal) {
+    return '$consumed/${goal}g';
+  }
+
+  @override
+  String macroLegendBreakdown(String secondaryLabel, int secondaryValue, String otherLabel, int otherValue) {
+    return '$secondaryLabel: ${secondaryValue}g | $otherLabel: ${otherValue}g';
+  }
+
+  @override
+  String macroLegendBreakdownLine(String label, int value) {
+    return '$label: ${value}g';
+  }
 
   @override
   String get unit => 'Eenheid';
