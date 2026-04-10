@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _tutorialInitialized = false;
   bool _tutorialHomeAf = false;
 
-  static const String _appVersion = '1.2.6'; // huidige app versie
+  static const String _appVersion = '1.2.7'; // huidige app versie
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -3266,6 +3266,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final cleanSecondaryLabel = secondaryLabel
         ?.replaceFirst(RegExp(r'^\s*-\s*'), '')
         .trim();
+    final secondaryPercent = goal > 0
+      ? ((secondaryRaw / goal) * 100).clamp(0.0, 100.0)
+      : (consumed > 0 ? ((secondaryRaw / consumed) * 100).clamp(0.0, 100.0) : 0.0);
+    final primaryPercent = goal > 0
+      ? ((primaryRaw / goal) * 100).clamp(0.0, 100.0)
+      : (consumed > 0 ? ((primaryRaw / consumed) * 100).clamp(0.0, 100.0) : 0.0);
     //final percentage = (progress * 100).round();
 
     return TweenAnimationBuilder<double>(
@@ -3326,10 +3332,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Column(
                   children: [
                     Text(
-                      loc.macroLegendBreakdownLine(
-                        cleanSecondaryLabel ?? loc.macroLegendSplitFallback,
-                        secondaryRaw.round(),
-                      ),
+                      '${loc.macroLegendBreakdownLine(cleanSecondaryLabel ?? loc.macroLegendSplitFallback, secondaryRaw.round())} | ${secondaryPercent.round()}%',
                       style: TextStyle(
                         fontSize: 11,
                         color: secondaryColor ?? color,
@@ -3338,10 +3341,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       textAlign: TextAlign.center,
                     ),
                     Text(
-                      loc.macroLegendBreakdownLine(
-                        loc.macroLegendOther,
-                        primaryRaw.round(),
-                      ),
+                      '${loc.macroLegendBreakdownLine(loc.macroLegendOther, primaryRaw.round())} | ${primaryPercent.round()}%',
                       style: TextStyle(fontSize: 11, color: color),
                       textAlign: TextAlign.center,
                     ),
