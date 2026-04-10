@@ -1702,17 +1702,21 @@ class _RecipesScreenState extends State<RecipesScreen>
         );
       },
       errorBuilder: (context, error, stackTrace) {
+        debugPrint('Image failed to load: $url ($title)');
         final boodschappenUrl = _getBoodschappenUrl(title);
         final placeholderUrl = _getPlaceholderUrl(title);
 
         if (url != boodschappenUrl && !url.contains('placehold.co')) {
+          debugPrint('Falling back to boodschappen.nl for: $title -> $boodschappenUrl');
           return _buildNetworkImage(boodschappenUrl, title, height: height);
         }
 
         if (url != placeholderUrl) {
+          debugPrint('Falling back to placehold.co for: $title -> $placeholderUrl');
           return _buildNetworkImage(placeholderUrl, title, height: height);
         }
 
+        debugPrint('All image fallbacks failed for: $title');
         return _buildImageErrorPlaceholder(height);
       },
     );
@@ -1741,10 +1745,13 @@ class _RecipesScreenState extends State<RecipesScreen>
     if (apiLink.isNotEmpty &&
         apiLink != 'null' &&
         !apiLink.contains('placehold.co')) {
+      debugPrint('Using API image for "$title": $apiLink');
       return apiLink;
     }
 
-    return _getBoodschappenUrl(title);
+    final bUrl = _getBoodschappenUrl(title);
+    debugPrint('API image missing/invalid for "$title", trying: $bUrl');
+    return bUrl;
   }
 
   String _getBoodschappenUrl(String title) {
@@ -1816,15 +1823,21 @@ class _RecipeDetailImage extends StatelessWidget {
         );
       },
       errorBuilder: (context, error, stackTrace) {
+        debugPrint('Detail sheet image failed to load: $url ($title)');
+
         final bUrl = _getBoodschappenUrl(title);
         final pUrl = _getPlaceholderUrl(title);
 
         if (url != bUrl && !url.contains('placehold.co')) {
+          debugPrint('Detail sheet falling back to boodschappen.nl for: $title -> $bUrl');
           return _buildImage(context, bUrl);
         }
         if (url != pUrl) {
+          debugPrint('Detail sheet falling back to placehold.co for: $title -> $pUrl');
           return _buildImage(context, pUrl);
         }
+        
+        debugPrint('Detail sheet all fallbacks failed for: $title');
         return _buildErrorIcon(context);
       },
     );

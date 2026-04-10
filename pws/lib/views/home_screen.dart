@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _tutorialInitialized = false;
   bool _tutorialHomeAf = false;
 
-  static const String _appVersion = '1.2.5'; // huidige app versie
+  static const String _appVersion = '1.2.6'; // huidige app versie
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -3938,27 +3938,82 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+              actionsAlignment: MainAxisAlignment.spaceBetween,
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(AppLocalizations.of(context)!.cancel),
-                ),
-                TextButton(
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  tooltip: 'Kopieer naar een andere dag',
                   onPressed: () async {
                     if (!formKey.currentState!.validate()) return;
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: isDarkMode
+                                ? const ColorScheme.dark(
+                                    primary: Colors.amber,
+                                    onPrimary: Colors.black,
+                                    surface: Color(0xFF1E1E1E),
+                                    onSurface: Colors.white,
+                                  )
+                                : const ColorScheme.light(
+                                    primary: Colors.orange,
+                                    onPrimary: Colors.white,
+                                    surface: Colors.white,
+                                    onSurface: Colors.black,
+                                  ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (pickedDate == null) return;
+
                     final newAmount = double.parse(
                       amountController.text.replaceAll(',', '.'),
                     );
-                    await _updateEntryAmount(
+                    
+                    await _copyEntryToDate(
                       decryptedEntry,
                       encryptedEntry,
                       newAmount,
+                      pickedDate,
                       mealType: selectedMeal,
                       unit: unit,
                     );
-                    Navigator.of(context).pop();
+                    
+                    if (context.mounted) Navigator.of(context).pop();
                   },
-                  child: Text(AppLocalizations.of(context)!.save),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(AppLocalizations.of(context)!.cancel),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        if (!formKey.currentState!.validate()) return;
+                        final newAmount = double.parse(
+                          amountController.text.replaceAll(',', '.'),
+                        );
+                        await _updateEntryAmount(
+                          decryptedEntry,
+                          encryptedEntry,
+                          newAmount,
+                          mealType: selectedMeal,
+                          unit: unit,
+                        );
+                        if (context.mounted) Navigator.of(context).pop();
+                      },
+                      child: Text(AppLocalizations.of(context)!.save),
+                    ),
+                  ],
                 ),
               ],
             );
@@ -3966,6 +4021,136 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+  }
+
+  Future<void> _copyEntryToDate(
+    Map<String, dynamic> decryptedEntry,
+    Map<String, dynamic> encryptedEntry,
+    double newAmount,
+    DateTime targetDate, {
+    String? mealType,
+    String unit = 'g',
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final docId =
+        "${targetDate.year}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}";
+    final docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('logs')
+        .doc(docId);
+
+    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+    if (userDEK == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.dekNotFoundForUser),
+          ),
+        );
+      }
+      return;
+    }
+
+    final now = DateTime.now();
+    final entryTimestamp = Timestamp.fromDate(
+      DateTime(targetDate.year, targetDate.month, targetDate.day, now.hour, now.minute)
+    );
+
+    try {
+      if (decryptedEntry.containsKey('quantity')) {
+        // drink entry
+        final qtyString = decryptedEntry['quantity'] as String? ?? '100 ml';
+        final origMatch = RegExp(r'(\d+(?:[.,]\d+)?)').firstMatch(qtyString);
+        final origAmount = origMatch != null
+            ? double.tryParse(origMatch.group(1)!.replaceAll(',', '.')) ?? 0
+            : 0;
+        final origKcal =
+            double.tryParse((decryptedEntry['kcal'] ?? '0').toString()) ?? 0.0;
+
+        final factor = (origAmount > 0) ? (newAmount / origAmount) : 1.0;
+        final newKcal = origKcal * factor;
+
+        final updatedEntry = Map<String, dynamic>.from(encryptedEntry);
+        updatedEntry['quantity'] = await encryptValue(
+          '${newAmount.round()} $unit',
+          userDEK,
+        );
+        updatedEntry['kcal'] = await encryptDouble(newKcal, userDEK);
+        updatedEntry['timestamp'] = entryTimestamp;
+
+        if (mealType != null && mealType.trim().isNotEmpty) {
+          updatedEntry['meal_type'] = await encryptValue(mealType, userDEK);
+        }
+
+        await docRef.set({
+          'entries': FieldValue.arrayUnion([updatedEntry]),
+        }, SetOptions(merge: true));
+
+      } else {
+        // Food entry
+        final originalAmount = decryptedEntry['amount_g'] as num?;
+        final originalNutriments =
+            decryptedEntry['nutrients'] as Map<String, dynamic>?;
+
+        if (originalAmount == null ||
+            originalAmount <= 0 ||
+            originalNutriments == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(AppLocalizations.of(context)!.errorCalculating),
+              ),
+            );
+          }
+          return;
+        }
+
+        final factor = newAmount / originalAmount.toDouble();
+
+        final newNutriments = <String, dynamic>{};
+        for (final key in originalNutriments.keys) {
+          final value = originalNutriments[key];
+          final newValue = (value is num ? value * factor : value);
+          newNutriments[key] = await encryptDouble(newValue ?? 0, userDEK);
+        }
+        final encryptedAmount = await encryptDouble(newAmount, userDEK);
+
+        final updatedEntry = {
+          ...encryptedEntry,
+          'amount_g': encryptedAmount,
+          'nutrients': newNutriments,
+          'timestamp': entryTimestamp,
+        };
+        
+        if (mealType != null && mealType.trim().isNotEmpty) {
+          updatedEntry['meal_type'] = await encryptValue(mealType, userDEK);
+        }
+
+        await docRef.set({
+          'entries': FieldValue.arrayUnion([updatedEntry]),
+        }, SetOptions(merge: true));
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Succesvol toegevoegd aan geselecteerde dag')),
+        );
+      }
+    } catch (e) {
+      debugPrint("[COPY_ENTRY] Fout bij kopiëren: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${AppLocalizations.of(context)!.errorUpdatingEntry} $e',
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _updateEntryAmount(
