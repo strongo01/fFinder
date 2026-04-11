@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _tutorialInitialized = false;
   bool _tutorialHomeAf = false;
 
-  static const String _appVersion = '1.2.7'; // huidige app versie
+  static const String _appVersion = '1.2.8'; // huidige app versie
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -3263,16 +3263,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
     final secondaryRaw = (secondaryConsumed ?? 0.0).clamp(0.0, consumed);
     final primaryRaw = (consumed - secondaryRaw).clamp(0.0, consumed);
+    
+    final int roundedConsumed = consumed.round();
+    final int roundedGoal = goal.round();
+    final int roundedSecondary = secondaryRaw.round();
+    final int roundedPrimary = roundedConsumed - roundedSecondary;
+
     final cleanSecondaryLabel = secondaryLabel
         ?.replaceFirst(RegExp(r'^\s*-\s*'), '')
         .trim();
-    final secondaryPercent = goal > 0
-      ? ((secondaryRaw / goal) * 100).clamp(0.0, 100.0)
-      : (consumed > 0 ? ((secondaryRaw / consumed) * 100).clamp(0.0, 100.0) : 0.0);
-    final primaryPercent = goal > 0
-      ? ((primaryRaw / goal) * 100).clamp(0.0, 100.0)
-      : (consumed > 0 ? ((primaryRaw / consumed) * 100).clamp(0.0, 100.0) : 0.0);
-    //final percentage = (progress * 100).round();
+        
+    final int totalPercentInt = goal > 0 ? (progress * 100).round() : 0;
+    final int secondaryPercentInt = goal > 0
+      ? ((secondaryRaw / goal) * 100).clamp(0.0, 100.0).round()
+      : (consumed > 0 ? ((secondaryRaw / consumed) * 100).clamp(0.0, 100.0).round() : 0);
+    final int primaryPercentInt = totalPercentInt - secondaryPercentInt;
 
     return TweenAnimationBuilder<double>(
       // animeert de voortgang
@@ -3321,7 +3326,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                loc.macroLegendConsumedGoal(consumed.round(), goal.round()),
+                loc.macroLegendConsumedGoal(roundedConsumed, roundedGoal),
                 style: TextStyle(
                   fontSize: 12,
                   color: isDarkMode ? Colors.white70 : Colors.black87,
@@ -3332,7 +3337,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Column(
                   children: [
                     Text(
-                      '${loc.macroLegendBreakdownLine(cleanSecondaryLabel ?? loc.macroLegendSplitFallback, secondaryRaw.round())} | ${secondaryPercent.round()}%',
+                      '${loc.macroLegendBreakdownLine(cleanSecondaryLabel ?? loc.macroLegendSplitFallback, roundedSecondary)} | $secondaryPercentInt%',
                       style: TextStyle(
                         fontSize: 11,
                         color: secondaryColor ?? color,
@@ -3341,7 +3346,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       textAlign: TextAlign.center,
                     ),
                     Text(
-                      '${loc.macroLegendBreakdownLine(loc.macroLegendOther, primaryRaw.round())} | ${primaryPercent.round()}%',
+                      '${loc.macroLegendBreakdownLine(loc.macroLegendOther, roundedPrimary)} | $primaryPercentInt%',
                       style: TextStyle(fontSize: 11, color: color),
                       textAlign: TextAlign.center,
                     ),
