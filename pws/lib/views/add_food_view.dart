@@ -766,26 +766,33 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   Future<void> _searchProducts(String query, {bool loadMore = false}) async {
-    // zoek producten op basis van query
-    // zoek producten via openfoodfacts api
     if (query.isEmpty) {
+      if (!mounted) return;
+
       setState(() {
         _searchResults = null;
         _isLoading = false;
+        _errorMessage = null;
       });
       return;
     }
 
-    final trimmed = query.trim(); // verwijder spaties aan begin en eind
+    final trimmed = query.trim();
 
     if (trimmed.length < 2) {
-      // minimaal 2 tekens
+      if (!mounted) return;
+
       setState(() {
         _searchResults = null;
+        _isLoading = false;
         _errorMessage = AppLocalizations.of(context)!.enterMoreChars;
       });
       return;
     }
+
+    final int currentToken = ++_searchToken;
+
+    if (!mounted) return;
 
     setState(() {
       _isLoading = true;
@@ -794,296 +801,497 @@ class _AddFoodPageState extends State<AddFoodPage> {
       _ffinderStatus = SourceStatus.loading;
       _offStatus = SourceStatus.loading;
     });
-    final int currentToken =
-        ++_searchToken; // verhoog token voor deze zoekactie
 
-    _searchOffParallel(
-          trimmed,
-        ) // zoek OFF parallel. parallel zodat UI sneller reageert
-        .then((offProducts) {
-          // check token eerst (voorkom oude async resultaten)
-          if (currentToken != _searchToken) return;
-          if (!mounted) return;
+    // ------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------
 
-          if (offProducts.isNotEmpty) {
-            final merged = _mergeProductsPreserveLogic(
-              // merge OFF resultaten met bestaande
-              _searchResults ?? [],
-              offProducts,
-            );
-            setState(() {
-              _offStatus = SourceStatus.success;
-              _searchResults = _rankProducts(merged, trimmed, take: 50);
-              // Als we al resultaten hebben van OFF, tonen we die vast (stop loading)
-              // Zelfs als fFinder nog bezig is.
-              _isLoading = false;
-            });
-          } else {
-            // lege lijst => expliciet error zodat UI niet groen blijft
+    bool isCurrentSearch() {
+      return mounted && currentToken == _searchToken;
+    }
+
+    void updateResults(List<Map<String, dynamic>> products) {
+      if (!isCurrentSearch() || products.isEmpty) return;
+
+      final ranked = _rankProducts(products, trimmed, take: 50);
+
+      setState(() {
+        _searchResults = ranked;
+        _isLoading = false;
+      });
+    }
+
+    // ------------------------------------------------------------
+    // OFF-resultaten parallel ophalen
+    // ------------------------------------------------------------
+
+    Future<List<Map<String, dynamic>>> fetchOpenFoodFacts() async {
+      try {
+        debugPrint('[OFF] Zoeken naar "$trimmed"...');
+
+        final openFoodFactsUrl = Uri.parse(
+          'https://nl.openfoodfacts.org/cgi/search.pl'
+          '?search_terms=${Uri.encodeComponent(trimmed)}'
+          '&search_simple=1'
+          '&json=1'
+          '&action=process',
+        );
+
+        final response = await http
+            .get(openFoodFactsUrl)
+            .timeout(const Duration(seconds: 10));
+
+        debugPrint('[OFF] Status Code: ${response.statusCode}');
+
+        if (response.statusCode != 200) {
+          debugPrint('[OFF] Foutstatus: ${response.statusCode}');
+
+          if (isCurrentSearch()) {
             setState(() {
               _offStatus = SourceStatus.error;
             });
           }
-        })
-        .catchError((e) {
-          if (!mounted) return;
+
+          return [];
+        }
+
+        final data = jsonDecode(response.body);
+
+        if (data is! Map) {
+          debugPrint('[OFF] Ongeldige JSON response.');
+
+          if (isCurrentSearch()) {
+            setState(() {
+              _offStatus = SourceStatus.error;
+            });
+          }
+
+          return [];
+        }
+
+        final rawProducts = data['products'];
+
+        if (rawProducts is! List || rawProducts.isEmpty) {
+          debugPrint('[OFF] Geen producten gevonden.');
+
+          if (isCurrentSearch()) {
+            setState(() {
+              _offStatus = SourceStatus.error;
+            });
+          }
+
+          return [];
+        }
+
+        final products = rawProducts
+            .whereType<Map>()
+            .map((p) => Map<String, dynamic>.from(p))
+            .toList();
+
+        debugPrint('[OFF] ${products.length} producten ontvangen.');
+
+        if (isCurrentSearch()) {
+          setState(() {
+            _offStatus = SourceStatus.success;
+          });
+        }
+
+        return products;
+      } catch (e, stack) {
+        debugPrint('[OFF] Exception: $e');
+        debugPrint(stack.toString());
+
+        if (isCurrentSearch()) {
           setState(() {
             _offStatus = SourceStatus.error;
           });
-        });
-    try {
-      List all = []; // Lege lijst om producten op te slaan
+        }
 
+        return [];
+      }
+    }
+
+    // ------------------------------------------------------------
+    // fFinder ophalen
+    // ------------------------------------------------------------
+
+    Future<List<Map<String, dynamic>>> fetchFfinder() async {
       try {
-        debugPrint("--- Poging 1: ffinder.nl endpoint ---");
+        debugPrint('[fFinder] Zoeken naar "$trimmed"...');
+
         final base = await _getApiBaseIfAdmin();
+
+        if (!isCurrentSearch()) {
+          return [];
+        }
+
         final ffinderUrl = Uri.parse(
-          "${base}/product?q=${Uri.encodeComponent(trimmed)}",
-        );
-        debugPrint("URL: $ffinderUrl");
-
-        final appKey = dotenv.env["APP_KEY"];
-        final response = await http.get(
-          ffinderUrl,
-          headers: {"x-app-key": appKey ?? ""},
+          '$base/product?q=${Uri.encodeComponent(trimmed)}',
         );
 
-        debugPrint("ffinder.nl Status Code: ${response.statusCode}");
-        debugPrint("ffinder.nl Response Headers: ${response.headers}");
+        debugPrint('[fFinder] URL: $ffinderUrl');
 
-        if (response.statusCode == 200) {
-          debugPrint(
-            "ffinder.nl response body (preview): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}",
-          );
-          final data = jsonDecode(response.body);
-          final foodsObject = data["foods"];
-          if (foodsObject != null && foodsObject["food"] is List) {
-            final productsRaw = foodsObject["food"] as List;
-            // Maak een bewerkbare kopie (Map per item)
-            final products = productsRaw
-                .map((p) => p is Map ? Map<String, dynamic>.from(p) : {})
-                .toList();
+        final appKey = dotenv.env['APP_KEY'];
 
-            // Toon direct de producten (zonder extra OFF-afbeeldingen)
-            setState(() {
-              _searchResults = _rankProducts(products, trimmed, take: 50);
-              _ffinderStatus = products.isNotEmpty
-                  ? SourceStatus.success
-                  : SourceStatus.error;
-            });
+        if (appKey == null || appKey.isEmpty) {
+          debugPrint('[fFinder] WAARSCHUWING: APP_KEY ontbreekt.');
+        }
 
-            // Asynchroon: verrijk elk product met afbeelding van OFF (indien barcode aanwezig)
-            for (int i = 0; i < products.length; i++) {
-              final raw = products[i];
-              try {
-                final code =
-                    raw['barcode'] ??
-                    raw['code'] ??
-                    raw['_id'] ??
-                    raw['gtin'] ??
-                    raw['ean'];
-                final barcode = code?.toString();
-                if (barcode == null || barcode.isEmpty) continue;
+        final response = await http
+            .get(ffinderUrl, headers: {'x-app-key': appKey ?? ''})
+            .timeout(const Duration(seconds: 10));
 
-                // Asynchroon ophalen van afbeelding
-                () async {
-                  try {
-                    final offUrl = Uri.parse(
-                      'https://nl.openfoodfacts.org/api/v0/product/$barcode.json',
-                    );
-                    final offResp = await http
-                        .get(offUrl)
-                        .timeout(const Duration(seconds: 6));
-                    if (offResp.statusCode != 200) return;
-                    final offJson =
-                        jsonDecode(offResp.body) as Map<String, dynamic>?;
-                    if (offJson == null ||
-                        offJson['status'] != 1 ||
-                        offJson['product'] is! Map)
-                      return;
-                    final offProd = offJson['product'] as Map<String, dynamic>;
-                    final img =
-                        offProd['image_front_small_url'] ??
-                        offProd['image_front_thumb_url'] ??
-                        offProd['image_front_url'];
-                    if (img is String && img.isNotEmpty) {
-                      // Update lokale kopie
-                      raw['image_front_small_url'] = img;
+        debugPrint('[fFinder] Status Code: ${response.statusCode}');
 
-                      // Zoek en update in de getoonde lijst (indien nog zichtbaar)
-                      if (mounted) {
-                        setState(() {
-                          if (_searchResults != null &&
-                              _searchResults!.isNotEmpty) {
-                            // vervang overeenkomend product op id/code indien aanwezig, anders op identiteit
-                            for (int j = 0; j < _searchResults!.length; j++) {
-                              final p =
-                                  _searchResults![j] as Map<String, dynamic>;
-                              final idP =
-                                  (p['_id'] ?? p['code'] ?? p['barcode'])
-                                      ?.toString();
-                              final idRaw =
-                                  (raw['_id'] ?? raw['code'] ?? raw['barcode'])
-                                      ?.toString();
-                              if (idP != null &&
-                                  idRaw != null &&
-                                  idP == idRaw) {
-                                final updated = Map<String, dynamic>.from(p);
-                                updated['image_front_small_url'] = img;
-                                _searchResults![j] = updated;
-                                return;
-                              }
-                            }
-                            // fallback: vergelijk op productnaam
-                            for (int j = 0; j < _searchResults!.length; j++) {
-                              final p =
-                                  _searchResults![j] as Map<String, dynamic>;
-                              if ((p['product_name'] ?? '') ==
-                                  (raw['product_name'] ?? '')) {
-                                final updated = Map<String, dynamic>.from(p);
-                                updated['image_front_small_url'] = img;
-                                _searchResults![j] = updated;
-                                return;
-                              }
-                            }
-                          }
-                        });
-                      }
-                    }
-                  } catch (e) {
-                    debugPrint(
-                      '[ffinder->OFF image async] failed for $barcode: $e',
-                    );
-                  }
-                }();
-              } catch (e) {
-                debugPrint('[ffinder processing] item error: $e');
-              }
-            }
+        if (response.statusCode != 200) {
+          debugPrint('[fFinder] Foutstatus: ${response.statusCode}');
+          debugPrint('[fFinder] Response body: ${response.body}');
 
-            // zet 'all' zodat fallback logic nog klopt
-            all = products;
-            debugPrint(
-              "Succes: ${products.length} producten gevonden via ffinder.nl (direct getoond; images worden asynchroon verrijkt)",
-            );
-          } else {
-            debugPrint(
-              "ffinder.nl gaf een leeg resultaat of verkeerde structuur.",
-            );
+          if (isCurrentSearch()) {
             setState(() {
               _ffinderStatus = SourceStatus.error;
             });
           }
-        } else {
-          debugPrint("ffinder.nl gaf een foutstatus: ${response.statusCode}");
-          debugPrint("Response body: ${response.body}");
-        }
-      } catch (e, stack) {
-        debugPrint("Fout bij het aanroepen van ffinder.nl: $e");
-        debugPrint(stack.toString());
-        setState(() {
-          _ffinderStatus = SourceStatus.error;
-        });
-      }
 
-      // Fallback naar Open Food Facts
-      if (all.isEmpty || loadMore) {
-        // alleen als er nog geen resultaten zijn of bij loadMore
-        debugPrint("\n--- Poging 2: Open Food Facts (Fallback) ---");
-        final openFoodFactsUrl = Uri.parse(
-          "https://nl.openfoodfacts.org/cgi/search.pl"
-          "?search_terms=${Uri.encodeComponent(trimmed)}"
-          "&search_simple=1&json=1&action=process",
-        );
-        final response = await http.get(openFoodFactsUrl);
-        debugPrint("Open Food Facts Status Code: ${response.statusCode}");
-        if (response.statusCode == 200) {
-          debugPrint(
-            "Open Food Facts response body (preview): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}",
-          );
-          final data = jsonDecode(response.body);
-          final rawProducts = (data["products"] as List?) ?? [];
-          if (rawProducts.isNotEmpty) {
-            // Normaliseer elk item naar Map<String,dynamic> om veilige casting te garanderen
-            final normalized = rawProducts
-                .map(
-                  (p) => p is Map
-                      ? Map<String, dynamic>.from(p)
-                      : <String, dynamic>{},
-                )
-                .toList();
+          return [];
+        }
+
+        final data = jsonDecode(response.body);
+
+        if (data is! Map) {
+          debugPrint('[fFinder] Ongeldige JSON response.');
+
+          if (isCurrentSearch()) {
             setState(() {
-              _offStatus = SourceStatus.success;
-            });
-            if (loadMore) {
-              all.addAll(normalized);
-            } else {
-              all = normalized;
-            }
-            _hasLoadedMore = true; // geeft aan dat we extra hebben geladen
-          } else {
-            setState(() {
-              _offStatus = SourceStatus.error;
+              _ffinderStatus = SourceStatus.error;
             });
           }
-        } else {
+
+          return [];
+        }
+
+        final foodsObject = data['foods'];
+
+        if (foodsObject is! Map) {
+          debugPrint('[fFinder] Geen foods-object gevonden.');
+
+          if (isCurrentSearch()) {
+            setState(() {
+              _ffinderStatus = SourceStatus.error;
+            });
+          }
+
+          return [];
+        }
+
+        final productsRaw = foodsObject['food'];
+
+        if (productsRaw is! List || productsRaw.isEmpty) {
+          debugPrint('[fFinder] Geen producten gevonden.');
+
+          if (isCurrentSearch()) {
+            setState(() {
+              _ffinderStatus = SourceStatus.error;
+            });
+          }
+
+          return [];
+        }
+
+        final products = productsRaw
+            .whereType<Map>()
+            .map((p) => Map<String, dynamic>.from(p))
+            .toList();
+
+        debugPrint('[fFinder] ${products.length} producten ontvangen.');
+
+        if (isCurrentSearch()) {
           setState(() {
-            _offStatus = SourceStatus.error;
+            _ffinderStatus = SourceStatus.success;
+          });
+        }
+
+        return products;
+      } catch (e, stack) {
+        debugPrint('[fFinder] Exception: $e');
+        debugPrint(stack.toString());
+
+        if (isCurrentSearch()) {
+          setState(() {
+            _ffinderStatus = SourceStatus.error;
+          });
+        }
+
+        return [];
+      }
+    }
+
+    // ------------------------------------------------------------
+    // Producten mergen
+    // ------------------------------------------------------------
+
+    List<Map<String, dynamic>> mergeProducts(
+      List<Map<String, dynamic>> ffinderProducts,
+      List<Map<String, dynamic>> offProducts,
+    ) {
+      final Map<String, Map<String, dynamic>> seen = {};
+
+      int anonymousCounter = 0;
+
+      void addProduct(Map<String, dynamic> product) {
+        final id =
+            (product['_id'] ??
+                    product['code'] ??
+                    product['barcode'] ??
+                    product['gtin'] ??
+                    product['ean'])
+                ?.toString();
+
+        final productName = product['product_name']?.toString().trim() ?? '';
+
+        final key = id != null && id.isNotEmpty
+            ? id
+            : productName.isNotEmpty
+            ? 'name:${productName.toLowerCase()}'
+            : 'anonymous:${anonymousCounter++}';
+
+        if (!seen.containsKey(key)) {
+          seen[key] = Map<String, dynamic>.from(product);
+          return;
+        }
+
+        final existing = seen[key]!;
+
+        void copyIfMissing(String field) {
+          final existingValue = existing[field];
+          final newValue = product[field];
+
+          final existingEmpty =
+              existingValue == null || existingValue.toString().trim().isEmpty;
+
+          final newHasValue =
+              newValue != null && newValue.toString().trim().isNotEmpty;
+
+          if (existingEmpty && newHasValue) {
+            existing[field] = newValue;
+          }
+        }
+
+        copyIfMissing('image_front_small_url');
+        copyIfMissing('image_front_thumb_url');
+        copyIfMissing('image_front_url');
+        copyIfMissing('image_thumb_url');
+        copyIfMissing('brands');
+        copyIfMissing('quantity');
+        copyIfMissing('categories');
+        copyIfMissing('nutriscore_grade');
+        copyIfMissing('barcode');
+        copyIfMissing('code');
+        copyIfMissing('ean');
+      }
+
+      // fFinder eerst.
+      // Hierdoor behouden we de voorkeursdata van fFinder.
+      for (final product in ffinderProducts) {
+        addProduct(product);
+      }
+
+      // OFF daarna als aanvulling.
+      for (final product in offProducts) {
+        addProduct(product);
+      }
+
+      return seen.values.toList();
+    }
+
+    // ------------------------------------------------------------
+    // Afbeeldingen van fFinder-producten verrijken via OFF
+    // ------------------------------------------------------------
+
+    Future<void> enrichImagesFromOff(
+      List<Map<String, dynamic>> products,
+    ) async {
+      for (final raw in products) {
+        try {
+          if (!isCurrentSearch()) return;
+
+          final code =
+              raw['barcode'] ??
+              raw['code'] ??
+              raw['_id'] ??
+              raw['gtin'] ??
+              raw['ean'];
+
+          final barcode = code?.toString();
+
+          if (barcode == null || barcode.isEmpty) {
+            continue;
+          }
+
+          final offUrl = Uri.parse(
+            'https://nl.openfoodfacts.org/api/v0/product/$barcode.json',
+          );
+
+          final offResp = await http
+              .get(offUrl)
+              .timeout(const Duration(seconds: 6));
+
+          if (offResp.statusCode != 200) {
+            continue;
+          }
+
+          final offJson = jsonDecode(offResp.body);
+
+          if (offJson is! Map ||
+              offJson['status'] != 1 ||
+              offJson['product'] is! Map) {
+            continue;
+          }
+
+          final offProd = Map<String, dynamic>.from(offJson['product'] as Map);
+
+          final img =
+              offProd['image_front_small_url'] ??
+              offProd['image_front_thumb_url'] ??
+              offProd['image_front_url'];
+
+          if (img is! String || img.isEmpty) {
+            continue;
+          }
+
+          raw['image_front_small_url'] = img;
+
+          if (!isCurrentSearch()) return;
+
+          setState(() {
+            if (_searchResults == null || _searchResults!.isEmpty) {
+              return;
+            }
+
+            for (int i = 0; i < _searchResults!.length; i++) {
+              final product = _searchResults![i] as Map<String, dynamic>;
+
+              final productId =
+                  (product['_id'] ??
+                          product['code'] ??
+                          product['barcode'] ??
+                          product['gtin'] ??
+                          product['ean'])
+                      ?.toString();
+
+              final rawId =
+                  (raw['_id'] ??
+                          raw['code'] ??
+                          raw['barcode'] ??
+                          raw['gtin'] ??
+                          raw['ean'])
+                      ?.toString();
+
+              if (productId != null && rawId != null && productId == rawId) {
+                final updated = Map<String, dynamic>.from(product);
+
+                updated['image_front_small_url'] = img;
+
+                _searchResults![i] = updated;
+                return;
+              }
+            }
+
+            // Fallback: productnaam vergelijken.
+            final rawName = raw['product_name']?.toString().trim();
+
+            if (rawName == null || rawName.isEmpty) {
+              return;
+            }
+
+            for (int i = 0; i < _searchResults!.length; i++) {
+              final product = _searchResults![i] as Map<String, dynamic>;
+
+              final productName = product['product_name']?.toString().trim();
+
+              if (productName != null &&
+                  productName.isNotEmpty &&
+                  productName == rawName) {
+                final updated = Map<String, dynamic>.from(product);
+
+                updated['image_front_small_url'] = img;
+
+                _searchResults![i] = updated;
+                return;
+              }
+            }
+          });
+        } catch (e) {
+          debugPrint('[fFinder -> OFF image] failed: $e');
+        }
+      }
+    }
+
+    // ------------------------------------------------------------
+    // Parallel zoeken
+    // ------------------------------------------------------------
+
+    try {
+      final results = await Future.wait([fetchFfinder(), fetchOpenFoodFacts()]);
+
+      if (!isCurrentSearch()) return;
+
+      final ffinderProducts = results[0] as List<Map<String, dynamic>>;
+
+      final offProducts = results[1] as List<Map<String, dynamic>>;
+
+      debugPrint('[SEARCH] fFinder: ${ffinderProducts.length}');
+
+      debugPrint('[SEARCH] OFF: ${offProducts.length}');
+
+      // ----------------------------------------------------------
+      // Merge
+      // ----------------------------------------------------------
+
+      final merged = mergeProducts(ffinderProducts, offProducts);
+
+      if (merged.isNotEmpty) {
+        updateResults(merged);
+      } else {
+        // BELANGRIJK:
+        // Als beide bronnen niets opleveren, verwijderen we
+        // bestaande resultaten niet zomaar bij loadMore.
+        if (!loadMore && isCurrentSearch()) {
+          setState(() {
+            _searchResults = [];
+            _isLoading = false;
+            _errorMessage = AppLocalizations.of(context)!.errorFetch;
           });
         }
       }
 
-      final Map<String, Map<String, dynamic>> seen = {};
-      int _anonCounter = 0; // teller voor anonieme producten
-      for (final item in all) {
-        if (item is! Map) continue;
-        final Map<String, dynamic> m = Map<String, dynamic>.from(item);
-        final id = (m['_id'] ?? m['code'] ?? m['barcode'] ?? m['gtin'])
-            ?.toString();
-        final key = (id != null && id.isNotEmpty)
-            ? id
-            : (m['product_name']?.toString() ?? 'anon_${_anonCounter++}');
+      // ----------------------------------------------------------
+      // fFinder-producten verrijken met OFF-afbeeldingen
+      // ----------------------------------------------------------
 
-        if (!seen.containsKey(key)) {
-          seen[key] = m;
-        } else {
-          // Merge: vul ontbrekende nuttige velden in (image/url/brands/quantity)
-          final existing = seen[key]!;
-          void copyIfMissing(String k) {
-            // helper om veld te kopiëren indien ontbreekt
-            final vNew = m[k];
-            if ((existing[k] == null || existing[k].toString().isEmpty) &&
-                vNew != null &&
-                vNew.toString().isNotEmpty) {
-              existing[k] = vNew;
-            }
-          }
-
-          copyIfMissing('image_front_small_url');
-          copyIfMissing('image_front_url');
-          copyIfMissing('image_thumb_url');
-          copyIfMissing('brands');
-          copyIfMissing('quantity');
-        }
+      if (ffinderProducts.isNotEmpty) {
+        unawaited(enrichImagesFromOff(ffinderProducts));
       }
-
-      final safeAll = seen.values
-          .map((p) => Map<String, dynamic>.from(p))
-          .toList(growable: false);
-      final rankedProducts = _rankProducts(safeAll, trimmed, take: 50);
-      setState(() {
-        _searchResults = rankedProducts;
-      });
     } catch (e, stack) {
-      debugPrint("Algemene fout in _searchProducts: $e");
+      debugPrint('[SEARCH] Algemene fout: $e');
+
       debugPrint(stack.toString());
-      setState(() {
-        _errorMessage = '${AppLocalizations.of(context)!.errorFetch}: $e';
-      });
+
+      if (!isCurrentSearch()) return;
+
+      // BELANGRIJK:
+      // Een fout mag bestaande resultaten niet wissen.
+      if (_searchResults == null || _searchResults!.isEmpty) {
+        setState(() {
+          _errorMessage = '${AppLocalizations.of(context)!.errorFetch}: $e';
+        });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (isCurrentSearch()) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -4873,7 +5081,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                             controller: searchController,
                                             style: TextStyle(color: textColor),
                                             decoration: InputDecoration(
-                                              labelText: 'Product ${index + 1}',
+                                              labelText: AppLocalizations.of(
+                                                context,
+                                              )!.productNumber(index + 1),
                                               hintText: AppLocalizations.of(
                                                 context,
                                               )!.searchProductHint,
@@ -6304,48 +6514,37 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       final factor = amount / 100.0;
                       final nutrimentsJson = nutriments;
 
+                      double nutrientPer100(String baseKey) {
+                        final dynamic rawValue =
+                            nutrimentsJson['${baseKey}_100g'] ??
+                            nutrimentsJson['${baseKey}_100ml'] ??
+                            nutrimentsJson[baseKey];
+                        if (rawValue is num) return rawValue.toDouble();
+                        if (rawValue is String) {
+                          return double.tryParse(
+                                rawValue.replaceAll(',', '.'),
+                              ) ??
+                              0.0;
+                        }
+                        return 0.0;
+                      }
+
                       final calculatedNutriments = {
-                        'energy-kcal':
-                            (nutrimentsJson['energy-kcal_100g'] as num? ??
-                                nutrimentsJson['energy-kcal'] as num? ??
-                                0) *
-                            factor,
-                        'fat':
-                            (nutrimentsJson['fat_100g'] as num? ??
-                                nutrimentsJson['fat'] as num? ??
-                                0) *
-                            factor,
+                        'energy-kcal': nutrientPer100('energy-kcal') * factor,
+                        'fat': nutrientPer100('fat') * factor,
                         'saturated-fat':
-                            (nutrimentsJson['saturated-fat_100g'] as num? ??
-                                nutrimentsJson['saturated-fat'] as num? ??
-                                0) *
-                            factor,
+                            nutrientPer100('saturated-fat') * factor,
                         'carbohydrates':
-                            (nutrimentsJson['carbohydrates_100g'] as num? ??
-                                nutrimentsJson['carbohydrates'] as num? ??
-                                0) *
-                            factor,
-                        'sugars':
-                            (nutrimentsJson['sugars_100g'] as num? ??
-                                nutrimentsJson['sugars'] as num? ??
-                                0) *
-                            factor,
-                        'fiber':
-                            (nutrimentsJson['fiber_100g'] as num? ??
-                                nutrimentsJson['fiber'] as num? ??
-                                0) *
-                            factor,
-                        'proteins':
-                            (nutrimentsJson['proteins_100g'] as num? ??
-                                nutrimentsJson['proteins'] as num? ??
-                                0) *
-                            factor,
-                        'salt':
-                            (nutrimentsJson['salt_100g'] as num? ??
-                                nutrimentsJson['salt'] as num? ??
-                                0) *
-                            factor,
+                            nutrientPer100('carbohydrates') * factor,
+                        'sugars': nutrientPer100('sugars') * factor,
+                        'fiber': nutrientPer100('fiber') * factor,
+                        'proteins': nutrientPer100('proteins') * factor,
+                        'salt': nutrientPer100('salt') * factor,
                       };
+
+                      debugPrint(
+                        '[ADD_FOOD_LOG_DEBUG] Product="$productName" | amount=${amount.toStringAsFixed(2)} | carbs=${(calculatedNutriments['carbohydrates'] ?? 0).toString()} | proteins=${(calculatedNutriments['proteins'] ?? 0).toString()} | fat=${(calculatedNutriments['fat'] ?? 0).toString()}',
+                      );
 
                       /*final now = DateTime.now();
                       final todayDocId =

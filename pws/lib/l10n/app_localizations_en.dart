@@ -2545,4 +2545,71 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tapTheFood => 'Tap the food!';
+
+  @override
+  String get carbohydratesPer100MlOptional => 'Carbohydrates per 100 ml (optional)';
+
+  @override
+  String get proteinsPer100MlOptional => 'Protein per 100 ml (optional)';
+
+  @override
+  String get fatsPer100MlOptional => 'Fat per 100 ml (optional)';
+
+  @override
+  String get scanBarcodeTooltip => 'Scan barcode';
+
+  @override
+  String productNumber(int number) {
+    return 'Product $number';
+  }
+
+  @override
+  String macroDistributionTitle(String title) {
+    return '$title distribution';
+  }
+
+  @override
+  String get noContributionsForDay => 'No contributions found for this day.';
+
+  @override
+  String macroTotal(String title, String amount) {
+    return 'Total $title: $amount g';
+  }
+
+  @override
+  String macroShareOfDayTotal(String percentage) {
+    return '$percentage% of daily total';
+  }
+
+  @override
+  String macroSecondaryDetails(String label, String secondary, String percentage, String primary) {
+    return '$label: $secondary g ($percentage%) | Other: $primary g';
+  }
+
+  @override
+  String topMacroSecondary(String label) {
+    return 'Top $label';
+  }
+
+  @override
+  String macroSecondaryTotal(String label, String amount) {
+    return 'Total $label: $amount g';
+  }
+
+  @override
+  String get noSeparateContributions => 'No separate contributions found.';
+
+  @override
+  String macroSecondaryShareTotal(String percentage, String label) {
+    return '$percentage% of total $label';
+  }
+
+  @override
+  String get editGoal => 'Edit goal';
+
+  @override
+  String get copyToAnotherDay => 'Copy to another day';
+
+  @override
+  String get entryCopiedToSelectedDay => 'Successfully added to the selected day';
 }

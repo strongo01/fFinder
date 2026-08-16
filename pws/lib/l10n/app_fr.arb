@@ -942,7 +942,32 @@
       }
     }
   },
-  "tapTheFood": "Appuyez sur la nourriture !"
+  "tapTheFood": "Appuyez sur la nourriture !",
+  "carbohydratesPer100MlOptional": "Glucides pour 100 ml (facultatif)",
+  "proteinsPer100MlOptional": "Protéines pour 100 ml (facultatif)",
+  "fatsPer100MlOptional": "Lipides pour 100 ml (facultatif)",
+  "scanBarcodeTooltip": "Scanner le code-barres",
+  "productNumber": "Produit {number}",
+  "@productNumber": {"placeholders": {"number": {"type": "int"}}},
+  "macroDistributionTitle": "Répartition des {title}",
+  "@macroDistributionTitle": {"placeholders": {"title": {"type": "String"}}},
+  "noContributionsForDay": "Aucune contribution trouvée pour cette journée.",
+  "macroTotal": "Total {title} : {amount} g",
+  "@macroTotal": {"placeholders": {"title": {"type": "String"}, "amount": {"type": "String"}}},
+  "macroShareOfDayTotal": "{percentage}% du total journalier",
+  "@macroShareOfDayTotal": {"placeholders": {"percentage": {"type": "String"}}},
+  "macroSecondaryDetails": "{label} : {secondary} g ({percentage} %) | Autres : {primary} g",
+  "@macroSecondaryDetails": {"placeholders": {"label": {"type": "String"}, "secondary": {"type": "String"}, "percentage": {"type": "String"}, "primary": {"type": "String"}}},
+  "topMacroSecondary": "Top {label}",
+  "@topMacroSecondary": {"placeholders": {"label": {"type": "String"}}},
+  "macroSecondaryTotal": "Total {label} : {amount} g",
+  "@macroSecondaryTotal": {"placeholders": {"label": {"type": "String"}, "amount": {"type": "String"}}},
+  "noSeparateContributions": "Aucune contribution distincte trouvée.",
+  "macroSecondaryShareTotal": "{percentage}% du total de {label}",
+  "@macroSecondaryShareTotal": {"placeholders": {"percentage": {"type": "String"}, "label": {"type": "String"}}},
+  "editGoal": "Modifier l’objectif",
+  "copyToAnotherDay": "Copier vers un autre jour",
+  "entryCopiedToSelectedDay": "Ajouté avec succès au jour sélectionné"
 
 
 }

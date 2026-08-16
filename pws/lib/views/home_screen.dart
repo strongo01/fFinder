@@ -66,8 +66,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final ValueNotifier<int> _tabNotifier = ValueNotifier(0);
   bool _tutorialInitialized = false;
   bool _tutorialHomeAf = false;
+  String? _lastDailyMacroDebugSignature;
 
-  static const String _appVersion = '1.2.8'; // huidige app versie
+  static const String _appVersion = '1.2.9'; // huidige app versie
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -961,6 +962,46 @@ class _HomeScreenState extends State<HomeScreen> {
     return calories;
   }
 
+  void _debugDailyCarbEntries({
+    required String docId,
+    required List<Map<String, dynamic>> entries,
+    required double totalCarbs,
+  }) {
+    if (!kDebugMode) return;
+
+    final signature =
+        '$docId|${entries.length}|${entries.map((e) => e['timestamp']).join('|')}';
+    if (_lastDailyMacroDebugSignature == signature) return;
+    _lastDailyMacroDebugSignature = signature;
+
+    debugPrint('[CARB_DEBUG] ---- Daglog $docId ----');
+    for (final entry in entries) {
+      final productName =
+          (entry['product_name'] as String?) ??
+          AppLocalizations.of(context)!.unknown;
+      final nutrients = entry['nutrients'] as Map<String, dynamic>?;
+      final carbs = (nutrients?['carbohydrates'] as num?)?.toDouble() ?? 0.0;
+      final amountG = (entry['amount_g'] as num?)?.toDouble();
+      final quantity = (entry['quantity'] as String? ?? '').trim();
+      final quantityLooksNumericOnly = RegExp(
+        r'^\d+(?:[.,]\d+)?$',
+      ).hasMatch(quantity);
+
+      final amountLabel = quantity.isNotEmpty
+          ? (quantityLooksNumericOnly ? '$quantity ml' : quantity)
+          : amountG != null
+          ? '${amountG.toStringAsFixed(0)} g'
+          : '-';
+
+      debugPrint(
+        '[CARB_DEBUG] Product="$productName" | Hoeveelheid=$amountLabel | Koolhydraten=${carbs.toStringAsFixed(2)} g',
+      );
+    }
+    debugPrint(
+      '[CARB_DEBUG] Totaal koolhydraten dag ($docId): ${totalCarbs.toStringAsFixed(2)} g',
+    );
+  }
+
   Future<void> _showEditWaterGoalDialog(double currentGoal) async {
     // toon dialoog om waterdoel te bewerken
     final amountController = TextEditingController(
@@ -1815,14 +1856,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             entry['meal_type'],
                             userDEK,
                           );
-                          if (entry.containsKey('nutrients')) {
-                            final nutrients =
-                                entry['nutrients'] as Map<String, dynamic>? ??
-                                {};
+                          final rawNutrients =
+                              (entry['nutrients'] as Map<String, dynamic>?) ??
+                              (entry['nutriments'] as Map<String, dynamic>?) ??
+                              {};
+                          if (rawNutrients.isNotEmpty) {
                             final decryptedNutrients = <String, dynamic>{};
-                            for (final key in nutrients.keys) {
+                            for (final key in rawNutrients.keys) {
                               decryptedNutrients[key] = await decryptDouble(
-                                nutrients[key],
+                                rawNutrients[key],
                                 userDEK,
                               );
                             }
@@ -1899,30 +1941,49 @@ class _HomeScreenState extends State<HomeScreen> {
                             double totalCarbs = 0;
                             double totalSugars = 0;
                             for (var entry in entries) {
-                              if (entry.containsKey('quantity')) {
-                                final kcal =
-                                    double.tryParse(
-                                      entry['kcal']?.toString() ?? '0',
-                                    ) ??
-                                    0.0;
-                                totalCalories += kcal;
-                              } else {
-                                totalCalories +=
-                                    (entry['nutrients']?['energy-kcal'] ?? 0.0);
-                                totalProteins +=
-                                    (entry['nutrients']?['proteins'] ?? 0.0);
-                                totalFats +=
-                                    (entry['nutrients']?['fat'] ?? 0.0);
-                                totalSaturatedFats +=
-                                    (entry['nutrients']?['saturated-fat'] ??
-                                    0.0);
-                                totalCarbs +=
-                                    (entry['nutrients']?['carbohydrates'] ??
-                                    0.0);
-                                totalSugars +=
-                                    (entry['nutrients']?['sugars'] ?? 0.0);
-                              }
+                              final nutrients =
+                                  entry['nutrients'] as Map<String, dynamic>?;
+
+                              final energyFromNutrients =
+                                  (nutrients?['energy-kcal'] as num?)
+                                      ?.toDouble() ??
+                                  0.0;
+
+                              // Keep compatibility with older drink entries that only store kcal.
+                              final kcalFallback =
+                                  double.tryParse(
+                                    entry['kcal']?.toString() ?? '0',
+                                  ) ??
+                                  0.0;
+
+                              totalCalories += energyFromNutrients > 0
+                                  ? energyFromNutrients
+                                  : kcalFallback;
+                              totalProteins +=
+                                  (nutrients?['proteins'] as num?)
+                                      ?.toDouble() ??
+                                  0.0;
+                              totalFats +=
+                                  (nutrients?['fat'] as num?)?.toDouble() ??
+                                  0.0;
+                              totalSaturatedFats +=
+                                  (nutrients?['saturated-fat'] as num?)
+                                      ?.toDouble() ??
+                                  0.0;
+                              totalCarbs +=
+                                  (nutrients?['carbohydrates'] as num?)
+                                      ?.toDouble() ??
+                                  0.0;
+                              totalSugars +=
+                                  (nutrients?['sugars'] as num?)?.toDouble() ??
+                                  0.0;
                             }
+
+                            _debugDailyCarbEntries(
+                              docId: docId,
+                              entries: entries,
+                              totalCarbs: totalCarbs,
+                            );
 
                             double adjustedCalorieGoal =
                                 _calorieAllowance ?? 0.0;
@@ -2186,14 +2247,32 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       context,
                                                     )!.sugars,
                                                 onTap: () =>
-                                                    _showEditMacroGoalDialog(
-                                                      macroField: 'carbGoal',
-                                                      currentGoal: carbGoal
-                                                          .toDouble(),
-                                                      macroTitle:
+                                                    _showMacroContributionDialog(
+                                                      title:
                                                           AppLocalizations.of(
                                                             context,
                                                           )!.carbs,
+                                                      entries: entries,
+                                                      macroKey: 'carbohydrates',
+                                                      accentColor:
+                                                          Colors.orange,
+                                                      secondaryKey: 'sugars',
+                                                      secondaryLabel:
+                                                          AppLocalizations.of(
+                                                            context,
+                                                          )!.sugars,
+                                                      onEditGoal: () =>
+                                                          _showEditMacroGoalDialog(
+                                                            macroField:
+                                                                'carbGoal',
+                                                            currentGoal:
+                                                                carbGoal
+                                                                    .toDouble(),
+                                                            macroTitle:
+                                                                AppLocalizations.of(
+                                                                  context,
+                                                                )!.carbs,
+                                                          ),
                                                     ),
                                               ),
                                             ),
@@ -2212,14 +2291,32 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   255,
                                                 ),
                                                 onTap: () =>
-                                                    _showEditMacroGoalDialog(
-                                                      macroField: 'proteinGoal',
-                                                      currentGoal: proteinGoal
-                                                          .toDouble(),
-                                                      macroTitle:
+                                                    _showMacroContributionDialog(
+                                                      title:
                                                           AppLocalizations.of(
                                                             context,
                                                           )!.proteins,
+                                                      entries: entries,
+                                                      macroKey: 'proteins',
+                                                      accentColor:
+                                                          const Color.fromARGB(
+                                                            255,
+                                                            0,
+                                                            140,
+                                                            255,
+                                                          ),
+                                                      onEditGoal: () =>
+                                                          _showEditMacroGoalDialog(
+                                                            macroField:
+                                                                'proteinGoal',
+                                                            currentGoal:
+                                                                proteinGoal
+                                                                    .toDouble(),
+                                                            macroTitle:
+                                                                AppLocalizations.of(
+                                                                  context,
+                                                                )!.proteins,
+                                                          ),
                                                     ),
                                               ),
                                             ),
@@ -2246,14 +2343,37 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       context,
                                                     )!.saturatedFat,
                                                 onTap: () =>
-                                                    _showEditMacroGoalDialog(
-                                                      macroField: 'fatGoal',
-                                                      currentGoal: fatGoal
-                                                          .toDouble(),
-                                                      macroTitle:
+                                                    _showMacroContributionDialog(
+                                                      title:
                                                           AppLocalizations.of(
                                                             context,
                                                           )!.fats,
+                                                      entries: entries,
+                                                      macroKey: 'fat',
+                                                      accentColor:
+                                                          const Color.fromARGB(
+                                                            255,
+                                                            0,
+                                                            213,
+                                                            255,
+                                                          ),
+                                                      secondaryKey:
+                                                          'saturated-fat',
+                                                      secondaryLabel:
+                                                          AppLocalizations.of(
+                                                            context,
+                                                          )!.saturatedFat,
+                                                      onEditGoal: () =>
+                                                          _showEditMacroGoalDialog(
+                                                            macroField:
+                                                                'fatGoal',
+                                                            currentGoal: fatGoal
+                                                                .toDouble(),
+                                                            macroTitle:
+                                                                AppLocalizations.of(
+                                                                  context,
+                                                                )!.fats,
+                                                          ),
                                                     ),
                                               ),
                                             ),
@@ -3034,6 +3154,393 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _showMacroContributionDialog({
+    required String title,
+    required List<Map<String, dynamic>> entries,
+    required String macroKey,
+    required Color accentColor,
+    String? secondaryKey,
+    String? secondaryLabel,
+    VoidCallback? onEditGoal,
+  }) async {
+    final rowsByProduct = <String, Map<String, dynamic>>{};
+
+    for (final entry in entries) {
+      final nutrients = entry['nutrients'] as Map<String, dynamic>?;
+      if (nutrients == null) continue;
+
+      final total = (nutrients[macroKey] as num?)?.toDouble() ?? 0.0;
+      if (total <= 0) continue;
+
+      final secondaryRaw = secondaryKey != null
+          ? ((nutrients[secondaryKey] as num?)?.toDouble() ?? 0.0)
+          : 0.0;
+      final secondary = secondaryRaw.clamp(0.0, total);
+
+      final name = (entry['product_name'] as String?)?.trim().isNotEmpty == true
+          ? (entry['product_name'] as String).trim()
+          : AppLocalizations.of(context)!.unknown;
+
+      rowsByProduct.putIfAbsent(name, () {
+        return {'name': name, 'total': 0.0, 'secondary': 0.0, 'count': 0};
+      });
+
+      rowsByProduct[name]!['total'] =
+          (rowsByProduct[name]!['total'] as double) + total;
+      rowsByProduct[name]!['secondary'] =
+          (rowsByProduct[name]!['secondary'] as double) + secondary;
+      rowsByProduct[name]!['count'] =
+          (rowsByProduct[name]!['count'] as int) + 1;
+    }
+
+    final rows = rowsByProduct.values.toList();
+    rows.sort((a, b) => (b['total'] as double).compareTo(a['total'] as double));
+
+    final totalMacro = rows.fold<double>(
+      0.0,
+      (sum, row) => sum + (row['total'] as double),
+    );
+
+    final secondaryRows = secondaryKey != null
+        ? rows.where((row) => (row['secondary'] as double) > 0).toList()
+        : <Map<String, dynamic>>[];
+    secondaryRows.sort(
+      (a, b) => (b['secondary'] as double).compareTo(a['secondary'] as double),
+    );
+    final totalSecondary = secondaryRows.fold<double>(
+      0.0,
+      (sum, row) => sum + (row['secondary'] as double),
+    );
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final secondaryLabelText = (secondaryLabel ?? '').trim().isNotEmpty
+        ? secondaryLabel!.trim()
+        : AppLocalizations.of(context)!.macroLegendSplitFallback;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            AppLocalizations.of(context)!.macroDistributionTitle(title),
+          ),
+          content: SizedBox(
+            width: 520,
+            child: rows.isEmpty
+                ? Text(AppLocalizations.of(context)!.noContributionsForDay)
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppLocalizations.of(context)!.macroTotal(
+                          title.toLowerCase(),
+                          totalMacro.toStringAsFixed(1),
+                        ),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Flexible(
+                        child: ListView(
+                          shrinkWrap: true,
+                          children: [
+                            for (
+                              int index = 0;
+                              index < rows.length;
+                              index++
+                            ) ...[
+                              Builder(
+                                builder: (context) {
+                                  final row = rows[index];
+                                  final name = row['name'] as String;
+                                  final total = row['total'] as double;
+                                  final secondary = row['secondary'] as double;
+                                  final primary = (total - secondary).clamp(
+                                    0.0,
+                                    total,
+                                  );
+                                  final share = totalMacro > 0
+                                      ? total / totalMacro
+                                      : 0.0;
+                                  final secondaryPct = total > 0
+                                      ? (secondary / total * 100).clamp(
+                                          0.0,
+                                          100.0,
+                                        )
+                                      : 0.0;
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 24,
+                                            height: 24,
+                                            alignment: Alignment.center,
+                                            decoration: BoxDecoration(
+                                              color: accentColor.withOpacity(
+                                                0.15,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              '${index + 1}',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: accentColor,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                color: isDarkMode
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            '${total.toStringAsFixed(1)} g',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              color: accentColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      LinearProgressIndicator(
+                                        value: share.clamp(0.0, 1.0),
+                                        minHeight: 7,
+                                        borderRadius: BorderRadius.circular(99),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              accentColor,
+                                            ),
+                                        backgroundColor: isDarkMode
+                                            ? Colors.grey[700]
+                                            : Colors.grey[300],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.macroShareOfDayTotal(
+                                          (share * 100).toStringAsFixed(1),
+                                        ),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isDarkMode
+                                              ? Colors.white70
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                      if (secondaryKey != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.macroSecondaryDetails(
+                                            secondaryLabelText,
+                                            secondary.toStringAsFixed(1),
+                                            secondaryPct.toStringAsFixed(0),
+                                            primary.toStringAsFixed(1),
+                                          ),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: isDarkMode
+                                                ? Colors.white70
+                                                : Colors.black87,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  );
+                                },
+                              ),
+                              const Divider(height: 16),
+                            ],
+
+                            if (secondaryKey != null) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.topMacroSecondary(secondaryLabelText),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.macroSecondaryTotal(
+                                  secondaryLabelText,
+                                  totalSecondary.toStringAsFixed(1),
+                                ),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              if (secondaryRows.isEmpty)
+                                Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.noSeparateContributions,
+                                )
+                              else
+                                for (
+                                  int index = 0;
+                                  index < secondaryRows.length;
+                                  index++
+                                ) ...[
+                                  Builder(
+                                    builder: (context) {
+                                      final row = secondaryRows[index];
+                                      final name = row['name'] as String;
+                                      final secondary =
+                                          row['secondary'] as double;
+                                      final secondaryShare = totalSecondary > 0
+                                          ? secondary / totalSecondary
+                                          : 0.0;
+
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Container(
+                                                width: 24,
+                                                height: 24,
+                                                alignment: Alignment.center,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.pinkAccent
+                                                      .withOpacity(0.15),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  '${index + 1}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.pinkAccent,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Text(
+                                                  name,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isDarkMode
+                                                        ? Colors.white
+                                                        : Colors.black,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                '${secondary.toStringAsFixed(1)} g',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.pinkAccent,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          LinearProgressIndicator(
+                                            value: secondaryShare.clamp(
+                                              0.0,
+                                              1.0,
+                                            ),
+                                            minHeight: 7,
+                                            borderRadius: BorderRadius.circular(
+                                              99,
+                                            ),
+                                            valueColor:
+                                                const AlwaysStoppedAnimation<
+                                                  Color
+                                                >(Colors.pinkAccent),
+                                            backgroundColor: isDarkMode
+                                                ? Colors.grey[700]
+                                                : Colors.grey[300],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.macroSecondaryShareTotal(
+                                              (secondaryShare * 100)
+                                                  .toStringAsFixed(1),
+                                              secondaryLabelText,
+                                            ),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isDarkMode
+                                                  ? Colors.white70
+                                                  : Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                  const Divider(height: 16),
+                                ],
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          actions: [
+            if (onEditGoal != null)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  onEditGoal();
+                },
+                child: Text(AppLocalizations.of(context)!.editGoal),
+              ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(AppLocalizations.of(context)!.cancel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   String _getMotivationalMessage(
     // genereer motiverende boodschap
     BuildContext context,
@@ -3262,8 +3769,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final loc = AppLocalizations.of(context)!;
     final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
     final secondaryRaw = (secondaryConsumed ?? 0.0).clamp(0.0, consumed);
-    final primaryRaw = (consumed - secondaryRaw).clamp(0.0, consumed);
-    
+
     final int roundedConsumed = consumed.round();
     final int roundedGoal = goal.round();
     final int roundedSecondary = secondaryRaw.round();
@@ -3272,11 +3778,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final cleanSecondaryLabel = secondaryLabel
         ?.replaceFirst(RegExp(r'^\s*-\s*'), '')
         .trim();
-        
+
     final int totalPercentInt = goal > 0 ? (progress * 100).round() : 0;
     final int secondaryPercentInt = goal > 0
-      ? ((secondaryRaw / goal) * 100).clamp(0.0, 100.0).round()
-      : (consumed > 0 ? ((secondaryRaw / consumed) * 100).clamp(0.0, 100.0).round() : 0);
+        ? ((secondaryRaw / goal) * 100).clamp(0.0, 100.0).round()
+        : (consumed > 0
+              ? ((secondaryRaw / consumed) * 100).clamp(0.0, 100.0).round()
+              : 0);
     final int primaryPercentInt = totalPercentInt - secondaryPercentInt;
 
     return TweenAnimationBuilder<double>(
@@ -3536,7 +4044,8 @@ class _HomeScreenState extends State<HomeScreen> {
               //final calories = (entry['nutriments']?['energy-kcal'] ?? 0.0)
               //  .round();
               //             final timestamp = entry['timestamp'] as Timestamp?;
-              final productName = entry['product_name'] ?? 'Onbekend';
+              final productName =
+                  entry['product_name'] ?? AppLocalizations.of(context)!.unknownProduct;
               final timestamp = entry['timestamp'] as Timestamp?;
 
               String rightSideText;
@@ -3891,7 +4400,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       child: Text(
-                        isDrink ? 'Milliliter (ml)' : 'Gram (g)',
+                        isDrink
+                            ? AppLocalizations.of(context)!.milliliterLabel
+                            : AppLocalizations.of(context)!.gramLabel,
                         style: TextStyle(
                           color: isDarkMode ? Colors.white : Colors.black,
                         ),
@@ -3947,7 +4458,7 @@ class _HomeScreenState extends State<HomeScreen> {
               actions: [
                 IconButton(
                   icon: const Icon(Icons.add),
-                  tooltip: 'Kopieer naar een andere dag',
+                  tooltip: AppLocalizations.of(context)!.copyToAnotherDay,
                   onPressed: () async {
                     if (!formKey.currentState!.validate()) return;
                     final pickedDate = await showDatePicker(
@@ -3981,7 +4492,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     final newAmount = double.parse(
                       amountController.text.replaceAll(',', '.'),
                     );
-                    
+
                     await _copyEntryToDate(
                       decryptedEntry,
                       encryptedEntry,
@@ -3990,7 +4501,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       mealType: selectedMeal,
                       unit: unit,
                     );
-                    
+
                     if (context.mounted) Navigator.of(context).pop();
                   },
                 ),
@@ -4061,7 +4572,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final now = DateTime.now();
     final entryTimestamp = Timestamp.fromDate(
-      DateTime(targetDate.year, targetDate.month, targetDate.day, now.hour, now.minute)
+      DateTime(
+        targetDate.year,
+        targetDate.month,
+        targetDate.day,
+        now.hour,
+        now.minute,
+      ),
     );
 
     try {
@@ -4093,7 +4610,6 @@ class _HomeScreenState extends State<HomeScreen> {
         await docRef.set({
           'entries': FieldValue.arrayUnion([updatedEntry]),
         }, SetOptions(merge: true));
-
       } else {
         // Food entry
         final originalAmount = decryptedEntry['amount_g'] as num?;
@@ -4129,7 +4645,7 @@ class _HomeScreenState extends State<HomeScreen> {
           'nutrients': newNutriments,
           'timestamp': entryTimestamp,
         };
-        
+
         if (mealType != null && mealType.trim().isNotEmpty) {
           updatedEntry['meal_type'] = await encryptValue(mealType, userDEK);
         }
@@ -4141,7 +4657,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Succesvol toegevoegd aan geselecteerde dag')),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.entryCopiedToSelectedDay,
+            ),
+          ),
         );
       }
     } catch (e) {

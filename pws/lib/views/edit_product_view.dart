@@ -1210,48 +1210,35 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                       final factor = amount / 100.0;
                       final nutrimentsJson = nutriments;
 
+                        double nutrientPer100(String baseKey) {
+                        final dynamic rawValue =
+                          nutrimentsJson['${baseKey}_100g'] ??
+                          nutrimentsJson['${baseKey}_100ml'] ??
+                          nutrimentsJson[baseKey];
+                        if (rawValue is num) return rawValue.toDouble();
+                        if (rawValue is String) {
+                          return double.tryParse(
+                            rawValue.replaceAll(',', '.'),
+                            ) ??
+                            0.0;
+                        }
+                        return 0.0;
+                        }
+
                       final calculatedNutriments = {
-                        'energy-kcal':
-                            (nutrimentsJson['energy-kcal_100g'] as num? ??
-                                nutrimentsJson['energy-kcal'] as num? ??
-                                0) *
-                            factor,
-                        'fat':
-                            (nutrimentsJson['fat_100g'] as num? ??
-                                nutrimentsJson['fat'] as num? ??
-                                0) *
-                            factor,
-                        'saturated-fat':
-                            (nutrimentsJson['saturated-fat_100g'] as num? ??
-                                nutrimentsJson['saturated-fat'] as num? ??
-                                0) *
-                            factor,
-                        'carbohydrates':
-                            (nutrimentsJson['carbohydrates_100g'] as num? ??
-                                nutrimentsJson['carbohydrates'] as num? ??
-                                0) *
-                            factor,
-                        'sugars':
-                            (nutrimentsJson['sugars_100g'] as num? ??
-                                nutrimentsJson['sugars'] as num? ??
-                                0) *
-                            factor,
-                        'fiber':
-                            (nutrimentsJson['fiber_100g'] as num? ??
-                                nutrimentsJson['fiber'] as num? ??
-                                0) *
-                            factor,
-                        'proteins':
-                            (nutrimentsJson['proteins_100g'] as num? ??
-                                nutrimentsJson['proteins'] as num? ??
-                                0) *
-                            factor,
-                        'salt':
-                            (nutrimentsJson['salt_100g'] as num? ??
-                                nutrimentsJson['salt'] as num? ??
-                                0) *
-                            factor,
+                        'energy-kcal': nutrientPer100('energy-kcal') * factor,
+                        'fat': nutrientPer100('fat') * factor,
+                        'saturated-fat': nutrientPer100('saturated-fat') * factor,
+                        'carbohydrates': nutrientPer100('carbohydrates') * factor,
+                        'sugars': nutrientPer100('sugars') * factor,
+                        'fiber': nutrientPer100('fiber') * factor,
+                        'proteins': nutrientPer100('proteins') * factor,
+                        'salt': nutrientPer100('salt') * factor,
                       };
+
+                        debugPrint(
+                        '[ADD_FOOD_ML_DEBUG] Product="$productName" | unit=$unit | amount=${amount.toStringAsFixed(2)} | per100(carbs/fat/proteins)=(${nutrientPer100('carbohydrates').toStringAsFixed(2)}/${nutrientPer100('fat').toStringAsFixed(2)}/${nutrientPer100('proteins').toStringAsFixed(2)}) | calculated=(${(calculatedNutriments['carbohydrates'] as double).toStringAsFixed(2)}/${(calculatedNutriments['fat'] as double).toStringAsFixed(2)}/${(calculatedNutriments['proteins'] as double).toStringAsFixed(2)})',
+                        );
 
                       /* final now = DateTime.now();
                       final todayDocId =
@@ -1269,6 +1256,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                           amount.round(),
                           selectedMeal,
                           kcal,
+                          calculatedNutriments,
                         );
                         return;
                       }
@@ -1346,6 +1334,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     int amount,
     String drinkTime,
     double kcal,
+    Map<String, dynamic> nutrients,
   ) async {
     // logt het drinken van een drankje
     final user = FirebaseAuth.instance.currentUser;
@@ -1368,6 +1357,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     String mealTypeField = drinkTime;
     String drinkTimeField = drinkTime;
     String kcalField = kcal.toString();
+    final encryptedNutrients = <String, dynamic>{};
 
     if (userDEK != null) {
       try {
@@ -1376,7 +1366,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
         productNameField = name;
       }
       try {
-        quantityField = await encryptInt(amount, userDEK);
+        quantityField = await encryptValue('$amount ml', userDEK);
       } catch (_) {
         quantityField = '$amount ml';
       }
@@ -1395,7 +1385,20 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       } catch (_) {
         kcalField = kcal.toString();
       }
+
+      for (final key in nutrients.keys) {
+        final value = (nutrients[key] as num?)?.toDouble() ?? 0.0;
+        try {
+          encryptedNutrients[key] = await encryptDouble(value, userDEK);
+        } catch (_) {
+          encryptedNutrients[key] = value;
+        }
+      }
     }
+
+    debugPrint(
+      '[ADD_FOOD_ML_DEBUG] Saving drink log "$name" amount=${amount}ml kcal=${kcal.toStringAsFixed(2)} carbs=${((nutrients['carbohydrates'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2)} proteins=${((nutrients['proteins'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2)} fat=${((nutrients['fat'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2)}',
+    );
 
     final logEntry = {
       'product_name': productNameField,
@@ -1404,16 +1407,12 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       'drinkTime': drinkTimeField,
       'timestamp': date,
       'kcal': kcalField,
-      'nutriments': {
-        'energy-kcal': 0,
-        'fat': 0,
-        'saturated-fat': 0,
-        'carbohydrates': 0,
-        'sugars': 0,
-        'proteins': 0,
-        'salt': 0,
-      },
+      'nutrients': userDEK != null ? encryptedNutrients : nutrients,
     };
+
+    debugPrint(
+      '[ADD_FOOD_ML_DEBUG] Firestore logEntry keys=${logEntry.keys.toList()} quantity=${logEntry['quantity']}',
+    );
 
     await FirebaseFirestore.instance
         .collection('users')

@@ -7,7 +7,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
-import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -37,6 +36,44 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
   final Uri _privacyUri = Uri.parse( //link naar privacybeleid
     'https://sites.google.com/view/ffinderreppy/homepage',
   );
+
+  Widget _buildSocialLoginButton({
+    required String label,
+    required Widget icon,
+    required Color backgroundColor,
+    required Color foregroundColor,
+    required VoidCallback onPressed,
+    bool enabled = true,
+  }) {
+    return SizedBox(
+      width: 320,
+      child: IgnorePointer(
+        ignoring: !enabled,
+        child: Opacity(
+          opacity: enabled ? 1.0 : 0.75,
+          child: ElevatedButton.icon(
+            onPressed: enabled ? onPressed : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: backgroundColor,
+              foregroundColor: foregroundColor,
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            icon: SizedBox(width: 24, child: Center(child: icon)),
+            label: Text(
+              label,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   //functie voor inloggen met google
   Future<UserCredential> signInWithGoogle() async {
     if (kIsWeb) {
@@ -875,53 +912,60 @@ class _LoginRegisterViewState extends State<LoginRegisterView> {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IgnorePointer(
-                      ignoring: !_agreedPrivacy,
-                      child: Opacity(
-                        opacity: _agreedPrivacy ? 1.0 : 0.75,
-                        child: SignInButton(
-                          isDarkMode ? Buttons.GoogleDark : Buttons.Google,
-                          text: AppLocalizations.of(context)!.loginWithGoogle,
-                          onPressed: _signInWithGoogleHandler,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                    _buildSocialLoginButton(
+                      label: AppLocalizations.of(context)!.loginWithGoogle,
+                      icon: Text(
+                        'G',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: isDarkMode
+                              ? const Color(0xFF1F1F1F)
+                              : const Color(0xFF1F1F1F),
                         ),
                       ),
+                      backgroundColor:
+                          isDarkMode ? const Color(0xFF1F1F1F) : Colors.white,
+                      foregroundColor:
+                          isDarkMode ? Colors.white : const Color(0xFF1F1F1F),
+                      enabled: _agreedPrivacy,
+                      onPressed: _signInWithGoogleHandler,
                     ),
                     const SizedBox(height: 12),
-                    IgnorePointer(
-                      ignoring: !_agreedPrivacy,
-                      child: Opacity(
-                        opacity: _agreedPrivacy ? 1.0 : 0.75,
-                        child: SignInButton(
-                          Buttons.GitHub,
-                          text: AppLocalizations.of(context)!.loginWithGitHub,
-                          onPressed: _signInWithGitHubHandler,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                    _buildSocialLoginButton(
+                      label: AppLocalizations.of(context)!.loginWithGitHub,
+                      icon: Text(
+                        'GH',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
                         ),
                       ),
+                      backgroundColor: const Color(0xFF24292E),
+                      foregroundColor: Colors.white,
+                      enabled: _agreedPrivacy,
+                      onPressed: _signInWithGitHubHandler,
                     ),
                     //knop is alleen zichtbaar voor ios en macos, niet op web
                     if (!kIsWeb &&
                         (defaultTargetPlatform == TargetPlatform.iOS ||
                             defaultTargetPlatform == TargetPlatform.macOS)) ...[
                       const SizedBox(height: 12),
-                      IgnorePointer(
-                        ignoring: !_agreedPrivacy,
-                        child: Opacity(
-                          opacity: _agreedPrivacy ? 1.0 : 0.75,
-                          child: SignInButton(
-                            Buttons.Apple,
-                            text: AppLocalizations.of(context)!.loginWithApple,
-                            onPressed: _signInWithAppleHandler,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                      _buildSocialLoginButton(
+                        label: AppLocalizations.of(context)!.loginWithApple,
+                        icon: Text(
+                          '',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
                           ),
                         ),
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        enabled: _agreedPrivacy,
+                        onPressed: _signInWithAppleHandler,
                       ),
                     ],
                   ],

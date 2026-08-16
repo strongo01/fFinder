@@ -5114,6 +5114,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap the food!'**
   String get tapTheFood;
+
+  /// No description provided for @carbohydratesPer100MlOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Carbohydrates per 100 ml (optional)'**
+  String get carbohydratesPer100MlOptional;
+
+  /// No description provided for @proteinsPer100MlOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Protein per 100 ml (optional)'**
+  String get proteinsPer100MlOptional;
+
+  /// No description provided for @fatsPer100MlOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Fat per 100 ml (optional)'**
+  String get fatsPer100MlOptional;
+
+  /// No description provided for @scanBarcodeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan barcode'**
+  String get scanBarcodeTooltip;
+
+  /// No description provided for @productNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Product {number}'**
+  String productNumber(int number);
+
+  /// No description provided for @macroDistributionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} distribution'**
+  String macroDistributionTitle(String title);
+
+  /// No description provided for @noContributionsForDay.
+  ///
+  /// In en, this message translates to:
+  /// **'No contributions found for this day.'**
+  String get noContributionsForDay;
+
+  /// No description provided for @macroTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total {title}: {amount} g'**
+  String macroTotal(String title, String amount);
+
+  /// No description provided for @macroShareOfDayTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{percentage}% of daily total'**
+  String macroShareOfDayTotal(String percentage);
+
+  /// No description provided for @macroSecondaryDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'{label}: {secondary} g ({percentage}%) | Other: {primary} g'**
+  String macroSecondaryDetails(String label, String secondary, String percentage, String primary);
+
+  /// No description provided for @topMacroSecondary.
+  ///
+  /// In en, this message translates to:
+  /// **'Top {label}'**
+  String topMacroSecondary(String label);
+
+  /// No description provided for @macroSecondaryTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total {label}: {amount} g'**
+  String macroSecondaryTotal(String label, String amount);
+
+  /// No description provided for @noSeparateContributions.
+  ///
+  /// In en, this message translates to:
+  /// **'No separate contributions found.'**
+  String get noSeparateContributions;
+
+  /// No description provided for @macroSecondaryShareTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{percentage}% of total {label}'**
+  String macroSecondaryShareTotal(String percentage, String label);
+
+  /// No description provided for @editGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit goal'**
+  String get editGoal;
+
+  /// No description provided for @copyToAnotherDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to another day'**
+  String get copyToAnotherDay;
+
+  /// No description provided for @entryCopiedToSelectedDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Successfully added to the selected day'**
+  String get entryCopiedToSelectedDay;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

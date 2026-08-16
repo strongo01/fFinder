@@ -23,6 +23,12 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
   List<Map<String, dynamic>> _drinkPresets = []; // lijst van drank standaarden
   bool _isLoading = true;
 
+  double _toDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value == null) return 0.0;
+    return double.tryParse(value.toString().replaceAll(',', '.')) ?? 0.0;
+  }
+
   @override
   void initState() {
     // bij initialisatie van de state
@@ -106,6 +112,32 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                 } catch (_) {}
               } else if (kcalVal is num) {
                 map['kcal'] = kcalVal.toDouble();
+              }
+            }
+
+            const macroKeys = [
+              'carbohydrates_per_100ml',
+              'proteins_per_100ml',
+              'fat_per_100ml',
+              'saturated_fat_per_100ml',
+              'sugars_per_100ml',
+              'fiber_per_100ml',
+              'salt_per_100ml',
+            ];
+            for (final key in macroKeys) {
+              if (!map.containsKey(key)) continue;
+              final v = map[key];
+              if (userDEK != null && v is String) {
+                try {
+                  final decrypted = await decryptValue(v, userDEK);
+                  map[key] = double.tryParse(decrypted) ?? 0.0;
+                } catch (_) {
+                  map[key] = double.tryParse(v) ?? 0.0;
+                }
+              } else if (v is num) {
+                map[key] = v.toDouble();
+              } else {
+                map[key] = 0.0;
               }
             }
 
@@ -201,6 +233,28 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
         map['kcal'] = kcalVal;
       }
 
+      const macroKeys = [
+        'carbohydrates_per_100ml',
+        'proteins_per_100ml',
+        'fat_per_100ml',
+        'saturated_fat_per_100ml',
+        'sugars_per_100ml',
+        'fiber_per_100ml',
+        'salt_per_100ml',
+      ];
+      for (final key in macroKeys) {
+        final macroVal = _toDouble(preset[key]);
+        if (userDEK != null) {
+          try {
+            map[key] = await encryptDouble(macroVal, userDEK);
+          } catch (_) {
+            map[key] = macroVal;
+          }
+        } else {
+          map[key] = macroVal;
+        }
+      }
+
       toSave.add(map);
     }
 
@@ -210,17 +264,27 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     ); //merge omdat we andere velden niet willen overschrijven
   }
 
-  Future<void> _logDrink( // logt het drinken van een drankje
+  Future<void> _logDrink(
+    // logt het drinken van een drankje
     String name,
     int amount,
     String drinkTime,
-    double kcal,
-  ) async {
+    double kcal, {
+    double carbsPer100 = 0,
+    double proteinsPer100 = 0,
+    double fatPer100 = 0,
+    double saturatedFatPer100 = 0,
+    double sugarsPer100 = 0,
+    double fiberPer100 = 0,
+    double saltPer100 = 0,
+  }) async {
     // logt het drinken van een drankje
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.loginToLog)), //gebruiker moet inloggen om te kunnen loggen
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.loginToLog),
+        ), //gebruiker moet inloggen om te kunnen loggen
       );
       return;
     }
@@ -237,14 +301,28 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     String drinkTimeField = drinkTime;
     String kcalField = kcal.toString();
 
-    if (userDEK != null) { //als er een DEK is, encrypt de velden
+    final factor = amount / 100.0;
+    final calculatedNutrients = {
+      'energy-kcal': kcal,
+      'fat': fatPer100 * factor,
+      'saturated-fat': saturatedFatPer100 * factor,
+      'carbohydrates': carbsPer100 * factor,
+      'sugars': sugarsPer100 * factor,
+      'fiber': fiberPer100 * factor,
+      'proteins': proteinsPer100 * factor,
+      'salt': saltPer100 * factor,
+    };
+    final encryptedNutrients = <String, dynamic>{};
+
+    if (userDEK != null) {
+      //als er een DEK is, encrypt de velden
       try {
         productNameField = await encryptValue(name, userDEK);
       } catch (_) {
         productNameField = name;
       }
       try {
-        quantityField = await encryptInt(amount, userDEK);
+        quantityField = await encryptValue('$amount ml', userDEK);
       } catch (_) {
         quantityField = '$amount ml';
       }
@@ -263,9 +341,21 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       } catch (_) {
         kcalField = kcal.toString();
       }
+
+      for (final key in calculatedNutrients.keys) {
+        try {
+          encryptedNutrients[key] = await encryptDouble(
+            (calculatedNutrients[key] ?? 0).toDouble(),
+            userDEK,
+          );
+        } catch (_) {
+          encryptedNutrients[key] = (calculatedNutrients[key] ?? 0).toDouble();
+        }
+      }
     }
 
-    final logEntry = { // log entry map
+    final logEntry = {
+      // log entry map
       'product_name': productNameField,
       'quantity': quantityField,
       'meal_type': mealTypeField,
@@ -273,15 +363,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       'timestamp': date,
 
       'kcal': kcalField,
-      'nutriments': {
-        'energy-kcal': 0,
-        'fat': 0,
-        'saturated-fat': 0,
-        'carbohydrates': 0,
-        'sugars': 0,
-        'proteins': 0,
-        'salt': 0,
-      },
+      'nutrients': userDEK != null ? encryptedNutrients : calculatedNutrients,
     };
 
     await FirebaseFirestore.instance
@@ -290,7 +372,9 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
         .collection('logs')
         .doc(todayDocId)
         .set({
-          'entries': FieldValue.arrayUnion([logEntry]), //voegt de log entry toe aan de entries array
+          'entries': FieldValue.arrayUnion([
+            logEntry,
+          ]), //voegt de log entry toe aan de entries array
         }, SetOptions(merge: true));
 
     if (mounted) {
@@ -305,14 +389,19 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     }
   }
 
-  void _showAddPresetDialog() { // toont de dialoog om een nieuwe drank preset toe te voegen
+  void _showAddPresetDialog() {
+    // toont de dialoog om een nieuwe drank preset toe te voegen
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     final kcalController = TextEditingController();
+    final carbsController = TextEditingController();
+    final proteinsController = TextEditingController();
+    final fatController = TextEditingController();
     final customNameController = TextEditingController();
     String? selectedDrink;
     String? coffeeVariant; // voor koffie
-    final drinkOptions = [ // beschikbare drank opties en alle lokaal vertaalde namen
+    final drinkOptions = [
+      // beschikbare drank opties en alle lokaal vertaalde namen
       AppLocalizations.of(context)!.water,
       AppLocalizations.of(context)!.coffee,
       AppLocalizations.of(context)!.tea,
@@ -342,7 +431,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            void updateKcalForCoffee() { // update kcal op basis van koffie variant
+            void updateKcalForCoffee() {
+              // update kcal op basis van koffie variant
               final loc = AppLocalizations.of(context)!;
               if (coffeeVariant == null) {
                 kcalController.text = '';
@@ -411,8 +501,9 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                           },
                           items: drinkOptions
                               .map(
-                                (drink) => DropdownMenuItem( //maak dropdown items voor elke drank optie
-                                  value: drink, 
+                                (drink) => DropdownMenuItem(
+                                  //maak dropdown items voor elke drank optie
+                                  value: drink,
                                   child: Text(
                                     drink,
                                     style: TextStyle(
@@ -438,7 +529,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                             hint: Text(
                               AppLocalizations.of(context)!.chooseCoffeeType,
                             ),
-                            onChanged: (value) { // bij verandering, update de koffie variant en kcal
+                            onChanged: (value) {
+                              // bij verandering, update de koffie variant en kcal
                               setStateDialog(() {
                                 coffeeVariant = value;
                                 updateKcalForCoffee();
@@ -446,7 +538,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                             },
                             items: coffeeVariants
                                 .map(
-                                  (v) => DropdownMenuItem( //maak dropdown items voor elke koffie variant
+                                  (v) => DropdownMenuItem(
+                                    //maak dropdown items voor elke koffie variant
                                     value: v,
                                     child: Text(
                                       v,
@@ -509,7 +602,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                             ),
                           ),
                           keyboardType: TextInputType.number,
-                          validator: (value) { // validatie voor amount veld
+                          validator: (value) {
+                            // validatie voor amount veld
                             if (value!.isEmpty)
                               return AppLocalizations.of(
                                 context,
@@ -536,8 +630,11 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                   : Colors.black54,
                             ),
                             // toevoeging: barcode knop rechts
-                            suffixIcon: IconButton( // knop om op barcode te zoeken
-                              tooltip: 'Zoek op barcode',
+                            suffixIcon: IconButton(
+                              // knop om op barcode te zoeken
+                              tooltip: AppLocalizations.of(
+                                context,
+                              )!.barcodeSearchTooltip,
                               icon: Icon(
                                 Icons.qr_code_scanner,
                                 color: isDarkMode
@@ -549,13 +646,74 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                             ),
                           ),
                           keyboardType: TextInputType.number,
-                          validator: (value) { // validatie voor kcal veld
+                          validator: (value) {
+                            // validatie voor kcal veld
                             if (value!.isEmpty)
                               return AppLocalizations.of(context)!.kcalRequired;
                             if (double.tryParse(value) == null)
                               return AppLocalizations.of(context)!.enterNumber;
                             return null;
                           },
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: carbsController,
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(
+                              context,
+                            )!.carbohydratesPer100MlOptional,
+                            labelStyle: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white70
+                                  : Colors.black54,
+                            ),
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: proteinsController,
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(
+                              context,
+                            )!.proteinsPer100MlOptional,
+                            labelStyle: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white70
+                                  : Colors.black54,
+                            ),
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: fatController,
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(
+                              context,
+                            )!.fatsPer100MlOptional,
+                            labelStyle: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white70
+                                  : Colors.black54,
+                            ),
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                         ),
                       ],
                     ),
@@ -572,7 +730,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                     backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () { // voeg preset toe zonder te loggen
+                  onPressed: () {
+                    // voeg preset toe zonder te loggen
                     if (formKey.currentState!.validate()) {
                       // naam bepalen
                       String name;
@@ -592,12 +751,19 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                         kcalController.text.replaceAll(',', '.'),
                       );
                       final kcalForPortion = (kcalPer100 * amount) / 100.0;
+                      final carbsPer100 = _toDouble(carbsController.text);
+                      final proteinsPer100 = _toDouble(proteinsController.text);
+                      final fatPer100 = _toDouble(fatController.text);
 
-                      setState(() { // voeg preset toe aan lijst en sla op
+                      setState(() {
+                        // voeg preset toe aan lijst en sla op
                         _drinkPresets.add({
                           'name': name,
                           'amount': amount,
                           'kcal': kcalForPortion,
+                          'carbohydrates_per_100ml': carbsPer100,
+                          'proteins_per_100ml': proteinsPer100,
+                          'fat_per_100ml': fatPer100,
                         });
                       });
                       _saveDrinkPresets();
@@ -632,13 +798,20 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       kcalController.text.replaceAll(',', '.'),
                     );
                     final kcalForPortion = (kcalPer100 * amount) / 100.0;
+                    final carbsPer100 = _toDouble(carbsController.text);
+                    final proteinsPer100 = _toDouble(proteinsController.text);
+                    final fatPer100 = _toDouble(fatController.text);
 
                     // voeg preset toe en sla op
-                    setState(() { // voeg preset toe aan lijst
+                    setState(() {
+                      // voeg preset toe aan lijst
                       _drinkPresets.add({
                         'name': name,
                         'amount': amount,
                         'kcal': kcalForPortion,
+                        'carbohydrates_per_100ml': carbsPer100,
+                        'proteins_per_100ml': proteinsPer100,
+                        'fat_per_100ml': fatPer100,
                       });
                     });
                     await _saveDrinkPresets();
@@ -699,6 +872,9 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                         amount,
                         selectedMeal,
                         kcalForPortion,
+                        carbsPer100: carbsPer100,
+                        proteinsPer100: proteinsPer100,
+                        fatPer100: fatPer100,
                       );
                     }
                   },
@@ -712,30 +888,37 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     );
   }
 
-  Future<double?> _fetchKcalFromBarcode(String barcode) async { // haalt kcal op van OpenFoodFacts API
+  Future<double?> _fetchKcalFromBarcode(String barcode) async {
+    // haalt kcal op van OpenFoodFacts API
     final url = Uri.parse(
       'https://nl.openfoodfacts.org/api/v0/product/$barcode.json',
     );
     try {
-      final resp = await http.get(url).timeout(const Duration(seconds: 8)); // timeout na 8 seconden
+      final resp = await http
+          .get(url)
+          .timeout(const Duration(seconds: 8)); // timeout na 8 seconden
       if (resp.statusCode != 200) {
         debugPrint('[fetchKcal] HTTP ${resp.statusCode}');
         return null;
       }
-      final data = json.decode(resp.body) as Map<String, dynamic>?; // decode JSON response
+      final data =
+          json.decode(resp.body)
+              as Map<String, dynamic>?; // decode JSON response
       if (data == null) return null;
       final product = data['product'] as Map<String, dynamic>?;
       if (product == null) return null;
 
       // Try several possible nutriments maps/keys
-      final nutrimentsCandidates = <Map<String, dynamic>?>[ // mogelijke locaties van nutriments
+      final nutrimentsCandidates = <Map<String, dynamic>?>[
+        // mogelijke locaties van nutriments
         product['nutriments_per_100g'] as Map<String, dynamic>?,
         product['nutriments'] as Map<String, dynamic>?,
         product['nutriments_100g'] as Map<String, dynamic>?,
       ];
 
       Map<String, dynamic>? nutr;
-      for (final cand in nutrimentsCandidates) { // zoek naar de eerste geldige nutriments map
+      for (final cand in nutrimentsCandidates) {
+        // zoek naar de eerste geldige nutriments map
         if (cand != null) {
           nutr = cand;
           break;
@@ -756,7 +939,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
         'energy-kcal_100g_value',
       ];
 
-      for (final k in candidates) { // probeer elke candidate key
+      for (final k in candidates) {
+        // probeer elke candidate key
         if (nutr.containsKey(k)) {
           final v = nutr[k];
           if (v is num) return v.toDouble();
@@ -765,7 +949,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
         }
       }
 
-     // als geen candidate keys werken, probeer algemene zoekmethode
+      // als geen candidate keys werken, probeer algemene zoekmethode
       for (final key in keys) {
         final lk = key.toLowerCase();
         if (lk.contains('energy') && lk.contains('kcal')) {
@@ -783,14 +967,16 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     }
   }
 
-  Future<void> _promptForBarcodeAndFillKcal( /// toont dialoog om barcode in te voeren en vult kcal veld
+  Future<void> _promptForBarcodeAndFillKcal(
+    /// toont dialoog om barcode in te voeren en vult kcal veld
     TextEditingController kcalController,
   ) async {
     final barcodeController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final res = await showDialog<bool>( // toont dialoog voor barcode invoer. de final res omdat we willen weten of er op zoeken is geklikt
+    final res = await showDialog<bool>(
+      // toont dialoog voor barcode invoer. de final res omdat we willen weten of er op zoeken is geklikt
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -821,15 +1007,15 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                
+
                 IconButton(
-                  tooltip: 'Scan barcode',
+                  tooltip: AppLocalizations.of(context)!.scanBarcodeTooltip,
                   icon: Icon(
                     Icons.qr_code_scanner,
                     color: isDark ? Colors.white70 : Colors.black54,
                   ),
                   onPressed: () async {
-               // navigeer naar barcode scanner pagina
+                    // navigeer naar barcode scanner pagina
                     final scanned = await Navigator.of(context).push<String>(
                       MaterialPageRoute(
                         builder: (_) => const SimpleBarcodeScannerPage(),
@@ -900,7 +1086,7 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
           : Padding(
               padding: const EdgeInsets.all(8.0),
               child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount( 
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   // rooster met vaste aantal kolommen
                   crossAxisCount: 3, // aantal kolommen
                   crossAxisSpacing: 8, // ruimte tussen kolommen
@@ -909,8 +1095,10 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                 ),
                 itemCount: _drinkPresets.length + 1,
                 itemBuilder: (context, index) {
-                  if (index == _drinkPresets.length) { // laatste item is de "add preset" knop
-                    return InkWell( // klikbare knop
+                  if (index == _drinkPresets.length) {
+                    // laatste item is de "add preset" knop
+                    return InkWell(
+                      // klikbare knop
                       onTap: _showAddPresetDialog,
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
@@ -981,17 +1169,31 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                         },
                       );
 
-                      if (selected != null) { 
+                      if (selected != null) {
                         // als er een optie is geselecteerd
                         await _logDrink(
                           preset['name'],
                           preset['amount'],
                           selected, // geselecteerde maaltijdtype
                           preset['kcal'] ?? 0.0,
+                          carbsPer100: _toDouble(
+                            preset['carbohydrates_per_100ml'],
+                          ),
+                          proteinsPer100: _toDouble(
+                            preset['proteins_per_100ml'],
+                          ),
+                          fatPer100: _toDouble(preset['fat_per_100ml']),
+                          saturatedFatPer100: _toDouble(
+                            preset['saturated_fat_per_100ml'],
+                          ),
+                          sugarsPer100: _toDouble(preset['sugars_per_100ml']),
+                          fiberPer100: _toDouble(preset['fiber_per_100ml']),
+                          saltPer100: _toDouble(preset['salt_per_100ml']),
                         );
                       }
                     },
-                    onLongPress: () { // bewerk preset bij lang indrukken
+                    onLongPress: () {
+                      // bewerk preset bij lang indrukken
                       final preset = _drinkPresets[index];
                       final nameController = TextEditingController(
                         text: preset['name'],
@@ -1001,6 +1203,19 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                       );
                       final kcalController = TextEditingController(
                         text: preset['kcal'].toString(),
+                      );
+                      final carbsController = TextEditingController(
+                        text: _toDouble(
+                          preset['carbohydrates_per_100ml'],
+                        ).toString(),
+                      );
+                      final proteinsController = TextEditingController(
+                        text: _toDouble(
+                          preset['proteins_per_100ml'],
+                        ).toString(),
+                      );
+                      final fatController = TextEditingController(
+                        text: _toDouble(preset['fat_per_100ml']).toString(),
                       );
                       showDialog(
                         context: context,
@@ -1094,6 +1309,75 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                       ? Colors.white
                                       : Colors.black,
                                 ),
+                                TextFormField(
+                                  controller: carbsController,
+                                  decoration: InputDecoration(
+                                    labelText: AppLocalizations.of(
+                                      context,
+                                    )!.carbohydratesPer100MlOptional,
+                                    labelStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                  cursorColor: isDark
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                                TextFormField(
+                                  controller: proteinsController,
+                                  decoration: InputDecoration(
+                                    labelText: AppLocalizations.of(
+                                      context,
+                                    )!.proteinsPer100MlOptional,
+                                    labelStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                  cursorColor: isDark
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                                TextFormField(
+                                  controller: fatController,
+                                  decoration: InputDecoration(
+                                    labelText: AppLocalizations.of(
+                                      context,
+                                    )!.fatsPer100MlOptional,
+                                    labelStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                  cursorColor: isDark
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
                               ],
                             ),
                             actions: [
@@ -1126,20 +1410,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                       : Colors.green,
                                   foregroundColor: Colors.white,
                                 ),
-                                onPressed: () { // sla bewerkte preset op
-                                  setState(() {
-                                    _drinkPresets[index] = {
-                                      'name': nameController.text,
-                                      'amount':
-                                          int.tryParse(amountController.text) ??
-                                          0,
-                                      'kcal':
-                                          double.tryParse(
-                                            kcalController.text,
-                                          ) ??
-                                          0.0,
-                                    };
-                                  });
+                                onPressed: () {
+                                  // sla bewerkte preset op
                                   final amount =
                                       int.tryParse(amountController.text) ?? 0;
                                   final kcalPer100 =
@@ -1152,11 +1424,23 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                                       0.0;
                                   final kcalForPortion =
                                       (kcalPer100 * amount) / 100.0;
+                                  final carbsPer100 = _toDouble(
+                                    carbsController.text,
+                                  );
+                                  final proteinsPer100 = _toDouble(
+                                    proteinsController.text,
+                                  );
+                                  final fatPer100 = _toDouble(
+                                    fatController.text,
+                                  );
                                   setState(() {
                                     _drinkPresets[index] = {
                                       'name': nameController.text,
                                       'amount': amount,
                                       'kcal': kcalForPortion,
+                                      'carbohydrates_per_100ml': carbsPer100,
+                                      'proteins_per_100ml': proteinsPer100,
+                                      'fat_per_100ml': fatPer100,
                                     };
                                   });
                                   _saveDrinkPresets();
@@ -1190,7 +1474,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                           color: colors['foreground'],
                         ),
                         const SizedBox(height: 6),
-                        Flexible( // zorgt dat tekst niet uit knop loopt
+                        Flexible(
+                          // zorgt dat tekst niet uit knop loopt
                           fit: FlexFit.loose,
                           child: Text(
                             preset['name']?.toString() ?? '',
@@ -1235,7 +1520,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     final lower = name.toLowerCase();
     final loc = AppLocalizations.of(context)!;
 
-    bool containsAny(List<String?> keys) { // controleer of naam een van de keys bevat
+    bool containsAny(List<String?> keys) {
+      // controleer of naam een van de keys bevat
       for (final k in keys) {
         if (k == null || k.isEmpty) continue;
         if (lower.contains(k.toLowerCase())) return true;
@@ -1269,7 +1555,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
     return Icons.local_drink;
   }
 
-  Map<String, Color> _getColorsForDrink(String name, bool isDarkMode) { // bepaal kleuren op basis van dranknaam
+  Map<String, Color> _getColorsForDrink(String name, bool isDarkMode) {
+    // bepaal kleuren op basis van dranknaam
     final lower = name.toLowerCase();
     final loc = AppLocalizations.of(context)!;
 

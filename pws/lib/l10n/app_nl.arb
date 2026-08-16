@@ -950,7 +950,32 @@
       }
     }
   },
-  "tapTheFood": "Tik op het eten!"
+  "tapTheFood": "Tik op het eten!",
+  "carbohydratesPer100MlOptional": "Koolhydraten per 100 ml (optioneel)",
+  "proteinsPer100MlOptional": "Eiwitten per 100 ml (optioneel)",
+  "fatsPer100MlOptional": "Vetten per 100 ml (optioneel)",
+  "scanBarcodeTooltip": "Scan barcode",
+  "productNumber": "Product {number}",
+  "@productNumber": {"placeholders": {"number": {"type": "int"}}},
+  "macroDistributionTitle": "Verdeling {title}",
+  "@macroDistributionTitle": {"placeholders": {"title": {"type": "String"}}},
+  "noContributionsForDay": "Geen bijdragen gevonden voor deze dag.",
+  "macroTotal": "Totaal {title}: {amount} g",
+  "@macroTotal": {"placeholders": {"title": {"type": "String"}, "amount": {"type": "String"}}},
+  "macroShareOfDayTotal": "{percentage}% van dagtotaal",
+  "@macroShareOfDayTotal": {"placeholders": {"percentage": {"type": "String"}}},
+  "macroSecondaryDetails": "{label}: {secondary} g ({percentage}%) | Overig: {primary} g",
+  "@macroSecondaryDetails": {"placeholders": {"label": {"type": "String"}, "secondary": {"type": "String"}, "percentage": {"type": "String"}, "primary": {"type": "String"}}},
+  "topMacroSecondary": "Top {label}",
+  "@topMacroSecondary": {"placeholders": {"label": {"type": "String"}}},
+  "macroSecondaryTotal": "Totaal {label}: {amount} g",
+  "@macroSecondaryTotal": {"placeholders": {"label": {"type": "String"}, "amount": {"type": "String"}}},
+  "noSeparateContributions": "Geen aparte bijdragen gevonden.",
+  "macroSecondaryShareTotal": "{percentage}% van totaal {label}",
+  "@macroSecondaryShareTotal": {"placeholders": {"percentage": {"type": "String"}, "label": {"type": "String"}}},
+  "editGoal": "Doel aanpassen",
+  "copyToAnotherDay": "Kopieer naar een andere dag",
+  "entryCopiedToSelectedDay": "Succesvol toegevoegd aan geselecteerde dag"
 
 
 }

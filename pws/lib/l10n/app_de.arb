@@ -941,7 +941,32 @@
       }
     }
   },
-  "tapTheFood": "Tippe auf das Essen!"
+  "tapTheFood": "Tippe auf das Essen!",
+  "carbohydratesPer100MlOptional": "Kohlenhydrate pro 100 ml (optional)",
+  "proteinsPer100MlOptional": "Eiweiß pro 100 ml (optional)",
+  "fatsPer100MlOptional": "Fett pro 100 ml (optional)",
+  "scanBarcodeTooltip": "Barcode scannen",
+  "productNumber": "Produkt {number}",
+  "@productNumber": {"placeholders": {"number": {"type": "int"}}},
+  "macroDistributionTitle": "{title}-Verteilung",
+  "@macroDistributionTitle": {"placeholders": {"title": {"type": "String"}}},
+  "noContributionsForDay": "Keine Beiträge für diesen Tag gefunden.",
+  "macroTotal": "Gesamt {title}: {amount} g",
+  "@macroTotal": {"placeholders": {"title": {"type": "String"}, "amount": {"type": "String"}}},
+  "macroShareOfDayTotal": "{percentage}% der Tagesmenge",
+  "@macroShareOfDayTotal": {"placeholders": {"percentage": {"type": "String"}}},
+  "macroSecondaryDetails": "{label}: {secondary} g ({percentage}%) | Sonstige: {primary} g",
+  "@macroSecondaryDetails": {"placeholders": {"label": {"type": "String"}, "secondary": {"type": "String"}, "percentage": {"type": "String"}, "primary": {"type": "String"}}},
+  "topMacroSecondary": "Top {label}",
+  "@topMacroSecondary": {"placeholders": {"label": {"type": "String"}}},
+  "macroSecondaryTotal": "Gesamt {label}: {amount} g",
+  "@macroSecondaryTotal": {"placeholders": {"label": {"type": "String"}, "amount": {"type": "String"}}},
+  "noSeparateContributions": "Keine separaten Beiträge gefunden.",
+  "macroSecondaryShareTotal": "{percentage}% von insgesamt {label}",
+  "@macroSecondaryShareTotal": {"placeholders": {"percentage": {"type": "String"}, "label": {"type": "String"}}},
+  "editGoal": "Ziel bearbeiten",
+  "copyToAnotherDay": "In einen anderen Tag kopieren",
+  "entryCopiedToSelectedDay": "Erfolgreich zum ausgewählten Tag hinzugefügt"
 
 
 
