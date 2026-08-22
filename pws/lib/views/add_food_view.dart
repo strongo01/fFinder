@@ -62,6 +62,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
   final GlobalKey _maaltijdenAddKey = GlobalKey();
   final GlobalKey _maaltijdenLogKey = GlobalKey();
 
+  bool _separateFruitInMacros = false;
+
   bool _isSheetShown =
       false; // Vlag om te controleren of de sheet al is getoond
 
@@ -73,6 +75,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   @override
   void initState() {
     super.initState();
+    _loadPreferences();
     _createTutorial();
     _handleInitialAction();
   }
@@ -81,6 +84,16 @@ class _AddFoodPageState extends State<AddFoodPage> {
   void didChangeDependencies() {
     // wordt aangeroepen nadat initState is voltooid en context beschikbaar is
     super.didChangeDependencies();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _separateFruitInMacros =
+            prefs.getBool('separateFruitInMacros') ?? false;
+      });
+    }
   }
 
   Future<String> _getApiBaseIfAdmin() async {
@@ -2967,7 +2980,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final _fiberController = TextEditingController();
     final _proteinsController = TextEditingController();
     final _saltController = TextEditingController();
-
+    String _selectedProductType = 'normaal product';
     await showModalBottomSheet(
       // toon modal sheet. modal is een soort popup
       context: context,
@@ -3185,6 +3198,46 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           ],
                         ),
                         const SizedBox(height: 24),
+                        if (_separateFruitInMacros)
+                          StatefulBuilder(
+                            builder:
+                                (
+                                  BuildContext context,
+                                  StateSetter setModalState,
+                                ) {
+                                  final isDarkMode =
+                                      Theme.of(context).brightness ==
+                                      Brightness.dark;
+                                  return DropdownButtonFormField<String>(
+                                    value: _selectedProductType,
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                    decoration: InputDecoration(
+  labelText: AppLocalizations.of(context)!.productTypeLabel,
+),
+items: ['normaal product', 'fruit'].map((String value) {
+  final label = value == 'fruit'
+      ? AppLocalizations.of(context)!.productTypeFruit
+      : AppLocalizations.of(context)!.productTypeNormal;
+  return DropdownMenuItem<String>(
+    value: value,
+    child: Text(label),
+  );
+}).toList(),
+                                    onChanged: (newValue) {
+                                      if (newValue != null) {
+                                        setModalState(() {
+                                          _selectedProductType = newValue;
+                                        });
+                                      }
+                                    },
+                                  );
+                                },
+                          ),
+                        const SizedBox(height: 24),
                         ElevatedButton(
                           // knop om product op te slaan
                           onPressed: () async {
@@ -3222,6 +3275,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                   _quantityController.text,
                                   userDEK,
                                 ),
+                                'type_product': _separateFruitInMacros
+                                    ? _selectedProductType
+                                    : 'normaal product',
                                 'timestamp': FieldValue.serverTimestamp(),
                                 'nutriments_per_100g': {
                                   'energy-kcal': await encryptDouble(
@@ -3645,9 +3701,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     return FutureBuilder<Map<String, dynamic>>(
                       future: () async {
                         if (userDEK == null) return product;
+
+                        // We gebruiken nu maar 1 Map om verwarring te voorkomen!
                         final decryptedProduct = Map<String, dynamic>.from(
                           product,
                         );
+
                         try {
                           // Volledige decryptie voor recente items
                           if (product['product_name'] != null) {
@@ -3676,6 +3735,16 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               userDEK,
                             );
                           }
+
+                          // 🟢 DIT IS HET BLOKJE DAT ONTBRAK IN RECENTS:
+                          if (product['type_product'] != null) {
+                            decryptedProduct['type_product'] =
+                                await decryptValue(
+                                  product['type_product'],
+                                  userDEK,
+                                );
+                          }
+
                           if (product['nutriments_per_100g'] != null &&
                               product['nutriments_per_100g'] is Map) {
                             final nutriments =
@@ -3696,6 +3765,29 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             "[ADD_FOOD_VIEW] Decryption failed for recent item: $e",
                           );
                         }
+
+                        // We checken en updaten nu decryptedProduct!
+                        if (decryptedProduct['type_product'] != null) {
+                          decryptedProduct['is_fruit'] =
+                              (decryptedProduct['type_product']
+                                  .toString()
+                                  .toLowerCase() ==
+                              'fruit');
+                        } else {
+                          decryptedProduct['is_fruit'] = false;
+                        }
+
+                        // Debugging (om het zeker te weten)
+                        debugPrint("=== CHECK RECENT ITEM ===");
+                        debugPrint(
+                          "Productnaam (decrypted): ${decryptedProduct['product_name']}",
+                        );
+                        debugPrint(
+                          "type_product (decrypted): ${decryptedProduct['type_product']}",
+                        );
+                        debugPrint("is_fruit: ${decryptedProduct['is_fruit']}");
+                        debugPrint("=========================");
+
                         return decryptedProduct;
                       }(),
                       builder: (context, decryptedSnapshot) {
@@ -3850,6 +3942,23 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                 userDEK,
                               );
                             }
+                            if (product['type_product'] != null) {
+                              decrypted['type_product'] = await decryptValue(
+                                product['type_product'],
+                                userDEK,
+                              );
+                            }
+                            if (product['is_fruit'] != null) {
+                              // Let op: als is_fruit een boolean (true/false) is en je hebt een speciale
+                              // decryptBool functie, gebruik die dan. Anders gebruik je decryptValue.
+                              decrypted['is_fruit'] =
+                                  product['is_fruit'] is bool
+                                  ? product['is_fruit'] // Als het plain-text onversleuteld in de database staat
+                                  : await decryptValue(
+                                      product['is_fruit'],
+                                      userDEK,
+                                    );
+                            }
                             if (product['nutriments_per_100g'] != null) {
                               final nutriments =
                                   product['nutriments_per_100g']
@@ -3868,6 +3977,36 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             debugPrint("Fout bij decrypten favoriet: $e");
                           }
                         }
+                        debugPrint("=== CHECK FAVORITE ITEM ===");
+                        debugPrint(
+                          "Productnaam (encrypted in DB): ${product['product_name']}",
+                        );
+                        debugPrint(
+                          "Productnaam (decrypted): ${decrypted['product_name']}",
+                        );
+                        debugPrint(
+                          "type_product (in DB): ${product['type_product']}",
+                        );
+                        debugPrint(
+                          "type_product (decrypted): ${decrypted['type_product']}",
+                        );
+                        debugPrint("is_fruit (in DB): ${product['is_fruit']}");
+                        debugPrint(
+                          "is_fruit (decrypted): ${decrypted['is_fruit']}",
+                        );
+                        debugPrint("======================================");
+
+                        if (decrypted['type_product'] != null) {
+                          // Check of het type 'fruit' is (maak het voor de zekerheid lowercase)
+                          decrypted['is_fruit'] =
+                              (decrypted['type_product']
+                                  .toString()
+                                  .toLowerCase() ==
+                              'fruit');
+                        } else {
+                          decrypted['is_fruit'] = false;
+                        }
+
                         return decrypted;
                       }(),
                       builder: (context, decryptedSnapshot) {
@@ -3981,52 +4120,95 @@ class _AddFoodPageState extends State<AddFoodPage> {
 
                     return FutureBuilder<Map<String, dynamic>>(
                       future: () async {
-                        final decrypted = Map<String, dynamic>.from(product);
-                        if (userDEK != null) {
-                          try {
-                            if (product['product_name'] != null) {
-                              decrypted['product_name'] = await decryptValue(
-                                product['product_name'],
-                                userDEK,
-                              );
-                            }
-                            if (product['brands'] != null) {
-                              decrypted['brands'] = await decryptValue(
-                                product['brands'],
-                                userDEK,
-                              );
-                            }
-                            if (product['quantity'] != null) {
-                              decrypted['quantity'] = await decryptValue(
-                                product['quantity'],
-                                userDEK,
-                              );
-                            }
-                            if (product['serving_size'] != null) {
-                              decrypted['serving_size'] = await decryptValue(
-                                product['serving_size'],
-                                userDEK,
-                              );
-                            }
-                            if (product['nutriments_per_100g'] != null) {
-                              final nutriments =
-                                  product['nutriments_per_100g']
-                                      as Map<String, dynamic>;
-                              final decryptedNutriments = <String, dynamic>{};
-                              for (final key in nutriments.keys) {
-                                decryptedNutriments[key] = await decryptDouble(
-                                  nutriments[key],
+                        if (userDEK == null) return product;
+
+                        // We gebruiken nu maar 1 Map om verwarring te voorkomen!
+                        final decryptedProduct = Map<String, dynamic>.from(
+                          product,
+                        );
+
+                        try {
+                          // Volledige decryptie voor recente items
+                          if (product['product_name'] != null) {
+                            decryptedProduct['product_name'] =
+                                await decryptValue(
+                                  product['product_name'],
                                   userDEK,
                                 );
-                              }
-                              decrypted['nutriments_per_100g'] =
-                                  decryptedNutriments;
-                            }
-                          } catch (e) {
-                            debugPrint("Fout bij decrypten eigen product: $e");
                           }
+                          if (product['brands'] != null) {
+                            decryptedProduct['brands'] = await decryptValue(
+                              product['brands'],
+                              userDEK,
+                            );
+                          }
+                          if (product['serving_size'] != null) {
+                            decryptedProduct['serving_size'] =
+                                await decryptValue(
+                                  product['serving_size'],
+                                  userDEK,
+                                );
+                          }
+                          if (product['quantity'] != null) {
+                            decryptedProduct['quantity'] = await decryptValue(
+                              product['quantity'],
+                              userDEK,
+                            );
+                          }
+
+                          // 🟢 DIT IS HET BLOKJE DAT ONTBRAK IN RECENTS:
+                          if (product['type_product'] != null) {
+                            decryptedProduct['type_product'] =
+                                await decryptValue(
+                                  product['type_product'],
+                                  userDEK,
+                                );
+                          }
+
+                          if (product['nutriments_per_100g'] != null &&
+                              product['nutriments_per_100g'] is Map) {
+                            final nutriments =
+                                product['nutriments_per_100g']
+                                    as Map<String, dynamic>;
+                            final decryptedNutriments = <String, dynamic>{};
+                            for (final key in nutriments.keys) {
+                              decryptedNutriments[key] = await decryptDouble(
+                                nutriments[key],
+                                userDEK,
+                              );
+                            }
+                            decryptedProduct['nutriments_per_100g'] =
+                                decryptedNutriments;
+                          }
+                        } catch (e) {
+                          debugPrint(
+                            "[ADD_FOOD_VIEW] Decryption failed for recent item: $e",
+                          );
                         }
-                        return decrypted;
+
+                        // We checken en updaten nu decryptedProduct!
+                        if (decryptedProduct['type_product'] != null) {
+                          decryptedProduct['is_fruit'] =
+                              (decryptedProduct['type_product']
+                                  .toString()
+                                  .toLowerCase() ==
+                              'fruit');
+                        } else {
+                          decryptedProduct['is_fruit'] = false;
+                        }
+
+                        // Debugging (om het zeker te weten)
+                        debugPrint("=== CHECK RECENT ITEM ===");
+                        debugPrint(
+                          "Productnaam (decrypted): ${decryptedProduct['product_name']}",
+                        );
+                        debugPrint(
+                          "type_product (decrypted): ${decryptedProduct['type_product']}",
+                        );
+                        debugPrint("is_fruit: ${decryptedProduct['is_fruit']}");
+                        debugPrint("=========================");
+
+                        return decryptedProduct;
                       }(),
                       builder: (context, decryptedSnapshot) {
                         if (!decryptedSnapshot.hasData) {
@@ -4376,123 +4558,140 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
-  Future<void> _logMeal(BuildContext context, Map<String, dynamic> meal) async {
-    // log een maaltijd naar de logs in firebase
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+Future<void> _logMeal(BuildContext context, Map<String, dynamic> meal) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
 
-    final userDEK = await getUserDEKFromRemoteConfig(user.uid);
-    if (userDEK == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.encryptionKeyError),
-        ),
-      );
-      return;
-    }
-
-    final ingredients =
-        (meal['ingredients'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
-        []; // haal de ingrediënten op
-    if (ingredients.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.mealNoIngredients),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    final totalNutriments = <String, double>{
-      // totale voedingswaarden initialiseren
-      'energy-kcal': 0,
-      'fat': 0,
-      'saturated-fat': 0,
-      'carbohydrates': 0,
-      'sugars': 0,
-      'fiber': 0,
-      'proteins': 0,
-      'salt': 0,
-    };
-    double totalAmount = 0;
-
-    for (final ingredient in ingredients) {
-      // loop door elk ingrediënt
-      final amount = (ingredient['amount'] as num?)?.toDouble() ?? 0;
-      final nutrimentsPer100g =
-          (ingredient['nutriments_per_100g'] as Map<String, dynamic>?) ?? {};
-      final factor = amount / 100.0;
-      totalAmount += amount;
-
-      totalNutriments.forEach((key, value) {
-        final nutrientValue =
-            (nutrimentsPer100g[key] as num?)?.toDouble() ?? 0.0;
-        totalNutriments[key] =
-            (totalNutriments[key] ?? 0.0) + (nutrientValue * factor);
-      });
-    }
-
-    final String? selectedMealType = await _showSelectMealTypeDialog(context);
-    if (selectedMealType == null) return;
-
-    /*final now = DateTime.now();
-    final todayDocId =
-        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-*/
-    debugPrint("SELECTEDDATE: ${widget.selectedDate}");
-    final date = widget.selectedDate ?? DateTime.now();
-    final todayDocId =
-        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-
-    final dailyLogRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('logs')
-        .doc(todayDocId);
-
-    final encryptedLogEntry = {
-      // versleutel de log entry
-      'product_name': await encryptValue(
-        meal['name'] ?? AppLocalizations.of(context)!.unnamedMeal,
-        userDEK,
+  final userDEK = await getUserDEKFromRemoteConfig(user.uid);
+  if (userDEK == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.encryptionKeyError),
       ),
-      'amount_g': await encryptDouble(totalAmount, userDEK),
-      'timestamp': Timestamp.now(),
-      'nutrients': {
-        for (final key in totalNutriments.keys)
-          key: await encryptDouble(totalNutriments[key] ?? 0, userDEK),
-      },
-      'meal_type': await encryptValue(selectedMealType, userDEK),
-      'is_meal': true,
-    };
+    );
+    return;
+  }
 
-    try {
-      // probeer de maaltijd op te slaan
-      await dailyLogRef.set({
-        'entries': FieldValue.arrayUnion([encryptedLogEntry]),
-      }, SetOptions(merge: true));
+  final ingredients =
+      (meal['ingredients'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+  if (ingredients.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.mealNoIngredients),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return;
+  }
 
-      if (mounted) {
-        ScaffoldMessenger.of(this.context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '"${meal['name']}" ${AppLocalizations.of(context)!.mealLoggedSuccessfully}',
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(this.context).showSnackBar(
-          SnackBar(
-            content: Text('${AppLocalizations.of(context)!.errorSaveMeal} $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+  // Totaalstructuur met specifieke fruit-sleutels
+  final totalNutriments = <String, double>{
+    'energy-kcal': 0,
+    'fat': 0,
+    'saturated-fat': 0,
+    'saturated_fat_fruit': 0, // Fruit-specifiek
+    'carbohydrates': 0,
+    'sugars': 0,
+    'sugars_fruit': 0,        // Fruit-specifiek
+    'fiber': 0,
+    'proteins': 0,
+    'salt': 0,
+  };
+  double totalAmount = 0;
+
+  for (final ingredient in ingredients) {
+    final amount = (ingredient['amount'] as num?)?.toDouble() ?? 0;
+    final nutrimentsPer100g =
+        (ingredient['nutriments_per_100g'] as Map<String, dynamic>?) ?? {};
+    final factor = amount / 100.0;
+    totalAmount += amount;
+
+    // Check per individueel ingrediënt
+    final String typeStr =
+        (ingredient['type_product'] ?? ingredient['product_type'] ?? '')
+            .toString()
+            .toLowerCase()
+            .replaceAll('"', '')
+            .trim();
+    final bool isFruit =
+        typeStr == 'fruit' ||
+        ingredient['is_fruit'] == true ||
+        ingredient['is_fruit']?.toString().toLowerCase() == 'true';
+
+    // Tel alle standaard voedingswaarden op
+    totalNutriments.forEach((key, _) {
+      if (key == 'sugars_fruit' || key == 'saturated_fat_fruit') return;
+
+      final nutrientValue = (nutrimentsPer100g[key] as num?)?.toDouble() ?? 0.0;
+      final calculatedValue = nutrientValue * factor;
+      totalNutriments[key] = (totalNutriments[key] ?? 0.0) + calculatedValue;
+    });
+
+    // Is dit specifieke ingrediënt fruit? Zo ja, registreer de fruit-macro's
+    if (isFruit) {
+      final sugarVal = ((nutrimentsPer100g['sugars'] as num?)?.toDouble() ?? 0.0) * factor;
+      final satFatVal = ((nutrimentsPer100g['saturated-fat'] as num?)?.toDouble() ?? 0.0) * factor;
+
+      totalNutriments['sugars_fruit'] = (totalNutriments['sugars_fruit'] ?? 0.0) + sugarVal;
+      totalNutriments['saturated_fat_fruit'] = (totalNutriments['saturated_fat_fruit'] ?? 0.0) + satFatVal;
     }
   }
+
+  final String? selectedMealType = await _showSelectMealTypeDialog(context);
+  if (selectedMealType == null) return;
+
+  final date = widget.selectedDate ?? DateTime.now();
+  final todayDocId =
+      "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
+  final dailyLogRef = FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .collection('logs')
+      .doc(todayDocId);
+
+  final encryptedLogEntry = {
+    'product_name': await encryptValue(
+      meal['name'] ?? AppLocalizations.of(context)!.unnamedMeal,
+      userDEK,
+    ),
+    'amount_g': await encryptDouble(totalAmount, userDEK),
+    'timestamp': Timestamp.now(),
+    'nutrients': {
+      for (final key in totalNutriments.keys)
+        key: await encryptDouble(totalNutriments[key] ?? 0, userDEK),
+    },
+    'meal_type': await encryptValue(selectedMealType, userDEK),
+    'is_meal': true,
+    'type_product': await encryptValue('meal', userDEK), // Het is een maaltijd
+    'is_fruit': await encryptValue('false', userDEK),     // Maaltijd als geheel is geen fruit
+  };
+
+  try {
+    await dailyLogRef.set({
+      'entries': FieldValue.arrayUnion([encryptedLogEntry]),
+    }, SetOptions(merge: true));
+
+    if (mounted) {
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '"${meal['name']}" ${AppLocalizations.of(context)!.mealLoggedSuccessfully}',
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        SnackBar(
+          content: Text('${AppLocalizations.of(context)!.errorSaveMeal} $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
 
   Future<String?> _showSelectMealTypeDialog(BuildContext context) async {
     // toon dialoog om maaltijdtype te selecteren
@@ -4602,6 +4801,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             'image_front_small_url': ingredient['image_front_small_url'],
             'nutriments_per_100g': ingredient['nutriments_per_100g'],
           },
+          'is_fruit': ingredient['is_fruit'] ?? false,
           'isSearching': false,
           'hasLoadedMore': false,
         });
@@ -4614,6 +4814,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
         'selectedProduct': null,
         'isSearching': false,
         'hasLoadedMore': false,
+        'is_fruit': false,
       });
     }
 
@@ -4678,6 +4879,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           'image_front_small_url':
                               product['image_front_small_url'],
                           'amount': amount,
+                          'is_fruit': entry['is_fruit'] ?? false,
                           'nutriments_per_100g': {
                             for (final key
                                 in (product['nutriments_per_100g']
@@ -4996,77 +5198,112 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                     margin: const EdgeInsets.symmetric(
                                       vertical: 4.0,
                                     ),
-                                    child: ListTile(
-                                      title: Text(
-                                        _displayProductName(
-                                          selectedProduct['product_name'],
+                                    child: Column(
+                                      children: [
+                                        ListTile(
+                                          title: Text(
+                                            _displayProductName(
+                                              selectedProduct['product_name'],
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            '${AppLocalizations.of(context)!.amount} ${amountController.text}g',
+                                          ),
+                                          onTap: () async {
+                                            final barcode =
+                                                selectedProduct['_id']
+                                                    as String? ??
+                                                'temp_${DateTime.now().millisecondsSinceEpoch}';
+
+                                            final currentAmount =
+                                                double.tryParse(
+                                                  amountController.text,
+                                                );
+
+                                            final normalizedProductData =
+                                                Map<String, dynamic>.from(
+                                                  selectedProduct,
+                                                );
+
+                                            List<dynamic> toList(
+                                              dynamic value,
+                                            ) {
+                                              // helper om tags te normaliseren
+                                              if (value is List) return value;
+                                              if (value is String &&
+                                                  value.isNotEmpty)
+                                                return [value];
+                                              return [];
+                                            }
+
+                                            normalizedProductData['allergens_tags'] =
+                                                toList(
+                                                  normalizedProductData['allergens_tags'],
+                                                );
+                                            normalizedProductData['traces_tags'] =
+                                                toList(
+                                                  normalizedProductData['traces_tags'],
+                                                );
+                                            normalizedProductData['additives_tags'] =
+                                                toList(
+                                                  normalizedProductData['additives_tags'],
+                                                );
+
+                                            final result =
+                                                await _showProductDetails(
+                                                  barcode,
+                                                  productData:
+                                                      normalizedProductData, // Gebruik genormaliseerde data
+                                                  isForMeal: true,
+                                                  initialAmount: currentAmount,
+                                                );
+
+                                            if (result != null &&
+                                                result['amount'] != null) {
+                                              setModalState(() {
+                                                amountController.text =
+                                                    result['amount'].toString();
+                                                entry['selectedProduct'] =
+                                                    result['product'];
+                                              });
+                                            }
+                                          },
+                                          trailing: IconButton(
+                                            icon: const Icon(Icons.close),
+                                            onPressed: () {
+                                              setModalState(() {
+                                                ingredientEntries.removeAt(
+                                                  index,
+                                                );
+                                              });
+                                            },
+                                          ),
                                         ),
-                                      ),
-                                      subtitle: Text(
-                                        '${AppLocalizations.of(context)!.amount} ${amountController.text}g',
-                                      ),
-                                      onTap: () async {
-                                        final barcode =
-                                            selectedProduct['_id'] as String? ??
-                                            'temp_${DateTime.now().millisecondsSinceEpoch}';
-
-                                        final currentAmount = double.tryParse(
-                                          amountController.text,
-                                        );
-
-                                        final normalizedProductData =
-                                            Map<String, dynamic>.from(
-                                              selectedProduct,
-                                            );
-
-                                        List<dynamic> toList(dynamic value) {
-                                          // helper om tags te normaliseren
-                                          if (value is List) return value;
-                                          if (value is String &&
-                                              value.isNotEmpty)
-                                            return [value];
-                                          return [];
-                                        }
-
-                                        normalizedProductData['allergens_tags'] =
-                                            toList(
-                                              normalizedProductData['allergens_tags'],
-                                            );
-                                        normalizedProductData['traces_tags'] =
-                                            toList(
-                                              normalizedProductData['traces_tags'],
-                                            );
-                                        normalizedProductData['additives_tags'] =
-                                            toList(
-                                              normalizedProductData['additives_tags'],
-                                            );
-
-                                        final result = await _showProductDetails(
-                                          barcode,
-                                          productData:
-                                              normalizedProductData, // Gebruik genormaliseerde data
-                                          isForMeal: true,
-                                          initialAmount: currentAmount,
-                                        );
-
-                                        if (result != null &&
-                                            result['amount'] != null) {
-                                          setModalState(() {
-                                            amountController.text =
-                                                result['amount'].toString();
-                                            entry['selectedProduct'] =
-                                                result['product'];
-                                          });
-                                        }
-                                      },
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.close),
-                                        onPressed: () {
-                                          setModalState(() {
-                                            ingredientEntries.removeAt(index);
-                                          });
-                                        },
-                                      ),
+                                        // <-- NIEUWE CHECKBOX HIERONDER -->
+                                        if (_separateFruitInMacros) ...[
+                                          CheckboxListTile(
+                                            title: Text(
+                                              AppLocalizations.of(context)!.markAsFruit,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: textColor,
+                                              ),
+                                            ),
+                                            value:
+                                                entry['is_fruit'] as bool? ??
+                                                false,
+                                            dense: true,
+                                            controlAffinity:
+                                                ListTileControlAffinity.leading,
+                                            onChanged: (bool? value) {
+                                              setModalState(() {
+                                                entry['is_fruit'] =
+                                                    value ?? false;
+                                              });
+                                            },
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   );
                                 }
@@ -5823,6 +6060,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                                       'selectedProduct': null,
                                       'hasLoadedMore': false,
                                       'isSearching': false,
+                                      'is_fruit': false,
                                     });
                                   });
                                 },
@@ -5857,7 +6095,12 @@ class _AddFoodPageState extends State<AddFoodPage> {
     Map<String, dynamic> productData,
     String docId,
   ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool _separateFruitInMacros =
+        prefs.getBool('separateFruitInMacros') ?? false;
     final _formKey = GlobalKey<FormState>();
+    String selectedProductType =
+        productData['type_product'] ?? 'normaal product';
     final nutriments =
         productData['nutriments_per_100g'] as Map<String, dynamic>? ?? {};
 
@@ -5905,330 +6148,382 @@ class _AddFoodPageState extends State<AddFoodPage> {
           minChildSize: 0.5,
           maxChildSize: 0.90,
           builder: (context, scrollController) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 30,
-                top: 12,
-                left: 20,
-                right: 20,
-              ),
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context)!.editMyProduct,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.headlineSmall?.copyWith(color: textColor),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _nameController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context)!.productName,
-                        ),
-                        validator: (value) => (value == null || value.isEmpty)
-                            ? AppLocalizations.of(context)!.productNameRequired
-                            : null,
-                      ),
-                      TextFormField(
-                        controller: _brandController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context)!.brandName,
-                        ),
-                      ),
-                      TextFormField(
-                        controller: _quantityController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context)!.quantity,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*[,.]?\d*'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        AppLocalizations.of(context)!.nutritionalValuesPer100g,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleLarge?.copyWith(color: textColor),
-                      ),
-                      TextFormField(
-                        controller: _caloriesController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context)!.calories,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*[,.]?\d*'),
-                          ),
-                        ],
-                        validator: (value) => (value == null || value.isEmpty)
-                            ? AppLocalizations.of(context)!.caloriesRequired
-                            : null,
-                      ),
-                      TextFormField(
-                        controller: _fatController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context)!.fat,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*[,.]?\d*'),
-                          ),
-                        ],
-                      ),
-                      TextFormField(
-                        controller: _saturatedFatController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context)!.saturatedFat,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*[,.]?\d*'),
-                          ),
-                        ],
-                      ),
-                      TextFormField(
-                        controller: _carbsController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(
-                            context,
-                          )!.carbohydrates,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*[,.]?\d*'),
-                          ),
-                        ],
-                      ),
-                      TextFormField(
-                        controller: _sugarsController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context)!.sugars,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*[,.]?\d*'),
-                          ),
-                        ],
-                      ),
-                      TextFormField(
-                        controller: _fiberController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context)!.fiber,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*[,.]?\d*'),
-                          ),
-                        ],
-                      ),
-                      TextFormField(
-                        controller: _proteinsController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context)!.proteins,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*[,.]?\d*'),
-                          ),
-                        ],
-                      ),
-                      TextFormField(
-                        controller: _saltController,
-                        style: TextStyle(color: textColor),
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context)!.salt,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*[,.]?\d*'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () async {
-                          if (_formKey.currentState!.validate()) {
-                            final user = FirebaseAuth.instance.currentUser;
-                            if (user == null) return;
-
-                            final userDEK = await getUserDEKFromRemoteConfig(
-                              user.uid,
-                            );
-                            if (userDEK == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.errorUserDEKNotFound,
-                                  ),
-                                ),
-                              );
-                              return;
-                            }
-
-                            final updatedData = {
-                              'product_name': await encryptValue(
-                                _nameController.text,
-                                userDEK,
-                              ),
-                              'brands': await encryptValue(
-                                _brandController.text,
-                                userDEK,
-                              ),
-                              'quantity': await encryptValue(
-                                _quantityController.text,
-                                userDEK,
-                              ),
-                              'timestamp': FieldValue.serverTimestamp(),
-                              'nutriments_per_100g': {
-                                'energy-kcal': await encryptDouble(
-                                  double.tryParse(
-                                        _caloriesController.text.replaceAll(
-                                          ',',
-                                          '.',
-                                        ),
-                                      ) ??
-                                      0,
-                                  userDEK,
-                                ),
-                                'fat': await encryptDouble(
-                                  double.tryParse(
-                                        _fatController.text.replaceAll(
-                                          ',',
-                                          '.',
-                                        ),
-                                      ) ??
-                                      0,
-                                  userDEK,
-                                ),
-                                'saturated-fat': await encryptDouble(
-                                  double.tryParse(
-                                        _saturatedFatController.text.replaceAll(
-                                          ',',
-                                          '.',
-                                        ),
-                                      ) ??
-                                      0,
-                                  userDEK,
-                                ),
-                                'carbohydrates': await encryptDouble(
-                                  double.tryParse(
-                                        _carbsController.text.replaceAll(
-                                          ',',
-                                          '.',
-                                        ),
-                                      ) ??
-                                      0,
-                                  userDEK,
-                                ),
-                                'sugars': await encryptDouble(
-                                  double.tryParse(
-                                        _sugarsController.text.replaceAll(
-                                          ',',
-                                          '.',
-                                        ),
-                                      ) ??
-                                      0,
-                                  userDEK,
-                                ),
-                                'fiber': await encryptDouble(
-                                  double.tryParse(
-                                        _fiberController.text.replaceAll(
-                                          ',',
-                                          '.',
-                                        ),
-                                      ) ??
-                                      0,
-                                  userDEK,
-                                ),
-                                'proteins': await encryptDouble(
-                                  double.tryParse(
-                                        _proteinsController.text.replaceAll(
-                                          ',',
-                                          '.',
-                                        ),
-                                      ) ??
-                                      0,
-                                  userDEK,
-                                ),
-                                'salt': await encryptDouble(
-                                  double.tryParse(
-                                        _saltController.text.replaceAll(
-                                          ',',
-                                          '.',
-                                        ),
-                                      ) ??
-                                      0,
-                                  userDEK,
-                                ),
-                              },
-                            };
-
-                            await FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(user.uid)
-                                .collection('my_products')
-                                .doc(docId)
-                                .update(updatedData);
-                            Navigator.pop(context); // sluit de sheet
-                          }
-                        },
-                        child: Text(AppLocalizations.of(context)!.save),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
+            return StatefulBuilder(
+              builder: (context, setModelState) {
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 30,
+                    top: 12,
+                    left: 20,
+                    right: 20,
                   ),
-                ),
-              ),
+                  child: Form(
+                    key: _formKey,
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            AppLocalizations.of(context)!.editMyProduct,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(color: textColor),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          TextFormField(
+                            controller: _nameController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(
+                                context,
+                              )!.productName,
+                            ),
+                            validator: (value) =>
+                                (value == null || value.isEmpty)
+                                ? AppLocalizations.of(
+                                    context,
+                                  )!.productNameRequired
+                                : null,
+                          ),
+                          TextFormField(
+                            controller: _brandController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(
+                                context,
+                              )!.brandName,
+                            ),
+                          ),
+                          TextFormField(
+                            controller: _quantityController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context)!.quantity,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*[,.]?\d*'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            AppLocalizations.of(
+                              context,
+                            )!.nutritionalValuesPer100g,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleLarge?.copyWith(color: textColor),
+                          ),
+                          TextFormField(
+                            controller: _caloriesController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context)!.calories,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*[,.]?\d*'),
+                              ),
+                            ],
+                            validator: (value) =>
+                                (value == null || value.isEmpty)
+                                ? AppLocalizations.of(context)!.caloriesRequired
+                                : null,
+                          ),
+                          TextFormField(
+                            controller: _fatController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context)!.fat,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*[,.]?\d*'),
+                              ),
+                            ],
+                          ),
+                          TextFormField(
+                            controller: _saturatedFatController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(
+                                context,
+                              )!.saturatedFat,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*[,.]?\d*'),
+                              ),
+                            ],
+                          ),
+                          TextFormField(
+                            controller: _carbsController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(
+                                context,
+                              )!.carbohydrates,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*[,.]?\d*'),
+                              ),
+                            ],
+                          ),
+                          TextFormField(
+                            controller: _sugarsController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context)!.sugars,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*[,.]?\d*'),
+                              ),
+                            ],
+                          ),
+                          TextFormField(
+                            controller: _fiberController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context)!.fiber,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*[,.]?\d*'),
+                              ),
+                            ],
+                          ),
+                          TextFormField(
+                            controller: _proteinsController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context)!.proteins,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*[,.]?\d*'),
+                              ),
+                            ],
+                          ),
+                          TextFormField(
+                            controller: _saltController,
+                            style: TextStyle(color: textColor),
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context)!.salt,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*[,.]?\d*'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          if (_separateFruitInMacros) ...[
+                            const SizedBox(height: 16),
+                            DropdownButtonFormField<String>(
+                              value: selectedProductType,
+                              style: TextStyle(color: textColor),
+                              dropdownColor: isDarkMode
+                                  ? Colors.grey[850]
+                                  : Colors.white,
+                              decoration: InputDecoration(
+                                labelText: AppLocalizations.of(context)!.productTypeLabel,
+                                labelStyle: TextStyle(
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                              ),
+
+items: ['normaal product', 'fruit'].map((String value) {
+  final label = value == 'fruit'
+      ? AppLocalizations.of(context)!.productTypeFruit
+      : AppLocalizations.of(context)!.productTypeNormal;
+  return DropdownMenuItem<String>(
+    value: value,
+    child: Text(label),
+  );
+}).toList(),
+                              onChanged: (newValue) {
+                                setModelState(() {
+                                  selectedProductType = newValue!;
+                                });
+                              },
+                            ),
+                          ],
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: () async {
+                              if (_formKey.currentState!.validate()) {
+                                final user = FirebaseAuth.instance.currentUser;
+                                if (user == null) return;
+
+                                final userDEK =
+                                    await getUserDEKFromRemoteConfig(user.uid);
+                                if (userDEK == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.errorUserDEKNotFound,
+                                      ),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                final updatedData = {
+                                  'product_name': await encryptValue(
+                                    _nameController.text,
+                                    userDEK,
+                                  ),
+                                  'brands': await encryptValue(
+                                    _brandController.text,
+                                    userDEK,
+                                  ),
+                                  'quantity': await encryptValue(
+                                    _quantityController.text,
+                                    userDEK,
+                                  ),
+                                  'timestamp': FieldValue.serverTimestamp(),
+                                  'type_product': await encryptValue(
+                                    _separateFruitInMacros
+                                        ? selectedProductType
+                                        : 'normaal product',
+                                    userDEK,
+                                  ),
+                                  'nutriments_per_100g': {
+                                    'energy-kcal': await encryptDouble(
+                                      double.tryParse(
+                                            _caloriesController.text.replaceAll(
+                                              ',',
+                                              '.',
+                                            ),
+                                          ) ??
+                                          0,
+                                      userDEK,
+                                    ),
+                                    'fat': await encryptDouble(
+                                      double.tryParse(
+                                            _fatController.text.replaceAll(
+                                              ',',
+                                              '.',
+                                            ),
+                                          ) ??
+                                          0,
+                                      userDEK,
+                                    ),
+                                    'saturated-fat': await encryptDouble(
+                                      double.tryParse(
+                                            _saturatedFatController.text
+                                                .replaceAll(',', '.'),
+                                          ) ??
+                                          0,
+                                      userDEK,
+                                    ),
+                                    'carbohydrates': await encryptDouble(
+                                      double.tryParse(
+                                            _carbsController.text.replaceAll(
+                                              ',',
+                                              '.',
+                                            ),
+                                          ) ??
+                                          0,
+                                      userDEK,
+                                    ),
+                                    'sugars': await encryptDouble(
+                                      double.tryParse(
+                                            _sugarsController.text.replaceAll(
+                                              ',',
+                                              '.',
+                                            ),
+                                          ) ??
+                                          0,
+                                      userDEK,
+                                    ),
+                                    'fiber': await encryptDouble(
+                                      double.tryParse(
+                                            _fiberController.text.replaceAll(
+                                              ',',
+                                              '.',
+                                            ),
+                                          ) ??
+                                          0,
+                                      userDEK,
+                                    ),
+                                    'proteins': await encryptDouble(
+                                      double.tryParse(
+                                            _proteinsController.text.replaceAll(
+                                              ',',
+                                              '.',
+                                            ),
+                                          ) ??
+                                          0,
+                                      userDEK,
+                                    ),
+                                    'salt': await encryptDouble(
+                                      double.tryParse(
+                                            _saltController.text.replaceAll(
+                                              ',',
+                                              '.',
+                                            ),
+                                          ) ??
+                                          0,
+                                      userDEK,
+                                    ),
+                                  },
+                                };
+
+                                await FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(user.uid)
+                                    .collection('my_products')
+                                    .doc(docId)
+                                    .update(updatedData);
+                                Navigator.pop(context); // sluit de sheet
+                              }
+                            },
+                            child: Text(AppLocalizations.of(context)!.save),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             );
           },
         );
@@ -6307,6 +6602,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             name,
                             nutrimentsMap,
                             productData['serving_size']?.toString(),
+                            initialProductType: productData?['type_product'],
                           );
 
                           if (wasAdded == true && context.mounted) {
@@ -6381,8 +6677,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     BuildContext context,
     String productName,
     Map<String, dynamic>? nutriments,
-    String? servingSize,
-  ) async {
+    String? servingSize, {
+    String? initialProductType,
+  }) async {
     final amountController =
         TextEditingController(); // controller voor hoeveelheid input
     if (servingSize != null && servingSize.trim().isNotEmpty) {
@@ -6560,6 +6857,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           .collection('logs')
                           .doc(todayDocId);
 
+                      final String productType = initialProductType ?? '';
+                      final bool isFruit =
+                          productType.trim().toLowerCase() == 'fruit';
+
                       // Encrypt de waarden
                       final logEntry = {
                         'product_name': await encryptValue(
@@ -6576,6 +6877,14 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             ),
                         },
                         'meal_type': await encryptValue(selectedMeal, userDEK),
+                        'type_product': await encryptValue(
+                          productType,
+                          userDEK,
+                        ),
+                        'is_fruit': await encryptValue(
+                          isFruit.toString(),
+                          userDEK,
+                        ),
                       };
 
                       try {

@@ -970,12 +970,60 @@
   "@topMacroSecondary": {"placeholders": {"label": {"type": "String"}}},
   "macroSecondaryTotal": "Totaal {label}: {amount} g",
   "@macroSecondaryTotal": {"placeholders": {"label": {"type": "String"}, "amount": {"type": "String"}}},
+  "macroWhereOfFruit": "Waarvan fruit",
   "noSeparateContributions": "Geen aparte bijdragen gevonden.",
   "macroSecondaryShareTotal": "{percentage}% van totaal {label}",
   "@macroSecondaryShareTotal": {"placeholders": {"percentage": {"type": "String"}, "label": {"type": "String"}}},
   "editGoal": "Doel aanpassen",
   "copyToAnotherDay": "Kopieer naar een andere dag",
-  "entryCopiedToSelectedDay": "Succesvol toegevoegd aan geselecteerde dag"
+  "entryCopiedToSelectedDay": "Succesvol toegevoegd aan geselecteerde dag",
+  "settingsFruitSeparateTitle": "Fruit apart in macrocirkels",
+"settingsFruitSeparateSubtitle": "Splits de suikers en vetten van fruit af met een eigen kleur",
+"totalTitle": "Totaal {title}",
+  "@totalTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "shareOfDailyTotal": "• {percentage}% van dagtotaal",
+  "@shareOfDailyTotal": {
+    "placeholders": {
+      "percentage": {
+        "type": "String"
+      }
+    }
+  },
+  "totalFromFruit": "Totaal afkomstig uit fruit: {amount} g",
+  "@totalFromFruit": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "topLabel": "Top {label}",
+  "@topLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "topFruitContribution": "Top - Fruit bijdrage",
+  "productTypeLabel": "Type product",
+  "productTypeNormal": "Normaal product",
+  "productTypeFruit": "Fruit",
+  "whereofFromFruit": "↳ 🍎 Waarvan uit fruit: {amount} g",
+  "@whereofFromFruit": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "markAsFruit": "Markeer als fruit"
 
 
 }

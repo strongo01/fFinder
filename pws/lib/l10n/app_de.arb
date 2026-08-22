@@ -786,6 +786,8 @@
     "absiElevated": "erhöhtes Risiko",
     "absiHigh": "hoch Risiko",
     "healthWeight": "Gesundes Gewicht für Sie: ",
+    "settingsFruitSeparateTitle": "Obst separat in Makrokreisen",
+"settingsFruitSeparateSubtitle": "Zucker und Fette von Obst mit einer eigenen Farbe trennen",
     "healthyBMI": "Gesunder BMI: ",
     "onboardingWeightRangeUnder2": "Bei Kindern unter 2 Jahren wird üblicherweise Perzentile für Gewicht/Länge anstelle des BMI verwendet.",
     "onboardingWeightRangeUnder2Note": "Verwenden Sie WHO/CDC Gewicht-für-Länge-Tabellen.",
@@ -966,7 +968,53 @@
   "@macroSecondaryShareTotal": {"placeholders": {"percentage": {"type": "String"}, "label": {"type": "String"}}},
   "editGoal": "Ziel bearbeiten",
   "copyToAnotherDay": "In einen anderen Tag kopieren",
-  "entryCopiedToSelectedDay": "Erfolgreich zum ausgewählten Tag hinzugefügt"
+  "entryCopiedToSelectedDay": "Erfolgreich zum ausgewählten Tag hinzugefügt",
+  "macroWhereOfFruit": "Wovon Obst",
+  "totalTitle": "Gesamt {title}",
+  "@totalTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "shareOfDailyTotal": "• {percentage}% des Tagesgesamtwerts",
+  "@shareOfDailyTotal": {
+    "placeholders": {
+      "percentage": {
+        "type": "String"
+      }
+    }
+  },
+  "totalFromFruit": "Gesamtmenge aus Obst: {amount} g",
+  "@totalFromFruit": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "topLabel": "Top {label}",
+  "@topLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "topFruitContribution": "Top - Obst-Beitrag",
+  "productTypeLabel": "Produkttyp",
+  "productTypeNormal": "Normales Produkt",
+  "productTypeFruit": "Obst",
+  "whereofFromFruit": "↳ 🍎 Davon aus Obst: {amount} g",
+  "@whereofFromFruit": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "markAsFruit": "Als Obst markieren"
 
 
 

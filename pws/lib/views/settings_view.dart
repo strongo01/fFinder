@@ -46,6 +46,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   TimeOfDay _dinnerTime = const TimeOfDay(hour: 19, minute: 0);
   final NotificationService _notificationService = NotificationService();
 
+  bool _separateFruitInMacros = false;
+
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _targetWeightController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
@@ -258,9 +260,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fout bij opslaan: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Fout bij opslaan: $e')));
       }
     }
   }
@@ -293,6 +295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _mealNotificationsEnabled =
           prefs.getBool('mealNotificationsEnabled') ?? false;
+      _separateFruitInMacros = prefs.getBool('separateFruitInMacros') ?? false;
       _breakfastTime = TimeOfDay(
         hour: prefs.getInt('breakfastHour') ?? 7,
         minute: prefs.getInt('breakfastMinute') ?? 0,
@@ -1330,11 +1333,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-    Future<void> _showApiBaseDialog() async {
-    final docGeneral =
-        FirebaseFirestore.instance.collection('config').doc('general');
-    final docApiBases =
-        FirebaseFirestore.instance.collection('config').doc('apiBases');
+  Future<void> _showApiBaseDialog() async {
+    final docGeneral = FirebaseFirestore.instance
+        .collection('config')
+        .doc('general');
+    final docApiBases = FirebaseFirestore.instance
+        .collection('config')
+        .doc('apiBases');
 
     String current = 'ffinder.nl';
     List<String> options = ['ffinder.nl'];
@@ -1351,7 +1356,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (apiSnap.exists) {
         final d = apiSnap.data();
         if (d != null && d['bases'] is List) {
-          options = List<String>.from((d['bases'] as List).map((e) => e.toString()));
+          options = List<String>.from(
+            (d['bases'] as List).map((e) => e.toString()),
+          );
           if (options.isEmpty) options = ['ffinder.nl'];
         }
       }
@@ -1365,22 +1372,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
-        return StatefulBuilder(builder: (ctx, setState) {
-          final theme = Theme.of(ctx);
-          final isDark = theme.colorScheme.brightness == Brightness.dark;
-          return AlertDialog(
-            backgroundColor: isDark ? Colors.black : null,
-            title: Text(AppLocalizations.of(ctx)!.apiBaseTitle,
-                style: TextStyle(color: isDark ? Colors.white : Colors.black)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  value: selected,
-                  dropdownColor: isDark ? Colors.grey[900] : Colors.white,
-                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                  items: options
-                      .map((o) => DropdownMenuItem(
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            final theme = Theme.of(ctx);
+            final isDark = theme.colorScheme.brightness == Brightness.dark;
+            return AlertDialog(
+              backgroundColor: isDark ? Colors.black : null,
+              title: Text(
+                AppLocalizations.of(ctx)!.apiBaseTitle,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: selected,
+                    dropdownColor: isDark ? Colors.grey[900] : Colors.white,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                    items: options
+                        .map(
+                          (o) => DropdownMenuItem(
                             value: o,
                             child: Text(
                               o,
@@ -1388,97 +1401,113 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 color: isDark ? Colors.white : Colors.black,
                               ),
                             ),
-                          ))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v == null) return;
-                    setState(() => selected = v);
-                  },
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(ctx)!.apiBaseSelect,
-                    labelStyle: TextStyle(
-                      color: isDark ? Colors.white70 : Colors.black54,
-                    ),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: isDark ? Colors.white24 : Colors.grey,
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      if (v == null) return;
+                      setState(() => selected = v);
+                    },
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(ctx)!.apiBaseSelect,
+                      labelStyle: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black54,
+                      ),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white24 : Colors.grey,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: newCtrl,
-                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(ctx)!.apiBaseAddNewHint,
-                    labelStyle: TextStyle(
-                      color: isDark ? Colors.white70 : Colors.black54,
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: newCtrl,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
                     ),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: isDark ? Colors.white24 : Colors.grey,
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(ctx)!.apiBaseAddNewHint,
+                      labelStyle: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black54,
+                      ),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white24 : Colors.grey,
+                        ),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          final val = newCtrl.text.trim();
+                          if (val.isEmpty) return;
+                          try {
+                            await docApiBases.set({
+                              'bases': FieldValue.arrayUnion([val]),
+                            }, SetOptions(merge: true));
+                            // update local list
+                            if (!options.contains(val)) {
+                              setState(() {
+                                options.add(val);
+                                selected = val;
+                                newCtrl.clear();
+                              });
+                            }
+                            if (mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    AppLocalizations.of(
+                                      ctx,
+                                    )!.apiBaseAddedMessage(val),
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    AppLocalizations.of(
+                                      ctx,
+                                    )!.apiBaseAddErrorMessage(e.toString()),
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: Text(AppLocalizations.of(ctx)!.apiBaseAdd),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: () {
+                          newCtrl.clear();
+                        },
+                        child: Text(AppLocalizations.of(ctx)!.apiBaseClear),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(AppLocalizations.of(ctx)!.cancelButtonLabel),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () async {
-                        final val = newCtrl.text.trim();
-                        if (val.isEmpty) return;
-                        try {
-                          await docApiBases.set({
-                            'bases': FieldValue.arrayUnion([val])
-                          }, SetOptions(merge: true));
-                          // update local list
-                          if (!options.contains(val)) {
-                            setState(() {
-                              options.add(val);
-                              selected = val;
-                              newCtrl.clear();
-                            });
-                          }
-                          if (mounted) {
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              SnackBar(content: Text(AppLocalizations.of(ctx)!.apiBaseAddedMessage(val))),
-                            );
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              SnackBar(content: Text(AppLocalizations.of(ctx)!.apiBaseAddErrorMessage(e.toString()))),
-                            );
-                          }
-                        }
-                      },
-                      child: Text(AppLocalizations.of(ctx)!.apiBaseAdd),
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () {
-                        newCtrl.clear();
-                      },
-                      child: Text(AppLocalizations.of(ctx)!.apiBaseClear),
-                    ),
-                  ],
+                ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(AppLocalizations.of(ctx)!.apiBaseSave),
                 ),
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: Text(AppLocalizations.of(ctx)!.cancelButtonLabel),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: Text(AppLocalizations.of(ctx)!.apiBaseSave),
-              ),
-            ],
-          );
-        });
+            );
+          },
+        );
       },
     );
 
@@ -1487,17 +1516,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await docGeneral.set({'apiBase': selected}, SetOptions(merge: true));
         // ensure selected is in apiBases
         await docApiBases.set({
-          'bases': FieldValue.arrayUnion([selected])
+          'bases': FieldValue.arrayUnion([selected]),
         }, SetOptions(merge: true));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.apiBaseSavedMessage(selected))),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.apiBaseSavedMessage(selected),
+              ),
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.apiBaseSaveErrorMessage(e.toString()))),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(
+                  context,
+                )!.apiBaseSaveErrorMessage(e.toString()),
+              ),
+            ),
           );
         }
       }
@@ -1866,6 +1905,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               );
                             },
                           ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+                      Card(
+                        color: cardColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: isDark ? 0 : 2,
+                        child: SwitchListTile(
+                          title: Text(AppLocalizations.of(context)!.settingsFruitSeparateTitle),
+subtitle: Text(
+  AppLocalizations.of(context)!.settingsFruitSeparateSubtitle,
+),
+                          value: _separateFruitInMacros,
+                          onChanged: (bool value) async {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.setBool('separateFruitInMacros', value);
+                            setState(() {
+                              _separateFruitInMacros = value;
+                            });
+
+                            // Sla optioneel ook op in Firestore voor sync tussen apparaten
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user != null) {
+                              await FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(user.uid)
+                                  .set({
+                                    'separateFruitInMacros': value,
+                                  }, SetOptions(merge: true));
+                            }
+                          },
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -2643,39 +2716,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   activeColor: theme.colorScheme.primary,
                                 ),
                                 const SizedBox(height: 8),
-                              const Divider(),
+                                const Divider(),
                                 ListTile(
                                   leading: Icon(
                                     Icons.link,
-                                    color: isDark ? Colors.white : Colors.black54,
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black54,
                                   ),
                                   title: Text(
                                     AppLocalizations.of(context)!.apiBaseTitle,
                                     style: TextStyle(
-                                      color: isDark ? Colors.white : Colors.black,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
                                     ),
                                   ),
-                                 subtitle: FutureBuilder<DocumentSnapshot>(
-                                   future: FirebaseFirestore.instance
-                                       .collection('config')
-                                       .doc('general')
-                                       .get(),
-                                   builder: (ctx, snap) {
-                                     String active = 'ffinder.nl';
-                                     if (snap.hasData && snap.data!.exists) {
-                                       final d = snap.data!.data() as Map<String, dynamic>?;
-                                      if (d != null && d['apiBase'] != null) {
-                                        active = d['apiBase'].toString();
+                                  subtitle: FutureBuilder<DocumentSnapshot>(
+                                    future: FirebaseFirestore.instance
+                                        .collection('config')
+                                        .doc('general')
+                                        .get(),
+                                    builder: (ctx, snap) {
+                                      String active = 'ffinder.nl';
+                                      if (snap.hasData && snap.data!.exists) {
+                                        final d =
+                                            snap.data!.data()
+                                                as Map<String, dynamic>?;
+                                        if (d != null && d['apiBase'] != null) {
+                                          active = d['apiBase'].toString();
+                                        }
                                       }
-                                     }
-                                     return Text(
-                                       AppLocalizations.of(ctx)!.apiBaseActive(active),
-                                       style: TextStyle(
-                                         color: isDark ? Colors.white70 : Colors.black54,
-                                       ),
-                                     );
-                                   },
-                                 ),
+                                      return Text(
+                                        AppLocalizations.of(
+                                          ctx,
+                                        )!.apiBaseActive(active),
+                                        style: TextStyle(
+                                          color: isDark
+                                              ? Colors.white70
+                                              : Colors.black54,
+                                        ),
+                                      );
+                                    },
+                                  ),
                                   onTap: _showApiBaseDialog,
                                 ),
                               ],
@@ -2743,10 +2826,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 12),
 
                       OutlinedButton.icon(
-                        icon: Icon(
-                          Icons.games,
-                          color: colorScheme.primary,
-                        ),
+                        icon: Icon(Icons.games, color: colorScheme.primary),
                         label: Text(
                           AppLocalizations.of(context)!.playWaitingGame,
                           style: TextStyle(color: colorScheme.primary),
@@ -2766,7 +2846,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           showDialog(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+                              backgroundColor: isDark
+                                  ? Colors.grey[900]
+                                  : Colors.white,
                               content: SizedBox(
                                 width: double.maxFinite,
                                 child: WaitingGame(onInteraction: () {}),
@@ -2774,7 +2856,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.of(ctx).pop(),
-                                  child: Text(AppLocalizations.of(context)!.close),
+                                  child: Text(
+                                    AppLocalizations.of(context)!.close,
+                                  ),
                                 ),
                               ],
                             ),
@@ -3034,7 +3118,8 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
       .collection('announcements');
 
   Future<void> _toggleActive(DocumentSnapshot doc) async {
-    await _announcements.doc(doc.id).update({ // Update the document
+    await _announcements.doc(doc.id).update({
+      // Update the document
       'isActive': !doc['isActive'],
     }); // Toggle the isActive field
   }
@@ -3164,7 +3249,8 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
     );
   }
 
-  Future<void> _deleteAnnouncement(String docId) async { // verwijder aankondiging
+  Future<void> _deleteAnnouncement(String docId) async {
+    // verwijder aankondiging
     await _announcements.doc(docId).delete();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3247,7 +3333,9 @@ class _ManageAnnouncementsViewState extends State<ManageAnnouncementsView> {
               final isActive = data['isActive'] ?? false;
               final timestamp = data['createdAt'] as Timestamp?;
               final date = timestamp != null
-                  ? DateFormat('dd-MM-yyyy HH:mm').format(timestamp.toDate()) // format date
+                  ? DateFormat('dd-MM-yyyy HH:mm').format(
+                      timestamp.toDate(),
+                    ) // format date
                   : AppLocalizations.of(context)!.unknownDate;
 
               return Card(
@@ -3403,14 +3491,14 @@ class _DecryptViewState extends State<DecryptView> {
         return;
       }
 
-  // maak nieuw verzoek aan
+      // maak nieuw verzoek aan
       await requestsCollection.add({
         'targetUid': targetUid,
         'encryptedJson': encryptedJson,
         'status': 'pending',
         'requestedAt': FieldValue.serverTimestamp(),
         'requesterUid': requesterUid,
-        'fieldKey': 'custom',// aanduiding dat dit een aangepast veld is
+        'fieldKey': 'custom', // aanduiding dat dit een aangepast veld is
       });
 
       if (!mounted) return;
@@ -3419,7 +3507,9 @@ class _DecryptViewState extends State<DecryptView> {
           content: Text(AppLocalizations.of(context)!.requestSubmittedSuccess),
         ),
       );
-      _encryptedController.clear(); /// maak het veld leeg na verzending
+      _encryptedController.clear();
+
+      /// maak het veld leeg na verzending
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3434,7 +3524,8 @@ class _DecryptViewState extends State<DecryptView> {
     }
   }
 
-  Future<void> _approveRequest(String requestId) async { // goedkeuringsverzoek
+  Future<void> _approveRequest(String requestId) async {
+    // goedkeuringsverzoek
     try {
       final approverUid = FirebaseAuth.instance.currentUser!.uid;
       final reqRef = FirebaseFirestore.instance
@@ -3443,13 +3534,16 @@ class _DecryptViewState extends State<DecryptView> {
 
       final reqSnap = await reqRef.get(); // haal het verzoek op
       if (!reqSnap.exists)
-        throw Exception(AppLocalizations.of(context)!.requestNotFound); // niet gevonden
+        throw Exception(
+          AppLocalizations.of(context)!.requestNotFound,
+        ); // niet gevonden
 
       final data = reqSnap.data() as Map<String, dynamic>;
       final requesterUid = data['requesterUid'] as String;
       final targetUid = data['targetUid'] as String;
 
-      if (requesterUid == approverUid) { // controleer of de goedkeurder niet de aanvrager is
+      if (requesterUid == approverUid) {
+        // controleer of de goedkeurder niet de aanvrager is
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -3465,7 +3559,10 @@ class _DecryptViewState extends State<DecryptView> {
       if (dek == null)
         throw Exception(AppLocalizations.of(context)!.dekNotFoundForUser);
 
-      final decryptedValue = await decryptValue(encryptedJson, dek); // decryptie
+      final decryptedValue = await decryptValue(
+        encryptedJson,
+        dek,
+      ); // decryptie
 
       await reqRef.update({
         'status': 'approved',
@@ -3492,7 +3589,8 @@ class _DecryptViewState extends State<DecryptView> {
     }
   }
 
-  Future<void> _rejectRequest(String requestId) async { // afwijsverzoek
+  Future<void> _rejectRequest(String requestId) async {
+    // afwijsverzoek
     try {
       final approverUid = FirebaseAuth.instance.currentUser!.uid;
       final reqRef = FirebaseFirestore.instance
@@ -3513,7 +3611,8 @@ class _DecryptViewState extends State<DecryptView> {
         return;
       }
 
-      await reqRef.update({ // werk het verzoek bij naar afgewezen
+      await reqRef.update({
+        // werk het verzoek bij naar afgewezen
         'status': 'rejected',
         'rejectedBy': approverUid,
         'rejectedAt': FieldValue.serverTimestamp(),
@@ -3603,7 +3702,8 @@ class _DecryptViewState extends State<DecryptView> {
                       cursorColor: isDark ? Colors.white : cs.primary,
                       decoration: InputDecoration(
                         labelText: AppLocalizations.of(context)!.encryptedJson,
-                        hintText: '{"nonce":"...","cipher":"...","tag":"..."}', // voorbeeld hint
+                        hintText:
+                            '{"nonce":"...","cipher":"...","tag":"..."}', // voorbeeld hint
                         hintStyle: TextStyle(
                           color: isDark ? Colors.white54 : Colors.black54,
                         ),
@@ -3670,7 +3770,10 @@ class _DecryptViewState extends State<DecryptView> {
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('decryption_requests')
-                    .orderBy('requestedAt', descending: true) // sorteer op datum
+                    .orderBy(
+                      'requestedAt',
+                      descending: true,
+                    ) // sorteer op datum
                     .snapshots(),
                 builder: (context, snap) {
                   if (!snap.hasData)
@@ -3839,7 +3942,8 @@ class SourcesPage extends StatelessWidget {
     final isDark = cs.brightness == Brightness.dark;
 
     final loc = AppLocalizations.of(context)!;
-    final List<Map<String, String>> items = [ // bronvermeldingen
+    final List<Map<String, String>> items = [
+      // bronvermeldingen
       {
         'name': loc.sourcesName1,
         'explain': loc.sourcesExplain1,
@@ -3937,7 +4041,8 @@ class SourcesPage extends StatelessWidget {
                                     if (await canLaunchUrl(uri)) {
                                       await launchUrl(
                                         uri,
-                                        mode: LaunchMode.externalApplication, // open in externe browser
+                                        mode: LaunchMode
+                                            .externalApplication, // open in externe browser
                                       );
                                     } else {
                                       if (!context.mounted) return;

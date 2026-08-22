@@ -67,8 +67,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _tutorialInitialized = false;
   bool _tutorialHomeAf = false;
   String? _lastDailyMacroDebugSignature;
+  bool separateFruitInMacros = true;
 
-  static const String _appVersion = '1.2.9'; // huidige app versie
+  static const String _appVersion = '1.3.0'; // huidige app versie
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -84,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
       initialPage: _initialPage,
     ); // de pagina controller initializeren
     _userDataFuture = _fetchUserData();
-
+_loadPreferences(); 
     _listenToAnnouncements();
   }
 
@@ -104,6 +105,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _announcementSubscription?.cancel();
     _motivationalMessageNotifier.dispose(); // Notifier opruimen
     super.dispose();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    setState(() {
+      // Haal de boolean op. Gebruik '?? true' als fallback voor nieuwe gebruikers
+      separateFruitInMacros = prefs.getBool('separateFruitInMacros') ?? true;
+    });
   }
 
   void _listenToAnnouncements() {
@@ -962,11 +972,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return calories;
   }
 
-  void _debugDailyCarbEntries({
+  Future<void> _debugDailyCarbEntries({
     required String docId,
     required List<Map<String, dynamic>> entries,
     required double totalCarbs,
-  }) {
+    required SecretKey? userDEK, // 🟢 Voeg userDEK toe als parameter
+  }) async {
+    // 🟢 Zet async hierbij
     if (!kDebugMode) return;
 
     final signature =
@@ -987,6 +999,16 @@ class _HomeScreenState extends State<HomeScreen> {
         r'^\d+(?:[.,]\d+)?$',
       ).hasMatch(quantity);
 
+      // 🟢 Gebruik await en controleer of userDEK niet null is
+      String typeProduct = 'unknown';
+      if (entry['type_product'] != null && userDEK != null) {
+        try {
+          typeProduct = await decryptValue(entry['type_product'], userDEK);
+        } catch (_) {
+          typeProduct = entry['type_product'].toString();
+        }
+      }
+
       final amountLabel = quantity.isNotEmpty
           ? (quantityLooksNumericOnly ? '$quantity ml' : quantity)
           : amountG != null
@@ -994,7 +1016,7 @@ class _HomeScreenState extends State<HomeScreen> {
           : '-';
 
       debugPrint(
-        '[CARB_DEBUG] Product="$productName" | Hoeveelheid=$amountLabel | Koolhydraten=${carbs.toStringAsFixed(2)} g',
+        '[CARB_DEBUG] Product="$productName" | Hoeveelheid=$amountLabel | Koolhydraten=${carbs.toStringAsFixed(2)} g | Type=$typeProduct',
       );
     }
     debugPrint(
@@ -1736,6 +1758,42 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // 1. Maak een Future van het decrypten van de lijst die je al hebt
+  Future<List<Map<String, dynamic>>> decryptEntriesList(
+    List<Map<String, dynamic>> rawEntries,
+    SecretKey userDEK,
+  ) async {
+    return Future.wait(
+      rawEntries.map((entry) async {
+        var decryptedEntry = Map<String, dynamic>.from(entry);
+
+        // Decrypt 'type_product' als het een versleutelde String is
+        if (entry['type_product'] != null && entry['type_product'] is String) {
+          try {
+            decryptedEntry['type_product'] = await decryptValue(
+              entry['type_product'],
+              userDEK,
+            );
+          } catch (e) {
+            // Fallback als het niet versleuteld bleek te zijn
+          }
+        }
+
+        // Decrypt 'is_fruit' als het een versleutelde String is
+        if (entry['is_fruit'] != null && entry['is_fruit'] is String) {
+          try {
+            final decryptedStr = await decryptValue(entry['is_fruit'], userDEK);
+            decryptedEntry['is_fruit'] = decryptedStr.toLowerCase() == 'true';
+          } catch (e) {
+            // Fallback
+          }
+        }
+
+        return decryptedEntry;
+      }),
+    );
+  }
+
   Widget _buildDailyLog(String uid, String docId, bool isDarkMode) {
     // bouwt de dagelijkse log voor een specifieke dag
     return StreamBuilder<DocumentSnapshot>(
@@ -1848,6 +1906,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           final decryptedEntry = Map<String, dynamic>.from(
                             entry,
                           );
+
                           decryptedEntry['product_name'] = await decryptValue(
                             entry['product_name'],
                             userDEK,
@@ -1856,9 +1915,53 @@ class _HomeScreenState extends State<HomeScreen> {
                             entry['meal_type'],
                             userDEK,
                           );
+
+                          // --- NIEUW: type_product & is_fruit decrypten ---
+                          if (entry.containsKey('type_product') &&
+                              entry['type_product'] != null) {
+                            try {
+                              final decryptedType = await decryptValue(
+                                entry['type_product'].toString(),
+                                userDEK,
+                              );
+                              // Cruciaal: Verwijder eventuele verborgen aanhalingstekens en spaties
+                              decryptedEntry['type_product'] = decryptedType
+                                  .replaceAll('"', '')
+                                  .trim();
+                            } catch (e) {
+                              debugPrint("Fout bij decrypten type_product: $e");
+                              decryptedEntry['type_product'] =
+                                  entry['type_product']; // Fallback
+                            }
+                          }
+
+                          if (entry.containsKey('is_fruit') &&
+                              entry['is_fruit'] != null) {
+                            if (entry['is_fruit'] is bool) {
+                              decryptedEntry['is_fruit'] = entry['is_fruit'];
+                            } else {
+                              try {
+                                final decryptedBoolStr = await decryptValue(
+                                  entry['is_fruit'].toString(),
+                                  userDEK,
+                                );
+                                decryptedEntry['is_fruit'] =
+                                    decryptedBoolStr
+                                        .replaceAll('"', '')
+                                        .trim()
+                                        .toLowerCase() ==
+                                    'true';
+                              } catch (e) {
+                                debugPrint("Fout bij decrypten is_fruit: $e");
+                              }
+                            }
+                          }
+                          // ------------------------------------------------
                           final rawNutrients =
                               (entry['nutrients'] as Map<String, dynamic>?) ??
                               (entry['nutriments'] as Map<String, dynamic>?) ??
+                              (entry['nutriments_per_100g']
+                                  as Map<String, dynamic>?) ??
                               {};
                           if (rawNutrients.isNotEmpty) {
                             final decryptedNutrients = <String, dynamic>{};
@@ -1896,7 +1999,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         return decryptedEntries;
                       }(),
                       builder: (context, entriesSnapshot) {
-                        // decrypted entries
                         if (entriesSnapshot.connectionState ==
                             ConnectionState.waiting) {
                           return const Center(
@@ -1915,45 +2017,88 @@ class _HomeScreenState extends State<HomeScreen> {
                         final originalEntriesMap =
                             <Map<String, dynamic>, Map<String, dynamic>>{};
                         for (final e in entries) {
-                          /// bewaar originele encrypted entries voor latere updates
                           final orig =
                               e['_originalEncrypted'] as Map<String, dynamic>?;
                           if (orig != null) originalEntriesMap[e] = orig;
                         }
 
                         return FutureBuilder<List<Map<String, dynamic>>>(
-                          // sports data
                           future: sportsFuture,
                           builder: (context, sportsDataSnapshot) {
-                            // decrypted sports
-                            //final entries = entriesSnapshot.data!;
                             final sportsList = sportsDataSnapshot.data ?? [];
                             final double totalBurnedCalories = sportsList.fold(
                               0.0,
                               (sum, item) => sum + (item['calories'] ?? 0.0),
                             );
 
-                            // Bereken nutritionele totalen (zoals eerder)
                             double totalCalories = 0;
                             double totalProteins = 0;
                             double totalFats = 0;
                             double totalSaturatedFats = 0;
+                            double totalFruitFats = 0;
                             double totalCarbs = 0;
+                            double totalFruitCarbs = 0;
                             double totalSugars = 0;
+                            double totalFruitSugars = 0;
+                            double totalFruitSaturatedFats = 0;
+
                             for (var entry in entries) {
                               final nutrients =
-                                  entry['nutrients'] as Map<String, dynamic>?;
+                                  (entry['nutrients']
+                                      as Map<String, dynamic>?) ??
+                                  (entry['nutriments_per_100g']
+                                      as Map<String, dynamic>?);
 
                               final energyFromNutrients =
                                   (nutrients?['energy-kcal'] as num?)
                                       ?.toDouble() ??
                                   0.0;
 
-                              // Keep compatibility with older drink entries that only store kcal.
+                              // Maak de string volledig schoon voor de zekerheid
+                              final typeString =
+                                  entry['type_product']
+                                      ?.toString()
+                                      .replaceAll('"', '')
+                                      .trim()
+                                      .toLowerCase() ??
+                                  '';
+
+                              bool isFruit =
+                                  typeString == 'fruit' ||
+                                  entry['is_fruit'] == true;
+
+                              debugPrint(
+                                "[HOME_SCREEN] Entry '${entry['product_name']}' typeString: '$typeString' | isFruit: $isFruit",
+                              );
+
                               final kcalFallback =
                                   double.tryParse(
                                     entry['kcal']?.toString() ?? '0',
                                   ) ??
+                                  0.0;
+
+                              double itemCarbs =
+                                  (nutrients?['carbohydrates'] as num?)
+                                      ?.toDouble() ??
+                                  0.0;
+                              double itemFats =
+                                  (nutrients?['fat'] as num?)?.toDouble() ??
+                                  0.0;
+                              double itemSugars =
+                                  (nutrients?['sugars'] as num?)?.toDouble() ??
+                                  0.0;
+                              double itemSaturated =
+                                  (nutrients?['saturated-fat'] as num?)
+                                      ?.toDouble() ??
+                                  0.0;
+
+                              double mealFruitSugars =
+                                  (nutrients?['sugars_fruit'] as num?)
+                                      ?.toDouble() ??
+                                  0.0;
+                              double mealFruitSaturated =
+                                  (nutrients?['saturated_fat_fruit'] as num?)
+                                      ?.toDouble() ??
                                   0.0;
 
                               totalCalories += energyFromNutrients > 0
@@ -1963,26 +2108,40 @@ class _HomeScreenState extends State<HomeScreen> {
                                   (nutrients?['proteins'] as num?)
                                       ?.toDouble() ??
                                   0.0;
-                              totalFats +=
-                                  (nutrients?['fat'] as num?)?.toDouble() ??
-                                  0.0;
-                              totalSaturatedFats +=
-                                  (nutrients?['saturated-fat'] as num?)
-                                      ?.toDouble() ??
-                                  0.0;
-                              totalCarbs +=
-                                  (nutrients?['carbohydrates'] as num?)
-                                      ?.toDouble() ??
-                                  0.0;
-                              totalSugars +=
-                                  (nutrients?['sugars'] as num?)?.toDouble() ??
-                                  0.0;
-                            }
+                              totalCarbs += itemCarbs;
+                              totalFats += itemFats;
+                              totalSugars += itemSugars;
+                              totalSaturatedFats += itemSaturated;
+if (separateFruitInMacros) {
+                              if (mealFruitSugars > 0 ||
+                                  mealFruitSaturated > 0) {
+                                // 1. Het is een maaltijd waar fruit-ingrediënten in zitten
+                                totalFruitCarbs += mealFruitSugars;
+                                totalFruitFats += mealFruitSaturated;
 
+                                totalFruitSugars += mealFruitSugars;
+                                totalSugars -= mealFruitSugars;
+
+                                totalFruitSaturatedFats += mealFruitSaturated;
+                                totalSaturatedFats -= mealFruitSaturated;
+                              } else if (isFruit) {
+                                // 2. Het is een los fruit-product (geen maaltijd)
+                                totalFruitCarbs += itemSugars;
+                                totalFruitFats += itemSaturated;
+
+                                totalFruitSugars += itemSugars;
+                                totalSugars -= itemSugars;
+
+                                totalFruitSaturatedFats += itemSaturated;
+                                totalSaturatedFats -= itemSaturated;
+                              }
+                            }
+                            }
                             _debugDailyCarbEntries(
                               docId: docId,
                               entries: entries,
                               totalCarbs: totalCarbs,
+                              userDEK: userDEK,
                             );
 
                             double adjustedCalorieGoal =
@@ -2246,6 +2405,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     AppLocalizations.of(
                                                       context,
                                                     )!.sugars,
+                                                tertiaryConsumed: separateFruitInMacros ? totalFruitCarbs : 0.0, // NIEUW
+                                                tertiaryColor: Colors
+                                                    .green, // Kleur voor fruit
+                                                tertiaryLabel: separateFruitInMacros ? AppLocalizations.of(context)!.macroWhereOfFruit : null,
                                                 onTap: () =>
                                                     _showMacroContributionDialog(
                                                       title:
@@ -2261,6 +2424,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                           AppLocalizations.of(
                                                             context,
                                                           )!.sugars,
+                                                          separateFruitInMacros: separateFruitInMacros,
                                                       onEditGoal: () =>
                                                           _showEditMacroGoalDialog(
                                                             macroField:
@@ -2305,6 +2469,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                             140,
                                                             255,
                                                           ),
+                                                          separateFruitInMacros: separateFruitInMacros,
                                                       onEditGoal: () =>
                                                           _showEditMacroGoalDialog(
                                                             macroField:
@@ -2342,6 +2507,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     AppLocalizations.of(
                                                       context,
                                                     )!.saturatedFat,
+                                                tertiaryConsumed: separateFruitInMacros ?
+                                                    totalFruitFats : 0.0, // NIEUW
+                                                tertiaryColor: Colors
+                                                    .green, // Kleur voor fruit
+                                                tertiaryLabel: separateFruitInMacros ? AppLocalizations.of(context)!.macroWhereOfFruit : null,
                                                 onTap: () =>
                                                     _showMacroContributionDialog(
                                                       title:
@@ -2350,6 +2520,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                           )!.fats,
                                                       entries: entries,
                                                       macroKey: 'fat',
+                                                      separateFruitInMacros: separateFruitInMacros,
                                                       accentColor:
                                                           const Color.fromARGB(
                                                             255,
@@ -3154,168 +3325,186 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _showMacroContributionDialog({
-    required String title,
-    required List<Map<String, dynamic>> entries,
-    required String macroKey,
-    required Color accentColor,
-    String? secondaryKey,
-    String? secondaryLabel,
-    VoidCallback? onEditGoal,
-  }) async {
-    final rowsByProduct = <String, Map<String, dynamic>>{};
+Future<void> _showMacroContributionDialog({
+  required String title,
+  required List<Map<String, dynamic>> entries,
+  required String macroKey,
+  required Color accentColor,
+  required bool separateFruitInMacros,
+  String? secondaryKey,
+  String? secondaryLabel,
+  VoidCallback? onEditGoal,
+}) async {
+  final rowsByProduct = <String, Map<String, dynamic>>{};
 
-    for (final entry in entries) {
-      final nutrients = entry['nutrients'] as Map<String, dynamic>?;
-      if (nutrients == null) continue;
+  final String? fruitKey = macroKey == 'carbohydrates' || macroKey == 'sugars'
+      ? 'sugars_fruit'
+      : (macroKey == 'fat' || macroKey == 'saturated-fat' ? 'saturated_fat_fruit' : null);
 
-      final total = (nutrients[macroKey] as num?)?.toDouble() ?? 0.0;
-      if (total <= 0) continue;
+  for (final entry in entries) {
+    final nutrients = entry['nutrients'] as Map<String, dynamic>?;
+    if (nutrients == null) continue;
 
-      final secondaryRaw = secondaryKey != null
-          ? ((nutrients[secondaryKey] as num?)?.toDouble() ?? 0.0)
-          : 0.0;
-      final secondary = secondaryRaw.clamp(0.0, total);
+    final total = (nutrients[macroKey] as num?)?.toDouble() ?? 0.0;
+    if (total <= 0) continue;
 
-      final name = (entry['product_name'] as String?)?.trim().isNotEmpty == true
-          ? (entry['product_name'] as String).trim()
-          : AppLocalizations.of(context)!.unknown;
+    final String typeStr = (entry['type_product'] ?? '').toString().toLowerCase().replaceAll('"', '').trim();
+    final bool isFruitProduct = typeStr == 'fruit' || entry['is_fruit'] == true;
 
-      rowsByProduct.putIfAbsent(name, () {
-        return {'name': name, 'total': 0.0, 'secondary': 0.0, 'count': 0};
-      });
+    final secondaryRaw = secondaryKey != null
+        ? ((nutrients[secondaryKey] as num?)?.toDouble() ?? 0.0)
+        : 0.0;
+    final secondary = secondaryRaw.clamp(0.0, total);
 
-      rowsByProduct[name]!['total'] =
-          (rowsByProduct[name]!['total'] as double) + total;
-      rowsByProduct[name]!['secondary'] =
-          (rowsByProduct[name]!['secondary'] as double) + secondary;
-      rowsByProduct[name]!['count'] =
-          (rowsByProduct[name]!['count'] as int) + 1;
+// 2. Bereken fruit-specifieke waarde (ALLEEN als instelling TRUE is)
+    double fruitValue = 0.0;
+    if (separateFruitInMacros) {
+      if (fruitKey != null && nutrients.containsKey(fruitKey)) {
+        fruitValue = (nutrients[fruitKey] as num?)?.toDouble() ?? 0.0;
+      } else if (isFruitProduct) {
+        fruitValue = secondary > 0 ? secondary : total;
+      }
     }
 
-    final rows = rowsByProduct.values.toList();
-    rows.sort((a, b) => (b['total'] as double).compareTo(a['total'] as double));
+    final name = (entry['product_name'] as String?)?.trim().isNotEmpty == true
+        ? (entry['product_name'] as String).trim()
+        : AppLocalizations.of(context)!.unknown;
 
-    final totalMacro = rows.fold<double>(
-      0.0,
-      (sum, row) => sum + (row['total'] as double),
-    );
+    rowsByProduct.putIfAbsent(name, () {
+      return {'name': name, 'total': 0.0, 'secondary': 0.0, 'fruit': 0.0, 'count': 0};
+    });
 
-    final secondaryRows = secondaryKey != null
-        ? rows.where((row) => (row['secondary'] as double) > 0).toList()
-        : <Map<String, dynamic>>[];
-    secondaryRows.sort(
-      (a, b) => (b['secondary'] as double).compareTo(a['secondary'] as double),
-    );
-    final totalSecondary = secondaryRows.fold<double>(
-      0.0,
-      (sum, row) => sum + (row['secondary'] as double),
-    );
+    rowsByProduct[name]!['total'] = (rowsByProduct[name]!['total'] as double) + total;
+    rowsByProduct[name]!['secondary'] = (rowsByProduct[name]!['secondary'] as double) + secondary;
+    rowsByProduct[name]!['fruit'] = (rowsByProduct[name]!['fruit'] as double) + fruitValue;
+    rowsByProduct[name]!['count'] = (rowsByProduct[name]!['count'] as int) + 1;
+  }
 
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final secondaryLabelText = (secondaryLabel ?? '').trim().isNotEmpty
-        ? secondaryLabel!.trim()
-        : AppLocalizations.of(context)!.macroLegendSplitFallback;
+  final rows = rowsByProduct.values.toList();
+  rows.sort((a, b) => (b['total'] as double).compareTo(a['total'] as double));
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(
-            AppLocalizations.of(context)!.macroDistributionTitle(title),
-          ),
-          content: SizedBox(
-            width: 520,
-            child: rows.isEmpty
-                ? Text(AppLocalizations.of(context)!.noContributionsForDay)
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context)!.macroTotal(
-                          title.toLowerCase(),
-                          totalMacro.toStringAsFixed(1),
-                        ),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: isDarkMode ? Colors.white : Colors.black,
-                        ),
+  final totalMacro = rows.fold<double>(0.0, (sum, row) => sum + (row['total'] as double));
+
+  final secondaryRows = secondaryKey != null
+      ? rows.where((row) => (row['secondary'] as double) > 0).toList()
+      : <Map<String, dynamic>>[];
+  secondaryRows.sort((a, b) => (b['secondary'] as double).compareTo(a['secondary'] as double));
+  final totalSecondary = secondaryRows.fold<double>(0.0, (sum, row) => sum + (row['secondary'] as double));
+
+  final fruitRows = rows.where((row) => (row['fruit'] as double) > 0).toList();
+  fruitRows.sort((a, b) => (b['fruit'] as double).compareTo(a['fruit'] as double));
+  final totalFruit = fruitRows.fold<double>(0.0, (sum, row) => sum + (row['fruit'] as double));
+
+  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  final secondaryLabelText = (secondaryLabel ?? '').trim().isNotEmpty
+      ? secondaryLabel!.trim()
+      : AppLocalizations.of(context)!.macroLegendSplitFallback;
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          AppLocalizations.of(context)!.macroDistributionTitle(title),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: SizedBox(
+          width: 520,
+          child: rows.isEmpty
+              ? Text(AppLocalizations.of(context)!.noContributionsForDay)
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: accentColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: 10),
-                      Flexible(
-                        child: ListView(
-                          shrinkWrap: true,
-                          children: [
-                            for (
-                              int index = 0;
-                              index < rows.length;
-                              index++
-                            ) ...[
-                              Builder(
-                                builder: (context) {
-                                  final row = rows[index];
-                                  final name = row['name'] as String;
-                                  final total = row['total'] as double;
-                                  final secondary = row['secondary'] as double;
-                                  final primary = (total - secondary).clamp(
-                                    0.0,
-                                    total,
-                                  );
-                                  final share = totalMacro > 0
-                                      ? total / totalMacro
-                                      : 0.0;
-                                  final secondaryPct = total > 0
-                                      ? (secondary / total * 100).clamp(
-                                          0.0,
-                                          100.0,
-                                        )
-                                      : 0.0;
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            AppLocalizations.of(context)!.totalTitle(title),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: isDarkMode ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            '${totalMacro.toStringAsFixed(1)} g',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: accentColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
 
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          for (int index = 0; index < rows.length; index++) ...[
+                            Builder(
+                              builder: (context) {
+                                final row = rows[index];
+                                final name = row['name'] as String;
+                                final total = row['total'] as double;
+                                final secondary = row['secondary'] as double;
+                                final fruit = row['fruit'] as double;
+                                final share = totalMacro > 0 ? total / totalMacro : 0.0;
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode ? Colors.grey[900] : Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: fruit > 0 
+                                        ? Border.all(color: Colors.orange.withOpacity(0.4), width: 1)
+                                        : null,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           Container(
-                                            width: 24,
-                                            height: 24,
+                                            width: 22,
+                                            height: 22,
                                             alignment: Alignment.center,
                                             decoration: BoxDecoration(
-                                              color: accentColor.withOpacity(
-                                                0.15,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
+                                              color: accentColor.withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(6),
                                             ),
                                             child: Text(
                                               '${index + 1}',
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
+                                                fontSize: 12,
                                                 color: accentColor,
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 10),
+                                          const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
                                               name,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                color: isDarkMode
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                              ),
+                                              style: const TextStyle(fontWeight: FontWeight.w600),
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
                                           Text(
                                             '${total.toStringAsFixed(1)} g',
                                             style: TextStyle(
-                                              fontWeight: FontWeight.w700,
+                                              fontWeight: FontWeight.bold,
                                               color: accentColor,
                                             ),
                                           ),
@@ -3324,222 +3513,168 @@ class _HomeScreenState extends State<HomeScreen> {
                                       const SizedBox(height: 8),
                                       LinearProgressIndicator(
                                         value: share.clamp(0.0, 1.0),
-                                        minHeight: 7,
+                                        minHeight: 6,
                                         borderRadius: BorderRadius.circular(99),
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              accentColor,
+                                        valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                                        backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[300],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      
+                                      // NIEUW: Verticale hiërarchie in plaats van naast elkaar
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            AppLocalizations.of(context)!.shareOfDailyTotal(
+  (share * 100).toStringAsFixed(1),
+),
+                                            style: TextStyle(fontSize: 11, color: isDarkMode ? Colors.white60 : Colors.black54),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          if (secondaryKey != null && secondary > 0)
+                                            Text(
+                                              '• $secondaryLabelText: ${secondary.toStringAsFixed(1)} g',
+                                              style: TextStyle(fontSize: 11, color: isDarkMode ? Colors.white60 : Colors.black54),
                                             ),
-                                        backgroundColor: isDarkMode
-                                            ? Colors.grey[700]
-                                            : Colors.grey[300],
+                                          if (fruit > 0)
+                                            Padding(
+                                              padding: const EdgeInsets.only(left: 10, top: 2),
+                                              child: Text(
+  AppLocalizations.of(context)!.whereofFromFruit(
+    fruit.toStringAsFixed(1),
+  ),
+  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orange),
+),
+                                            ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.macroShareOfDayTotal(
-                                          (share * 100).toStringAsFixed(1),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+
+                          if (secondaryKey != null && secondaryRows.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            const Divider(),
+                            const SizedBox(height: 8),
+                            Text(
+                              AppLocalizations.of(context)!.topLabel(secondaryLabelText),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              AppLocalizations.of(context)!.totalTitle(secondaryLabelText),
+                              style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white70 : Colors.black54),
+                            ),
+                            const SizedBox(height: 8),
+                            for (int index = 0; index < secondaryRows.length; index++) ...[
+                              Builder(
+                                builder: (context) {
+                                  final row = secondaryRows[index];
+                                  final name = row['name'] as String;
+                                  final secondary = row['secondary'] as double;
+                                  final secondaryShare = totalSecondary > 0 ? secondary / totalSecondary : 0.0;
+
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                          ),
                                         ),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: isDarkMode
-                                              ? Colors.white70
-                                              : Colors.black87,
-                                        ),
-                                      ),
-                                      if (secondaryKey != null) ...[
-                                        const SizedBox(height: 4),
                                         Text(
-                                          AppLocalizations.of(
-                                            context,
-                                          )!.macroSecondaryDetails(
-                                            secondaryLabelText,
-                                            secondary.toStringAsFixed(1),
-                                            secondaryPct.toStringAsFixed(0),
-                                            primary.toStringAsFixed(1),
-                                          ),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: isDarkMode
-                                                ? Colors.white70
-                                                : Colors.black87,
-                                          ),
+                                          '${secondary.toStringAsFixed(1)} g (${(secondaryShare * 100).toStringAsFixed(0)}%)',
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.pinkAccent),
                                         ),
                                       ],
-                                    ],
+                                    ),
                                   );
                                 },
                               ),
-                              const Divider(height: 16),
-                            ],
-
-                            if (secondaryKey != null) ...[
-                              const SizedBox(height: 6),
-                              Text(
-                                AppLocalizations.of(
-                                  context,
-                                )!.topMacroSecondary(secondaryLabelText),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : Colors.black,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                AppLocalizations.of(
-                                  context,
-                                )!.macroSecondaryTotal(
-                                  secondaryLabelText,
-                                  totalSecondary.toStringAsFixed(1),
-                                ),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDarkMode
-                                      ? Colors.white70
-                                      : Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              if (secondaryRows.isEmpty)
-                                Text(
-                                  AppLocalizations.of(
-                                    context,
-                                  )!.noSeparateContributions,
-                                )
-                              else
-                                for (
-                                  int index = 0;
-                                  index < secondaryRows.length;
-                                  index++
-                                ) ...[
-                                  Builder(
-                                    builder: (context) {
-                                      final row = secondaryRows[index];
-                                      final name = row['name'] as String;
-                                      final secondary =
-                                          row['secondary'] as double;
-                                      final secondaryShare = totalSecondary > 0
-                                          ? secondary / totalSecondary
-                                          : 0.0;
-
-                                      return Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                width: 24,
-                                                height: 24,
-                                                alignment: Alignment.center,
-                                                decoration: BoxDecoration(
-                                                  color: Colors.pinkAccent
-                                                      .withOpacity(0.15),
-                                                  borderRadius:
-                                                      BorderRadius.circular(6),
-                                                ),
-                                                child: Text(
-                                                  '${index + 1}',
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.pinkAccent,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Text(
-                                                  name,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w600,
-                                                    color: isDarkMode
-                                                        ? Colors.white
-                                                        : Colors.black,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                '${secondary.toStringAsFixed(1)} g',
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.pinkAccent,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          LinearProgressIndicator(
-                                            value: secondaryShare.clamp(
-                                              0.0,
-                                              1.0,
-                                            ),
-                                            minHeight: 7,
-                                            borderRadius: BorderRadius.circular(
-                                              99,
-                                            ),
-                                            valueColor:
-                                                const AlwaysStoppedAnimation<
-                                                  Color
-                                                >(Colors.pinkAccent),
-                                            backgroundColor: isDarkMode
-                                                ? Colors.grey[700]
-                                                : Colors.grey[300],
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            AppLocalizations.of(
-                                              context,
-                                            )!.macroSecondaryShareTotal(
-                                              (secondaryShare * 100)
-                                                  .toStringAsFixed(1),
-                                              secondaryLabelText,
-                                            ),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: isDarkMode
-                                                  ? Colors.white70
-                                                  : Colors.black87,
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                  const Divider(height: 16),
-                                ],
                             ],
                           ],
-                        ),
+
+                          if (totalFruit > 0) ...[
+                            const SizedBox(height: 16),
+                            const Divider(),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Text('🍎 ', style: TextStyle(fontSize: 16)),
+                                Text(
+                                  AppLocalizations.of(context)!.topFruitContribution,
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.orangeAccent : Colors.orange[800]),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              AppLocalizations.of(context)!.totalFromFruit(
+  totalFruit.toStringAsFixed(1),
+),
+                              style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white70 : Colors.black54),
+                            ),
+                            const SizedBox(height: 8),
+                            for (int index = 0; index < fruitRows.length; index++) ...[
+                              Builder(
+                                builder: (context) {
+                                  final row = fruitRows[index];
+                                  final name = row['name'] as String;
+                                  final fruit = row['fruit'] as double;
+                                  final fruitShare = totalFruit > 0 ? fruit / totalFruit : 0.0;
+
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                          ),
+                                        ),
+                                        Text(
+                                          '${fruit.toStringAsFixed(1)} g (${(fruitShare * 100).toStringAsFixed(0)}%)',
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ],
+                        ],
                       ),
-                    ],
-                  ),
-          ),
-          actions: [
-            if (onEditGoal != null)
-              TextButton(
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
-                  onEditGoal();
-                },
-                child: Text(AppLocalizations.of(context)!.editGoal),
-              ),
+                    ),
+                  ],
+                ),
+        ),
+        actions: [
+          if (onEditGoal != null)
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(AppLocalizations.of(context)!.cancel),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                onEditGoal();
+              },
+              child: Text(AppLocalizations.of(context)!.editGoal),
             ),
-          ],
-        );
-      },
-    );
-  }
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(AppLocalizations.of(context)!.cancel),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   String _getMotivationalMessage(
     // genereer motiverende boodschap
@@ -3755,7 +3890,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMacroCircle(
-    // bouwt cirkel voor macro
     String title,
     double consumed,
     double goal,
@@ -3764,31 +3898,50 @@ class _HomeScreenState extends State<HomeScreen> {
     double? secondaryConsumed,
     Color? secondaryColor,
     String? secondaryLabel,
+    double tertiaryConsumed = 0.0,
+    Color tertiaryColor = Colors.green,
+    String? tertiaryLabel,
     VoidCallback? onTap,
   }) {
     final loc = AppLocalizations.of(context)!;
     final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
+
+    // Zorg dat de sub-macro's nooit groter zijn dan het totaal
     final secondaryRaw = (secondaryConsumed ?? 0.0).clamp(0.0, consumed);
+    final tertiaryRaw = tertiaryConsumed.clamp(0.0, consumed);
 
     final int roundedConsumed = consumed.round();
     final int roundedGoal = goal.round();
     final int roundedSecondary = secondaryRaw.round();
-    final int roundedPrimary = roundedConsumed - roundedSecondary;
+    final int roundedTertiary = tertiaryRaw.round();
+
+    // Primair (overig) is wat overblijft na secundair en tertiair
+    final int roundedPrimary =
+        roundedConsumed - roundedSecondary - roundedTertiary;
 
     final cleanSecondaryLabel = secondaryLabel
         ?.replaceFirst(RegExp(r'^\s*-\s*'), '')
         .trim();
 
+    // Bereken percentages
     final int totalPercentInt = goal > 0 ? (progress * 100).round() : 0;
+
     final int secondaryPercentInt = goal > 0
         ? ((secondaryRaw / goal) * 100).clamp(0.0, 100.0).round()
         : (consumed > 0
               ? ((secondaryRaw / consumed) * 100).clamp(0.0, 100.0).round()
               : 0);
-    final int primaryPercentInt = totalPercentInt - secondaryPercentInt;
+
+    final int tertiaryPercentInt = goal > 0
+        ? ((tertiaryRaw / goal) * 100).clamp(0.0, 100.0).round()
+        : (consumed > 0
+              ? ((tertiaryRaw / consumed) * 100).clamp(0.0, 100.0).round()
+              : 0);
+
+    final int primaryPercentInt =
+        totalPercentInt - secondaryPercentInt - tertiaryPercentInt;
 
     return TweenAnimationBuilder<double>(
-      // animeert de voortgang
       tween: Tween<double>(begin: 0.0, end: progress),
       duration: const Duration(milliseconds: 750),
       builder: (context, value, child) {
@@ -3810,10 +3963,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     secondaryConsumed: secondaryRaw,
                     isDarkMode: isDarkMode,
                     strokeWidth: 6,
+                    // TOEGEVOEGD: Geef de tertiary variabelen door aan de painter!
+                    tertiaryColor: tertiaryColor,
+                    tertiaryConsumed: tertiaryRaw,
                   ),
                   child: Center(
                     child: Text(
-                      '${(value * 100).round()}%', // Animeeert percentage tekst
+                      '${(value * 100).round()}%',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -3840,19 +3996,36 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isDarkMode ? Colors.white70 : Colors.black87,
                 ),
               ),
-              if ((secondaryConsumed ?? 0) > 0) ...[
+              // TOEGEVOEGD: Check nu of óf secundair óf tertiair groter dan 0 is
+              if ((secondaryConsumed ?? 0) > 0 || tertiaryConsumed > 0) ...[
                 const SizedBox(height: 2),
                 Column(
                   children: [
-                    Text(
-                      '${loc.macroLegendBreakdownLine(cleanSecondaryLabel ?? loc.macroLegendSplitFallback, roundedSecondary)} | $secondaryPercentInt%',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: secondaryColor ?? color,
-                        fontWeight: FontWeight.w600,
+                    // Toon de secundaire text (Suikers / Verzadigd vet)
+                    if ((secondaryConsumed ?? 0) > 0)
+                      Text(
+                        '${loc.macroLegendBreakdownLine(cleanSecondaryLabel ?? loc.macroLegendSplitFallback, roundedSecondary)} | $secondaryPercentInt%',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: secondaryColor ?? color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
+
+                    // TOEGEVOEGD: Toon de tertiaire text (Fruit)
+                    if (tertiaryConsumed > 0)
+                      Text(
+                        '${loc.macroLegendBreakdownLine(tertiaryLabel ?? "Fruit", roundedTertiary)} | $tertiaryPercentInt%',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: tertiaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+
+                    // Overig
                     Text(
                       '${loc.macroLegendBreakdownLine(loc.macroLegendOther, roundedPrimary)} | $primaryPercentInt%',
                       style: TextStyle(fontSize: 11, color: color),
@@ -4045,7 +4218,8 @@ class _HomeScreenState extends State<HomeScreen> {
               //  .round();
               //             final timestamp = entry['timestamp'] as Timestamp?;
               final productName =
-                  entry['product_name'] ?? AppLocalizations.of(context)!.unknownProduct;
+                  entry['product_name'] ??
+                  AppLocalizations.of(context)!.unknownProduct;
               final timestamp = entry['timestamp'] as Timestamp?;
 
               String rightSideText;
@@ -5007,6 +5181,8 @@ class MacroSplitCirclePainter extends CustomPainter {
   final double secondaryConsumed;
   final bool isDarkMode;
   final double strokeWidth;
+  final Color tertiaryColor;
+  final double tertiaryConsumed;
 
   MacroSplitCirclePainter({
     required this.progress,
@@ -5017,6 +5193,8 @@ class MacroSplitCirclePainter extends CustomPainter {
     required this.secondaryConsumed,
     required this.isDarkMode,
     required this.strokeWidth,
+    this.tertiaryColor = Colors.green,
+    this.tertiaryConsumed = 0.0,
   });
 
   @override
@@ -5026,6 +5204,7 @@ class MacroSplitCirclePainter extends CustomPainter {
     const startAngle = -pi / 2;
     const fullCircle = 2 * pi;
 
+    // 1. Achtergrond cirkel
     final backgroundPaint = Paint()
       ..color = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!
       ..style = PaintingStyle.stroke
@@ -5038,45 +5217,65 @@ class MacroSplitCirclePainter extends CustomPainter {
       return;
     }
 
-    final consumedForArc = (goal * progress).clamp(0.0, goal);
+    // Hoeveelheid die we nu moeten tekenen op basis van de animatie (progress 0.0 tot 1.0)
+    // We animeren de totale 'consumedForArc'
+    final totalConsumedForAnimation = consumed * progress;
+
+    // Bereken de absolute ratio's ten opzichte van de *totale consumptie*
     final secondaryRatio = consumed > 0
         ? (secondaryConsumed / consumed).clamp(0.0, 1.0)
         : 0.0;
-    final secondaryArc = consumedForArc * secondaryRatio;
-    final primaryArc = (consumedForArc - secondaryArc).clamp(0.0, goal);
+    final tertiaryRatio = consumed > 0
+        ? (tertiaryConsumed / consumed).clamp(0.0, 1.0)
+        : 0.0;
+    final primaryRatio = (1.0 - secondaryRatio - tertiaryRatio).clamp(0.0, 1.0);
 
-    final primaryPaint = Paint()
-      ..color = primaryColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
+    // Vertaal dit naar de daadwerkelijke lengtes in de animatie
+    final animatedSecondaryArc = totalConsumedForAnimation * secondaryRatio;
+    final animatedTertiaryArc = totalConsumedForAnimation * tertiaryRatio;
+    final animatedPrimaryArc = totalConsumedForAnimation * primaryRatio;
 
-    if (primaryArc > 0) {
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        (primaryArc / goal) * fullCircle,
-        false,
-        primaryPaint,
-      );
-    }
+    // Helper om een boog te tekenen
+    void drawArcSegment(
+      double consumedValue,
+      Color color,
+      double currentStartAngle,
+    ) {
+      if (consumedValue <= 0) return;
 
-    if (secondaryArc > 0 && secondaryColor != null) {
-      final secondaryPaint = Paint()
-        ..color = secondaryColor!
+      // De hoek is gebaseerd op de goal (hoeveel procent van het doel is dit stukje)
+      final sweepAngle = (consumedValue / goal) * fullCircle;
+
+      final paint = Paint()
+        ..color = color
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round;
 
-      final secondaryStart = startAngle + (primaryArc / goal) * fullCircle;
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
-        secondaryStart,
-        (secondaryArc / goal) * fullCircle,
+        currentStartAngle,
+        sweepAngle,
         false,
-        secondaryPaint,
+        paint,
       );
     }
+
+    // Volgorde van tekenen:
+    // 1. Primair (overig) start bovenaan (-pi / 2)
+    double currentAngle = startAngle;
+
+    drawArcSegment(animatedPrimaryArc, primaryColor, currentAngle);
+    currentAngle += (animatedPrimaryArc / goal) * fullCircle;
+
+    // 2. Secundair (bijv. suikers/verzadigd vet) sluit aan op primair
+    if (secondaryColor != null) {
+      drawArcSegment(animatedSecondaryArc, secondaryColor!, currentAngle);
+      currentAngle += (animatedSecondaryArc / goal) * fullCircle;
+    }
+
+    // 3. Tertiair (bijv. fruit) sluit aan op secundair
+    drawArcSegment(animatedTertiaryArc, tertiaryColor, currentAngle);
   }
 
   @override
@@ -5087,6 +5286,8 @@ class MacroSplitCirclePainter extends CustomPainter {
         primaryColor != oldDelegate.primaryColor ||
         secondaryColor != oldDelegate.secondaryColor ||
         secondaryConsumed != oldDelegate.secondaryConsumed ||
+        tertiaryColor != oldDelegate.tertiaryColor ||
+        tertiaryConsumed != oldDelegate.tertiaryConsumed ||
         isDarkMode != oldDelegate.isDarkMode ||
         strokeWidth != oldDelegate.strokeWidth;
   }

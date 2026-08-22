@@ -2615,4 +2615,53 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get entryCopiedToSelectedDay => 'Succesvol toegevoegd aan geselecteerde dag';
+
+  @override
+  String get settingsFruitSeparateTitle => 'Fruit apart in macrocirkels';
+
+  @override
+  String get settingsFruitSeparateSubtitle => 'Splits de suikers en vetten van fruit af met een eigen kleur';
+
+  @override
+  String get macroWhereOfFruit => 'Waarvan fruit';
+
+  @override
+  String totalTitle(String title) {
+    return 'Totaal $title';
+  }
+
+  @override
+  String shareOfDailyTotal(String percentage) {
+    return '• $percentage% van dagtotaal';
+  }
+
+  @override
+  String totalFromFruit(String amount) {
+    return 'Totaal afkomstig uit fruit: $amount g';
+  }
+
+  @override
+  String topLabel(String label) {
+    return 'Top $label';
+  }
+
+  @override
+  String get topFruitContribution => 'Top - Fruit bijdrage';
+
+  @override
+  String get productTypeLabel => 'Type product';
+
+  @override
+  String get productTypeNormal => 'Normaal product';
+
+  @override
+  String get productTypeFruit => 'Fruit';
+
+  @override
+  String whereofFromFruit(String amount) {
+    return '↳ 🍎 Waarvan uit fruit: $amount g';
+  }
+
+  @override
+  String get markAsFruit => 'Markeer als fruit';
 }

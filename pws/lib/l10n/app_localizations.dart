@@ -2730,7 +2730,7 @@ abstract class AppLocalizations {
   /// No description provided for @saturatedFat.
   ///
   /// In en, this message translates to:
-  /// **'  - of which saturated'**
+  /// **'  - Of which saturated'**
   String get saturatedFat;
 
   /// No description provided for @carbohydrates.
@@ -2742,7 +2742,7 @@ abstract class AppLocalizations {
   /// No description provided for @sugars.
   ///
   /// In en, this message translates to:
-  /// **'  - of which sugars'**
+  /// **'  - Of which sugars'**
   String get sugars;
 
   /// No description provided for @fiber.
@@ -5216,6 +5216,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Successfully added to the selected day'**
   String get entryCopiedToSelectedDay;
+
+  /// No description provided for @settingsFruitSeparateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate fruit in macro circles'**
+  String get settingsFruitSeparateTitle;
+
+  /// No description provided for @settingsFruitSeparateSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate the sugars and fats of fruit with their own color'**
+  String get settingsFruitSeparateSubtitle;
+
+  /// No description provided for @macroWhereOfFruit.
+  ///
+  /// In en, this message translates to:
+  /// **'Of which fruit'**
+  String get macroWhereOfFruit;
+
+  /// No description provided for @totalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Total {title}'**
+  String totalTitle(String title);
+
+  /// No description provided for @shareOfDailyTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'• {percentage}% of daily total'**
+  String shareOfDailyTotal(String percentage);
+
+  /// No description provided for @totalFromFruit.
+  ///
+  /// In en, this message translates to:
+  /// **'Total from fruit: {amount} g'**
+  String totalFromFruit(String amount);
+
+  /// No description provided for @topLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Top {label}'**
+  String topLabel(String label);
+
+  /// No description provided for @topFruitContribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Top - Fruit contribution'**
+  String get topFruitContribution;
+
+  /// No description provided for @productTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Product type'**
+  String get productTypeLabel;
+
+  /// No description provided for @productTypeNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal product'**
+  String get productTypeNormal;
+
+  /// No description provided for @productTypeFruit.
+  ///
+  /// In en, this message translates to:
+  /// **'Fruit'**
+  String get productTypeFruit;
+
+  /// No description provided for @whereofFromFruit.
+  ///
+  /// In en, this message translates to:
+  /// **'↳ 🍎 Of which from fruit: {amount} g'**
+  String whereofFromFruit(String amount);
+
+  /// No description provided for @markAsFruit.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as fruit'**
+  String get markAsFruit;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

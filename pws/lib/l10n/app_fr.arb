@@ -783,6 +783,8 @@
     "absiVeryLow": "risque très faible",
     "absiLow": "risque faible",
     "absiAverage": "risque moyen",
+    "settingsFruitSeparateTitle": "Fruits séparés dans les cercles de macros",
+"settingsFruitSeparateSubtitle": "Séparez les sucres et les graisses des fruits avec leur propre couleur",
     "absiElevated": "risque accru",
     "absiHigh": "risque élevé",
     "healthWeight": "Poids sain pour vous : ",
@@ -967,7 +969,53 @@
   "@macroSecondaryShareTotal": {"placeholders": {"percentage": {"type": "String"}, "label": {"type": "String"}}},
   "editGoal": "Modifier l’objectif",
   "copyToAnotherDay": "Copier vers un autre jour",
-  "entryCopiedToSelectedDay": "Ajouté avec succès au jour sélectionné"
+  "entryCopiedToSelectedDay": "Ajouté avec succès au jour sélectionné",
+  "macroWhereOfFruit": "Dont fruits",
+  "totalTitle": "Total {title}",
+  "@totalTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "shareOfDailyTotal": "• {percentage} % du total quotidien",
+  "@shareOfDailyTotal": {
+    "placeholders": {
+      "percentage": {
+        "type": "String"
+      }
+    }
+  },
+  "totalFromFruit": "Total provenant des fruits : {amount} g",
+  "@totalFromFruit": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "topLabel": "Top {label}",
+  "@topLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "topFruitContribution": "Top - Contribution des fruits",
+  "productTypeLabel": "Type de produit",
+  "productTypeNormal": "Produit normal",
+  "productTypeFruit": "Fruit",
+  "whereofFromFruit": "↳ 🍎 Dont provenant des fruits : {amount} g",
+  "@whereofFromFruit": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "markAsFruit": "Marquer comme fruit"
 
 
 }

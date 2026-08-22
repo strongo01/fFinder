@@ -5,10 +5,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:fFinder/l10n/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProductEditSheet extends StatefulWidget {
   final String barcode;
-  final Map<String, dynamic>? productData; // Lokale productdata indien beschikbaar
+  final Map<String, dynamic>?
+  productData; // Lokale productdata indien beschikbaar
   final bool isForMeal;
   final double? initialAmount;
   final DateTime? selectedDate;
@@ -20,7 +22,9 @@ class ProductEditSheet extends StatefulWidget {
     this.isForMeal = false,
     this.initialAmount,
     this.selectedDate,
-  }) : super(key: key); // super(key: key); betekent dat de key wordt doorgegeven aan de superklasse (StatefulWidget)
+  }) : super(
+         key: key,
+       ); // super(key: key); betekent dat de key wordt doorgegeven aan de superklasse (StatefulWidget)
 
   @override
   State<ProductEditSheet> createState() => _ProductEditSheetState();
@@ -89,7 +93,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     super.dispose();
   }
 
-  List<String> _normalizeTags(dynamic v) { // normaliseer tags zoals additieven/allergenen
+  List<String> _normalizeTags(dynamic v) {
+    // normaliseer tags zoals additieven/allergenen
     if (v == null) return <String>[];
     if (v is List) return v.map((e) => e.toString()).toList();
     if (v is String) {
@@ -116,7 +121,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     return <String>[v.toString()];
   }
 
-  String? _extractServingSize(dynamic v) { // extraheer en normaliseer portiegrootte  
+  String? _extractServingSize(dynamic v) {
+    // extraheer en normaliseer portiegrootte
     debugPrint('[_extractServingSize] input: $v');
     if (v == null) {
       debugPrint('[_extractServingSize] result: null (input null)');
@@ -127,8 +133,9 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       debugPrint('[_extractServingSize] result (num): $res');
       return res;
     }
-    if (v is String) { // probeer te parsen
-      final s = v.trim(); 
+    if (v is String) {
+      // probeer te parsen
+      final s = v.trim();
       if (s.isEmpty) {
         debugPrint('[_extractServingSize] result: null (empty string)');
         return null;
@@ -166,13 +173,15 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     return res;
   }
 
-  Map<String, dynamic> _mergeAndNormalizeNutriments( // merge en normaliseer voedingswaarden
+  Map<String, dynamic> _mergeAndNormalizeNutriments(
+    // merge en normaliseer voedingswaarden
     Map<String, dynamic>? per100g,
     Map<String, dynamic>? nutriments,
   ) {
     final out = <String, dynamic>{};
 
-    String normalizeKey(String k) { // normaliseer sleutelnaam
+    String normalizeKey(String k) {
+      // normaliseer sleutelnaam
       return k
           .replaceAll('_', '-')
           .replaceAll(RegExp(r'(-|_)100g$'), '')
@@ -372,9 +381,11 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
 
   Future<void> _saveEditedName() async {
     final newName = productNameController.text.trim();
-    final effectiveBarcode = product?.barcode ?? widget.barcode; // fallback naar widget barcode
+    final effectiveBarcode =
+        product?.barcode ?? widget.barcode; // fallback naar widget barcode
 
-    final updatedProduct = Product( // Maak een nieuw Product object met de bijgewerkte naam
+    final updatedProduct = Product(
+      // Maak een nieuw Product object met de bijgewerkte naam
       barcode: effectiveBarcode,
       productName: newName.isEmpty ? null : newName,
       brands: product!.brands,
@@ -455,7 +466,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     final textColor = isDarkMode ? Colors.white : Colors.black;
     final loc = AppLocalizations.of(context)!;
 
-    return DraggableScrollableSheet( // Sleepbaar modaal blad
+    return DraggableScrollableSheet(
+      // Sleepbaar modaal blad
       expand: false,
       initialChildSize: 0.7,
       minChildSize: 0.5,
@@ -620,6 +632,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                                   AppLocalizations.of(context)!.unnamedProduct,
                               nutrimentsData,
                               servingSize,
+                              initialProductType: widget.productData?['type_product'] as String?,
                             );
                             if (wasAdded == true && mounted) {
                               Navigator.pop(context);
@@ -715,7 +728,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                         if (_formKey.currentState!.validate()) {
                           final nutrimentsData =
                               _getNutrimentsFromControllers();
-                          final productForMeal = { // Maak een kaart met productgegevens voor maaltijdlog
+                          final productForMeal = {
+                            // Maak een kaart met productgegevens voor maaltijdlog
                             '_id': product!.barcode,
                             'product_name': product!.productName,
                             'brands': product!.brands,
@@ -744,7 +758,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     );
   }
 
-  Map<String, double?> _getNutrimentsFromControllers() { 
+  Map<String, double?> _getNutrimentsFromControllers() {
     // haal bewerkte voedingswaarden op
     double? parse(TextEditingController c) =>
         double.tryParse(c.text.replaceAll(',', '.'));
@@ -902,14 +916,16 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
         };
 
     final encryptedNutriments = <String, dynamic>{};
-    for (final key in nutriments.keys) { // versleutel elke voedingswaarde
+    for (final key in nutriments.keys) {
+      // versleutel elke voedingswaarde
       encryptedNutriments[key] = await encryptDouble(
         nutriments[key] ?? 0,
         userDEK,
       );
     }
-
-    final productData = { // bouw productgegevens kaart
+final typeProduct = widget.productData?['type_product'] as String? ?? 'normaal product';
+    final productData = {
+      // bouw productgegevens kaart
       'product_name': await encryptValue(product.productName ?? '', userDEK),
       'brands': await encryptValue(product.brands ?? '', userDEK),
       'image_front_url': product.imageFrontUrl,
@@ -922,6 +938,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       'allergens': product.allergens?.names,
       'additives': product.additives?.names,
       'isMyProduct': false,
+      'type_product': await encryptValue(typeProduct, userDEK),
     };
 
     productData.removeWhere((key, value) => value == null);
@@ -938,7 +955,8 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     await docRef.set(productData, SetOptions(merge: true));
   }
 
-  Future<void> _addFavoriteProduct( // voeg product toe aan favorieten
+  Future<void> _addFavoriteProduct(
+    // voeg product toe aan favorieten
     Product product, {
     Map<String, dynamic>? editedNutriments,
   }) async {
@@ -996,7 +1014,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
         userDEK,
       );
     }
-
+final typeProduct = widget.productData?['type_product'] as String? ?? 'normaal product';
     final productData = {
       'product_name': await encryptValue(product.productName ?? '', userDEK),
       'brands': await encryptValue(product.brands ?? '', userDEK),
@@ -1009,6 +1027,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
       'nutriments_per_100g': encryptedNutriments,
       'allergens': product.allergens?.names,
       'additives': product.additives?.names,
+      'type_product': await encryptValue(typeProduct, userDEK),
     };
 
     productData.removeWhere((key, value) => value == null);
@@ -1055,8 +1074,9 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
     BuildContext context,
     String productName,
     Map<String, dynamic>? nutriments,
-    String? servingSize,
-  ) async {
+    String? servingSize, {
+    String? initialProductType,
+  }) async {
     final amountController =
         TextEditingController(); // controller voor hoeveelheid input
     if (servingSize != null && servingSize.trim().isNotEmpty) {
@@ -1065,6 +1085,9 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
         amountController.text = match.group(1)!.replaceAll(',', '.');
       }
     }
+    final prefs = await SharedPreferences.getInstance();
+    final bool _separateFruitInMacros =
+        prefs.getBool('separateFruitInMacros') ?? false;
     final formKey = GlobalKey<FormState>();
     final hour = DateTime.now().hour;
     String selectedMeal;
@@ -1089,6 +1112,10 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
         ? 'ml'
         : 'g';
 
+String selectedProductType = 'normaal product'; // Standaardwaarde
+    if (initialProductType == 'fruit') {
+      selectedProductType = 'fruit';
+    }
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -1105,6 +1132,7 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
               ),
               content: Form(
                 key: formKey,
+                child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1176,7 +1204,39 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                         });
                       },
                     ),
+                    if (_separateFruitInMacros) ...[
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: selectedProductType,
+                        style: TextStyle(color: textColor),
+                        dropdownColor: isDarkMode
+                            ? Colors.grey[850]
+                            : Colors.white,
+                        decoration: InputDecoration(
+                          labelText:
+                              AppLocalizations.of(context)!.productTypeLabel, // Of gebruik je app localizations (loc.productType)
+                          labelStyle: TextStyle(
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                        items: ['normaal product', 'fruit'].map((String value) {
+  final label = value == 'fruit'
+      ? AppLocalizations.of(context)!.productTypeFruit
+      : AppLocalizations.of(context)!.productTypeNormal;
+  return DropdownMenuItem<String>(
+    value: value,
+    child: Text(label),
+  );
+}).toList(),
+                        onChanged: (newValue) {
+                          setDialogState(() {
+                            selectedProductType = newValue!;
+                          });
+                        },
+                      ),
+                    ],
                   ],
+                ),
                 ),
               ),
               actions: [
@@ -1210,35 +1270,37 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                       final factor = amount / 100.0;
                       final nutrimentsJson = nutriments;
 
-                        double nutrientPer100(String baseKey) {
+                      double nutrientPer100(String baseKey) {
                         final dynamic rawValue =
-                          nutrimentsJson['${baseKey}_100g'] ??
-                          nutrimentsJson['${baseKey}_100ml'] ??
-                          nutrimentsJson[baseKey];
+                            nutrimentsJson['${baseKey}_100g'] ??
+                            nutrimentsJson['${baseKey}_100ml'] ??
+                            nutrimentsJson[baseKey];
                         if (rawValue is num) return rawValue.toDouble();
                         if (rawValue is String) {
                           return double.tryParse(
-                            rawValue.replaceAll(',', '.'),
-                            ) ??
-                            0.0;
+                                rawValue.replaceAll(',', '.'),
+                              ) ??
+                              0.0;
                         }
                         return 0.0;
-                        }
+                      }
 
                       final calculatedNutriments = {
                         'energy-kcal': nutrientPer100('energy-kcal') * factor,
                         'fat': nutrientPer100('fat') * factor,
-                        'saturated-fat': nutrientPer100('saturated-fat') * factor,
-                        'carbohydrates': nutrientPer100('carbohydrates') * factor,
+                        'saturated-fat':
+                            nutrientPer100('saturated-fat') * factor,
+                        'carbohydrates':
+                            nutrientPer100('carbohydrates') * factor,
                         'sugars': nutrientPer100('sugars') * factor,
                         'fiber': nutrientPer100('fiber') * factor,
                         'proteins': nutrientPer100('proteins') * factor,
                         'salt': nutrientPer100('salt') * factor,
                       };
 
-                        debugPrint(
+                      debugPrint(
                         '[ADD_FOOD_ML_DEBUG] Product="$productName" | unit=$unit | amount=${amount.toStringAsFixed(2)} | per100(carbs/fat/proteins)=(${nutrientPer100('carbohydrates').toStringAsFixed(2)}/${nutrientPer100('fat').toStringAsFixed(2)}/${nutrientPer100('proteins').toStringAsFixed(2)}) | calculated=(${(calculatedNutriments['carbohydrates'] as double).toStringAsFixed(2)}/${(calculatedNutriments['fat'] as double).toStringAsFixed(2)}/${(calculatedNutriments['proteins'] as double).toStringAsFixed(2)})',
-                        );
+                      );
 
                       /* final now = DateTime.now();
                       final todayDocId =
@@ -1288,13 +1350,43 @@ class _ProductEditSheetState extends State<ProductEditSheet> {
                             ),
                         },
                         'meal_type': await encryptValue(selectedMeal, userDEK),
+                        'type_product': await encryptValue(
+                          _separateFruitInMacros
+                              ? selectedProductType
+                              : 'normaal product',
+                          userDEK,
+                        ),
                       };
 
                       try {
                         await dailyLogRef.set({
                           'entries': FieldValue.arrayUnion([logEntry]),
                         }, SetOptions(merge: true));
+try {
+                          final typeToSave = _separateFruitInMacros ? selectedProductType : 'normaal product';
+                          final encryptedType = await encryptValue(typeToSave, userDEK);
+                          final barcodeToUpdate = product?.barcode ?? widget.barcode;
 
+                          // 1. Update de recent lijst met het gekozen type
+                          await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(user.uid)
+                              .collection('recents')
+                              .doc(barcodeToUpdate)
+                              .set({'type_product': encryptedType}, SetOptions(merge: true));
+
+                          // 2. Update de favorieten lijst (als het product een favoriet is)
+                          if (isFavorite) {
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .collection('favorites')
+                                .doc(barcodeToUpdate)
+                                .set({'type_product': encryptedType}, SetOptions(merge: true));
+                          }
+                        } catch (updateError) {
+                          debugPrint("Fout bij updaten van type_product in recents/favorites: $updateError");
+                        }
                         if (mounted) {
                           ScaffoldMessenger.of(this.context).showSnackBar(
                             SnackBar(

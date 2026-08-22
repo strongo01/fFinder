@@ -1327,13 +1327,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fat => 'Fat';
 
   @override
-  String get saturatedFat => '  - of which saturated';
+  String get saturatedFat => '  - Of which saturated';
 
   @override
   String get carbohydrates => 'Carbohydrates';
 
   @override
-  String get sugars => '  - of which sugars';
+  String get sugars => '  - Of which sugars';
 
   @override
   String get fiber => 'Fiber';
@@ -2612,4 +2612,53 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get entryCopiedToSelectedDay => 'Successfully added to the selected day';
+
+  @override
+  String get settingsFruitSeparateTitle => 'Separate fruit in macro circles';
+
+  @override
+  String get settingsFruitSeparateSubtitle => 'Separate the sugars and fats of fruit with their own color';
+
+  @override
+  String get macroWhereOfFruit => 'Of which fruit';
+
+  @override
+  String totalTitle(String title) {
+    return 'Total $title';
+  }
+
+  @override
+  String shareOfDailyTotal(String percentage) {
+    return '• $percentage% of daily total';
+  }
+
+  @override
+  String totalFromFruit(String amount) {
+    return 'Total from fruit: $amount g';
+  }
+
+  @override
+  String topLabel(String label) {
+    return 'Top $label';
+  }
+
+  @override
+  String get topFruitContribution => 'Top - Fruit contribution';
+
+  @override
+  String get productTypeLabel => 'Product type';
+
+  @override
+  String get productTypeNormal => 'Normal product';
+
+  @override
+  String get productTypeFruit => 'Fruit';
+
+  @override
+  String whereofFromFruit(String amount) {
+    return '↳ 🍎 Of which from fruit: $amount g';
+  }
+
+  @override
+  String get markAsFruit => 'Mark as fruit';
 }

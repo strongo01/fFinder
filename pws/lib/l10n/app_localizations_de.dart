@@ -2615,4 +2615,53 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get entryCopiedToSelectedDay => 'Erfolgreich zum ausgewählten Tag hinzugefügt';
+
+  @override
+  String get settingsFruitSeparateTitle => 'Obst separat in Makrokreisen';
+
+  @override
+  String get settingsFruitSeparateSubtitle => 'Zucker und Fette von Obst mit einer eigenen Farbe trennen';
+
+  @override
+  String get macroWhereOfFruit => 'Wovon Obst';
+
+  @override
+  String totalTitle(String title) {
+    return 'Gesamt $title';
+  }
+
+  @override
+  String shareOfDailyTotal(String percentage) {
+    return '• $percentage% des Tagesgesamtwerts';
+  }
+
+  @override
+  String totalFromFruit(String amount) {
+    return 'Gesamtmenge aus Obst: $amount g';
+  }
+
+  @override
+  String topLabel(String label) {
+    return 'Top $label';
+  }
+
+  @override
+  String get topFruitContribution => 'Top - Obst-Beitrag';
+
+  @override
+  String get productTypeLabel => 'Produkttyp';
+
+  @override
+  String get productTypeNormal => 'Normales Produkt';
+
+  @override
+  String get productTypeFruit => 'Obst';
+
+  @override
+  String whereofFromFruit(String amount) {
+    return '↳ 🍎 Davon aus Obst: $amount g';
+  }
+
+  @override
+  String get markAsFruit => 'Als Obst markieren';
 }

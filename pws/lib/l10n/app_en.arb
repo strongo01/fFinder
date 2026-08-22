@@ -452,9 +452,9 @@
     "calories": "Energy (kcal)",
     "errorCaloriesRequired": "Calories are required",
     "fat": "Fat",
-    "saturatedFat": "  - of which saturated",
+    "saturatedFat": "  - Of which saturated",
     "carbohydrates": "Carbohydrates",
-    "sugars": "  - of which sugars",
+    "sugars": "  - Of which sugars",
     "fiber": "Fiber",
     "proteins": "Proteins",
     "salt": "Salt",
@@ -975,7 +975,55 @@
   "@macroSecondaryShareTotal": {"placeholders": {"percentage": {"type": "String"}, "label": {"type": "String"}}},
   "editGoal": "Edit goal",
   "copyToAnotherDay": "Copy to another day",
-  "entryCopiedToSelectedDay": "Successfully added to the selected day"
+  "entryCopiedToSelectedDay": "Successfully added to the selected day",
+  "settingsFruitSeparateTitle": "Separate fruit in macro circles",
+"settingsFruitSeparateSubtitle": "Separate the sugars and fats of fruit with their own color",
+"macroWhereOfFruit": "Of which fruit",
+"totalTitle": "Total {title}",
+  "@totalTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "shareOfDailyTotal": "• {percentage}% of daily total",
+  "@shareOfDailyTotal": {
+    "placeholders": {
+      "percentage": {
+        "type": "String"
+      }
+    }
+  },
+  "totalFromFruit": "Total from fruit: {amount} g",
+  "@totalFromFruit": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "topLabel": "Top {label}",
+  "@topLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "topFruitContribution": "Top - Fruit contribution",
+  "productTypeLabel": "Product type",
+  "productTypeNormal": "Normal product",
+  "productTypeFruit": "Fruit",
+  "whereofFromFruit": "↳ 🍎 Of which from fruit: {amount} g",
+  "@whereofFromFruit": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "markAsFruit": "Mark as fruit"
 
 
 
