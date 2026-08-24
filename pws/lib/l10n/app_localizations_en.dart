@@ -2656,7 +2656,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String whereofFromFruit(String amount) {
-    return '↳ 🍎 Of which from fruit: $amount g';
+    return '🍎 Of which from fruit: $amount g';
   }
 
   @override

@@ -5286,7 +5286,7 @@ abstract class AppLocalizations {
   /// No description provided for @whereofFromFruit.
   ///
   /// In en, this message translates to:
-  /// **'↳ 🍎 Of which from fruit: {amount} g'**
+  /// **'🍎 Of which from fruit: {amount} g'**
   String whereofFromFruit(String amount);
 
   /// No description provided for @markAsFruit.

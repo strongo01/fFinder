@@ -1015,7 +1015,7 @@
   "productTypeLabel": "Type product",
   "productTypeNormal": "Normaal product",
   "productTypeFruit": "Fruit",
-  "whereofFromFruit": "↳ 🍎 Waarvan uit fruit: {amount} g",
+  "whereofFromFruit": "🍎 Waarvan fruit: {amount} g",
   "@whereofFromFruit": {
     "placeholders": {
       "amount": {

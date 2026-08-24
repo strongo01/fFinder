@@ -1015,7 +1015,7 @@
   "productTypeLabel": "Product type",
   "productTypeNormal": "Normal product",
   "productTypeFruit": "Fruit",
-  "whereofFromFruit": "↳ 🍎 Of which from fruit: {amount} g",
+  "whereofFromFruit": "🍎 Of which from fruit: {amount} g",
   "@whereofFromFruit": {
     "placeholders": {
       "amount": {

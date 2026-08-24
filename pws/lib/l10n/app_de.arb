@@ -1006,7 +1006,7 @@
   "productTypeLabel": "Produkttyp",
   "productTypeNormal": "Normales Produkt",
   "productTypeFruit": "Obst",
-  "whereofFromFruit": "↳ 🍎 Davon aus Obst: {amount} g",
+  "whereofFromFruit": "🍎 Davon Obst: {amount} g",
   "@whereofFromFruit": {
     "placeholders": {
       "amount": {

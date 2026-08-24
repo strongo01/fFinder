@@ -69,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _lastDailyMacroDebugSignature;
   bool separateFruitInMacros = true;
 
-  static const String _appVersion = '1.3.0'; // huidige app versie
+  static const String _appVersion = '1.3.1'; // huidige app versie
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -85,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
       initialPage: _initialPage,
     ); // de pagina controller initializeren
     _userDataFuture = _fetchUserData();
-_loadPreferences(); 
+    _loadPreferences();
     _listenToAnnouncements();
   }
 
@@ -109,7 +109,7 @@ _loadPreferences();
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     setState(() {
       // Haal de boolean op. Gebruik '?? true' als fallback voor nieuwe gebruikers
       separateFruitInMacros = prefs.getBool('separateFruitInMacros') ?? true;
@@ -2112,30 +2112,30 @@ _loadPreferences();
                               totalFats += itemFats;
                               totalSugars += itemSugars;
                               totalSaturatedFats += itemSaturated;
-if (separateFruitInMacros) {
-                              if (mealFruitSugars > 0 ||
-                                  mealFruitSaturated > 0) {
-                                // 1. Het is een maaltijd waar fruit-ingrediënten in zitten
-                                totalFruitCarbs += mealFruitSugars;
-                                totalFruitFats += mealFruitSaturated;
+                              if (separateFruitInMacros) {
+                                if (mealFruitSugars > 0 ||
+                                    mealFruitSaturated > 0) {
+                                  // 1. Het is een maaltijd waar fruit-ingrediënten in zitten
+                                  totalFruitCarbs += mealFruitSugars;
+                                  totalFruitFats += mealFruitSaturated;
 
-                                totalFruitSugars += mealFruitSugars;
-                                totalSugars -= mealFruitSugars;
+                                  totalFruitSugars += mealFruitSugars;
+                                  totalSugars -= mealFruitSugars;
 
-                                totalFruitSaturatedFats += mealFruitSaturated;
-                                totalSaturatedFats -= mealFruitSaturated;
-                              } else if (isFruit) {
-                                // 2. Het is een los fruit-product (geen maaltijd)
-                                totalFruitCarbs += itemSugars;
-                                totalFruitFats += itemSaturated;
+                                  totalFruitSaturatedFats += mealFruitSaturated;
+                                  totalSaturatedFats -= mealFruitSaturated;
+                                } else if (isFruit) {
+                                  // 2. Het is een los fruit-product (geen maaltijd)
+                                  totalFruitCarbs += itemSugars;
+                                  totalFruitFats += itemSaturated;
 
-                                totalFruitSugars += itemSugars;
-                                totalSugars -= itemSugars;
+                                  totalFruitSugars += itemSugars;
+                                  totalSugars -= itemSugars;
 
-                                totalFruitSaturatedFats += itemSaturated;
-                                totalSaturatedFats -= itemSaturated;
+                                  totalFruitSaturatedFats += itemSaturated;
+                                  totalSaturatedFats -= itemSaturated;
+                                }
                               }
-                            }
                             }
                             _debugDailyCarbEntries(
                               docId: docId,
@@ -2405,10 +2405,18 @@ if (separateFruitInMacros) {
                                                     AppLocalizations.of(
                                                       context,
                                                     )!.sugars,
-                                                tertiaryConsumed: separateFruitInMacros ? totalFruitCarbs : 0.0, // NIEUW
+                                                tertiaryConsumed:
+                                                    separateFruitInMacros
+                                                    ? totalFruitCarbs
+                                                    : 0.0, // NIEUW
                                                 tertiaryColor: Colors
                                                     .green, // Kleur voor fruit
-                                                tertiaryLabel: separateFruitInMacros ? AppLocalizations.of(context)!.macroWhereOfFruit : null,
+                                                tertiaryLabel:
+                                                    separateFruitInMacros
+                                                    ? AppLocalizations.of(
+                                                        context,
+                                                      )!.macroWhereOfFruit
+                                                    : null,
                                                 onTap: () =>
                                                     _showMacroContributionDialog(
                                                       title:
@@ -2424,7 +2432,8 @@ if (separateFruitInMacros) {
                                                           AppLocalizations.of(
                                                             context,
                                                           )!.sugars,
-                                                          separateFruitInMacros: separateFruitInMacros,
+                                                      separateFruitInMacros:
+                                                          separateFruitInMacros,
                                                       onEditGoal: () =>
                                                           _showEditMacroGoalDialog(
                                                             macroField:
@@ -2469,7 +2478,8 @@ if (separateFruitInMacros) {
                                                             140,
                                                             255,
                                                           ),
-                                                          separateFruitInMacros: separateFruitInMacros,
+                                                      separateFruitInMacros:
+                                                          separateFruitInMacros,
                                                       onEditGoal: () =>
                                                           _showEditMacroGoalDialog(
                                                             macroField:
@@ -2507,11 +2517,18 @@ if (separateFruitInMacros) {
                                                     AppLocalizations.of(
                                                       context,
                                                     )!.saturatedFat,
-                                                tertiaryConsumed: separateFruitInMacros ?
-                                                    totalFruitFats : 0.0, // NIEUW
+                                                tertiaryConsumed:
+                                                    separateFruitInMacros
+                                                    ? totalFruitFats
+                                                    : 0.0, // NIEUW
                                                 tertiaryColor: Colors
                                                     .green, // Kleur voor fruit
-                                                tertiaryLabel: separateFruitInMacros ? AppLocalizations.of(context)!.macroWhereOfFruit : null,
+                                                tertiaryLabel:
+                                                    separateFruitInMacros
+                                                    ? AppLocalizations.of(
+                                                        context,
+                                                      )!.macroWhereOfFruit
+                                                    : null,
                                                 onTap: () =>
                                                     _showMacroContributionDialog(
                                                       title:
@@ -2520,7 +2537,8 @@ if (separateFruitInMacros) {
                                                           )!.fats,
                                                       entries: entries,
                                                       macroKey: 'fat',
-                                                      separateFruitInMacros: separateFruitInMacros,
+                                                      separateFruitInMacros:
+                                                          separateFruitInMacros,
                                                       accentColor:
                                                           const Color.fromARGB(
                                                             255,
@@ -3325,356 +3343,511 @@ if (separateFruitInMacros) {
     }
   }
 
-Future<void> _showMacroContributionDialog({
-  required String title,
-  required List<Map<String, dynamic>> entries,
-  required String macroKey,
-  required Color accentColor,
-  required bool separateFruitInMacros,
-  String? secondaryKey,
-  String? secondaryLabel,
-  VoidCallback? onEditGoal,
-}) async {
-  final rowsByProduct = <String, Map<String, dynamic>>{};
+  Future<void> _showMacroContributionDialog({
+    required String title,
+    required List<Map<String, dynamic>> entries,
+    required String macroKey,
+    required Color accentColor,
+    required bool separateFruitInMacros,
+    String? secondaryKey,
+    String? secondaryLabel,
+    VoidCallback? onEditGoal,
+  }) async {
+    final rowsByProduct = <String, Map<String, dynamic>>{};
 
-  final String? fruitKey = macroKey == 'carbohydrates' || macroKey == 'sugars'
-      ? 'sugars_fruit'
-      : (macroKey == 'fat' || macroKey == 'saturated-fat' ? 'saturated_fat_fruit' : null);
+    final String? fruitKey = macroKey == 'carbohydrates' || macroKey == 'sugars'
+        ? 'sugars_fruit'
+        : (macroKey == 'fat' || macroKey == 'saturated-fat'
+              ? 'saturated_fat_fruit'
+              : null);
 
-  for (final entry in entries) {
-    final nutrients = entry['nutrients'] as Map<String, dynamic>?;
-    if (nutrients == null) continue;
+    for (final entry in entries) {
+      final nutrients = entry['nutrients'] as Map<String, dynamic>?;
+      if (nutrients == null) continue;
 
-    final total = (nutrients[macroKey] as num?)?.toDouble() ?? 0.0;
-    if (total <= 0) continue;
+      final total = (nutrients[macroKey] as num?)?.toDouble() ?? 0.0;
+      if (total <= 0) continue;
 
-    final String typeStr = (entry['type_product'] ?? '').toString().toLowerCase().replaceAll('"', '').trim();
-    final bool isFruitProduct = typeStr == 'fruit' || entry['is_fruit'] == true;
+      final String typeStr = (entry['type_product'] ?? '')
+          .toString()
+          .toLowerCase()
+          .replaceAll('"', '')
+          .trim();
+      final bool isFruitProduct =
+          typeStr == 'fruit' || entry['is_fruit'] == true;
 
-    final secondaryRaw = secondaryKey != null
-        ? ((nutrients[secondaryKey] as num?)?.toDouble() ?? 0.0)
-        : 0.0;
-    final secondary = secondaryRaw.clamp(0.0, total);
+      final secondaryRaw = secondaryKey != null
+          ? ((nutrients[secondaryKey] as num?)?.toDouble() ?? 0.0)
+          : 0.0;
+      final secondary = secondaryRaw.clamp(0.0, total);
 
-// 2. Bereken fruit-specifieke waarde (ALLEEN als instelling TRUE is)
-    double fruitValue = 0.0;
-    if (separateFruitInMacros) {
-      if (fruitKey != null && nutrients.containsKey(fruitKey)) {
-        fruitValue = (nutrients[fruitKey] as num?)?.toDouble() ?? 0.0;
-      } else if (isFruitProduct) {
-        fruitValue = secondary > 0 ? secondary : total;
+      double fruitValue = 0.0;
+      if (separateFruitInMacros) {
+        if (fruitKey != null && nutrients.containsKey(fruitKey)) {
+          fruitValue = (nutrients[fruitKey] as num?)?.toDouble() ?? 0.0;
+        } else if (isFruitProduct) {
+          fruitValue = secondary > 0 ? secondary : total;
+        }
       }
+
+      final name = (entry['product_name'] as String?)?.trim().isNotEmpty == true
+          ? (entry['product_name'] as String).trim()
+          : AppLocalizations.of(context)!.unknown;
+
+      rowsByProduct.putIfAbsent(name, () {
+        return {
+          'name': name,
+          'total': 0.0,
+          'secondary': 0.0,
+          'fruit': 0.0,
+          'count': 0,
+        };
+      });
+
+      rowsByProduct[name]!['total'] =
+          (rowsByProduct[name]!['total'] as double) + total;
+      rowsByProduct[name]!['secondary'] =
+          (rowsByProduct[name]!['secondary'] as double) + secondary;
+      rowsByProduct[name]!['fruit'] =
+          (rowsByProduct[name]!['fruit'] as double) + fruitValue;
+      rowsByProduct[name]!['count'] =
+          (rowsByProduct[name]!['count'] as int) + 1;
     }
 
-    final name = (entry['product_name'] as String?)?.trim().isNotEmpty == true
-        ? (entry['product_name'] as String).trim()
-        : AppLocalizations.of(context)!.unknown;
+    final rows = rowsByProduct.values.toList();
+    rows.sort((a, b) => (b['total'] as double).compareTo(a['total'] as double));
 
-    rowsByProduct.putIfAbsent(name, () {
-      return {'name': name, 'total': 0.0, 'secondary': 0.0, 'fruit': 0.0, 'count': 0};
-    });
+    final totalMacro = rows.fold<double>(
+      0.0,
+      (sum, row) => sum + (row['total'] as double),
+    );
 
-    rowsByProduct[name]!['total'] = (rowsByProduct[name]!['total'] as double) + total;
-    rowsByProduct[name]!['secondary'] = (rowsByProduct[name]!['secondary'] as double) + secondary;
-    rowsByProduct[name]!['fruit'] = (rowsByProduct[name]!['fruit'] as double) + fruitValue;
-    rowsByProduct[name]!['count'] = (rowsByProduct[name]!['count'] as int) + 1;
-  }
+    for (var row in rows) {
+      final sec = row['secondary'] as double;
+      final fr = row['fruit'] as double;
+      row['secondary_adjusted'] = (sec - fr).clamp(0.0, double.infinity);
+    }
 
-  final rows = rowsByProduct.values.toList();
-  rows.sort((a, b) => (b['total'] as double).compareTo(a['total'] as double));
+    final secondaryRows = secondaryKey != null
+        ? rows
+              .where((row) => (row['secondary_adjusted'] as double) > 0)
+              .toList()
+        : <Map<String, dynamic>>[];
+    secondaryRows.sort(
+      (a, b) => (b['secondary_adjusted'] as double).compareTo(
+        a['secondary_adjusted'] as double,
+      ),
+    );
+    final totalSecondary = secondaryRows.fold<double>(
+      0.0,
+      (sum, row) => sum + (row['secondary_adjusted'] as double),
+    );
 
-  final totalMacro = rows.fold<double>(0.0, (sum, row) => sum + (row['total'] as double));
+    final fruitRows = rows
+        .where((row) => (row['fruit'] as double) > 0)
+        .toList();
+    fruitRows.sort(
+      (a, b) => (b['fruit'] as double).compareTo(a['fruit'] as double),
+    );
+    final totalFruit = fruitRows.fold<double>(
+      0.0,
+      (sum, row) => sum + (row['fruit'] as double),
+    );
 
-  final secondaryRows = secondaryKey != null
-      ? rows.where((row) => (row['secondary'] as double) > 0).toList()
-      : <Map<String, dynamic>>[];
-  secondaryRows.sort((a, b) => (b['secondary'] as double).compareTo(a['secondary'] as double));
-  final totalSecondary = secondaryRows.fold<double>(0.0, (sum, row) => sum + (row['secondary'] as double));
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final secondaryLabelText = (secondaryLabel ?? '').trim().isNotEmpty
+        ? secondaryLabel!.trim()
+        : AppLocalizations.of(context)!.macroLegendSplitFallback;
 
-  final fruitRows = rows.where((row) => (row['fruit'] as double) > 0).toList();
-  fruitRows.sort((a, b) => (b['fruit'] as double).compareTo(a['fruit'] as double));
-  final totalFruit = fruitRows.fold<double>(0.0, (sum, row) => sum + (row['fruit'] as double));
-
-  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-  final secondaryLabelText = (secondaryLabel ?? '').trim().isNotEmpty
-      ? secondaryLabel!.trim()
-      : AppLocalizations.of(context)!.macroLegendSplitFallback;
-
-  await showDialog<void>(
-    context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          AppLocalizations.of(context)!.macroDistributionTitle(title),
-          style: const TextStyle(fontWeight: FontWeight.bold),
+    Widget buildBarItem({
+      required int index,
+      required String name,
+      required double value,
+      required double share,
+      required Color barColor,
+      Color? borderColor,
+      Widget? extraBottomWidget,
+    }) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isDarkMode ? Colors.grey[900] : Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: borderColor != null
+              ? Border.all(color: borderColor, width: 1)
+              : null,
         ),
-        content: SizedBox(
-          width: 520,
-          child: rows.isEmpty
-              ? Text(AppLocalizations.of(context)!.noContributionsForDay)
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.totalTitle(title),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: isDarkMode ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                          Text(
-                            '${totalMacro.toStringAsFixed(1)} g',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: accentColor,
-                            ),
-                          ),
-                        ],
-                      ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: barColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${index + 1}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: barColor,
                     ),
-                    const SizedBox(height: 14),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Text(
+                  '${value.toStringAsFixed(1)} g',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: barColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: share.clamp(0.0, 1.0),
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(99),
+              valueColor: AlwaysStoppedAnimation<Color>(barColor),
+              backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[300],
+            ),
+            if (extraBottomWidget != null) ...[
+              const SizedBox(height: 8),
+              extraBottomWidget,
+            ],
+          ],
+        ),
+      );
+    }
 
-                    Flexible(
-                      child: ListView(
-                        shrinkWrap: true,
-                        children: [
-                          for (int index = 0; index < rows.length; index++) ...[
-                            Builder(
-                              builder: (context) {
-                                final row = rows[index];
-                                final name = row['name'] as String;
-                                final total = row['total'] as double;
-                                final secondary = row['secondary'] as double;
-                                final fruit = row['fruit'] as double;
-                                final share = totalMacro > 0 ? total / totalMacro : 0.0;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            AppLocalizations.of(context)!.macroDistributionTitle(title),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: SizedBox(
+            width: 520,
+            child: rows.isEmpty
+                ? Text(AppLocalizations.of(context)!.noContributionsForDay)
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: accentColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              AppLocalizations.of(context)!.totalTitle(title),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: isDarkMode
+                                    ? Colors.white
+                                    : Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              '${totalMacro.toStringAsFixed(1)} g',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: accentColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
 
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode ? Colors.grey[900] : Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: fruit > 0 
-                                        ? Border.all(color: Colors.orange.withOpacity(0.4), width: 1)
+                      Flexible(
+                        child: ListView(
+                          shrinkWrap: true,
+                          children: [
+                            // -- 1. TOTALE MACRO LIJST --
+                            for (
+                              int index = 0;
+                              index < rows.length;
+                              index++
+                            ) ...[
+                              Builder(
+                                builder: (context) {
+                                  final row = rows[index];
+                                  final name = row['name'] as String;
+                                  final total = row['total'] as double;
+                                  final secondary = row['secondary'] as double;
+                                  final fruit = row['fruit'] as double;
+                                  final secondaryNet = (secondary - fruit)
+                                      .clamp(0.0, double.infinity);
+                                  final share = totalMacro > 0
+                                      ? total / totalMacro
+                                      : 0.0;
+
+                                  return buildBarItem(
+                                    index: index,
+                                    name: name,
+                                    value: total,
+                                    share: share,
+                                    barColor: accentColor,
+                                    borderColor: fruit > 0
+                                        ? Colors.green.withOpacity(0.4)
                                         : null,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 22,
-                                            height: 22,
-                                            alignment: Alignment.center,
-                                            decoration: BoxDecoration(
-                                              color: accentColor.withOpacity(0.2),
-                                              borderRadius: BorderRadius.circular(6),
+                                    extraBottomWidget: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.shareOfDailyTotal(
+                                            (share * 100).toStringAsFixed(1),
+                                          ),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isDarkMode
+                                                ? Colors.white60
+                                                : Colors.black54,
+                                          ),
+                                        ),
+                                        if (secondaryKey != null &&
+                                            secondary > 0) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '• $secondaryLabelText: ${secondaryNet.toStringAsFixed(1)} g',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: isDarkMode
+                                                  ? Colors.white60
+                                                  : Colors.black54,
+                                            ),
+                                          ),
+                                        ],
+                                        if (fruit > 0) ...[
+                                          const SizedBox(height: 2),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 10,
                                             ),
                                             child: Text(
-                                              '${index + 1}',
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.whereofFromFruit(
+                                                fruit.toStringAsFixed(1),
+                                              ),
                                               style: TextStyle(
+                                                fontSize: 11,
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                                color: accentColor,
+                                                color: isDarkMode
+                                                    ? Colors.greenAccent
+                                                    : Colors.green[700],
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              name,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(fontWeight: FontWeight.w600),
-                                            ),
-                                          ),
-                                          Text(
-                                            '${total.toStringAsFixed(1)} g',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: accentColor,
-                                            ),
-                                          ),
                                         ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      LinearProgressIndicator(
-                                        value: share.clamp(0.0, 1.0),
-                                        minHeight: 6,
-                                        borderRadius: BorderRadius.circular(99),
-                                        valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-                                        backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[300],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      
-                                      // NIEUW: Verticale hiërarchie in plaats van naast elkaar
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            AppLocalizations.of(context)!.shareOfDailyTotal(
-  (share * 100).toStringAsFixed(1),
-),
-                                            style: TextStyle(fontSize: 11, color: isDarkMode ? Colors.white60 : Colors.black54),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          if (secondaryKey != null && secondary > 0)
-                                            Text(
-                                              '• $secondaryLabelText: ${secondary.toStringAsFixed(1)} g',
-                                              style: TextStyle(fontSize: 11, color: isDarkMode ? Colors.white60 : Colors.black54),
-                                            ),
-                                          if (fruit > 0)
-                                            Padding(
-                                              padding: const EdgeInsets.only(left: 10, top: 2),
-                                              child: Text(
-  AppLocalizations.of(context)!.whereofFromFruit(
-    fruit.toStringAsFixed(1),
-  ),
-  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orange),
-),
-                                            ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-
-                          if (secondaryKey != null && secondaryRows.isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            const Divider(),
-                            const SizedBox(height: 8),
-                            Text(
-                              AppLocalizations.of(context)!.topLabel(secondaryLabelText),
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              AppLocalizations.of(context)!.totalTitle(secondaryLabelText),
-                              style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white70 : Colors.black54),
-                            ),
-                            const SizedBox(height: 8),
-                            for (int index = 0; index < secondaryRows.length; index++) ...[
-                              Builder(
-                                builder: (context) {
-                                  final row = secondaryRows[index];
-                                  final name = row['name'] as String;
-                                  final secondary = row['secondary'] as double;
-                                  final secondaryShare = totalSecondary > 0 ? secondary / totalSecondary : 0.0;
-
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            name,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                          ),
-                                        ),
-                                        Text(
-                                          '${secondary.toStringAsFixed(1)} g (${(secondaryShare * 100).toStringAsFixed(0)}%)',
-                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.pinkAccent),
-                                        ),
                                       ],
                                     ),
                                   );
                                 },
                               ),
                             ],
-                          ],
 
-                          if (totalFruit > 0) ...[
-                            const SizedBox(height: 16),
-                            const Divider(),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Text('🍎 ', style: TextStyle(fontSize: 16)),
-                                Text(
-                                  AppLocalizations.of(context)!.topFruitContribution,
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.orangeAccent : Colors.orange[800]),
+                            // -- 2. SECONDARY LIJST (SUIKERS MIN FRUIT) --
+                            if (secondaryKey != null &&
+                                secondaryRows.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              const Divider(),
+                              const SizedBox(height: 8),
+                              Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.topLabel(secondaryLabelText),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.totalTitle(secondaryLabelText),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              for (
+                                int index = 0;
+                                index < secondaryRows.length;
+                                index++
+                              ) ...[
+                                Builder(
+                                  builder: (context) {
+                                    final row = secondaryRows[index];
+                                    final name = row['name'] as String;
+                                    final secondaryAdj =
+                                        row['secondary_adjusted'] as double;
+                                    final secondaryShare = totalSecondary > 0
+                                        ? secondaryAdj / totalSecondary
+                                        : 0.0;
+
+                                    return buildBarItem(
+                                      index: index,
+                                      name: name,
+                                      value: secondaryAdj,
+                                      share: secondaryShare,
+                                      barColor: Colors.pinkAccent,
+                                      extraBottomWidget: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.shareOfDailyTotal(
+                                          (secondaryShare * 100)
+                                              .toStringAsFixed(1),
+                                        ),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: isDarkMode
+                                              ? Colors.white60
+                                              : Colors.black54,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
-                            ),
-                            Text(
-                              AppLocalizations.of(context)!.totalFromFruit(
-  totalFruit.toStringAsFixed(1),
-),
-                              style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white70 : Colors.black54),
-                            ),
-                            const SizedBox(height: 8),
-                            for (int index = 0; index < fruitRows.length; index++) ...[
-                              Builder(
-                                builder: (context) {
-                                  final row = fruitRows[index];
-                                  final name = row['name'] as String;
-                                  final fruit = row['fruit'] as double;
-                                  final fruitShare = totalFruit > 0 ? fruit / totalFruit : 0.0;
+                            ],
 
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            name,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                          ),
-                                        ),
-                                        Text(
-                                          '${fruit.toStringAsFixed(1)} g (${(fruitShare * 100).toStringAsFixed(0)}%)',
-                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange),
-                                        ),
-                                      ],
+                            // -- 3. FRUIT LIJST (GROEN) --
+                            if (totalFruit > 0) ...[
+                              const SizedBox(height: 16),
+                              const Divider(),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Text(
+                                    '🍎 ',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.topFruitContribution,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDarkMode
+                                          ? Colors.greenAccent
+                                          : Colors.green[800],
                                     ),
-                                  );
-                                },
+                                  ),
+                                ],
                               ),
+                              Text(
+                                AppLocalizations.of(context)!.totalFromFruit(
+                                  totalFruit.toStringAsFixed(1),
+                                ),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              for (
+                                int index = 0;
+                                index < fruitRows.length;
+                                index++
+                              ) ...[
+                                Builder(
+                                  builder: (context) {
+                                    final row = fruitRows[index];
+                                    final name = row['name'] as String;
+                                    final fruit = row['fruit'] as double;
+                                    final fruitShare = totalFruit > 0
+                                        ? fruit / totalFruit
+                                        : 0.0;
+
+                                    return buildBarItem(
+                                      index: index,
+                                      name: name,
+                                      value: fruit,
+                                      share: fruitShare,
+                                      barColor: isDarkMode
+                                          ? Colors.greenAccent
+                                          : Colors.green[600]!,
+                                      extraBottomWidget: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.shareOfDailyTotal(
+                                          (fruitShare * 100).toStringAsFixed(1),
+                                        ),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: isDarkMode
+                                              ? Colors.white60
+                                              : Colors.black54,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-        ),
-        actions: [
-          if (onEditGoal != null)
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                onEditGoal();
-              },
-              child: Text(AppLocalizations.of(context)!.editGoal),
-            ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(AppLocalizations.of(context)!.cancel),
+                    ],
+                  ),
           ),
-        ],
-      );
-    },
-  );
-}
+          actions: [
+            if (onEditGoal != null)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  onEditGoal();
+                },
+                child: Text(AppLocalizations.of(context)!.editGoal),
+              ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(AppLocalizations.of(context)!.cancel),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   String _getMotivationalMessage(
     // genereer motiverende boodschap
