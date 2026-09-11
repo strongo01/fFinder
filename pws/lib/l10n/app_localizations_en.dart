@@ -1714,6 +1714,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calorie_goal_dialog_label => 'Daily goal (kcal)';
 
   @override
+  String get resetGoal => 'Reset';
+
+  @override
   String get calorie_goal_updated => 'Calorie goal updated';
 
   @override

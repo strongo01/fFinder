@@ -1714,6 +1714,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get calorie_goal_dialog_label => 'Objectif quotidien (kcal)';
 
   @override
+  String get resetGoal => 'Réinitialiser';
+
+  @override
   String get calorie_goal_updated => 'Objectif calorique mis à jour';
 
   @override

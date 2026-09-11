@@ -3501,6 +3501,9 @@ abstract class AppLocalizations {
   /// **'Daily goal (kcal)'**
   String get calorie_goal_dialog_label;
 
+  /// No description provided for @resetGoal.
+  String get resetGoal;
+
   /// No description provided for @calorie_goal_updated.
   ///
   /// In en, this message translates to:

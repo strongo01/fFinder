@@ -611,6 +611,7 @@
     "error_saving_water_goal": "Erreur lors de l'enregistrement de l'objectif d'eau : ",
     "calorie_goal_dialog_title": "Définir l'objectif calorique",
     "calorie_goal_dialog_label": "Objectif quotidien (kcal)",
+    "resetGoal": "Réinitialiser",
     "calorie_goal_updated": "Objectif calorique mis à jour",
     "error_saving_prefix": "Échec de l'enregistrement : ",
     "eaten": "Consommé",

@@ -611,6 +611,7 @@
     "error_saving_water_goal": "Fehler beim Speichern des Wasserziels: ",
     "calorie_goal_dialog_title": "Kalorienzielt festlegen",
     "calorie_goal_dialog_label": "Tägliches Ziel (kcal)",
+    "resetGoal": "Zurücksetzen",
     "calorie_goal_updated": "Kalorienzielt aktualisiert",
     "error_saving_prefix": "Speichern fehlgeschlagen: ",
     "eaten": "Genossen",

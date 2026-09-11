@@ -69,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _lastDailyMacroDebugSignature;
   bool separateFruitInMacros = true;
 
-  static const String _appVersion = '1.3.1'; // huidige app versie
+  static const String _appVersion = '1.3.2'; // huidige app versie
 
   late TutorialCoachMark tutorialCoachMark;
 
@@ -2417,36 +2417,24 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         context,
                                                       )!.macroWhereOfFruit
                                                     : null,
-                                                onTap: () =>
-                                                    _showMacroContributionDialog(
-                                                      title:
-                                                          AppLocalizations.of(
-                                                            context,
-                                                          )!.carbs,
-                                                      entries: entries,
-                                                      macroKey: 'carbohydrates',
-                                                      accentColor:
-                                                          Colors.orange,
-                                                      secondaryKey: 'sugars',
-                                                      secondaryLabel:
-                                                          AppLocalizations.of(
-                                                            context,
-                                                          )!.sugars,
-                                                      separateFruitInMacros:
-                                                          separateFruitInMacros,
-                                                      onEditGoal: () =>
-                                                          _showEditMacroGoalDialog(
-                                                            macroField:
-                                                                'carbGoal',
-                                                            currentGoal:
-                                                                carbGoal
-                                                                    .toDouble(),
-                                                            macroTitle:
-                                                                AppLocalizations.of(
-                                                                  context,
-                                                                )!.carbs,
-                                                          ),
-                                                    ),
+                                                onTap: () {
+  final loc = AppLocalizations.of(context)!;
+
+  _showMacroContributionDialog(
+    title: loc.carbs,
+    entries: entries,
+    macroKey: 'carbohydrates',
+    accentColor: Colors.orange,
+    secondaryKey: 'sugars',
+    secondaryLabel: loc.sugars,
+    separateFruitInMacros: separateFruitInMacros,
+    onEditGoal: () => _showEditMacroGoalDialog(
+      macroField: 'carbGoal',
+      currentGoal: carbGoal.toDouble(),
+      macroTitle: loc.carbs,
+    ),
+  );
+},
                                               ),
                                             ),
                                             Expanded(
@@ -2463,12 +2451,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   140,
                                                   255,
                                                 ),
-                                                onTap: () =>
+                                                onTap: () {
+                                                  final loc = AppLocalizations.of(context)!;
                                                     _showMacroContributionDialog(
                                                       title:
-                                                          AppLocalizations.of(
-                                                            context,
-                                                          )!.proteins,
+                                                          loc.proteins,
                                                       entries: entries,
                                                       macroKey: 'proteins',
                                                       accentColor:
@@ -2488,11 +2475,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                                                 proteinGoal
                                                                     .toDouble(),
                                                             macroTitle:
-                                                                AppLocalizations.of(
-                                                                  context,
-                                                                )!.proteins,
+                                                                loc.proteins,
                                                           ),
-                                                    ),
+                                                    );
+                                                }
                                               ),
                                             ),
                                             Expanded(
@@ -2529,12 +2515,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         context,
                                                       )!.macroWhereOfFruit
                                                     : null,
-                                                onTap: () =>
+                                                onTap: () {
+                                                  final loc = AppLocalizations.of(context)!;
                                                     _showMacroContributionDialog(
                                                       title:
-                                                          AppLocalizations.of(
-                                                            context,
-                                                          )!.fats,
+                                                          loc.fats,
                                                       entries: entries,
                                                       macroKey: 'fat',
                                                       separateFruitInMacros:
@@ -2549,9 +2534,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       secondaryKey:
                                                           'saturated-fat',
                                                       secondaryLabel:
-                                                          AppLocalizations.of(
-                                                            context,
-                                                          )!.saturatedFat,
+                                                          loc.saturatedFat,
                                                       onEditGoal: () =>
                                                           _showEditMacroGoalDialog(
                                                             macroField:
@@ -2559,11 +2542,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                                             currentGoal: fatGoal
                                                                 .toDouble(),
                                                             macroTitle:
-                                                                AppLocalizations.of(
-                                                                  context,
-                                                                )!.fats,
+                                                                loc.fats,
                                                           ),
-                                                    ),
+                                                    );
+                                                }
                                               ),
                                             ),
                                           ],
@@ -3138,6 +3120,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     final formKey = GlobalKey<FormState>();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final calculatedGoal = _userData == null
+        ? currentGoal
+        : _calculateCalories(_userData!);
 
     final newGoal = await showDialog<double>(
       // toon dialoog
@@ -3175,6 +3160,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(calculatedGoal),
+              child: Text(AppLocalizations.of(context)!.resetGoal),
+            ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text(AppLocalizations.of(context)!.cancel),
@@ -3250,6 +3239,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     final formKey = GlobalKey<FormState>();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final calorieGoal = _userData == null
+      ? _calorieAllowance ?? currentGoal
+      : _calculateCalories(_userData!);
+    final weight = (_userData?['weight'] as num?)?.toDouble() ?? 0.0;
+    final fatGoal = calorieGoal * 0.30 / 9;
+    final proteinGoal = weight;
+    final carbGoal = (calorieGoal - calorieGoal * 0.30 - proteinGoal * 4) / 4;
+    final calculatedGoal = switch (macroField) {
+      'proteinGoal' => proteinGoal,
+      'fatGoal' => fatGoal,
+      'carbGoal' => carbGoal,
+      _ => currentGoal,
+    };
 
     final newGoal = await showDialog<double>(
       context: context,
@@ -3282,6 +3284,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(calculatedGoal),
+              child: Text(AppLocalizations.of(context)!.resetGoal),
+            ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text(AppLocalizations.of(context)!.cancel),
@@ -3535,7 +3541,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    await showDialog<void>(
+    final editGoal = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -3831,22 +3837,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
           ),
           actions: [
-            if (onEditGoal != null)
-              TextButton(
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
-                  onEditGoal();
-                },
-                child: Text(AppLocalizations.of(context)!.editGoal),
-              ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(AppLocalizations.of(context)!.cancel),
-            ),
-          ],
+        if (onEditGoal != null)
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop(true);
+            },
+            child: Text(AppLocalizations.of(context)!.editGoal),
+          ),
+        TextButton(
+          onPressed: () {
+            Navigator.of(dialogContext).pop(false);
+          },
+          child: Text(AppLocalizations.of(context)!.cancel),
+        ),
+      ],
         );
       },
     );
+    if (editGoal == true && mounted) {
+  onEditGoal!();
+}
   }
 
   String _getMotivationalMessage(
@@ -4077,7 +4087,7 @@ class _HomeScreenState extends State<HomeScreen> {
     VoidCallback? onTap,
   }) {
     final loc = AppLocalizations.of(context)!;
-    final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
+    final progress = goal > 0 ? consumed / goal : 0.0;
 
     // Zorg dat de sub-macro's nooit groter zijn dan het totaal
     final secondaryRaw = (secondaryConsumed ?? 0.0).clamp(0.0, consumed);
@@ -5386,13 +5396,13 @@ class MacroSplitCirclePainter extends CustomPainter {
 
     canvas.drawCircle(center, radius, backgroundPaint);
 
-    if (goal <= 0 || consumed <= 0 || progress <= 0) {
-      return;
-    }
+    final visualProgress = progress.clamp(0.0, 1.0).toDouble();
 
-    // Hoeveelheid die we nu moeten tekenen op basis van de animatie (progress 0.0 tot 1.0)
-    // We animeren de totale 'consumedForArc'
-    final totalConsumedForAnimation = consumed * progress;
+if (goal <= 0 || consumed <= 0 || visualProgress <= 0) {
+  return;
+}
+
+final totalConsumedForAnimation = consumed * visualProgress;
 
     // Bereken de absolute ratio's ten opzichte van de *totale consumptie*
     final secondaryRatio = consumed > 0

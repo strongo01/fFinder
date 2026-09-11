@@ -581,6 +581,7 @@
     "error_saving_water_goal": "Error saving water goal: ",
     "calorie_goal_dialog_title": "Set calorie goal",
     "calorie_goal_dialog_label": "Daily goal (kcal)",
+    "resetGoal": "Reset",
     "calorie_goal_updated": "Calorie goal updated",
     "error_saving_prefix": "Save failed: ",
     "eaten": "Eaten",

@@ -611,6 +611,7 @@
   "error_saving_water_goal": "Fout bij opslaan waterdoel: ",
   "calorie_goal_dialog_title": "Caloriedoel instellen",
   "calorie_goal_dialog_label": "Dagelijks doel (kcal)",
+  "resetGoal": "Resetten",
   "calorie_goal_updated": "Calorieëndoel bijgewerkt",
   "error_saving_prefix": "Opslaan mislukt: ",
   "eaten": "Genoten",
