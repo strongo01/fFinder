@@ -26,7 +26,7 @@ import 'feedback_view.dart';
 import 'weight_view.dart';
 import 'package:collection/collection.dart';
 import 'package:fFinder/l10n/app_localizations.dart';
-
+import 'package:flutter/services.dart'; // Toevoegen voor MethodChannel
 //homescreen is een statefulwidget omdat de inhoud verandert
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -1214,6 +1214,11 @@ class _HomeScreenState extends State<HomeScreen> {
         if (index == 0) {
           return CupertinoPageScaffold(
             navigationBar: CupertinoNavigationBar(
+              leading: CupertinoButton(
+                padding: EdgeInsets.zero,
+                child: const Icon(CupertinoIcons.sparkles, size: 28, color: Color.fromARGB(255, 255, 183, 0)),
+                onPressed: _scanWithVisualIntelligence,
+              ),
               middle: GestureDetector(
                 key: _dateKey,
                 onTap: () => _selectDate(context),
@@ -1347,6 +1352,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: effectiveIndex == 0
           ? AppBar(
+            leading: defaultTargetPlatform == TargetPlatform.iOS
+                  ? IconButton(
+                      icon: const Icon(Icons.auto_awesome, color: Colors.purpleAccent),
+                      onPressed: _scanWithVisualIntelligence,
+                    )
+                  : null,
               title: GestureDetector(
                 key: _dateKey,
                 onTap: () => _selectDate(context),
@@ -1493,6 +1504,58 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _scanWithVisualIntelligence() async {
+    // Visual Intelligence is een iOS-only feature
+    if (defaultTargetPlatform != TargetPlatform.iOS) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Visual Intelligence is alleen beschikbaar op iOS 18+.")),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // 1. Communiceer met de native iOS AppDelegate via een MethodChannel
+      const platform = MethodChannel('com.ffinder.app/visual_intelligence');
+      final String? resultJson = await platform.invokeMethod('scanProduct');
+
+      if (resultJson != null) {
+        // 2. Parse de data die via AppEntity (uit Swift) is teruggestuurd
+        final Map<String, dynamic> productData = jsonDecode(resultJson);
+        
+        debugPrint("[HOME_SCREEN] Ontvangen AI data: $productData");
+
+        // 3. Stuur de data door naar je bestaande AddFoodPage
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => AddFoodPage(
+                initialProductData: productData,
+                selectedDate: _selectedDate,
+              ),
+            ),
+          );
+        }
+      }
+    } on PlatformException catch (e) {
+      debugPrint("[HOME_SCREEN] AI Scan mislukt: ${e.message}");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("AI Scan mislukt: ${e.message}")),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _scanBarcode() async {
