@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fFinder/views/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart' hide GlobalMaterialLocalizations;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:fFinder/views/home_screen.dart';
@@ -43,15 +43,15 @@ Future<void> main() async {
       if (kReleaseMode) {
         await FirebaseAppCheck.instance.activate(
           //appcheck betekent dat alleen geverifieerde instanties van de app toegang krijgen tot firebase resources
-          androidProvider: AndroidProvider.playIntegrity,
-          appleProvider: AppleProvider.appAttest,
+          providerAndroid: const AndroidPlayIntegrityProvider(),
+          providerApple: const AppleAppAttestProvider(),
         );
         debugPrint('[DEBUG] Firebase App Check (release) activated.');
       } else {
         // In debug: gebruik debug-provider
         await FirebaseAppCheck.instance.activate(
-          androidProvider: AndroidProvider.debug,
-          appleProvider: AppleProvider.debug,
+          providerAndroid: const AndroidDebugProvider(),
+          providerApple: const AppleDebugProvider(),
         );
         final token = await FirebaseAppCheck.instance.getToken(true);
         debugPrint('DEBUG App Check debug token: $token');

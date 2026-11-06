@@ -5,7 +5,7 @@ import 'package:fFinder/l10n/app_localizations.dart';
 import 'package:fFinder/views/crypto_class.dart';
 import 'package:fFinder/views/feedback_view.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
@@ -1424,9 +1424,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
     );
 
     try {
-      final model = FirebaseAI.googleAI(
-        appCheck: FirebaseAppCheck.instance,
-      ).generativeModel(model: 'gemini-2.5-flash');
+      final model = FirebaseAI.googleAI().generativeModel(model: 'gemini-2.5-flash');
       final prompt = TextPart(
         AppLocalizations.of(context)!.aiIngredientsPrompt,
       );

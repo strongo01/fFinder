@@ -9,10 +9,10 @@ import 'package:fFinder/views/login_register_view.dart';
 import 'package:fFinder/views/onboarding_view.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fFinder/views/settings_view.dart';
-import 'package:flutter/cupertino.dart'; //voor ios stijl widgets
+import 'package:cupertino_ui/cupertino_ui.dart'; //voor ios stijl widgets
 import 'package:flutter/foundation.dart'; // Voor platform check
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import 'package:shared_preferences/shared_preferences.dart';
